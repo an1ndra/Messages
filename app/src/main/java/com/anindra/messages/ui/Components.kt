@@ -52,7 +52,17 @@ private val avatarColors = listOf(
     Color(0xFFFA903E), // orange
     Color(0xFF4ECDE6), // cyan
     Color(0xFFAF5CF7), // purple
-    Color(0xFFFA903E)  // orange
+    Color(0xFF4CAF50), // green
+    Color(0xFF2196F3), // blue
+    Color(0xFFFF9800), // amber
+    Color(0xFF9C27B0), // deep purple
+    Color(0xFF00BCD4), // teal
+    Color(0xFFE91E63), // rose
+    Color(0xFF3F51B5), // indigo
+    Color(0xFF009688), // mint
+    Color(0xFFFF5722), // deep orange
+    Color(0xFF795548), // brown
+    Color(0xFF607D8B)  // blue grey
 )
 
 val GoogleBlue = Color(0xFF1A73E8)
