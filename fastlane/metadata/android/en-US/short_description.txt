@@ -1,0 +1,1 @@
+Simple, private SMS messaging. Offline-first, no ads, no tracking.
