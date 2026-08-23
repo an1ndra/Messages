@@ -47,6 +47,8 @@ object NotificationHelper {
 
         ensureChannel(context)
 
+        val privacyMode = app.repository.settings.privacyModeEnabled
+
         val tap = PendingIntent.getActivity(
             context, 0,
             Intent(context, MainActivity::class.java).apply {
@@ -68,11 +70,14 @@ object NotificationHelper {
             0, "Reply", replyIntent
         ).addRemoteInput(remoteInput).build()
 
+        val title = if (privacyMode) "New message" else from
+        val text = if (privacyMode) "You have a new message" else body
+
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(from)
-            .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true)
             .setContentIntent(tap)
             .addAction(replyAction)
