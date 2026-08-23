@@ -44,18 +44,3 @@ jobs:
           generate_release_notes: true
           files: Messages-*.apk
 
-  mirror-gitlab:
-    name: Mirror source to GitLab
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Push mirror to GitLab
-        run: |
-          git remote add gitlab "https://oauth2:${GITLAB_TOKEN}@gitlab.com/${GITLAB_REPO}.git"
-          git push gitlab "--mirror" "--force"
-        env:
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-          GITLAB_REPO: ${{ secrets.GITLAB_REPO }}
