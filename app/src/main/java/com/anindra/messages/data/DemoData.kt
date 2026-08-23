@@ -19,6 +19,10 @@ object DemoData {
         "+15551230040" to R.drawable.avatar_jake,
         "+15551230050" to R.drawable.avatar_emma,
         "+15551230060" to R.drawable.avatar_dad,
+        "+15551230070" to R.drawable.avatar_pizza,
+        "+15551230080" to R.drawable.avatar_alex,
+        "+15551230090" to R.drawable.avatar_doctor,
+        "+15551230100" to R.drawable.avatar_gym,
     )
 
     fun seedIfNeeded(db: SQLiteDatabase) {
