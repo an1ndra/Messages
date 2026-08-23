@@ -5,14 +5,25 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.ContactsContract
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import com.anindra.messages.R
+import com.anindra.messages.data.DemoData
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -91,20 +102,26 @@ fun PersonAvatar(
 }
 
 /** Loads the contact's profile photo thumbnail for a phone number, or null. */
-private fun loadContactPhoto(context: Context, number: String): Bitmap? = try {
-    val resolver = context.contentResolver
-    val lookupUri = Uri.withAppendedPath(
-        ContactsContract.AUTHORITY_URI, "phone_lookup/" + Uri.encode(number)
-    )
-    resolver.query(lookupUri, arrayOf("photo_uri"), null, null, null)?.use { c ->
-        val photoUri = if (c.moveToFirst()) c.getString(0) else null
-        if (photoUri.isNullOrBlank()) null
-        else resolver.openInputStream(Uri.parse(photoUri))?.use { input ->
-            BitmapFactory.decodeStream(input)
-        }
+private fun loadContactPhoto(context: Context, number: String): Bitmap? {
+    val demoRes = DemoData.AVATAR_MAP[number]
+    if (demoRes != null) {
+        return BitmapFactory.decodeResource(context.resources, demoRes)
     }
-} catch (_: Exception) {
-    null
+    return try {
+        val resolver = context.contentResolver
+        val lookupUri = Uri.withAppendedPath(
+            ContactsContract.AUTHORITY_URI, "phone_lookup/" + Uri.encode(number)
+        )
+        resolver.query(lookupUri, arrayOf("photo_uri"), null, null, null)?.use { c ->
+            val photoUri = if (c.moveToFirst()) c.getString(0) else null
+            if (photoUri.isNullOrBlank()) null
+            else resolver.openInputStream(Uri.parse(photoUri))?.use { input ->
+                BitmapFactory.decodeStream(input)
+            }
+        }
+    } catch (_: Exception) {
+        null
+    }
 }
 
 private val timeFmt = SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -164,5 +181,82 @@ fun UnreadBadge(count: Int, modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onPrimary,
             fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
         )
+    }
+}
+
+@Composable
+fun Modifier.shimmer(): Modifier {
+    val transition = androidx.compose.animation.core.rememberInfiniteTransition()
+    val translateAnim: Float by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1200f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(1100, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+        )
+    )
+    return this.background(
+        brush = androidx.compose.ui.graphics.Brush.linearGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            ),
+            start = androidx.compose.ui.geometry.Offset(translateAnim - 300f, 0f),
+            end = androidx.compose.ui.geometry.Offset(translateAnim, 0f)
+        )
+    )
+}
+
+@Composable
+fun SkeletonConversationRow() {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .shimmer()
+        )
+        Spacer(Modifier.size(14.dp))
+        Column(Modifier.weight(1f)) {
+            Box(
+                Modifier
+                    .fillMaxWidth(0.45f)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmer()
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmer()
+            )
+        }
+        Spacer(Modifier.size(12.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            Box(
+                Modifier
+                    .width(36.dp)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmer()
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(
+                Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .shimmer()
+            )
+        }
     }
 }

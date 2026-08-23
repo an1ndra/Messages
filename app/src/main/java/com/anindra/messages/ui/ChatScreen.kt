@@ -14,6 +14,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -39,7 +41,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -76,6 +77,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -181,6 +183,11 @@ fun ChatScreen(
     var sims by remember { mutableStateOf(emptyList<SubscriptionInfo>()) }
     var retryingMessageId by remember { mutableStateOf(-1L) }
     var showRetrySimPicker by remember { mutableStateOf(false) }
+
+    // Message locking
+    var unlockedIds by remember { mutableStateOf(setOf<Long>()) }
+    val activity = context as? androidx.fragment.app.FragmentActivity
+    val biometricExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
 
     fun cycleSim() {
         if (sims.size < 2) return
@@ -317,9 +324,43 @@ fun ChatScreen(
                                     onOpenDetails()
                                 }
                             )
+                            if (sims.size > 1) {
+                                sims.sortedBy { it.simSlotIndex }.forEach { sub ->
+                                    val carrier = sub.carrierName?.toString()?.ifBlank { null }
+                                    val simLabel = buildString {
+                                        append("SIM ${sub.simSlotIndex + 1}")
+                                        if (carrier != null) append(" · $carrier")
+                                    }
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text(simLabel, modifier = Modifier.weight(1f))
+                                                RadioButton(
+                                                    selected = sub.subscriptionId == currentSimId,
+                                                    onClick = null
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            menuOpen = false
+                                            currentSimId = sub.subscriptionId
+                                            vm.settings.simSubscriptionId = sub.subscriptionId
+                                            Toast.makeText(context, "Sending via $simLabel", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+                            }
                             DropdownMenuItem(
                                 text = { Text("Archive") },
-                                onClick = { menuOpen = false }
+                                onClick = {
+                                    menuOpen = false
+                                    vm.setArchived(conversationId, true)
+                                    Toast.makeText(context, "Conversation archived", Toast.LENGTH_SHORT).show()
+                                    onBack()
+                                }
                             )
                             DropdownMenuItem(
                                 text = { Text("Delete") },
@@ -390,23 +431,24 @@ fun ChatScreen(
                 InputBar(
                     draft = draft,
                     placeholder = "Text message",
-                    simTrailing = {
-                        if (sims.size > 1 && draft.isEmpty()) {
-                            val simIdx = sims.indexOfFirst { it.subscriptionId == currentSimId }
-                            val iconRes = when {
-                                sims.size >= 3 -> R.drawable.ic_dual_sim
-                                simIdx == 1 -> R.drawable.ic_sim_2
-                                else -> R.drawable.ic_sim_1
-                            }
-                            IconButton(onClick = { cycleSim() }) {
-                                Icon(
-                                    painterResource(iconRes),
-                                    contentDescription = "Switch SIM",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    },
+                    // SIM switcher moved to the 3-dot chat menu (user request)
+                    // simTrailing = {
+                    //     if (sims.size > 1 && draft.isEmpty()) {
+                    //         val simIdx = sims.indexOfFirst { it.subscriptionId == currentSimId }
+                    //         val iconRes = when {
+                    //             sims.size >= 3 -> R.drawable.ic_dual_sim
+                    //             simIdx == 1 -> R.drawable.ic_sim_2
+                    //             else -> R.drawable.ic_sim_1
+                    //         }
+                    //         IconButton(onClick = { cycleSim() }) {
+                    //             Icon(
+                    //                 painterResource(iconRes),
+                    //                 contentDescription = "Switch SIM",
+                    //                 tint = MaterialTheme.colorScheme.primary
+                    //             )
+                    //         }
+                    //     }
+                    // },
                     onDraftChange = { draft = it },
                     onSend = {
                         val text = draft.trim()
@@ -462,7 +504,7 @@ fun ChatScreen(
                         }
                     },
                     onEmojiToggle = { showEmoji = !showEmoji },
-                                        onAttach = {
+                    onAttach = {
                         val addr = convo?.address ?: ""
                         if (addr.isNotEmpty() && !isPhoneNumber(addr)) {
                             showAlphanumericDialog = true
@@ -502,7 +544,33 @@ fun ChatScreen(
                                 showForwardPicker = true
                             }
                         },
-                        highlightLinks = vm.settings.highlightLinks
+                        highlightLinks = vm.settings.highlightLinks,
+                        onLockUnlock = { wantLock ->
+                            if (wantLock) {
+                                vm.setLocked(msg.id, true)
+                            } else if (activity != null) {
+                                val biometricManager = BiometricManager.from(activity)
+                                if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS) {
+                                    val prompt = BiometricPrompt(
+                                        activity, biometricExecutor,
+                                        object : BiometricPrompt.AuthenticationCallback() {
+                                            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                                activity.runOnUiThread { unlockedIds = unlockedIds + msg.id }
+                                            }
+                                        })
+                                    prompt.authenticate(
+                                        BiometricPrompt.PromptInfo.Builder()
+                                            .setTitle("Unlock message")
+                                            .setSubtitle("Authenticate to view this message")
+                                            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                                            .build()
+                                    )
+                                } else {
+                                    unlockedIds = unlockedIds + msg.id
+                                }
+                            }
+                        },
+                        unlockedIds = unlockedIds
                     )
                 }
             }
@@ -537,35 +605,42 @@ fun ChatScreen(
             }
 
             val c = convo
-            AnimatedVisibility(
-                visible = c != null && c.name == c.address && isPhoneNumber(c.address) &&
-                    !bannerDismissed && bannerVisible,
-                modifier = Modifier.align(Alignment.TopCenter).padding(horizontal = 12.dp),
-                enter = androidx.compose.animation.fadeIn(
-                    animationSpec = androidx.compose.animation.core.tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                ) + androidx.compose.animation.slideInVertically(
-                    initialOffsetY = { -it },
-                    animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                ),
-                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically(
-                    targetOffsetY = { -it },
-                    animationSpec = androidx.compose.animation.core.tween(300)
-                )
-            ) {
-                SaveContactBanner(
-                    address = c?.address ?: "",
-                    onDismiss = { bannerDismissed = true },
-                    onAddContact = {
-                        bannerDismissed = true
-                        c?.address?.let { addr ->
-                            context.startActivity(Intent(ContactsContract.Intents.Insert.ACTION).apply {
-                                type = ContactsContract.RawContacts.CONTENT_TYPE
-                                putExtra(ContactsContract.Intents.Insert.PHONE, addr)
-                            })
-                        }
-                    }
-                )
-            }
+            // Save-contact banner hidden for now (user request)
+            // AnimatedVisibility(
+            //     visible = c != null && c.name == c.address && isPhoneNumber(c.address) &&
+            //             !bannerDismissed && bannerVisible,
+            //     modifier = Modifier.align(Alignment.TopCenter).padding(horizontal = 12.dp),
+            //     enter = androidx.compose.animation.fadeIn(
+            //         animationSpec = androidx.compose.animation.core.tween(
+            //             300,
+            //             easing = androidx.compose.animation.core.FastOutSlowInEasing
+            //         )
+            //     ) + androidx.compose.animation.slideInVertically(
+            //         initialOffsetY = { -it },
+            //         animationSpec = androidx.compose.animation.core.tween(
+            //             400,
+            //             easing = androidx.compose.animation.core.FastOutSlowInEasing
+            //         )
+            //     ),
+            //     exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically(
+            //         targetOffsetY = { -it },
+            //         animationSpec = androidx.compose.animation.core.tween(300)
+            //     )
+            // ) {
+            //     SaveContactBanner(
+            //         address = c?.address ?: "",
+            //         onDismiss = { bannerDismissed = true },
+            //         onAddContact = {
+            //             bannerDismissed = true
+            //             c?.address?.let { addr ->
+            //                 context.startActivity(Intent(ContactsContract.Intents.Insert.ACTION).apply {
+            //                     type = ContactsContract.RawContacts.CONTENT_TYPE
+            //                     putExtra(ContactsContract.Intents.Insert.PHONE, addr)
+            //                 })
+            //             }
+            //         }
+            //     )
+            // }
         }
     }
 
@@ -629,7 +704,7 @@ fun ChatScreen(
             text = {
                 Text(
                     "You can't send messages to alphanumeric senders like " +
-                        "\u201C${convo?.address ?: ""}\u201D. Only phone numbers are supported."
+                            "\u201C${convo?.address ?: ""}\u201D. Only phone numbers are supported."
                 )
             },
             confirmButton = {
@@ -740,20 +815,27 @@ private fun rememberLinkedText(body: String, highlight: Boolean): AnnotatedStrin
             AnnotatedString(body)
         } else {
             val spanned = SpannableStringBuilder(body)
-            val found = Linkify.addLinks(spanned, Linkify.WEB_URLS)
-            if (!found) {
-                AnnotatedString(body)
-            } else {
-                val builder = AnnotatedString.Builder(body)
-                spanned.getSpans(0, spanned.length, URLSpan::class.java).forEach { span ->
-                    val start = spanned.getSpanStart(span)
-                    val end = spanned.getSpanEnd(span)
-                    builder.addLink(LinkAnnotation.Url(span.url), start, end)
-                    builder.addStyle(SpanStyle(color = linkColor), start, end)
-                    builder.addStyle(SpanStyle(textDecoration = TextDecoration.Underline), start, end)
-                }
-                builder.toAnnotatedString()
+            Linkify.addLinks(spanned, Linkify.WEB_URLS)
+            val builder = AnnotatedString.Builder(body)
+            val urlSpans = spanned.getSpans(0, spanned.length, URLSpan::class.java)
+            val urlRanges = urlSpans.map { spanned.getSpanStart(it) to spanned.getSpanEnd(it) }
+            urlSpans.forEach { span ->
+                val start = spanned.getSpanStart(span)
+                val end = spanned.getSpanEnd(span)
+                builder.addLink(LinkAnnotation.Url(span.url), start, end)
+                builder.addStyle(SpanStyle(color = linkColor), start, end)
+                builder.addStyle(SpanStyle(textDecoration = TextDecoration.Underline), start, end)
             }
+            val otpRegex = Regex("""(?<!\d)(\d{4,8})(?!\d)""")
+            otpRegex.findAll(body).forEach { match ->
+                val start = match.range.first
+                val end = match.range.last + 1
+                val isInsideUrl = urlRanges.any { s -> start >= s.first && end <= s.second }
+                if (!isInsideUrl) {
+                    builder.addStyle(SpanStyle(color = linkColor, fontWeight = FontWeight.Medium), start, end)
+                }
+            }
+            builder.toAnnotatedString()
         }
     }
 }
@@ -872,12 +954,16 @@ fun MessageRow(
     deliveryReports: Boolean,
     onRetry: () -> Unit = {},
     onLongPress: () -> Unit = {},
-    highlightLinks: Boolean = false
+    highlightLinks: Boolean = false,
+    onLockUnlock: (Boolean) -> Unit = {},
+    unlockedIds: Set<Long> = emptySet()
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
     var showContextMenu by remember { mutableStateOf(false) }
-    val bodyText = rememberLinkedText(msg.body, highlightLinks)
+    val isLockedAndHidden = msg.locked && msg.id !in unlockedIds
+    val displayBody = if (isLockedAndHidden) "\uD83D\uDD12 Locked" else msg.body
+    val bodyText = rememberLinkedText(displayBody, highlightLinks && !isLockedAndHidden)
 
     if (showDividerBefore) {
         Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), Alignment.Center) {
@@ -908,18 +994,17 @@ fun MessageRow(
                             color = if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.widthIn(max = 260.dp).padding(top = 2.dp)
+                                .combinedClickable(
+                                    onClick = {},
+                                    onLongClick = { showContextMenu = true }
+                                )
                         ) {
-                            ClickableText(
+                            Text(
                                 text = bodyText,
                                 style = MaterialTheme.typography.bodyLarge.merge(
                                     TextStyle(color = if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
                                 ),
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                onClick = { offset ->
-                                    bodyText.getLinkAnnotations(offset, offset + 1).firstOrNull()
-                                        ?.let { it.item as? LinkAnnotation.Url }
-                                        ?.let { openUrl(context, it.url) }
-                                }
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                             )
                         }
                     }
@@ -937,17 +1022,12 @@ fun MessageRow(
                         onLongClick = { showContextMenu = true }
                     )
                 ) {
-                    ClickableText(
+                    Text(
                         text = bodyText,
                         style = MaterialTheme.typography.bodyLarge.merge(
                             TextStyle(color = if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
                         ),
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        onClick = { offset ->
-                            bodyText.getLinkAnnotations(offset, offset + 1).firstOrNull()
-                                ?.let { it.item as? LinkAnnotation.Url }
-                                ?.let { openUrl(context, it.url) }
-                        }
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                     )
                 }
             }
@@ -971,6 +1051,13 @@ fun MessageRow(
                     onClick = {
                         showContextMenu = false
                         onLongPress()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(if (msg.locked) "Unlock" else "Lock") },
+                    onClick = {
+                        showContextMenu = false
+                        onLockUnlock(!msg.locked)
                     }
                 )
             }
@@ -1024,7 +1111,9 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
             context.contentResolver.openInputStream(Uri.parse(uri))?.use {
                 BitmapFactory.decodeStream(it)
             }
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            null
+        }
     }
     if (bitmap != null) {
         Image(
@@ -1178,7 +1267,8 @@ private fun SimPickerDialog(
             Column {
                 sims.forEach { sub ->
                     val carrier = sub.carrierName?.toString()?.ifBlank { null }
-                    val label = if (carrier != null) "$carrier · SIM ${sub.simSlotIndex + 1}" else "SIM ${sub.simSlotIndex + 1}"
+                    val label =
+                        if (carrier != null) "$carrier · SIM ${sub.simSlotIndex + 1}" else "SIM ${sub.simSlotIndex + 1}"
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { selected = sub.subscriptionId }

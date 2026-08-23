@@ -40,14 +40,17 @@ app/src/main/java/com/anindra/messages/
 │                              #   --es set_theme dark|light|system
 │                              #   --ez open_settings true
 ├── data/
-│   ├── Models.kt              # Conversation(pinned/draft/archived), Message, BlockedNumber, ScheduledMessage
-│   ├── SettingsStore.kt       # SharedPreferences: theme, notifications, sounds, delivery, SIM, feature toggles
-│   └── Repository.kt          # SQLiteOpenHelper (DB v5), Flow-based observers, backup/import
+│   ├── Models.kt              # Conversation(pinned/draft/archived), Message(locked), BlockedNumber, ScheduledMessage
+│   ├── SettingsStore.kt       # SharedPreferences: theme, notifications, sounds, delivery, SIM, feature toggles, privacyMode
+│   ├── Repository.kt          # SQLiteOpenHelper (DB v10), Flow-based observers, backup/import, self-healing onOpen
+│   └── DemoData.kt            # Seeds 10 conversations + avatars on fresh install for F-Droid screenshots
 ├── sms/
 │   ├── SmsReceiver.kt         # SMS_RECEIVED broadcast → DB + notification
-│   ├── SmsSupport.kt          # SmsSender.send (SmsManager) + NotificationHelper + tones
+│   ├── SmsSupport.kt          # SmsSender.send (SmsManager) + NotificationHelper (with RemoteInput) + tones
 │   ├── MmsReceiver.kt         # WAP_PUSH_DELIVER stub (for SMS app eligibility)
 │   ├── ScheduledMessageSender.kt  # BroadcastReceiver: AlarmManager fires → send SMS + cleanup
+│   ├── SmsStatusReceiver.kt   # sent/delivery status callbacks → updates message status in DB
+│   ├── QuickReplyReceiver.kt  # handles notification inline reply action
 │   └── NoConfirmationSmsSendService.kt  # RESPOND_VIA_MESSAGE stub
 └── ui/
     ├── theme/Theme.kt         # FULL M3 color system: all roles seeded from Google Blue
@@ -55,16 +58,18 @@ app/src/main/java/com/anindra/messages/
     │                          #   outgoingBubble=primaryContainer, incomingBubble=
     │                          #   surfaceContainerHighest, chatBar=surfaceContainerLow,
     │                          #   inputPill=surfaceContainerHigh
-    ├── Components.kt          # PersonAvatar (GM palette + custom vector), UnreadBadge, time formatters
+    ├── Components.kt          # PersonAvatar (GM palette + demo avatars), UnreadBadge, time formatters,
+    │                          #   shimmer modifier, SkeletonConversationRow
     ├── ConversationsScreen.kt # home list + search + archive toggle + SwipeToDismissBox
     │                          #   + ModalBottomSheet context menu (Pin/Archive/Delete/Block)
-    ├── ChatScreen.kt          # bubbles, save-contact banner, 3-dot menu, call icon,
-    │                          #   emoji strip, image attach, forwarding, delayed sending,
-    │                          #   scheduled messages (long-press send)
+    ├── ChatScreen.kt          # bubbles, 3-dot menu (SIM/Archive/Delete/Block), call icon,
+    │                          #   OTP highlighting, message locking, forwarding, delayed sending,
+    │                          #   scheduled messages (long-press send), linked text
     ├── ContactDetailsScreen.kt # full-screen contact profile: avatar, call/add/search,
     │                          #   notifications toggle, block & report spam, participant list
     ├── NewChatScreen.kt       # contact picker + manual number entry
-    └── SettingsScreen.kt      # card-based sections: General/Connections/Appearance/Backup/Features
+    ├── SettingsScreen.kt      # card-based sections: General/Connections/Appearance/Backup/Features/Privacy
+    └── TrashScreen.kt         # trash view: restore/delete forever/empty trash
 ```
 
 ## Hard rules for any agent working here
@@ -98,6 +103,15 @@ scripts/settings.sh / theme.sh dark|light|system
 scripts/reset-permissions.sh  # revoke → relaunch → REAL permission dialogs appear
 scripts/grant-permissions.sh  # silent grant (for scripted runs)
 scripts/run-all-tests.sh      # full sweep
+scripts/take-fdroid-screenshots.sh   # 8 F-Droid screenshots (home/chat/settings/reply × dark/light)
+scripts/test-back-nav.sh       # gesture back from chat to list
+scripts/test-chat-menu.sh      # chat 3-dot menu options
+scripts/test-sim-menu.sh       # SIM selector in chat menu
+scripts/test-message-lock.sh   # message lock/unlock with biometric
+scripts/test-trash.sh          # trash system (delete/restore/purge)
+scripts/test-notifications.sh  # notification delivery + per-conversation toggle
+scripts/test-splash.sh         # splash screen dark/light mode
+scripts/test-links-and-senders.sh  # link highlighting + alphanumeric sender block
 ```
 
 Coordinate taps assume **1080x2400 @ 420dpi**. `env.sh` provides helpers
@@ -114,8 +128,8 @@ Note: `pm clear` wipes grants → dialogs reappear (this is how you see them).
   current default SMS handler and mirrors all traffic. Our app coexists.
 - Emulator phone numbers: own = `+15551230004`-range; inject inbound SMS via
   `adb -s emulator-5554 emu sms send <number> "<text>"`.
-- DB v5 recreates tables on upgrade (dev-mode). Seed data auto-inserts on
-  first run only if table empty.
+- DB v10 recreates tables on upgrade (dev-mode). Seed data auto-inserts on
+  first run only if table empty. Self-healing onOpen handles corrupted states.
 
 ## Reference screenshots of target UI
 

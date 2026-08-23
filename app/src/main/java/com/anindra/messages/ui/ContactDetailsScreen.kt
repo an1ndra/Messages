@@ -77,7 +77,8 @@ fun ContactDetailsScreen(
     val name = convo!!.name
     val isKnownContact = name != null && name != address
 
-    var notificationsEnabled by remember { mutableStateOf(true) }
+    val notificationsEnabled = vm.getConversationNotificationsEnabled(conversationId)
+    var notifState by remember { mutableStateOf(notificationsEnabled) }
     var showBlockDialog by remember { mutableStateOf(false) }
     var numberIsBlocked by remember { mutableStateOf(vm.isNumberBlocked(address)) }
 
@@ -107,19 +108,7 @@ fun ContactDetailsScreen(
                 Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(
-                    Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .background(avatarColor(address)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_contact_profile),
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp)
-                    )
-                }
+                PersonAvatar(address, size = 96.dp)
 
                 Spacer(Modifier.height(12.dp))
 
@@ -189,8 +178,11 @@ fun ContactDetailsScreen(
                         title = "Notifications",
                         trailing = {
                             Switch(
-                                checked = notificationsEnabled,
-                                onCheckedChange = { notificationsEnabled = it },
+                                checked = notifState,
+                                onCheckedChange = {
+                                    notifState = it
+                                    vm.setConversationNotificationsEnabled(conversationId, it)
+                                },
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = MaterialTheme.colorScheme.primary,
                                     checkedTrackColor = MaterialTheme.colorScheme.primaryContainer

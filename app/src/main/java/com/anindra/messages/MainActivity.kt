@@ -95,6 +95,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setArchived(id: Long, archived: Boolean) =
         scope.launch { repo.setArchivedSuspend(id, archived) }
 
+    fun setLocked(messageId: Long, locked: Boolean) =
+        scope.launch { repo.setLockedSuspend(messageId, locked) }
+
     fun markAllRead() = scope.launch { repo.markAllReadSuspend() }
 
     /** Applies FLAG_SECURE immediately so privacy mode toggles without restart. */
@@ -206,6 +209,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isNumberBlocked(number: String): Boolean = repo.isNumberBlocked(number)
 
+    fun getConversationNotificationsEnabled(conversationId: Long): Boolean =
+        repo.getConversationNotificationsEnabled(conversationId)
+
+    fun setConversationNotificationsEnabled(conversationId: Long, enabled: Boolean) {
+        scope.launch(Dispatchers.IO) { repo.setConversationNotificationsEnabled(conversationId, enabled) }
+    }
+
+    fun conversationIdForAddress(address: String): Long? = repo.conversationIdForAddress(address)
+
     fun forwardMessage(messageId: Long, targetConversationId: Long) {
         scope.launch {
             val msg = repo.messageByIdSuspend(messageId) ?: return@launch
@@ -238,6 +250,16 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
 
+    private var navRoute by androidx.compose.runtime.mutableStateOf("list")
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        when (navRoute) {
+            "chat", "details", "settings", "trash" -> { navRoute = "list" }
+            else -> super.onBackPressed()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -266,7 +288,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             val vm: AppViewModel = viewModel()
             MessagesTheme(mode = vm.themeMode) {
-                var route by remember { mutableStateOf(if (startInSettings) "settings" else "list") }
                 var chatId by remember { mutableStateOf(-1L) }
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
@@ -307,34 +328,34 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                when (route) {
+                when (navRoute) {
                     "list" -> ConversationsScreen(
                         vm = vm,
-                        onOpenConversation = { id -> chatId = id; route = "chat" },
-                        onNewChat = { route = "new" },
-                        onOpenSettings = { route = "settings" }
+                        onOpenConversation = { id -> chatId = id; navRoute = "chat" },
+                        onNewChat = { navRoute = "new" },
+                        onOpenSettings = { navRoute = "settings" }
                     )
                     "new" -> NewChatScreen(
-                        onBack = { route = "list" },
+                        onBack = { navRoute = "list" },
                         onPick = { address, name ->
                             vm.openOrCreate(address, name) { id ->
                                 chatId = id
-                                route = "chat"
+                                navRoute = "chat"
                             }
                         }
                     )
                     "settings" -> SettingsScreen(
                         vm = vm,
-                        onBack = { route = "list" },
-                        onOpenTrash = { route = "trash" }
+                        onBack = { navRoute = "list" },
+                        onOpenTrash = { navRoute = "trash" }
                     )
-                    "trash" -> TrashScreen(vm = vm, onBack = { route = "settings" })
+                    "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
                     else -> {
                         androidx.compose.foundation.layout.Box(
                             Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
                         ) {
                             AnimatedContent(
-                                targetState = route,
+                                targetState = navRoute,
                                 transitionSpec = {
                                     if (targetState == "details") {
                                         slideInHorizontally(
@@ -370,19 +391,19 @@ class MainActivity : ComponentActivity() {
                                     "chat" -> ChatScreen(
                                         vm = vm,
                                         conversationId = chatId,
-                                        onBack = { route = "list" },
-                                        onOpenDetails = { detailsId = chatId; route = "details" }
+                                        onBack = { navRoute = "list" },
+                                        onOpenDetails = { detailsId = chatId; navRoute = "details" }
                                     )
                                     "details" -> ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
-                                        onBack = { route = "chat" }
+                                        onBack = { navRoute = "chat" }
                                     )
                                     else -> ChatScreen(
                                         vm = vm,
                                         conversationId = chatId,
-                                        onBack = { route = "list" },
-                                        onOpenDetails = { detailsId = chatId; route = "details" }
+                                        onBack = { navRoute = "list" },
+                                        onOpenDetails = { detailsId = chatId; navRoute = "details" }
                                     )
                                 }
                             }

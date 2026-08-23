@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.RemoteInput
 import com.anindra.messages.MainActivity
 import com.anindra.messages.R
 
@@ -38,6 +39,10 @@ object NotificationHelper {
     fun show(context: Context, from: String, body: String) {
         if (!canPost(context)) return
 
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val convoId = app.repository.conversationIdForAddress(from)
+        if (convoId != null && !app.repository.getConversationNotificationsEnabled(convoId)) return
+
         playReceiveSound(context)
 
         ensureChannel(context)
@@ -51,6 +56,18 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val replyIntent = PendingIntent.getBroadcast(
+            context, from.hashCode(),
+            QuickReplyReceiver.createReplyIntent(context, from, from, from.hashCode()),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        val remoteInput = RemoteInput.Builder("quick_reply").setLabel("Reply").build()
+
+        val replyAction = NotificationCompat.Action.Builder(
+            0, "Reply", replyIntent
+        ).addRemoteInput(remoteInput).build()
+
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(from)
@@ -58,6 +75,7 @@ object NotificationHelper {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setContentIntent(tap)
+            .addAction(replyAction)
             .build()
 
         try {

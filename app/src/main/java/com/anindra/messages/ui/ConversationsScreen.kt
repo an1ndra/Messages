@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,6 +74,8 @@ import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.Conversation
 import kotlinx.coroutines.launch
+
+private var hasLoadedOnce = false
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -90,6 +93,15 @@ fun ConversationsScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var lastBackExitAt by remember { mutableLongStateOf(0L) }
+    var loaded by rememberSaveable { mutableStateOf(hasLoadedOnce) }
+
+    LaunchedEffect(Unit) {
+        if (!loaded) {
+            kotlinx.coroutines.delay(400)
+            loaded = true
+            hasLoadedOnce = true
+        }
+    }
 
     BackHandler(enabled = searching) {
         searching = false
@@ -213,17 +225,24 @@ fun ConversationsScreen(
                 }
             }
 
-            LazyColumn {
-                items(displayed, key = { it.id }) { convo ->
-                    SwipeableConversationItem(
-                        vm = vm,
-                        convo = convo,
-                        showArchived = showArchived,
-                        onClick = { onOpenConversation(convo.id) },
-                        onDelete = { moveToTrash(convo) }
-                    )
+            if (!loaded) {
+                LazyColumn {
+                    items(8) { SkeletonConversationRow() }
+                    item { Spacer(Modifier.height(96.dp)) }
                 }
-                item { Spacer(Modifier.height(96.dp)) }
+            } else {
+                LazyColumn {
+                    items(displayed, key = { it.id }) { convo ->
+                        SwipeableConversationItem(
+                            vm = vm,
+                            convo = convo,
+                            showArchived = showArchived,
+                            onClick = { onOpenConversation(convo.id) },
+                            onDelete = { moveToTrash(convo) }
+                        )
+                    }
+                    item { Spacer(Modifier.height(96.dp)) }
+                }
             }
         }
     }
