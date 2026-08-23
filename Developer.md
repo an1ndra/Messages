@@ -1,104 +1,320 @@
 # Developer Guide
 
-This guide explains how to set up and develop the Messages app locally.
+This guide explains how to set up and develop the Messages app locally **without Android Studio**.
 
 ## Prerequisites
 
-### Required Software
-
-| Tool | Version | Installation |
-|------|---------|--------------|
-| JDK | 21 LTS | [Adoptium](https://adoptium.net/) or SDKMAN |
-| Android SDK | API 35 | [Android Studio](https://developer.android.com/studio) or command-line tools |
-| Gradle | 9.2.1 | Included via wrapper (`./gradlew`) |
-
 ### System Requirements
 
-- **OS**: Linux, macOS, or Windows with WSL2
+- **OS**: Linux (Ubuntu 20.04+, Fedora 36+), macOS (12+), or Windows with WSL2
 - **RAM**: 8GB minimum, 16GB recommended
-- **Disk**: 10GB free space for SDK + build artifacts
+- **Disk**: 20GB free space for SDK + emulator + build artifacts
+- **CPU**: x86_64 with virtualization support (Intel VT-x or AMD-V)
 
-## Quick Start
+### Required Software
 
-### 1. Clone the Repository
+| Tool | Version | Purpose |
+|------|---------|---------|
+| JDK | 21 LTS | Build system (Gradle) |
+| Android SDK | API 35 | Compile app |
+| Android Emulator | Latest | Test app |
+| Gradle | 9.2.1 | Build automation (included via wrapper) |
+
+## Step-by-Step Setup
+
+### 1. Install JDK 21
+
+#### Linux (Ubuntu/Debian)
 
 ```bash
+# Using Adoptium (recommended)
+wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo apt-key add -
+echo "deb https://packages.adoptium.net/artifactory/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/adoptium.list
+sudo apt update
+sudo apt install temurin-21-jdk
+
+# Verify installation
+java -version
+```
+
+#### Linux (Fedora/RHEL)
+
+```bash
+# Using SDKMAN (works on all distros)
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+sdk install java 21.0.4-tem
+
+# Verify
+java -version
+```
+
+#### macOS
+
+```bash
+# Using Homebrew
+brew install --cask temurin21
+
+# Or using SDKMAN
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+sdk install java 21.0.4-tem
+```
+
+#### Windows (WSL2)
+
+```bash
+# Inside WSL2 Ubuntu
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+sdk install java 21.0.4-tem
+```
+
+### 2. Install Android SDK (No Android Studio)
+
+#### Download Command-Line Tools
+
+```bash
+# Create SDK directory
+mkdir -p ~/android/cmdline-tools
+
+# Download latest command-line tools (check https://developer.android.com/studio#command-line-tools for updates)
+# Linux:
+wget https://dl.google.com/android/repository/commandlinetools-linux-11076708.zip -O /tmp/cmdline-tools.zip
+
+# macOS (Intel):
+# wget https://dl.google.com/android/repository/commandlinetools-mac-11076708.zip -O /tmp/cmdline-tools.zip
+
+# macOS (Apple Silicon):
+# wget https://dl.google.com/android/repository/commandlinetools-mac_arm64-11076708.zip -O /tmp/cmdline-tools.zip
+
+# Extract and organize
+unzip /tmp/cmdline-tools.zip -d ~/android/cmdline-tools
+mv ~/android/cmdline-tools/cmdline-tools ~/android/cmdline-tools/latest
+rm /tmp/cmdline-tools.zip
+```
+
+#### Set Environment Variables
+
+Add to `~/.bashrc` or `~/.zshrc`:
+
+```bash
+# Android SDK
+export ANDROID_HOME=$HOME/android
+export ANDROID_SDK_ROOT=$HOME/android
+export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+export PATH=$PATH:$ANDROID_HOME/emulator
+
+# JDK (if using SDKMAN)
+export JAVA_HOME=$HOME/.sdkman/candidates/java/current
+
+# Gradle (project-specific)
+export PATH=$PATH:$HOME/tools/gradle-9.2.1/bin
+```
+
+Reload your shell:
+
+```bash
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+#### Accept Licenses and Install SDK
+
+```bash
+# Accept all licenses
+yes | sdkmanager --licenses
+
+# Install required SDK components
+sdkmanager \
+  "platforms;android-35" \
+  "build-tools;35.0.0" \
+  "platform-tools" \
+  "emulator" \
+  "system-images;android-35;google_apis;x86_64"
+
+# Verify installation
+sdkmanager --list_installed
+```
+
+### 3. Install Gradle (Optional)
+
+The project includes a Gradle wrapper, but for faster builds you can install Gradle globally:
+
+```bash
+# Download Gradle 9.2.1
+mkdir -p ~/tools
+wget https://services.gradle.org/distributions/gradle-9.2.1-bin.zip -O /tmp/gradle.zip
+unzip /tmp/gradle.zip -d ~/tools
+rm /tmp/gradle.zip
+
+# Verify
+~/tools/gradle-9.2.1/bin/gradle --version
+```
+
+### 4. Set Up Android Emulator
+
+#### Create AVD (Android Virtual Device)
+
+```bash
+# List available system images
+sdkmanager --list | grep "system-images;android-35"
+
+# Create AVD
+# Format: avdmanager create avd -n <name> -k <system-image> -d <device>
+avdmanager create avd \
+  -n "Pixel_7_API_35" \
+  -k "system-images;android-35;google_apis;x86_64" \
+  -d "pixel_7"
+
+# Verify AVD creation
+avdmanager list avd
+```
+
+#### Configure AVD (Optional)
+
+Edit `~/.android/avd/Pixel_7_API_35.avd/config.ini`:
+
+```ini
+# Display
+hw.lcd.width=1080
+hw.lcd.height=2400
+hw.lcd.density=420
+
+# Performance
+hw.ramSize=2048
+vm.heapSize=256
+
+# Storage
+disk.dataPartition.size=2048M
+hw.sdCard.size=512M
+
+# Navigation (gesture or 3-button)
+hw.mainKeys=no
+hw.trackBall=no
+```
+
+#### Start Emulator
+
+```bash
+# Start emulator in background
+emulator -avd Pixel_7_API_35 -no-window -no-audio &
+
+# Or start with GUI (requires display)
+emulator -avd Pixel_7_API_35
+
+# Wait for emulator to boot (check status)
+adb wait-for-device
+adb shell getprop sys.boot_completed
+# Should return "1" when ready
+```
+
+### 5. Clone and Build the Project
+
+```bash
+# Clone repository
 git clone https://github.com/anindra/Messages.git
 cd Messages
-```
 
-### 2. Set Up Android SDK
+# Make scripts executable
+chmod +x scripts/*.sh
 
-If you don't have Android Studio installed:
-
-```bash
-# Download command-line tools
-wget https://dl.google.com/android/repository/commandlinetools-linux-11076708.zip
-mkdir -p ~/android/cmdline-tools
-unzip commandlinetools-linux-11076708.zip -d ~/android/cmdline-tools
-mv ~/android/cmdline-tools/cmdline-tools ~/android/cmdline-tools/latest
-
-# Set environment variables
-export ANDROID_HOME=~/android
-export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-
-# Accept licenses and install SDK
-sdkmanager --licenses
-sdkmanager "platforms;android-35" "build-tools;35.0.0"
-```
-
-### 3. Build the App
-
-```bash
-# Using the project's Gradle wrapper
+# Build debug APK
 ./gradlew assembleDebug
 
-# Or using the pinned Gradle version (recommended)
+# Or using project's Gradle
 ~/tools/gradle-9.2.1/bin/gradle assembleDebug --no-daemon
 ```
 
-### 4. Install on Emulator
+### 6. Install and Run
 
 ```bash
-# Start emulator (if not already running)
-~/android/emulator/emulator -avd Pixel_7_API_34
+# Install on emulator
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 
-# Install the app
-~/android/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
+# Launch app
+adb shell am start -n com.anindra.messages/.MainActivity
+
+# Set as default SMS app (required for full functionality)
+adb shell cmd role add-role-holder android.app.role.SMS com.anindra.messages
 ```
 
 ## Development Environment
 
-### Recommended Setup
+### Complete Environment Setup Script
 
-For the best development experience, use the exact toolchain specified in the project:
+Save as `setup-dev.sh` and run:
 
 ```bash
-# Set up in ~/.bashrc or ~/.zshrc
-export JAVA_HOME=/home/$USER/tools/jdk21
-export ANDROID_HOME=/home/$USER/android
-export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator
+#!/bin/bash
+set -e
 
-# Use project's Gradle wrapper
-alias gradle="~/tools/gradle-9.2.1/bin/gradle"
+echo "=== Setting up Messages development environment ==="
+
+# Create directories
+mkdir -p ~/tools ~/android/cmdline-tools
+
+# Install SDKMAN
+if [ ! -d "$HOME/.sdkman" ]; then
+    curl -s "https://get.sdkman.io" | bash
+    source "$HOME/.sdkman/bin/sdkman-init.sh"
+fi
+
+# Install JDK 21
+sdk install java 21.0.4-tem 2>/dev/null || true
+
+# Download Android command-line tools
+if [ ! -d "$HOME/android/cmdline-tools/latest" ]; then
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708.zip -O /tmp/cmdline-tools.zip
+    unzip -q /tmp/cmdline-tools.zip -d ~/android/cmdline-tools
+    mv ~/android/cmdline-tools/cmdline-tools ~/android/cmdline-tools/latest
+    rm /tmp/cmdline-tools.zip
+fi
+
+# Set environment
+export ANDROID_HOME=$HOME/android
+export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator
+
+# Accept licenses and install SDK
+yes | sdkmanager --licenses > /dev/null 2>&1
+sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64" > /dev/null 2>&1
+
+# Create AVD
+if ! avdmanager list avd | grep -q "Pixel_7_API_35"; then
+    avdmanager create avd -n "Pixel_7_API_35" -k "system-images;android-35;google_apis;x86_64" -d "pixel_7"
+fi
+
+# Install Gradle
+if [ ! -d "$HOME/tools/gradle-9.2.1" ]; then
+    wget -q https://services.gradle.org/distributions/gradle-9.2.1-bin.zip -O /tmp/gradle.zip
+    unzip -q /tmp/gradle.zip -d ~/tools
+    rm /tmp/gradle.zip
+fi
+
+echo "=== Setup complete! ==="
+echo "Add to ~/.bashrc or ~/.zshrc:"
+echo "  export ANDROID_HOME=\$HOME/android"
+echo "  export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/emulator"
+echo "  export JAVA_HOME=\$HOME/.sdkman/candidates/java/current"
 ```
 
-### Emulator Configuration
+### IDE Setup (Optional)
 
-The project is tested on **emulator-5554** with:
-- **Resolution**: 1080x2400
-- **DPI**: 420
-- **Navigation**: Gesture (default) or 3-button
+If you prefer an IDE (without Android Studio):
 
-To create a matching emulator in Android Studio:
-1. Tools → Device Manager → Create Virtual Device
-2. Select "Pixel 7" or similar
-3. System Image: API 34 (Google APIs)
-4. Advanced Settings:
-   - RAM: 2048MB
-   - VM Heap: 256MB
-   - Internal Storage: 2048MB
-   - SD Card: 512MB
+#### VS Code
+
+1. Install [Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack)
+2. Install [Gradle for Java](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-gradle)
+3. Open the `Messages` folder
+4. VS Code will auto-detect the project
+
+#### IntelliJ IDEA Community Edition
+
+1. Download from [jetbrains.com](https://www.jetbrains.com/idea/download/)
+2. Open project folder
+3. Import Gradle project when prompted
+4. Set JDK to 21 in Project Settings
 
 ## Project Structure
 
@@ -130,7 +346,7 @@ Messages/
 ├── screenshots/                           # App screenshots
 ├── AGENTS.md                             # AI agent instructions
 ├── TODO.md                               # Task tracking
-└── README.md                             # This file
+└── README.md                             # Project overview
 ```
 
 ## Architecture
@@ -275,11 +491,15 @@ Follow Material 3 guidelines:
 
 ```bash
 # Restart emulator
-~/android/platform-tools/adb emu kill
-~/android/emulator/emulator -avd Pixel_7_API_34
+adb emu kill
+emulator -avd Pixel_7_API_35
 
 # Clear app data
-~/android/platform-tools/adb shell pm clear com.anindra.messages
+adb shell pm clear com.anindra.messages
+
+# Check emulator status
+adb devices
+adb shell getprop ro.build.version.sdk
 ```
 
 ### Permission Errors
@@ -290,6 +510,19 @@ scripts/grant-permissions.sh
 
 # Reset to see permission dialogs
 scripts/reset-permissions.sh
+```
+
+### SDK Manager Issues
+
+```bash
+# Update SDK tools
+sdkmanager --update
+
+# Reinstall specific package
+sdkmanager --install "platforms;android-35"
+
+# Check installed packages
+sdkmanager --list_installed
 ```
 
 ## Code Style
