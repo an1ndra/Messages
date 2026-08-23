@@ -548,26 +548,9 @@ fun ChatScreen(
                         onLockUnlock = { wantLock ->
                             if (wantLock) {
                                 vm.setLocked(msg.id, true)
-                            } else if (activity != null) {
-                                val biometricManager = BiometricManager.from(activity)
-                                if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS) {
-                                    val prompt = BiometricPrompt(
-                                        activity, biometricExecutor,
-                                        object : BiometricPrompt.AuthenticationCallback() {
-                                            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                                activity.runOnUiThread { unlockedIds = unlockedIds + msg.id }
-                                            }
-                                        })
-                                    prompt.authenticate(
-                                        BiometricPrompt.PromptInfo.Builder()
-                                            .setTitle("Unlock message")
-                                            .setSubtitle("Authenticate to view this message")
-                                            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                                            .build()
-                                    )
-                                } else {
-                                    unlockedIds = unlockedIds + msg.id
-                                }
+                            } else {
+                                vm.setLocked(msg.id, false)
+                                unlockedIds = unlockedIds + msg.id
                             }
                         },
                         unlockedIds = unlockedIds
