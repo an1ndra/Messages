@@ -10,7 +10,8 @@
 local.properties
 /app/build
 .kotlin
-screenshots/
+screenshots/*
+!screenshots/fdroid/
 release.keystore
 *.apk
 .commandcode/

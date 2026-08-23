@@ -30,10 +30,10 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 ## Download
 
 ### F-Droid
-[![Get it on F-Droid](https://fdroid.gitlab.io/artwork/badge/get-it-on.png)](https://f-droid.org/packages/com.anindra.messages/)
+<a href="https://f-droid.org/packages/com.anindra.messages/"><img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80"></a>
 
 ### Manual Install
-Download the latest APK from [Releases](https://github.com/anindra/Messages/releases) and install it on your Android device.
+Download the latest APK from [Releases](https://github.com/an1ndra/Messages/releases) and install it on your Android device.
 
 ## Requirements
 
