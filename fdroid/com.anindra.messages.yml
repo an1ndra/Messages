@@ -1,6 +1,6 @@
 # Copy this file into your fork of https://gitlab.com/fdroid/fdroiddata
-# as metadata/com.anindra.messages.yml, replacing YOUR_GITLAB_USERNAME first,
-# then open a merge request against fdroiddata master.
+# as metadata/com.anindra.messages.yml, then open a merge request against
+# fdroiddata master.
 #
 # App name/summary/description/screenshots are picked up automatically from
 # fastlane/metadata/android/en-US/ in the source repo.
@@ -9,12 +9,12 @@ Categories:
   - Phone & SMS
 License: GPL-3.0-only
 AuthorName: Anindra
-SourceCode: https://gitlab.com/YOUR_GITLAB_USERNAME/messages
-IssueTracker: https://gitlab.com/YOUR_GITLAB_USERNAME/messages/-/issues
-Translation: https://gitlab.com/YOUR_GITLAB_USERNAME/messages
+SourceCode: https://github.com/an1ndra/Messages
+IssueTracker: https://github.com/an1ndra/Messages/issues
+Translation: https://github.com/an1ndra/Messages
 
 RepoType: git
-Repo: https://gitlab.com/YOUR_GITLAB_USERNAME/messages.git
+Repo: https://github.com/an1ndra/Messages.git
 
 Builds:
   - versionName: 1.0
