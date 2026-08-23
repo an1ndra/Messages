@@ -1,0 +1,24 @@
+<p>Messages is a simple SMS app for Android built with Kotlin and Jetpack
+Compose (Material 3). It is fully offline: the manifest declares
+<strong>no INTERNET permission</strong>, so your messages never leave your
+device except through your carrier.</p>
+
+<b>Features</b>
+
+* Clean Material 3 interface with light / dark / system themes
+* Conversations list with search, unread badges and avatars
+* Pin, archive, trash (+ undo) and delete conversations; swipe actions
+* Drafts auto-saved per conversation
+* Scheduled messages and optional delayed sending
+* Message forwarding and tappable links
+* MMS image send/receive (when set as default SMS app)
+* Dual-SIM support with per-message SIM selection
+* Sent / delivered / failed status per message with retry
+* Number blocking and report-spam style contact actions
+* Database backup & restore
+* No ads, no analytics, no trackers
+
+<b>Permissions</b>
+
+SMS and contacts permissions are used only to send/receive messages and show
+contact names. The app requests no network access at all.
