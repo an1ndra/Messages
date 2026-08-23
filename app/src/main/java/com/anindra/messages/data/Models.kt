@@ -22,9 +22,10 @@ data class Message(
     val timestamp: Long,
     val isMe: Boolean,
     val status: String,
-    val mediaType: String = "text",   // text | image | audio
+    val mediaType: String = "text",
     val mediaUri: String = "",
-    val reactions: Map<String, Int> = emptyMap()
+    val reactions: Map<String, Int> = emptyMap(),
+    val locked: Boolean = false
 )
 
 data class BlockedNumber(

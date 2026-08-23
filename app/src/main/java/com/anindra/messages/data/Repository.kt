@@ -15,7 +15,7 @@ import java.io.File
 import java.io.FileOutputStream
 
 private const val DB_NAME = "messages.db"
-private const val DB_VERSION = 8
+private const val DB_VERSION = 10
 
 class Db(context: Context) :
     SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
@@ -47,7 +47,8 @@ class Db(context: Context) :
                 media_type TEXT NOT NULL DEFAULT 'text',
                 media_uri TEXT NOT NULL DEFAULT '',
                 reactions TEXT NOT NULL DEFAULT '',
-                sys_id INTEGER NOT NULL DEFAULT 0)"""
+                sys_id INTEGER NOT NULL DEFAULT 0,
+                locked INTEGER NOT NULL DEFAULT 0)"""
         )
         db.execSQL("CREATE INDEX idx_messages_conversation ON messages(conversation_id)")
         db.execSQL(
@@ -64,6 +65,11 @@ class Db(context: Context) :
                 timestamp INTEGER NOT NULL,
                 conversation_id INTEGER NOT NULL,
                 sub_id INTEGER NOT NULL DEFAULT -1)"""
+        )
+        db.execSQL(
+            """CREATE TABLE conversation_notifications(
+                conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
+                notifications_enabled INTEGER NOT NULL DEFAULT 1)"""
         )
     }
 
@@ -104,6 +110,30 @@ class Db(context: Context) :
         if (oldVersion < 8) {
             db.execSQL("ALTER TABLE conversations ADD COLUMN deleted_at INTEGER NOT NULL DEFAULT 0")
         }
+        if (oldVersion < 9) {
+            db.execSQL(
+                """CREATE TABLE conversation_notifications(
+                    conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
+                    notifications_enabled INTEGER NOT NULL DEFAULT 1)"""
+            )
+        }
+        if (oldVersion < 10) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN locked INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    override fun onOpen(db: SQLiteDatabase) {
+        // Heals databases whose version advanced without running every upgrade step
+        // (e.g., an intermediate APK shipped a broken migration).
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS conversation_notifications(
+                conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
+                notifications_enabled INTEGER NOT NULL DEFAULT 1)"""
+        )
+        try {
+            db.execSQL("ALTER TABLE messages ADD COLUMN locked INTEGER NOT NULL DEFAULT 0")
+        } catch (_: android.database.sqlite.SQLiteException) {
+        }
     }
 }
 
@@ -111,6 +141,10 @@ class Repository(private val context: Context) {
 
     private val db = Db(context)
     val settings = SettingsStore(context)
+
+    init {
+        DemoData.seedIfNeeded(db.writableDatabase)
+    }
 
     private val listeners = mutableListOf<() -> Unit>()
 
@@ -186,7 +220,7 @@ class Repository(private val context: Context) {
     fun messages(conversationId: Long): Flow<List<Message>> = observe {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
-            """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions FROM messages
+            """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked FROM messages
                WHERE conversation_id=? ORDER BY timestamp ASC""",
             arrayOf(conversationId.toString())
         ).use { c ->
@@ -201,7 +235,8 @@ class Repository(private val context: Context) {
                         status = c.getString(4),
                         mediaType = c.getString(5),
                         mediaUri = c.getString(6),
-                        reactions = parseReactions(c.getString(7))
+                        reactions = parseReactions(c.getString(7)),
+                        locked = c.getInt(8) == 1
                     )
                 )
             }
@@ -307,6 +342,14 @@ class Repository(private val context: Context) {
     fun markReadSuspend(conversationId: Long) {
         db.writableDatabase.execSQL(
             "UPDATE conversations SET unread_count=0 WHERE id=?", arrayOf(conversationId)
+        )
+        notifyChanged()
+    }
+
+    fun setLockedSuspend(messageId: Long, locked: Boolean) {
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET locked=? WHERE id=?",
+            arrayOf(if (locked) 1 else 0, messageId)
         )
         notifyChanged()
     }
@@ -443,6 +486,36 @@ class Repository(private val context: Context) {
             if (c.moveToFirst()) blocked = c.getInt(0) > 0
         }
         return blocked
+    }
+
+    fun conversationIdForAddress(address: String): Long? {
+        var id: Long? = null
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM conversations WHERE address=?", arrayOf(address)
+        ).use { c -> if (c.moveToFirst()) id = c.getLong(0) }
+        return id
+    }
+
+    fun getConversationNotificationsEnabled(conversationId: Long): Boolean {
+        var enabled = true
+        db.readableDatabase.rawQuery(
+            "SELECT notifications_enabled FROM conversation_notifications WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) enabled = c.getInt(0) == 1
+        }
+        return enabled
+    }
+
+    fun setConversationNotificationsEnabled(conversationId: Long, enabled: Boolean) {
+        val cv = ContentValues().apply {
+            put("conversation_id", conversationId)
+            put("notifications_enabled", if (enabled) 1 else 0)
+        }
+        db.writableDatabase.insertWithOnConflict(
+            "conversation_notifications", null, cv, SQLiteDatabase.CONFLICT_REPLACE
+        )
+        notifyChanged()
     }
 
     fun blockedNumbers(): Flow<List<BlockedNumber>> = observe {

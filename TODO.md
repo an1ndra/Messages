@@ -60,6 +60,7 @@ priority; each has acceptance criteria and file pointers. Verify on
 - ✅ Block sends to alphanumeric sender IDs (DK-AIRCEL…): chat send/schedule guarded with dialog; NewChat manual entry restricted to phone numbers — test: `scripts/test-links-and-senders.sh`
 - ✅ Highlight links in messages: URLs become tappable (blue underline) opening the browser; Settings → Messages → "Highlight links" toggle (default on) — test: `scripts/test-links-and-senders.sh`
 - ✅ Trash system: swipe-left / sheet Delete moves conversations to trash (DB v8 `deleted_at`), UNDO snackbar, Settings → Privacy → Trash screen (restore / delete forever / empty trash), auto-purge after 30 days on app start, new SMS from trashed address restores the thread; swipe needs ~65% travel (less sensitive) — test: `scripts/test-trash.sh`
+- ✅ Per-conversation notification settings: DB v9 `conversation_notifications` table (ON DELETE CASCADE), notification toggle in ContactDetailsScreen + ChatScreen 3-dot menu, NotificationHelper.show() checks per-conversation setting before posting — test: `scripts/test-notifications.sh`
 - ✅ Mark all as read: Settings → General row
 - ✅ Real send confirmation: SmsStatusReceiver + sent/delivery PendingIntents flip rows sending→sent→delivered or failed; failures show red "Not sent · Tap to retry"; MMS gated for alphanumeric senders
 - ✅ Draft fix: clearing text now erases the stored draft on back
@@ -76,21 +77,53 @@ priority; each has acceptance criteria and file pointers. Verify on
 
 ## P2 · Quick reply from notification
 
-Reply directly from notification without opening the app (like QKSms).
+✅ DONE. `RemoteInput` on notification + `QuickReplyReceiver` BroadcastReceiver sends SMS from notification inline reply. Registered in AndroidManifest.
 
-- Add `RemoteInput` to notification in `NotificationHelper.kt`
-- Handle reply intent in `SmsReceiver.kt`
-
-File: `sms/NotificationHelper.kt`, `sms/SmsReceiver.kt`
+File: `sms/SmsSupport.kt`, `sms/QuickReplyReceiver.kt`
 
 ## P3 · Message locking
 
-Long-press message in chat → "Lock" action → message requires authentication to view.
+✅ DONE. `locked` column in messages table (DB v10), Lock/Unlock in message context menu, biometric/PIN prompt via `BiometricPrompt`, locked messages show "🔒 Locked" until authenticated, re-lock on chat exit. Test: `scripts/test-message-lock.sh`
 
-- Store locked state in messages table (add `locked INTEGER` column)
-- Gate display behind biometric/PIN prompt
+File: `data/Repository.kt`, `data/Models.kt`, `ui/ChatScreen.kt`
 
-File: `data/Repository.kt`, `ui/ChatScreen.kt`
+## Splash screen dark mode
+
+- ✅ Splash now follows dark mode: added `values-night/themes.xml` (dark Material parent), `values-v31` + `values-night-v31` with `windowSplashScreenBackground` matched to app surface (#F8F9FC light / #131314 dark). Verified brightness 238 light / 30 dark. Test: `scripts/test-splash.sh`
+
+## Skeleton loading shimmer
+
+- ✅ Shimmer skeleton placeholder while content loads (8 rows with animated gradient circles/bars matching GM style). 400ms hold before real content appears.
+
+## Demo data for F-Droid
+
+- ✅ 10 realistic conversations seeded on fresh install (Sarah, Mom, Work, Jake, Emma, Dad, Pizza Palace, Alex, Dr. Patel, Gym Buddy) with 3-5 messages each, unread badges, pinned item
+- ✅ 6 contact avatar PNGs (colored circles with initials) in `res/drawable-xxhdpi/`
+- ✅ `DemoData.kt` seeds conversations + messages when DB is empty; `loadContactPhoto` returns demo avatars for seeded numbers
+- ✅ F-Droid screenshots saved in `screenshots/fdroid/` (8 images: home/chat/settings/reply × dark/light). Script: `scripts/take-fdroid-screenshots.sh`
+
+## Chat UI adjustments (user request)
+
+- ✅ Save-contact banner hidden in chat window (code commented out, easily restorable)
+- ✅ SIM selector moved from input pill to chat 3-dot menu (per-SIM rows with radio buttons, carrier names, persists selection); hidden on single-SIM devices. Test: `scripts/test-sim-menu.sh`
+- ✅ Notifications toggle removed from chat 3-dot menu (per-conversation toggle remains in Contact details screen)
+- ✅ Archive menu item fixed (was a dead control — onClick only closed the menu); now archives, toasts, returns to list. All chat-menu options verified: Add people→contact editor, Details, Archive/Unarchive, Delete→trash, Block/Unblock. Test: `scripts/test-chat-menu.sh`
+
+## Contact details header photo
+
+- ✅ Header avatar now uses `PersonAvatar` (loads real contact photo) instead of hardcoded placeholder — matches the participant row which already showed the photo
+
+## P2/P3/P5 follow-up fixes
+
+- ✅ Crash fix: DB self-healing in `Db.onOpen` — recreates `conversation_notifications` and adds missing `locked` column even when an intermediate APK shipped a broken migration
+- ✅ Message long-press fix: replaced `ClickableText` with plain `Text` (links handled natively by Compose) so the bubble's `combinedClickable` long-press fires; Copy/Lock menu reachable again
+- ✅ Verified: link taps still open browser (`test-links-and-senders.sh`), lock persists across restart
+
+## Recent fixes
+
+- ✅ Back navigation on gesture devices: `onBackPressed()` override in MainActivity catches gesture back and navigates to list instead of finishing activity; `enableOnBackInvokedCallback="false"` in manifest
+- ✅ Skeleton flash fix: skeleton only shows on first app load (400ms), not on back navigation (static `hasLoadedOnce` flag)
+- ✅ OTP highlighting: 4-8 digit standalone numbers highlighted in primary color with medium weight in message bubbles
 
 ## P4 · Auto-delete old messages
 
@@ -103,12 +136,7 @@ File: `data/SettingsStore.kt`, `data/Repository.kt`
 
 ## P5 · Custom notification settings per-conversation
 
-Per-conversation notification tone and vibration settings.
-
-- Store in a new table or SharedPreferences keyed by conversation ID
-- Expose in chat 3-dot menu
-
-File: `data/SettingsStore.kt`, `ui/ChatScreen.kt`
+✅ DONE. `conversation_notifications` table (DB v9, ON DELETE CASCADE), Repository methods, toggle in ContactDetailsScreen + ChatScreen 3-dot menu, NotificationHelper checks before posting.
 
 ## Regression guardrails
 

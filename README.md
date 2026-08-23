@@ -1,67 +1,58 @@
 # Messages
 
-A simple, offline-first SMS messaging app for Android with a clean Material 3
-interface. No ads, no analytics, no tracking — the app has **no INTERNET
-permission** and all data stays on your device.
+An offline SMS messaging app for Android that clones the UI of Google Messages.
+
+Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permission — everything is local SMS + local database.
 
 ## Features
 
-- SMS send/receive with per-message sent/delivered/failed status
-- Conversations with pinning, drafts, archive, trash + undo
-- Search, swipe actions, long-press context menu
-- Scheduled messages, delayed sending, forwarding
-- MMS images, contact avatars/photos, blocked numbers
-- Dual-SIM selection, backup/restore database
-- Light/dark/system themes (Material 3)
+- **Real SMS**: Send/receive SMS messages, multi-SIM support
+- **Google Messages UI**: Material 3 design, dark/light themes, conversation avatars
+- **Message Management**: Pin, archive, delete, block numbers, trash with 30-day auto-purge
+- **Drafts**: Auto-save drafts, restore on conversation open
+- **Scheduled Messages**: Long-press send to schedule messages with DatePicker + TimePicker
+- **Quick Reply**: Reply directly from notifications
+- **Message Lock**: Biometric-protect sensitive messages
+- **OTP Highlighting**: One-time passwords automatically highlighted in blue
+- **Contact Photos**: Loads real contact profile pictures
+- **Delayed Sending**: Configurable delay before sending messages
 
-## Build
+## Screenshots
 
-Requirements: JDK 17+, Android SDK 35.
+| Home (Dark) | Chat (Dark) | Settings (Dark) |
+|---|---|---|
+| ![Home Dark](screenshots/fdroid/01-home-dark.png) | ![Chat Dark](screenshots/fdroid/02-chat-dark.png) | ![Settings Dark](screenshots/fdroid/06-settings-dark.png) |
 
-```bash
-./gradlew assembleDebug        # debug APK
-./gradlew assembleRelease      # unsigned unless release.keystore exists
-```
+| Home (Light) | Chat (Light) | Settings (Light) |
+|---|---|---|
+| ![Home Light](screenshots/fdroid/03-home-light.png) | ![Chat Light](screenshots/fdroid/04-chat-light.png) | ![Settings Light](screenshots/fdroid/05-settings-light.png) |
 
-The output is in `app/build/outputs/apk/`.
+## Download
 
-## Install to a connected device
+### F-Droid
+[![Get it on F-Droid](https://fdroid.gitlab.io/artwork/badge/get-it-on.png)](https://f-droid.org/packages/com.anindra.messages/)
 
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
+### Manual Install
+Download the latest APK from [Releases](https://github.com/anindra/Messages/releases) and install it on your Android device.
 
-## Releases
+## Requirements
 
-Push a tag to trigger the release workflow (`.github/workflows/release.yml`):
+- Android 10 (API 29) or higher
+- SMS permissions (SEND_SMS, RECEIVE_SMS, READ_SMS)
+- Contact permissions (READ_CONTACTS)
 
-```bash
-git tag v1.0 && git push origin main --tags
-```
+## Technical Details
 
-The workflow then:
-
-1. Builds `assembleRelease` and attaches the APK to a GitHub Release.
-2. Mirrors the full repository to GitLab (`git push --mirror`), which is the
-   source F-Droid's build server pulls from.
-
-### Required repository secrets
-
-| Secret | Purpose |
-|---|---|
-| `GITLAB_TOKEN` | GitLab access token with `write_repository` scope |
-| `GITLAB_REPO` | GitLab path, e.g. `yourname/messages` |
-| `RELEASE_KEYSTORE_BASE64` | base64 of your `release.keystore` (optional — omit for unsigned APK) |
-| `KEYSTORE_PASSWORD` / `KEY_PASSWORD` | Keystore credentials (optional) |
-
-Generate the keystore secret locally with:
-`base64 -w0 release.keystore`
-
-## Contributing
-
-Bug reports and pull requests are welcome. Please keep changes consistent
-with existing code style (Kotlin, Jetpack Compose, single-Activity).
+- **Package**: `com.anindra.messages`
+- **Min SDK**: 29 (Android 10)
+- **Target SDK**: 35 (Android 15)
+- **Database**: SQLite with Flow-based reactive queries
+- **Architecture**: Single-Activity, Compose Navigation
 
 ## License
 
-[GPL-3.0](LICENSE)
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+See [Developer.md](Developer.md) for development setup instructions.

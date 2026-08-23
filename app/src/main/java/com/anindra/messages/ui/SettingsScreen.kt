@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
@@ -92,6 +93,7 @@ fun SettingsScreen(
     var scheduledMessages by remember { mutableStateOf(vm.settings.scheduledMessagesEnabled) }
     var delayedSending by remember { mutableStateOf(vm.settings.delayedSendingEnabled) }
     var highlightLinks by remember { mutableStateOf(vm.settings.highlightLinks) }
+    var privacyMode by remember { mutableStateOf(vm.settings.privacyModeEnabled) }
     var delaySeconds by remember { mutableIntStateOf(vm.settings.delaySeconds) }
 
     var simDialog by remember { mutableStateOf(false) }
@@ -355,6 +357,15 @@ fun SettingsScreen(
                     subtitle = "Block numbers from messaging you",
                     checked = blocking,
                     onChecked = { blocking = it; vm.settings.blockingEnabled = it }
+                )
+                SettingsRow(
+                    title = "Privacy mode",
+                    subtitle = "Hide content from screenshots and screen recording",
+                    checked = privacyMode,
+                    onChecked = {
+                        privacyMode = it
+                        (context as? Activity)?.let { act -> vm.setPrivacyMode(act, it) }
+                    }
                 )
                 SettingsRow(
                     title = "Trash",

@@ -82,6 +82,14 @@
         </receiver>
 
         <receiver
+            android:name=".sms.QuickReplyReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.anindra.messages.QUICK_REPLY" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".sms.SmsStatusReceiver"
             android:exported="false">
             <intent-filter>
