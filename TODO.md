@@ -124,6 +124,13 @@ File: `data/Repository.kt`, `data/Models.kt`, `ui/ChatScreen.kt`
 - ✅ Back navigation on gesture devices: `onBackPressed()` override in MainActivity catches gesture back and navigates to list instead of finishing activity; `enableOnBackInvokedCallback="false"` in manifest
 - ✅ Skeleton flash fix: skeleton only shows on first app load (400ms), not on back navigation (static `hasLoadedOnce` flag)
 - ✅ OTP highlighting: 4-8 digit standalone numbers highlighted in primary color with medium weight in message bubbles
+- ✅ Privacy mode enhancements: notification content hidden (shows "New message" / "You have a new message"), `android:taskAffinity=""` for recent apps content hiding, `FLAG_SECURE` on window
+- ✅ App lock: fingerprint/PIN authentication on app launch (BiometricPrompt from AndroidX Biometric), graceful fallback on devices without biometric hardware, toggle in Settings > Privacy
+- ✅ Message unlock simplified: removed biometric prompt for lock/unlock in chat context menu (direct toggle)
+- ✅ Avatar palette expanded: 16 colors, 10 demo avatar PNGs (256x256) seeded via DemoData
+- ✅ `FragmentActivity` base class (required for BiometricPrompt)
+
+File: `MainActivity.kt`, `SettingsScreen.kt`, `SmsSupport.kt`, `AndroidManifest.xml`, `Components.kt`, `DemoData.kt`
 
 ## P4 · Auto-delete old messages
 

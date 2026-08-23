@@ -31,6 +31,7 @@ class SettingsStore(context: Context) {
         const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_HIGHLIGHT_LINKS = "highlight_links"
         const val KEY_PRIVACY_MODE = "privacy_mode"
+        const val KEY_APP_LOCK = "app_lock_enabled"
         const val KEY_INCOMING_SOUND = "incoming_sound_uri"
         const val KEY_OUTGOING_SOUND = "outgoing_sound_uri"
         const val SOUND_DEFAULT = "default"
@@ -104,6 +105,10 @@ class SettingsStore(context: Context) {
     var privacyModeEnabled: Boolean
         get() = prefs.getBoolean(KEY_PRIVACY_MODE, false)
         set(v) = prefs.edit().putBoolean(KEY_PRIVACY_MODE, v).apply()
+
+    var appLockEnabled: Boolean
+        get() = prefs.getBoolean(KEY_APP_LOCK, false)
+        set(v) = prefs.edit().putBoolean(KEY_APP_LOCK, v).apply()
 
     var delaySeconds: Int
         get() = prefs.getInt(KEY_DELAY_SECONDS, 3)

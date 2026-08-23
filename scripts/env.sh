@@ -56,6 +56,15 @@ tap_text() {
     echo "[tap] '$1' at ($c)"
 }
 
+# Tap the switch (right side) near a text label. Used for toggle rows.
+tap_switch_near() {
+    local c
+    c=$(center_of "$1") || { echo "[tap] '$1' not found"; return 1; }
+    local y=${c#* }
+    adb_ shell input tap 937 "$y"
+    echo "[tap] switch near '$1' at (937 $y)"
+}
+
 # Tap the chat input field (EditText) wherever it currently is.
 tap_edittext() {
     dump_ui || return 1

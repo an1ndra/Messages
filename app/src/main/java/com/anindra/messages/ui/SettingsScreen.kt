@@ -94,6 +94,7 @@ fun SettingsScreen(
     var delayedSending by remember { mutableStateOf(vm.settings.delayedSendingEnabled) }
     var highlightLinks by remember { mutableStateOf(vm.settings.highlightLinks) }
     var privacyMode by remember { mutableStateOf(vm.settings.privacyModeEnabled) }
+    var appLock by remember { mutableStateOf(vm.settings.appLockEnabled) }
     var delaySeconds by remember { mutableIntStateOf(vm.settings.delaySeconds) }
 
     var simDialog by remember { mutableStateOf(false) }
@@ -365,6 +366,15 @@ fun SettingsScreen(
                     onChecked = {
                         privacyMode = it
                         (context as? Activity)?.let { act -> vm.setPrivacyMode(act, it) }
+                    }
+                )
+                SettingsRow(
+                    title = "App lock",
+                    subtitle = "Require fingerprint or PIN to open app",
+                    checked = appLock,
+                    onChecked = {
+                        appLock = it
+                        vm.settings.appLockEnabled = it
                     }
                 )
                 SettingsRow(

@@ -13,6 +13,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +28,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -245,7 +249,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 }
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
@@ -270,9 +274,8 @@ class MainActivity : ComponentActivity() {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         }
 
-        // Script hooks:
-        //   adb shell am start -n $PKG/.MainActivity --es set_theme dark|light|system
-        //   adb shell am start -n $PKG/.MainActivity --ez open_settings true
+        val appLockEnabled = bootVm.settings.appLockEnabled
+
         // Script hooks:
         //   adb shell am start -n $PKG/.MainActivity --es set_theme dark|light|system
         //   adb shell am start -n $PKG/.MainActivity --ez open_settings true
@@ -287,6 +290,37 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val vm: AppViewModel = viewModel()
+            var appUnlocked by remember { mutableStateOf(!appLockEnabled) }
+
+            if (appLockEnabled && !appUnlocked) {
+                LaunchedEffect(Unit) {
+                    val biometricManager = BiometricManager.from(this@MainActivity)
+                    if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS) {
+                        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+                        val prompt = BiometricPrompt(this@MainActivity, executor,
+                            object : BiometricPrompt.AuthenticationCallback() {
+                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                    runOnUiThread { appUnlocked = true }
+                                }
+                                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                                    runOnUiThread { finish() }
+                                }
+                            })
+                        prompt.authenticate(
+                            BiometricPrompt.PromptInfo.Builder()
+                                .setTitle("Unlock Messages")
+                                .setSubtitle("Authenticate to access your messages")
+                                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                                .build()
+                        )
+                    } else {
+                        appUnlocked = true
+                    }
+                }
+            }
+
+            if (!appUnlocked) return@setContent
+
             MessagesTheme(mode = vm.themeMode) {
                 var chatId by remember { mutableStateOf(-1L) }
                 var detailsId by remember { mutableStateOf(-1L) }
