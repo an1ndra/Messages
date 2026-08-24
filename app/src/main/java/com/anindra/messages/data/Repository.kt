@@ -178,9 +178,10 @@ class Repository(private val context: Context) {
 
     private val listeners = mutableListOf<() -> Unit>()
 
-    private val _initialSyncDone = MutableStateFlow(false)
+    private val _initialSyncDone = MutableStateFlow(settings.firstImportDone)
 
-    /** True once the first system-SMS import attempt of this process finished. */
+    /** True when the UI may skip the loading state: either the post-install
+     *  import already finished once (persisted), or it just completed. */
     val initialSyncDone: StateFlow<Boolean> = _initialSyncDone.asStateFlow()
 
     fun notifyChanged() {
@@ -829,6 +830,7 @@ class Repository(private val context: Context) {
             } catch (_: Exception) {
             } finally {
                 _initialSyncDone.value = true
+                settings.firstImportDone = true
             }
         }.start()
     }

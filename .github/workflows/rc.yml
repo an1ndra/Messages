@@ -1,0 +1,91 @@
+name: RC Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    tags:
+      - "v*-rc*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rc-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-rc:
+    name: Build & publish RC (pre-release)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Validate Gradle wrapper & set up Gradle
+        uses: gradle/actions/setup-gradle@67621b124fd2e251c5e8a0e6e3b91318f2287669 # v6.3.0
+        with:
+          validate-wrappers: true
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Read versionName
+        id: ver
+        run: |
+          V=$(grep -oE 'versionName = "[^"]+"' app/build.gradle.kts | cut -d '"' -f2)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Building $V from ${{ github.ref_name }}"
+
+      # Signing is optional for RCs: signed when keystore secrets exist,
+      # otherwise falls back to an installable debug APK.
+      - name: Restore keystore
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+          else
+            echo "::notice::RELEASE_KEYSTORE_BASE64 not set - building debug APK"
+          fi
+
+      - name: Build APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -f release.keystore ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
+            ./gradlew --no-daemon assembleRelease
+          else
+            ./gradlew --no-daemon assembleDebug
+          fi
+
+      - name: Collect APK
+        run: |
+          src=$(ls app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
+          kind=release
+          if [ -z "$src" ]; then
+            src=$(ls app/build/outputs/apk/debug/*.apk | head -1)
+            kind=debug
+          fi
+          cp "$src" "Messages-${{ steps.ver.outputs.version }}-$kind.apk"
+          rm -f release.keystore
+
+      - name: Publish RC pre-release
+        uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: RC ${{ steps.ver.outputs.version }}
+          prerelease: true
+          generate_release_notes: true
+          files: Messages-*.apk

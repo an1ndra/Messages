@@ -32,6 +32,7 @@ class SettingsStore(context: Context) {
         const val KEY_HIGHLIGHT_LINKS = "highlight_links"
         const val KEY_PRIVACY_MODE = "privacy_mode"
         const val KEY_APP_LOCK = "app_lock_enabled"
+        const val KEY_FIRST_IMPORT_DONE = "first_import_done"
         const val KEY_INCOMING_SOUND = "incoming_sound_uri"
         const val KEY_OUTGOING_SOUND = "outgoing_sound_uri"
         const val SOUND_DEFAULT = "default"
@@ -61,6 +62,12 @@ class SettingsStore(context: Context) {
     var simSubscriptionId: Int
         get() = prefs.getInt(KEY_SIM_SUBSCRIPTION_ID, DEFAULTS_SIM_SUBSCRIPTION_ID)
         set(v) = prefs.edit().putInt(KEY_SIM_SUBSCRIPTION_ID, v).apply()
+
+    /** True once the post-install message import has completed at least once;
+     *  later launches render the local DB instantly without a loading state. */
+    var firstImportDone: Boolean
+        get() = prefs.getBoolean(KEY_FIRST_IMPORT_DONE, false)
+        set(v) = prefs.edit().putBoolean(KEY_FIRST_IMPORT_DONE, v).apply()
 
     var pinnedEnabled: Boolean
         get() = prefs.getBoolean(KEY_PINNED_ENABLED, true)
