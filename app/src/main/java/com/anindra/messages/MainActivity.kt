@@ -63,6 +63,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val conversations: Flow<List<Conversation>> = repo.conversations()
 
+    /** Emits true after the first system-SMS import of this process completes. */
+    val initialSyncDone = repo.initialSyncDone
+
     // Observable theme state; SettingsScreen updates it via setTheme()
     var themeMode: String
         get() = _themeState.value

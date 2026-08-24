@@ -9,6 +9,9 @@ import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
@@ -143,10 +146,42 @@ class Repository(private val context: Context) {
     val settings = SettingsStore(context)
 
     init {
-        DemoData.seedIfNeeded(db.writableDatabase)
+        when (systemSmsCount()) {
+            // Fresh device with no SMS anywhere: safe to seed F-Droid demo data
+            0 -> DemoData.seedIfNeeded(db.writableDatabase)
+            // Device has real SMS: never seed, and heal installs polluted by
+            // older builds that seeded unconditionally
+            else -> purgeDemoConversations()
+        }
+    }
+
+    /** -1 = unknown (READ_SMS missing or provider error), otherwise row count. */
+    private fun systemSmsCount(): Int = try {
+        context.contentResolver.query(
+            android.provider.Telephony.Sms.CONTENT_URI,
+            arrayOf(android.provider.Telephony.Sms._ID),
+            null, null, null
+        )?.use { it.count } ?: -1
+    } catch (_: Exception) {
+        -1
+    }
+
+    private fun purgeDemoConversations() {
+        val numbers = DemoData.DEMO_NUMBERS.joinToString(",") { "'$it'" }
+        db.writableDatabase.execSQL(
+            "DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE address IN ($numbers))"
+        )
+        db.writableDatabase.execSQL(
+            "DELETE FROM conversations WHERE address IN ($numbers)"
+        )
     }
 
     private val listeners = mutableListOf<() -> Unit>()
+
+    private val _initialSyncDone = MutableStateFlow(false)
+
+    /** True once the first system-SMS import attempt of this process finished. */
+    val initialSyncDone: StateFlow<Boolean> = _initialSyncDone.asStateFlow()
 
     fun notifyChanged() {
         listeners.forEach { it() }
@@ -792,6 +827,8 @@ class Repository(private val context: Context) {
                     notifyChanged()
                 }
             } catch (_: Exception) {
+            } finally {
+                _initialSyncDone.value = true
             }
         }.start()
     }
