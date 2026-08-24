@@ -256,14 +256,6 @@ class MainActivity : FragmentActivity() {
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
 
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-        when (navRoute) {
-            "chat", "details", "settings", "trash" -> { navRoute = "list" }
-            else -> super.onBackPressed()
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -282,7 +274,7 @@ class MainActivity : FragmentActivity() {
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
-        val startInSettings = intent.getBooleanExtra("open_settings", false)
+        if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
 
         val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -328,7 +320,7 @@ class MainActivity : FragmentActivity() {
                 var defaultSmsChecked by remember { mutableStateOf(false) }
 
                 androidx.compose.runtime.LaunchedEffect(Unit) {
-                    if (!startInSettings) {
+                    if (navRoute != "settings") {
                         kotlinx.coroutines.delay(1500)
                         val roleManager = getSystemService(RoleManager::class.java)
                         val isDefaultSms = roleManager.isRoleHeld(RoleManager.ROLE_SMS) ||
@@ -360,6 +352,16 @@ class MainActivity : FragmentActivity() {
                             }
                         }
                     )
+                }
+
+                // Single back dispatcher for all routes. Child screens may
+                // register their own BackHandler first; last-registered wins.
+                androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
+                    when (navRoute) {
+                        "details" -> navRoute = "chat"
+                        "trash" -> navRoute = "settings"
+                        else -> navRoute = "list"
+                    }
                 }
 
                 when (navRoute) {
@@ -472,5 +474,10 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
+        when (intent.getStringExtra("set_theme")) {
+            "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
+        }
+        if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
     }
 }

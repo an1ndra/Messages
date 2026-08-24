@@ -121,7 +121,7 @@ File: `data/Repository.kt`, `data/Models.kt`, `ui/ChatScreen.kt`
 
 ## Recent fixes
 
-- ✅ Back navigation on gesture devices: `onBackPressed()` override in MainActivity catches gesture back and navigates to list instead of finishing activity; `enableOnBackInvokedCallback="false"` in manifest
+- ✅ Back navigation on gesture devices: ~~`onBackPressed()` override in MainActivity~~ SUPERSEDED by unified BackHandler stack (see next entry); `enableOnBackInvokedCallback="false"` in manifest
 - ✅ Skeleton flash fix: skeleton only shows on first app load (400ms), not on back navigation (static `hasLoadedOnce` flag)
 - ✅ OTP highlighting: 4-8 digit standalone numbers highlighted in primary color with medium weight in message bubbles
 - ✅ Privacy mode enhancements: notification content hidden (shows "New message" / "You have a new message"), `android:taskAffinity=""` for recent apps content hiding, `FLAG_SECURE` on window
@@ -131,6 +131,17 @@ File: `data/Repository.kt`, `data/Models.kt`, `ui/ChatScreen.kt`
 - ✅ `FragmentActivity` base class (required for BiometricPrompt)
 
 File: `MainActivity.kt`, `SettingsScreen.kt`, `SmsSupport.kt`, `AndroidManifest.xml`, `Components.kt`, `DemoData.kt`
+
+## Back-stack fix (2026-08-24)
+
+- ✅ BUG: system BACK (button or gesture) from the contact profile screen jumped to the conversation LIST instead of returning to the chat — caused by the removed `onBackPressed()` override mapping `"details" -> "list"`
+- ✅ BUG: two competing back systems (`Activity.onBackPressed` override + per-screen Compose `BackHandler`s). The override bypassed the dispatcher entirely, so button-back from chat skipped `leaveChat()` and silently DROPPED drafts
+- ✅ FIX: deleted the `onBackPressed()` override; ONE top-level `BackHandler` in `MainActivity` pops a virtual stack: `details→chat`, `trash→settings`, everything else→`list`. Child-screen handlers (draft save, search clear, double-back-exit guard) still win via dispatcher priority (last-registered wins)
+- ✅ BONUS: draft is now saved when leaving chat via the back BUTTON (previously only the ← arrow did) 
+- ✅ BONUS: `--ez open_settings true` script hook now actually opens Settings (was only suppressing the SMS-role dialog), and `onNewIntent` honors `set_theme`/`open_settings` on warm starts too
+- Test: `scripts/test-back-stack.sh` (8 checks, all passing); regression: `scripts/test-back-nav.sh` still green
+
+File: `MainActivity.kt`, `scripts/test-back-stack.sh`
 
 ## P4 · Auto-delete old messages
 
