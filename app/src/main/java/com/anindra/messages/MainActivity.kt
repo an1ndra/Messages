@@ -66,6 +66,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Emits true after the first system-SMS import of this process completes. */
     val initialSyncDone = repo.initialSyncDone
 
+    /** Null = idle; 0..1 = fraction of pending system SMS imported. */
+    val initialSyncProgress = repo.initialSyncProgress
+
     // Observable theme state; SettingsScreen updates it via setTheme()
     var themeMode: String
         get() = _themeState.value

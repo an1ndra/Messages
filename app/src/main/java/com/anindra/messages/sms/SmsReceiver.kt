@@ -15,16 +15,18 @@ class SmsReceiver : BroadcastReceiver() {
 
         val repo = (context.applicationContext as com.anindra.messages.MessagesApplication).repository
 
+        // As default handler the framework expects US to persist the SMS into the
+        // system provider; check both sources of truth since getDefaultSmsPackage
+        // can lag behind an updated role.
+        val roleManager = context.getSystemService(android.app.role.RoleManager::class.java)
+        val isDefaultHandler = Telephony.Sms.getDefaultSmsPackage(context) == context.packageName ||
+            roleManager?.isRoleHeld(android.app.role.RoleManager.ROLE_SMS) == true
+
         for (msg in Telephony.Sms.Intents.getMessagesFromIntent(intent)) {
             val address = msg.originatingAddress ?: continue
             val body = msg.messageBody ?: continue
-            repo.receiveMessage(address, body)
-            // As default handler the framework expects US to persist the SMS
-            // into the system provider; check both sources of truth since
-            // getDefaultSmsPackage can lag behind an updated role.
-            val roleManager = context.getSystemService(android.app.role.RoleManager::class.java)
-            val isDefaultHandler = Telephony.Sms.getDefaultSmsPackage(context) == context.packageName ||
-                roleManager?.isRoleHeld(android.app.role.RoleManager.ROLE_SMS) == true
+
+            var sysId = 0L
             if (isDefaultHandler) {
                 try {
                     val values = android.content.ContentValues().apply {
@@ -34,11 +36,14 @@ class SmsReceiver : BroadcastReceiver() {
                         put(Telephony.Sms.READ, 0)
                         put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_INBOX)
                     }
-                    context.contentResolver.insert(Telephony.Sms.Inbox.CONTENT_URI, values)
+                    sysId = context.contentResolver.insert(Telephony.Sms.Inbox.CONTENT_URI, values)
+                        ?.lastPathSegment?.toLongOrNull() ?: 0L
                 } catch (e: Exception) {
                     android.util.Log.w("SmsReceiver", "system inbox write-back failed", e)
                 }
             }
+
+            repo.receiveMessage(address, body, sysId)
             NotificationHelper.show(context, address, body)
         }
     }

@@ -125,6 +125,7 @@ scripts/test-trash.sh          # trash system (delete/restore/purge)
 scripts/test-notifications.sh  # notification delivery + per-conversation toggle
 scripts/test-splash.sh         # splash screen dark/light mode
 scripts/test-links-and-senders.sh  # link highlighting + alphanumeric sender block
+scripts/test-initial-sync.sh   # first-launch progress bar + OTP duplicate check
 ```
 
 Coordinate taps assume **1080x2400 @ 420dpi**. `env.sh` provides helpers
