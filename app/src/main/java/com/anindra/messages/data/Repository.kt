@@ -176,7 +176,7 @@ class Repository(private val context: Context) {
         )
     }
 
-    private val listeners = mutableListOf<() -> Unit>()
+    private val listeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
 
     private val _initialSyncDone = MutableStateFlow(settings.firstImportDone)
 
