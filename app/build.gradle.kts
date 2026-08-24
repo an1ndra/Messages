@@ -20,10 +20,14 @@ android {
         create("release") {
             val ksFile = file("${rootProject.projectDir}/release.keystore")
             if (ksFile.exists()) {
-                storeFile = ksFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "messages123"
-                keyAlias = "messages"
-                keyPassword = System.getenv("KEY_PASSWORD") ?: "messages123"
+                val storePass = System.getenv("KEYSTORE_PASSWORD")
+                val keyPass = System.getenv("KEY_PASSWORD")
+                if (storePass != null && keyPass != null) {
+                    storeFile = ksFile
+                    storePassword = storePass
+                    keyAlias = "messages"
+                    keyPassword = keyPass
+                }
             }
         }
     }
@@ -33,7 +37,10 @@ android {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             val ksFile = file("${rootProject.projectDir}/release.keystore")
-            signingConfig = if (ksFile.exists()) {
+            signingConfig = if (ksFile.exists() &&
+                System.getenv("KEYSTORE_PASSWORD") != null &&
+                System.getenv("KEY_PASSWORD") != null
+            ) {
                 signingConfigs.getByName("release")
             } else {
                 null
