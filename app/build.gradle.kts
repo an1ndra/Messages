@@ -8,6 +8,11 @@ android {
     namespace = "com.anindra.messages"
     compileSdk = 35
 
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     defaultConfig {
         applicationId = "com.anindra.messages"
         minSdk = 29
