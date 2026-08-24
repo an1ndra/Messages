@@ -109,7 +109,9 @@ fun SettingsScreen(
             sims = try {
                 val sm = context.getSystemService(SubscriptionManager::class.java)
                 sm?.activeSubscriptionInfoList ?: emptyList()
-            } catch (_: Exception) { emptyList() }
+            } catch (_: Exception) {
+                emptyList()
+            }
             simDialog = true
         }
     }
@@ -267,7 +269,9 @@ fun SettingsScreen(
                             sims = try {
                                 val sm = context.getSystemService(SubscriptionManager::class.java)
                                 sm?.activeSubscriptionInfoList ?: emptyList()
-                            } catch (_: Exception) { emptyList() }
+                            } catch (_: Exception) {
+                                emptyList()
+                            }
                             simDialog = true
                         } else {
                             simPermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
@@ -432,7 +436,10 @@ fun SettingsScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            IconButton(onClick = { vm.cancelScheduledMessage(sm.id) }, modifier = Modifier.size(32.dp)) {
+                            IconButton(
+                                onClick = { vm.cancelScheduledMessage(sm.id) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
                                 Icon(Icons.Rounded.Cancel, "Cancel", modifier = Modifier.size(20.dp))
                             }
                         }
@@ -443,7 +450,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                "Messages 1.0 — offline SMS clone",
+                "Messages 1.0 — offline SMS",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
