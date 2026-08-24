@@ -1,0 +1,136 @@
+name: F-Droid release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: New versionName (blank = auto patch bump)
+        required: false
+        type: string
+      version_code:
+        description: New versionCode (blank = current + 1)
+        required: false
+        type: string
+      update_fdroiddata:
+        description: Also update the fdroiddata MR
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fdroid-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cut-release:
+    name: Bump, tag, publish & sync fdroiddata
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configure git identity & optional GPG signing
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          git config user.name "anindra"
+          git config user.email "anindrakarmakar+git@proton.me"
+          if [ -n "$GPG_PRIVATE_KEY" ]; then
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+            KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+            git config user.signingkey "$KEYID"
+            git config commit.gpgsign true
+            git config tag.gpgsign true
+            echo "GPG signing enabled ($KEYID)"
+          else
+            echo "::notice::GPG_PRIVATE_KEY secret not set - commit/tag will be unsigned"
+          fi
+
+      - name: Compute next version
+        id: ver
+        env:
+          IN_NAME: ${{ inputs.version_name }}
+          IN_CODE: ${{ inputs.version_code }}
+        run: |
+          CUR_NAME=$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+          CUR_CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
+          NAME=${IN_NAME:-$(awk -F. -v OFS=. '{$NF++; print}' <<< "$CUR_NAME")}
+          CODE=${IN_CODE:-$((CUR_CODE + 1))}
+          echo "Bumping $CUR_NAME($CUR_CODE) -> $NAME($CODE)"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Apply version bump
+        env:
+          NAME: ${{ steps.ver.outputs.name }}
+          CODE: ${{ steps.ver.outputs.code }}
+        run: |
+          sed -i "s/^        versionCode = .*/        versionCode = $CODE/" app/build.gradle.kts
+          sed -i "s/^        versionName = .*/        versionName = \"$NAME\"/" app/build.gradle.kts
+          grep -E 'version(Code|Name) =' app/build.gradle.kts
+
+      - name: Commit & push main
+        env:
+          NAME: ${{ steps.ver.outputs.name }}
+          CODE: ${{ steps.ver.outputs.code }}
+        run: |
+          git add app/build.gradle.kts
+          if git diff --cached --quiet; then
+            echo "::error::No changes to commit - version already up to date?"
+            exit 1
+          fi
+          git commit -m "Release $NAME (versionCode $CODE)"
+          git push origin main
+
+      - name: Tag & trigger release build
+        env:
+          NAME: ${{ steps.ver.outputs.name }}
+        run: |
+          git tag -a "v$NAME" -m "v$NAME"
+          git push origin "refs/tags/v$NAME"
+
+      - name: Wait for release to be published
+        env:
+          NAME: ${{ steps.ver.outputs.name }}
+        run: |
+          for i in $(seq 1 60); do
+            sleep 15
+            BODY=$(curl -sf "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$NAME" || true)
+            if echo "$BODY" | grep -q '"browser_download_url".*Messages-'; then
+              echo "Release v$NAME is live"
+              exit 0
+            fi
+          done
+          echo "::error::Timed out waiting for release v$NAME (check the Release workflow run)"
+          exit 1
+
+      - name: Update fdroiddata MR
+        if: ${{ inputs.update_fdroiddata }}
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          NAME: ${{ steps.ver.outputs.name }}
+          CODE: ${{ steps.ver.outputs.code }}
+        run: |
+          if [ -z "$GITLAB_TOKEN" ]; then
+            echo "::error::Set the GITLAB_TOKEN secret (PAT with write_repository scope) to enable this step"
+            exit 1
+          fi
+          COMMIT=$(git rev-parse HEAD)
+          git clone --depth 1 -b com.anindra.messages \
+            "https://oauth2:${GITLAB_TOKEN}@gitlab.com/an1ndra/fdroiddata.git" fdd
+          sed -i "s/versionName: .*/versionName: $NAME/"       fdd/metadata/com.anindra.messages.yml
+          sed -i "s/^\( *\)versionCode: .*/\1versionCode: $CODE/" fdd/metadata/com.anindra.messages.yml
+          sed -i "s/commit: [0-9a-f]\{40\}/commit: $COMMIT/"    fdd/metadata/com.anindra.messages.yml
+          sed -i "s/^CurrentVersion: .*/CurrentVersion: $NAME/"  fdd/metadata/com.anindra.messages.yml
+          sed -i "s/^CurrentVersionCode: .*/CurrentVersionCode: $CODE/" fdd/metadata/com.anindra.messages.yml
+          cd fdd
+          git config user.name "anindra"
+          git config user.email "anindrakarmakar+git@proton.me"
+          git add metadata/com.anindra.messages.yml
+          git commit -m "Update to $NAME ($CODE)"
+          git push
+          echo "fdroiddata MR updated: https://gitlab.com/an1ndra/fdroiddata/-/tree/com.anindra.messages"
