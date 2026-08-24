@@ -69,6 +69,8 @@ app/src/main/java/com/anindra/messages/
     ├── ChatScreen.kt          # bubbles, 3-dot menu (SIM/Archive/Delete/Block), call icon,
     │                          #   OTP highlighting, message locking, forwarding, delayed sending,
     │                          #   scheduled messages (long-press send), linked text
+    ├── OtpDetector.kt         # keyword-gated tiered OTP matcher (grouped/adjacent/bare-6),
+    │                          #   currency + year guards; JUnit: app/src/test/.../OtpDetectorTest.kt
     ├── ContactDetailsScreen.kt # full-screen contact profile: avatar, call/add/search,
     │                          #   notifications toggle, block & report spam, participant list
     ├── NewChatScreen.kt       # contact picker + manual number entry
