@@ -35,6 +35,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -67,6 +68,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
@@ -94,6 +97,7 @@ fun ConversationsScreen(
     val context = LocalContext.current
     var lastBackExitAt by remember { mutableLongStateOf(0L) }
     val syncDone by vm.initialSyncDone.collectAsState()
+    val syncProgress by vm.initialSyncProgress.collectAsState()
     var minSkeletonShown by rememberSaveable {
         mutableStateOf(hasLoadedOnce || vm.settings.firstImportDone)
     }
@@ -229,6 +233,16 @@ fun ConversationsScreen(
                         }
                     }
                 }
+            }
+
+            syncProgress?.let { progress ->
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Loading messages" },
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                )
             }
 
             if (!loaded) {

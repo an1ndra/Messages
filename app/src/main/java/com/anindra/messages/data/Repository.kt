@@ -18,7 +18,7 @@ import java.io.File
 import java.io.FileOutputStream
 
 private const val DB_NAME = "messages.db"
-private const val DB_VERSION = 10
+private const val DB_VERSION = 11
 
 class Db(context: Context) :
     SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
@@ -123,6 +123,33 @@ class Db(context: Context) :
         if (oldVersion < 10) {
             db.execSQL("ALTER TABLE messages ADD COLUMN locked INTEGER NOT NULL DEFAULT 0")
         }
+        if (oldVersion < 11) {
+            dedupeSysIds(db)
+        }
+    }
+
+    /** Collapses rows that share a system-provider id (legacy double-imports,
+     *  e.g. duplicated OTP texts), drops the unlinked local twin of any already
+     *  linked message, then enforces uniqueness going forward. */
+    private fun dedupeSysIds(db: SQLiteDatabase) {
+        db.execSQL(
+            """DELETE FROM messages WHERE sys_id>0 AND id NOT IN
+               (SELECT MIN(id) FROM messages WHERE sys_id>0 GROUP BY sys_id)"""
+        )
+        db.execSQL(
+            """DELETE FROM messages WHERE sys_id=0 AND EXISTS(
+               SELECT 1 FROM messages m WHERE m.sys_id>0
+                 AND m.conversation_id=messages.conversation_id
+                 AND m.body=messages.body AND m.is_me=messages.is_me
+                 AND ABS(m.timestamp-messages.timestamp)<86400000)"""
+        )
+        try {
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_sys_id " +
+                    "ON messages(sys_id) WHERE sys_id>0"
+            )
+        } catch (_: android.database.sqlite.SQLiteException) {
+        }
     }
 
     override fun onOpen(db: SQLiteDatabase) {
@@ -135,6 +162,13 @@ class Db(context: Context) :
         )
         try {
             db.execSQL("ALTER TABLE messages ADD COLUMN locked INTEGER NOT NULL DEFAULT 0")
+        } catch (_: android.database.sqlite.SQLiteException) {
+        }
+        try {
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_sys_id " +
+                    "ON messages(sys_id) WHERE sys_id>0"
+            )
         } catch (_: android.database.sqlite.SQLiteException) {
         }
     }
@@ -183,6 +217,14 @@ class Repository(private val context: Context) {
     /** True when the UI may skip the loading state: either the post-install
      *  import already finished once (persisted), or it just completed. */
     val initialSyncDone: StateFlow<Boolean> = _initialSyncDone.asStateFlow()
+
+    private val _initialSyncProgress = MutableStateFlow<Float?>(null)
+
+    /** Null = idle; 0..1 = fraction of the pending system SMS imported this pass. */
+    val initialSyncProgress: StateFlow<Float?> = _initialSyncProgress.asStateFlow()
+
+    // Serializes sync runs so overlapping onResume calls cannot double-import
+    private val syncExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
 
     fun notifyChanged() {
         listeners.forEach { it() }
@@ -356,15 +398,16 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
-    /** Store an incoming SMS. Returns conversation id. */
-    fun receiveMessage(address: String, body: String): Long {
+    /** Store an incoming SMS. Returns conversation id. [sysId] links the row to
+     *  its system-provider copy so the next sync skips it instead of duplicating. */
+    fun receiveMessage(address: String, body: String, sysId: Long = 0L): Long {
         val now = System.currentTimeMillis()
         val convoId = getOrCreateConversationBlocking(address)
 
         db.writableDatabase.execSQL(
-            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status)
-               VALUES(?,?,?,?,?)""",
-            arrayOf(convoId, body, now, 0, "received")
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id)
+               VALUES(?,?,?,?,?,?)""",
+            arrayOf(convoId, body, now, 0, "received", sysId)
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
@@ -735,9 +778,10 @@ class Repository(private val context: Context) {
     /**
      * Imports all real SMS from the system Telephony provider into the local
      * DB, grouped by address into conversations. Deduped via sys_id.
+     * Reports fraction-complete via [initialSyncProgress] while work is pending.
      */
     fun syncFromSystem() {
-        Thread {
+        syncExecutor.execute {
             try {
                 val resolver = context.contentResolver
                 val cursor = resolver.query(
@@ -751,7 +795,7 @@ class Repository(private val context: Context) {
                     ),
                     null, null,
                     android.provider.Telephony.Sms.DATE + " ASC"
-                ) ?: return@Thread
+                ) ?: return@execute
 
                 data class SysSms(val sysId: Long, val body: String, val date: Long, val type: Int)
                 val byAddress = LinkedHashMap<String, MutableList<SysSms>>()
@@ -775,44 +819,53 @@ class Repository(private val context: Context) {
                     while (c.moveToNext()) existing.add(c.getLong(0))
                 }
 
+                val pending = byAddress.values.sumOf { list -> list.count { it.sysId !in existing } }
+                if (pending > 0) _initialSyncProgress.value = 0f
+
+                var done = 0
                 var changed = false
                 byAddress.forEach { (addr, msgs) ->
                     if (msgs.all { it.sysId in existing }) return@forEach
                     val cid = getOrCreateConversationBlocking(addr)
                     msgs.forEach { m ->
                         if (m.sysId in existing) return@forEach
-                        // Link a locally-stored copy (same body within ±2 min) instead of duplicating.
+                        val isMe = m.type != android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX
+                        // Link a locally-stored copy (same body within ±24 h) instead of
+                        // duplicating; SMSC timestamps can skew hours from device clock.
                         var localId = -1L
                         db.readableDatabase.rawQuery(
                             """SELECT id FROM messages
-                               WHERE conversation_id=? AND sys_id=0 AND body=?
-                                 AND ABS(timestamp-?) < 120000
+                               WHERE conversation_id=? AND sys_id=0 AND body=? AND is_me=?
+                                 AND ABS(timestamp-?) < 86400000
                                ORDER BY ABS(timestamp-?) LIMIT 1""",
-                            arrayOf(cid.toString(), m.body, m.date.toString(), m.date.toString())
+                            arrayOf(cid.toString(), m.body, if (isMe) "1" else "0",
+                                m.date.toString(), m.date.toString())
                         ).use { c -> if (c.moveToFirst()) localId = c.getLong(0) }
 
-                        if (localId != -1L) {
-                            db.writableDatabase.execSQL(
-                                "UPDATE messages SET sys_id=? WHERE id=?",
-                                arrayOf(m.sysId.toString(), localId.toString())
-                            )
-                        } else {
-                            db.writableDatabase.execSQL(
-                                """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id)
-                                   VALUES(?,?,?,?,?,?)""",
-                                arrayOf(
-                                    cid, m.body, m.date,
-                                    if (m.type == android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX) 0 else 1,
-                                    when (m.type) {
-                                        android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
-                                        android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
-                                        else -> "sent"
-                                    },
-                                    m.sysId
+                        try {
+                            if (localId != -1L) {
+                                db.writableDatabase.execSQL(
+                                    "UPDATE messages SET sys_id=? WHERE id=?",
+                                    arrayOf(m.sysId.toString(), localId.toString())
                                 )
-                            )
+                            } else {
+                                db.writableDatabase.execSQL(
+                                    """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id)
+                                       VALUES(?,?,?,?,?,?)""",
+                                    arrayOf(cid, m.body, m.date, if (isMe) 1 else 0,
+                                        when (m.type) {
+                                            android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
+                                            android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
+                                            else -> "sent"
+                                        },
+                                        m.sysId)
+                                )
+                            }
+                        } catch (_: android.database.sqlite.SQLiteException) {
                         }
                         existing.add(m.sysId)
+                        done++
+                        _initialSyncProgress.value = done.toFloat() / pending
                         changed = true
                     }
                 }
@@ -829,10 +882,11 @@ class Repository(private val context: Context) {
                 }
             } catch (_: Exception) {
             } finally {
+                _initialSyncProgress.value = null
                 _initialSyncDone.value = true
                 settings.firstImportDone = true
             }
-        }.start()
+        }
     }
 
     /** Recomputes snippet/timestamp/last_is_me from each conversation's newest message. */
@@ -846,22 +900,34 @@ class Repository(private val context: Context) {
         )
     }
 
-    /** Writes an outgoing SMS into the system Sent box (required when default app). */
+    /** Writes an outgoing SMS into the system Sent box (required when default app)
+     *  and links the new provider id to our local row, preventing re-import dups. */
     fun writeSentToSystem(address: String, body: String) {
         try {
+            val now = System.currentTimeMillis()
             val cv = ContentValues().apply {
                 put(android.provider.Telephony.Sms.ADDRESS, address)
                 put(android.provider.Telephony.Sms.BODY, body)
-                put(android.provider.Telephony.Sms.DATE, System.currentTimeMillis())
+                put(android.provider.Telephony.Sms.DATE, now)
                 put(android.provider.Telephony.Sms.READ, 1)
                 put(
                     android.provider.Telephony.Sms.TYPE,
                     android.provider.Telephony.Sms.MESSAGE_TYPE_SENT
                 )
             }
-            context.contentResolver.insert(
+            val sysId = context.contentResolver.insert(
                 android.provider.Telephony.Sms.Sent.CONTENT_URI, cv
-            )
+            )?.lastPathSegment?.toLongOrNull() ?: -1L
+            if (sysId > 0) {
+                db.writableDatabase.execSQL(
+                    """UPDATE messages SET sys_id=? WHERE id=(
+                       SELECT m.id FROM messages m
+                       JOIN conversations c ON c.id=m.conversation_id
+                       WHERE c.address=? AND m.sys_id=0 AND m.body=? AND m.is_me=1
+                       ORDER BY ABS(m.timestamp-?) LIMIT 1)""",
+                    arrayOf(sysId.toString(), address, body, now.toString())
+                )
+            }
         } catch (_: Exception) {
         }
     }

@@ -156,6 +156,17 @@ File: `MainActivity.kt`, `scripts/test-back-stack.sh`
 
 File: `data/Repository.kt`, `data/DemoData.kt`, `sms/SmsReceiver.kt`, `ui/ConversationsScreen.kt`, `scripts/test-sms-mirror.sh`
 
+## Initial-sync progress bar + OTP duplicate fix (2026-08-24)
+
+- ✅ BUG: first launch showed no progress indication while system SMS imported in background — determinate `LinearProgressIndicator` ("Loading messages") now renders under the home header while `Repository.initialSyncProgress` (0..1, null=idle) is active; bar only appears when there is pending work, dismisses on completion
+- ✅ BUG: same OTP message appeared twice after import — `SmsReceiver`/`writeSentToSystem` wrote to the system provider WITHOUT linking the returned `_ID`, so sync re-imported them whenever the SMSC timestamp skewed past the ±2 min match window; now provider row is inserted FIRST and its `_ID` is stored via `receiveMessage(..., sysId)` / linked back in `writeSentToSystem`
+- ✅ Hardened legacy linker: matches `is_me` + nearest timestamp within ±24 h (was ±2 min, no sender filter)
+- ✅ Sync runs serialized on a single-thread executor (overlapping onResume threads could double-import)
+- ✅ DB v11: migration collapses rows sharing a `sys_id`, deletes unlinked local twins of already-linked messages, creates unique partial index `idx_messages_sys_id (sys_id>0)`; onOpen recreates the index if missing; inserts tolerate constraint races
+- ✅ Verified: bulk-import bar render/dismissal (4k SMS), zero duplicate groups post-migration from fabricated v10 corruption (3 copies → 1), fresh OTP receive stores exactly 1 copy — test: `scripts/test-initial-sync.sh`
+
+File: `data/Repository.kt`, `sms/SmsReceiver.kt`, `MainActivity.kt`, `ui/ConversationsScreen.kt`
+
 ## P4 · Auto-delete old messages
 
 Settings option to auto-delete messages older than N days.
