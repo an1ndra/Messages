@@ -36,7 +36,7 @@ on_list() { dump_ui && grep -q 'content-desc="Archived"' "$TMP/ui.xml"; }
 ROW_NAME=""
 find_row() {
     dump_ui || return 1
-    for n in Jake Sarah Mom Anindra Eeee Test Emma Dad Alex Work; do
+    for n in Jake Sarah Mom Anindra Eeee Test Emma Dad Alex Work DK-VHDFC-S G-VERIFY 01 99 +1-555-123-0001; do
         grep -q "text=\"$n\"" "$TMP/ui.xml" && { ROW_NAME="$n"; return 0; }
     done
     return 1
