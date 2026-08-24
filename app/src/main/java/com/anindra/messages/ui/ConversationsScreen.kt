@@ -94,7 +94,9 @@ fun ConversationsScreen(
     val context = LocalContext.current
     var lastBackExitAt by remember { mutableLongStateOf(0L) }
     val syncDone by vm.initialSyncDone.collectAsState()
-    var minSkeletonShown by rememberSaveable { mutableStateOf(hasLoadedOnce) }
+    var minSkeletonShown by rememberSaveable {
+        mutableStateOf(hasLoadedOnce || vm.settings.firstImportDone)
+    }
     val loaded = minSkeletonShown && syncDone
 
     LaunchedEffect(Unit) {
