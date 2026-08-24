@@ -41,9 +41,15 @@ jobs:
       - name: Restore keystore
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
             echo "::error::RELEASE_KEYSTORE_BASE64 secret is not set"
+            exit 1
+          fi
+          if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::KEYSTORE_PASSWORD and KEY_PASSWORD secrets must be set together with the keystore"
             exit 1
           fi
           echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
@@ -52,12 +58,43 @@ jobs:
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          LC_ALL: C
+          TZ: UTC
         run: ./gradlew --no-daemon assembleRelease
 
       - name: Rename APK
         run: |
           src=$(ls app/build/outputs/apk/release/*.apk | head -1)
           cp "$src" "Messages-${GITHUB_REF_NAME}.apk"
+
+      - name: Verify APK signature
+        run: |
+          BT="$(ls -d "${ANDROID_HOME}"/build-tools/*/ | sort -V | tail -1)"
+          expected="cf860ec345a6810230629e24a66adaa58c311ef2dae2d77da02b85d4022bf608"
+          got="$("$BT/apksigner" verify --print-certs "Messages-${GITHUB_REF_NAME}.apk" \
+            | grep 'SHA-256 digest' | head -1 | sed 's/.*digest: *//' | tr -d ' :' | tr 'A-F' 'a-f')"
+          echo "Signing certificate SHA-256: $got"
+          if [ -z "$got" ]; then
+            echo "::error::APK has no verifiable signature (unsigned?)"
+            exit 1
+          fi
+          if [ "$got" != "$expected" ]; then
+            echo "::error::APK signed with unexpected certificate (expected $expected)"
+            exit 1
+          fi
+
+      - name: Record toolchain info
+        run: |
+          gradle_ver="$(sed -n 's|.*/gradle-\([0-9][^/]*\)-bin.zip|\1|p' gradle/wrapper/gradle-wrapper.properties)"
+          {
+            echo "### Toolchain used for this build"
+            echo ""
+            echo "- Java: \`$(java -version 2>&1 | head -1)\`"
+            echo "- Gradle: \`$gradle_ver\`"
+            echo "- Runner: \`${{ runner.os }} (${{ runner.arch }})\`"
+            echo "- Locale: \`LC_ALL=C TZ=UTC\`"
+            echo "- APK SHA-256: \`$(sha256sum "Messages-${GITHUB_REF_NAME}.apk" | cut -d' ' -f1)\`"
+          } > release-notes.md
 
       - name: Remove keystore
         if: always()
@@ -67,4 +104,5 @@ jobs:
         uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
         with:
           generate_release_notes: true
+          body_path: release-notes.md
           files: Messages-*.apk
