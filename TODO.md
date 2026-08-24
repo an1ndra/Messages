@@ -129,6 +129,7 @@ File: `data/Repository.kt`, `data/Models.kt`, `ui/ChatScreen.kt`
 - ✅ Message unlock simplified: removed biometric prompt for lock/unlock in chat context menu (direct toggle)
 - ✅ Avatar palette expanded: 16 colors, 10 demo avatar PNGs (256x256) seeded via DemoData
 - ✅ `FragmentActivity` base class (required for BiometricPrompt)
+- ✅ Smart OTP detection: keyword-gated tiered matcher in new `ui/OtpDetector.kt` (adjacent keyword, grouped "482 913"/"4433-2211", bare 6-digit with strong keyword), currency + year-shaped guards; bold primary highlight; JUnit coverage in `OtpDetectorTest` — test: `scripts/test-otp.sh`
 
 File: `MainActivity.kt`, `SettingsScreen.kt`, `SmsSupport.kt`, `AndroidManifest.xml`, `Components.kt`, `DemoData.kt`
 

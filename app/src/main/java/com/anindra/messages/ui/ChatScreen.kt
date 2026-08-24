@@ -809,15 +809,15 @@ private fun rememberLinkedText(body: String, highlight: Boolean): AnnotatedStrin
                 builder.addStyle(SpanStyle(color = linkColor), start, end)
                 builder.addStyle(SpanStyle(textDecoration = TextDecoration.Underline), start, end)
             }
-            val otpRegex = Regex("""(?<!\d)(\d{4,8})(?!\d)""")
-            otpRegex.findAll(body).forEach { match ->
-                val start = match.range.first
-                val end = match.range.last + 1
-                val isInsideUrl = urlRanges.any { s -> start >= s.first && end <= s.second }
-                if (!isInsideUrl) {
-                    builder.addStyle(SpanStyle(color = linkColor, fontWeight = FontWeight.Medium), start, end)
+            OtpDetector.findRanges(body)
+                .filter { r -> urlRanges.none { s -> r.first >= s.first && r.last + 1 <= s.second } }
+                .forEach { r ->
+                    builder.addStyle(
+                        SpanStyle(color = linkColor, fontWeight = FontWeight.Bold),
+                        r.first,
+                        r.last + 1
+                    )
                 }
-            }
             builder.toAnnotatedString()
         }
     }
