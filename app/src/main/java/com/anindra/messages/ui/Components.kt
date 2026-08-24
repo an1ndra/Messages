@@ -201,7 +201,10 @@ fun Modifier.shimmer(): Modifier {
         initialValue = 0f,
         targetValue = 1200f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(1100, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            animation = androidx.compose.animation.core.tween(
+                1100,
+                easing = androidx.compose.animation.core.FastOutSlowInEasing
+            ),
             repeatMode = androidx.compose.animation.core.RepeatMode.Restart
         )
     )
