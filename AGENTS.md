@@ -92,6 +92,11 @@ app/src/main/java/com/anindra/messages/
 8. When testing in screen make sure after complete create a script of testing so developer can run it by them to test if whenever they want.
 9. For multiple task alwasy sperate your task effeciently with other agents(create new agent), So implementation,bug fix become issue.
 10. User enabled some developement features, take advantage of it.
+11. NEVER create GitHub issues unless the user explicitly asks for it.
+12. When the user asks to create an issue: describe ONLY the problem
+    (symptoms, repro steps, root cause if known) — never include what you
+    fixed/did. Post the resolution details as a COMMENT on the issue after
+    creating it. Follow the templates in `.github/ISSUE_TEMPLATE/`.
 
 ## Test scripts (`scripts/`)
 
