@@ -143,6 +143,16 @@ File: `MainActivity.kt`, `SettingsScreen.kt`, `SmsSupport.kt`, `AndroidManifest.
 
 File: `MainActivity.kt`, `scripts/test-back-stack.sh`
 
+## Storage & first-launch fixes (2026-08-24)
+
+- ✅ BUG: demo conversations seeded on devices with real SMS (seed ran whenever local table was empty, before system sync) — now seeds only when READ_SMS granted AND system provider empty; polluted installs are auto-purged on launch
+- ✅ First launch now keeps skeleton loading until initial system-SMS import completes (`Repository.initialSyncDone` StateFlow), not a fixed 400 ms
+- ✅ SmsReceiver incoming write-back hardened: checks RoleManager role in addition to getDefaultSmsPackage, logs failures instead of swallowing
+- ✅ Verified storage guarantees: uninstall-safe (history re-imports from system provider), cross-app mirror both directions — test: `scripts/test-sms-mirror.sh` (all passing)
+- ✅ Fixed `env.sh center_of_contains` bounds regex; `test-back-stack.sh` no longer depends on demo rows
+
+File: `data/Repository.kt`, `data/DemoData.kt`, `sms/SmsReceiver.kt`, `ui/ConversationsScreen.kt`, `scripts/test-sms-mirror.sh`
+
 ## P4 · Auto-delete old messages
 
 Settings option to auto-delete messages older than N days.
