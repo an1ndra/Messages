@@ -367,85 +367,58 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                when (navRoute) {
-                    "list" -> ConversationsScreen(
-                        vm = vm,
-                        onOpenConversation = { id -> chatId = id; navRoute = "chat" },
-                        onNewChat = { navRoute = "new" },
-                        onOpenSettings = { navRoute = "settings" }
-                    )
-                    "new" -> NewChatScreen(
-                        onBack = { navRoute = "list" },
-                        onPick = { address, name ->
-                            vm.openOrCreate(address, name) { id ->
-                                chatId = id
-                                navRoute = "chat"
-                            }
+                val routeDepth = mapOf("list" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2)
+                AnimatedContent(
+                    targetState = navRoute,
+                    transitionSpec = {
+                        val from = routeDepth[initialState] ?: 0
+                        val to = routeDepth[targetState] ?: 0
+                        when {
+                            to > from -> slideInHorizontally(tween(280)) { it } + fadeIn(tween(180)) togetherWith
+                                slideOutHorizontally(tween(280)) { -it / 3 } + fadeOut(tween(150))
+                            to < from -> slideInHorizontally(tween(280)) { -it / 3 } + fadeIn(tween(180)) togetherWith
+                                slideOutHorizontally(tween(280)) { it } + fadeOut(tween(150))
+                            else -> fadeIn(tween(150)) togetherWith fadeOut(tween(150))
                         }
-                    )
-                    "settings" -> SettingsScreen(
-                        vm = vm,
-                        onBack = { navRoute = "list" },
-                        onOpenTrash = { navRoute = "trash" }
-                    )
-                    "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
-                    else -> {
-                        androidx.compose.foundation.layout.Box(
-                            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
-                        ) {
-                            AnimatedContent(
-                                targetState = navRoute,
-                                transitionSpec = {
-                                    if (targetState == "details") {
-                                        slideInHorizontally(
-                                            initialOffsetX = { it },
-                                            animationSpec = tween(300)
-                                        ) + fadeIn(
-                                            animationSpec = tween(200)
-                                        ) togetherWith slideOutHorizontally(
-                                            targetOffsetX = { -it / 3 },
-                                            animationSpec = tween(300)
-                                        ) + fadeOut(
-                                            animationSpec = tween(200)
-                                        )
-                                    } else if (initialState == "details") {
-                                        slideInHorizontally(
-                                            initialOffsetX = { -it / 3 },
-                                            animationSpec = tween(300)
-                                        ) + fadeIn(
-                                            animationSpec = tween(200)
-                                        ) togetherWith slideOutHorizontally(
-                                            targetOffsetX = { it },
-                                            animationSpec = tween(300)
-                                        ) + fadeOut(
-                                            animationSpec = tween(200)
-                                        )
-                                    } else {
-                                        fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                    },
+                    label = "nav"
+                ) { target ->
+                    androidx.compose.foundation.layout.Box(
+                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        when (target) {
+                            "list" -> ConversationsScreen(
+                                vm = vm,
+                                onOpenConversation = { id -> chatId = id; navRoute = "chat" },
+                                onNewChat = { navRoute = "new" },
+                                onOpenSettings = { navRoute = "settings" }
+                            )
+                            "new" -> NewChatScreen(
+                                onBack = { navRoute = "list" },
+                                onPick = { address, name ->
+                                    vm.openOrCreate(address, name) { id ->
+                                        chatId = id
+                                        navRoute = "chat"
                                     }
-                                },
-                                label = "nav"
-                            ) { target ->
-                                when (target) {
-                                    "chat" -> ChatScreen(
-                                        vm = vm,
-                                        conversationId = chatId,
-                                        onBack = { navRoute = "list" },
-                                        onOpenDetails = { detailsId = chatId; navRoute = "details" }
-                                    )
-                                    "details" -> ContactDetailsScreen(
-                                        vm = vm,
-                                        conversationId = detailsId,
-                                        onBack = { navRoute = "chat" }
-                                    )
-                                    else -> ChatScreen(
-                                        vm = vm,
-                                        conversationId = chatId,
-                                        onBack = { navRoute = "list" },
-                                        onOpenDetails = { detailsId = chatId; navRoute = "details" }
-                                    )
                                 }
-                            }
+                            )
+                            "settings" -> SettingsScreen(
+                                vm = vm,
+                                onBack = { navRoute = "list" },
+                                onOpenTrash = { navRoute = "trash" }
+                            )
+                            "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
+                            "details" -> ContactDetailsScreen(
+                                vm = vm,
+                                conversationId = detailsId,
+                                onBack = { navRoute = "chat" }
+                            )
+                            else -> ChatScreen(
+                                vm = vm,
+                                conversationId = chatId,
+                                onBack = { navRoute = "list" },
+                                onOpenDetails = { detailsId = chatId; navRoute = "details" }
+                            )
                         }
                     }
                 }
