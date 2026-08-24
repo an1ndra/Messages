@@ -431,20 +431,21 @@ For comprehensive testing, use the provided test scripts as examples for:
 
 ### Signing
 
-For release builds, place `release.keystore` in the project root:
+Release builds are signed automatically when `release.keystore` exists in the
+project root **and** both password environment variables are set (never commit
+the keystore or passwords):
 
 ```bash
 keytool -genkey -v -keystore release.keystore \
-  -alias messages -keyalg RSA -keysize 2048 \
-  -validity 10000 -storepass messages123
-```
+  -alias messages -keyalg RSA -keysize 2048 -validity 10000
 
-Update `app/build.gradle.kts` with your keystore passwords or use environment variables:
-
-```bash
 export KEYSTORE_PASSWORD=your_password
 export KEY_PASSWORD=your_password
+./gradlew assembleRelease
 ```
+
+Without the keystore/env vars, `assembleRelease` produces an unsigned APK
+(`app-release-unsigned.apk`) — this is what F-Droid's build server expects.
 
 ## Common Development Tasks
 
