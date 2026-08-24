@@ -36,9 +36,13 @@ Or use the helper scripts in `scripts/` (see below).
 app/src/main/java/com/anindra/messages/
 ├── MessagesApplication.kt     # owns Repository singleton
 ├── MainActivity.kt            # nav routes: list/new/chat/settings,
+│                              # single top-level BackHandler pops virtual
+│                              # stack (details→chat, trash→settings, else→list);
+│                              # NEVER override onBackPressed() — it bypasses
+│                              # Compose BackHandlers (draft save, exit guard)
 │                              # AppViewModel (AndroidViewModel), script deep links:
 │                              #   --es set_theme dark|light|system
-│                              #   --ez open_settings true
+│                              #   --ez open_settings true (cold AND warm start)
 ├── data/
 │   ├── Models.kt              # Conversation(pinned/draft/archived), Message(locked), BlockedNumber, ScheduledMessage
 │   ├── SettingsStore.kt       # SharedPreferences: theme, notifications, sounds, delivery, SIM, feature toggles, privacyMode
@@ -105,6 +109,8 @@ scripts/grant-permissions.sh  # silent grant (for scripted runs)
 scripts/run-all-tests.sh      # full sweep
 scripts/take-fdroid-screenshots.sh   # 8 F-Droid screenshots (home/chat/settings/reply × dark/light)
 scripts/test-back-nav.sh       # gesture back from chat to list
+scripts/test-back-stack.sh     # full back stack: chat→list, profile→chat,
+                               # trash→settings, exit guard, draft on button-back
 scripts/test-chat-menu.sh      # chat 3-dot menu options
 scripts/test-sim-menu.sh       # SIM selector in chat menu
 scripts/test-message-lock.sh   # message lock/unlock with biometric
