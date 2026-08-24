@@ -5,7 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import com.anindra.messages.R
 
 object DemoData {
-    private val DEMO_NUMBERS = setOf(
+    val DEMO_NUMBERS = setOf(
         "+15551230010", "+15551230020", "+15551230030",
         "+15551230040", "+15551230050", "+15551230060",
         "+15551230070", "+15551230080", "+15551230090",

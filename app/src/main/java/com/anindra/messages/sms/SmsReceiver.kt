@@ -19,7 +19,13 @@ class SmsReceiver : BroadcastReceiver() {
             val address = msg.originatingAddress ?: continue
             val body = msg.messageBody ?: continue
             repo.receiveMessage(address, body)
-            if (Telephony.Sms.getDefaultSmsPackage(context) == context.packageName) {
+            // As default handler the framework expects US to persist the SMS
+            // into the system provider; check both sources of truth since
+            // getDefaultSmsPackage can lag behind an updated role.
+            val roleManager = context.getSystemService(android.app.role.RoleManager::class.java)
+            val isDefaultHandler = Telephony.Sms.getDefaultSmsPackage(context) == context.packageName ||
+                roleManager?.isRoleHeld(android.app.role.RoleManager.ROLE_SMS) == true
+            if (isDefaultHandler) {
                 try {
                     val values = android.content.ContentValues().apply {
                         put(Telephony.Sms.ADDRESS, address)
@@ -29,7 +35,8 @@ class SmsReceiver : BroadcastReceiver() {
                         put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_INBOX)
                     }
                     context.contentResolver.insert(Telephony.Sms.Inbox.CONTENT_URI, values)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.w("SmsReceiver", "system inbox write-back failed", e)
                 }
             }
             NotificationHelper.show(context, address, body)

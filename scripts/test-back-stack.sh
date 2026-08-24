@@ -32,14 +32,37 @@ tap_desc() { local c; c=$(center_desc "$1") || { echo "[tap] '$1' not found"; re
 
 in_chat() { dump_ui && grep -q 'class="android.widget.EditText"' "$TMP/ui.xml"; }
 on_list() { dump_ui && grep -q 'content-desc="Archived"' "$TMP/ui.xml"; }
-open_profile() { tap_text "Jake" >/dev/null; sleep 2; tap_text "Jake" >/dev/null; sleep 2.5; }
+# Demo rows may be purged on devices with real SMS; use any named conversation.
+ROW_NAME=""
+find_row() {
+    dump_ui || return 1
+    for n in Jake Sarah Mom Anindra Eeee Test Emma Dad Alex Work; do
+        grep -q "text=\"$n\"" "$TMP/ui.xml" && { ROW_NAME="$n"; return 0; }
+    done
+    return 1
+}
+open_chat() {
+    adb_ shell am force-stop "$PKG" >/dev/null; sleep 1
+    adb_ shell am start -n "$ACT" >/dev/null; sleep 3.5
+    find_row && tap_text "$ROW_NAME"
+    sleep 2.5
+}
 
 info "Fresh launch"
 adb_ shell am force-stop "$PKG"; sleep 1
 adb_ shell am start -n "$ACT" >/dev/null; sleep 3.5
 
+open_profile() {
+    find_row || { fail "no conversation row"; return 1; }
+    tap_text "$ROW_NAME" >/dev/null; sleep 2
+    # chat title shows the contact name (or formatted number) — tap it
+    tap_text "$ROW_NAME" >/dev/null || tap_desc "More options" >/dev/null
+    sleep 2.5
+}
+
 info "1. Back button from chat -> list"
-tap_text "Jake" >/dev/null || { fail "row missing"; exit 1; }
+find_row || { fail "no conversation row found"; exit 1; }
+tap_text "$ROW_NAME" >/dev/null || { fail "row missing"; exit 1; }
 sleep 2.5
 if ! in_chat; then fail "chat did not open"; exit 1; fi
 adb_ shell input keyevent 4; sleep 2
@@ -62,7 +85,7 @@ tap_edittext; type_text "btnDraft"; sleep 0.5
 adb_ shell input keyevent 4; sleep 1   # first back closes the IME
 adb_ shell input keyevent 4; sleep 2   # second back leaves the chat
 on_list || fail "did not return to list"
-tap_text "Jake" >/dev/null; sleep 2
+tap_text "$ROW_NAME" >/dev/null; sleep 2
 dump_ui && grep -q 'text="[^"]*btnDraft' "$TMP/ui.xml" \
     && pass "draft restored on reopen (was saved by button-back)" \
     || fail "draft lost when leaving via button-back"

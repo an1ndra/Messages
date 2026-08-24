@@ -93,14 +93,18 @@ fun ConversationsScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var lastBackExitAt by remember { mutableLongStateOf(0L) }
-    var loaded by rememberSaveable { mutableStateOf(hasLoadedOnce) }
+    val syncDone by vm.initialSyncDone.collectAsState()
+    var minSkeletonShown by rememberSaveable { mutableStateOf(hasLoadedOnce) }
+    val loaded = minSkeletonShown && syncDone
 
     LaunchedEffect(Unit) {
-        if (!loaded) {
+        if (!minSkeletonShown) {
             kotlinx.coroutines.delay(400)
-            loaded = true
-            hasLoadedOnce = true
+            minSkeletonShown = true
         }
+    }
+    LaunchedEffect(loaded) {
+        if (loaded && !hasLoadedOnce) hasLoadedOnce = true
     }
 
     BackHandler(enabled = searching) {
