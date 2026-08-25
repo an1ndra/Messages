@@ -36,18 +36,32 @@ jobs:
       - name: Configure git identity & optional GPG signing
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           git config user.name "anindra"
           git config user.email "anindrakarmakar+git@proton.me"
-          if [ -n "$GPG_PRIVATE_KEY" ]; then
-            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-            KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
-            git config user.signingkey "$KEYID"
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "::notice::GPG_PRIVATE_KEY secret not set - commit/tag will be unsigned"
+            exit 0
+          fi
+          GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -p -m 700 "$GNUPGHOME"
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+          git config user.signingkey "$KEYID"
+          if [ -n "$GPG_PASSPHRASE" ]; then
+            echo "allow-preset-passphrase" >> "$GNUPGHOME/gpg-agent.conf"
+            echo "allow-loopback-pinentry" >> "$GNUPGHOME/gpg-agent.conf"
+            gpg-connect-agent --homedir "$GNUPGHOME" reloadagent /bye
+            KEYGRIP=$(gpg --list-secret-keys --with-colons --with-keygrip | awk -F: '$1=="grp"{print $10; exit}')
+            PRESET=$(command -v gpg-preset-passphrase || echo /usr/lib/gnupg/gpg-preset-passphrase)
+            printf '%s' "$GPG_PASSPHRASE" | "$PRESET" --preset "$KEYGRIP"
             git config commit.gpgsign true
             git config tag.gpgsign true
-            echo "GPG signing enabled ($KEYID)"
+            echo "GPG signing enabled ($KEYID, loopback passphrase)"
           else
-            echo "::notice::GPG_PRIVATE_KEY secret not set - commit/tag will be unsigned"
+            echo "::warning::GPG key imported but GPG_PASSPHRASE not set - signing disabled to avoid TTY prompt failure"
           fi
 
       - name: Compute next version
