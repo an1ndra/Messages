@@ -47,7 +47,12 @@ jobs:
           GNUPGHOME="$RUNNER_TEMP/gnupg"
           export GNUPGHOME
           mkdir -p -m 700 "$GNUPGHOME"
-          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          {
+            echo "GNUPGHOME=$GNUPGHOME"
+            echo "GPG_PASSPHRASE<<EOF"
+            printf '%s\n' "$GPG_PASSPHRASE"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
           KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
           git config user.signingkey "$KEYID"
@@ -55,14 +60,13 @@ jobs:
             GPG_WRAP="$RUNNER_TEMP/gpg-sign"
             cat > "$GPG_WRAP" <<'GPGWRAP'
           #!/bin/bash
-          printf '%s' "$GPG_PASSPHRASE" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 "$@"
+          exec gpg --batch --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" "$@"
           GPGWRAP
             chmod +x "$GPG_WRAP"
-            echo "GPG_PASSPHRASE=$GPG_PASSPHRASE" >> "$GITHUB_ENV"
             git config gpg.program "$GPG_WRAP"
             git config commit.gpgsign true
             git config tag.gpgsign true
-            echo "GPG signing enabled ($KEYID, wrapper passphrase)"
+            echo "GPG signing enabled ($KEYID, loopback passphrase)"
           else
             echo "::warning::GPG key imported but GPG_PASSPHRASE not set - signing disabled to avoid TTY prompt failure"
           fi
