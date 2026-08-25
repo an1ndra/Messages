@@ -45,6 +45,7 @@ jobs:
             exit 0
           fi
           GNUPGHOME="$RUNNER_TEMP/gnupg"
+          export GNUPGHOME
           mkdir -p -m 700 "$GNUPGHOME"
           echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
@@ -53,13 +54,16 @@ jobs:
           if [ -n "$GPG_PASSPHRASE" ]; then
             echo "allow-preset-passphrase" >> "$GNUPGHOME/gpg-agent.conf"
             echo "allow-loopback-pinentry" >> "$GNUPGHOME/gpg-agent.conf"
-            gpg-connect-agent --homedir "$GNUPGHOME" reloadagent /bye
+            gpg-connect-agent reloadagent /bye
             KEYGRIP=$(gpg --list-secret-keys --with-colons --with-keygrip | awk -F: '$1=="grp"{print $10; exit}')
             PRESET=$(command -v gpg-preset-passphrase || echo /usr/lib/gnupg/gpg-preset-passphrase)
-            printf '%s' "$GPG_PASSPHRASE" | "$PRESET" --preset "$KEYGRIP"
-            git config commit.gpgsign true
-            git config tag.gpgsign true
-            echo "GPG signing enabled ($KEYID, loopback passphrase)"
+            if printf '%s' "$GPG_PASSPHRASE" | "$PRESET" --preset "$KEYGRIP"; then
+              git config commit.gpgsign true
+              git config tag.gpgsign true
+              echo "GPG signing enabled ($KEYID, loopback passphrase)"
+            else
+              echo "::warning::Passphrase presetting failed - signing disabled to avoid TTY prompt failure"
+            fi
           else
             echo "::warning::GPG key imported but GPG_PASSPHRASE not set - signing disabled to avoid TTY prompt failure"
           fi
