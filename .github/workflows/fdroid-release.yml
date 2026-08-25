@@ -52,18 +52,17 @@ jobs:
           KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
           git config user.signingkey "$KEYID"
           if [ -n "$GPG_PASSPHRASE" ]; then
-            echo "allow-preset-passphrase" >> "$GNUPGHOME/gpg-agent.conf"
-            echo "allow-loopback-pinentry" >> "$GNUPGHOME/gpg-agent.conf"
-            gpg-connect-agent reloadagent /bye
-            KEYGRIP=$(gpg --list-secret-keys --with-colons --with-keygrip | awk -F: '$1=="grp"{print $10; exit}')
-            PRESET=$(command -v gpg-preset-passphrase || echo /usr/lib/gnupg/gpg-preset-passphrase)
-            if printf '%s' "$GPG_PASSPHRASE" | "$PRESET" --preset "$KEYGRIP"; then
-              git config commit.gpgsign true
-              git config tag.gpgsign true
-              echo "GPG signing enabled ($KEYID, loopback passphrase)"
-            else
-              echo "::warning::Passphrase presetting failed - signing disabled to avoid TTY prompt failure"
-            fi
+            GPG_WRAP="$RUNNER_TEMP/gpg-sign"
+            cat > "$GPG_WRAP" <<'GPGWRAP'
+          #!/bin/bash
+          exec gpg --batch --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" "$@"
+          GPGWRAP
+            chmod +x "$GPG_WRAP"
+            echo "GPG_PASSPHRASE=$GPG_PASSPHRASE" >> "$GITHUB_ENV"
+            git config gpg.program "$GPG_WRAP"
+            git config commit.gpgsign true
+            git config tag.gpgsign true
+            echo "GPG signing enabled ($KEYID, wrapper passphrase)"
           else
             echo "::warning::GPG key imported but GPG_PASSPHRASE not set - signing disabled to avoid TTY prompt failure"
           fi
