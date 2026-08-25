@@ -55,7 +55,7 @@ jobs:
             GPG_WRAP="$RUNNER_TEMP/gpg-sign"
             cat > "$GPG_WRAP" <<'GPGWRAP'
           #!/bin/bash
-          exec gpg --batch --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" "$@"
+          printf '%s' "$GPG_PASSPHRASE" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 "$@"
           GPGWRAP
             chmod +x "$GPG_WRAP"
             echo "GPG_PASSPHRASE=$GPG_PASSPHRASE" >> "$GITHUB_ENV"
