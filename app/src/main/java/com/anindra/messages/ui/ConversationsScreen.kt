@@ -45,6 +45,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -300,9 +301,15 @@ private fun SwipeConversationItem(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var dismissStateRef: SwipeToDismissBoxState? = null
     val dismissState = rememberSwipeToDismissBoxState(
-        positionalThreshold = { total -> total * 0.65f }
+        positionalThreshold = { total -> total * 0.65f },
+        confirmValueChange = { value ->
+            value == SwipeToDismissBoxValue.Settled ||
+                    (dismissStateRef?.progress ?: 0f) >= 0.65f
+        }
     )
+    dismissStateRef = dismissState
 
     SwipeToDismissBox(
         state = dismissState,
