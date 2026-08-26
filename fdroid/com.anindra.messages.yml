@@ -9,18 +9,19 @@ AutoName: Messages
 
 RepoType: git
 Repo: https://github.com/an1ndra/Messages.git
-
-AllowedAPKSigningKeys: cf860ec345a6810230629e24a66adaa58c311ef2dae2d77da02b85d4022bf608
+Binaries: https://github.com/an1ndra/Messages/releases/download/v%v/Messages-v%v.apk
 
 Builds:
-  - versionName: '1.0'
-    versionCode: 1
-    commit: 399dc50b95b08784e961dd0ed1d8831a2ecf4326
+  - versionName: 1.0.4
+    versionCode: 8
+    commit: f981c35d90b7d89c62aaaf425438a1e3228416b3
     subdir: app
     gradle:
       - yes
 
+AllowedAPKSigningKeys: cf860ec345a6810230629e24a66adaa58c311ef2dae2d77da02b85d4022bf608
+
 AutoUpdateMode: Version
-UpdateCheckMode: Tags ^v[0-9.]+$
-CurrentVersion: '1.0'
-CurrentVersionCode: 1
+UpdateCheckMode: Tags ^v([0-9.]+)$
+CurrentVersion: 1.0.4
+CurrentVersionCode: 8
