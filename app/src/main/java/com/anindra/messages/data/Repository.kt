@@ -5,6 +5,8 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.os.Environment
+import android.os.Handler
+import android.os.HandlerThread
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -226,8 +228,13 @@ class Repository(private val context: Context) {
     // Serializes sync runs so overlapping onResume calls cannot double-import
     private val syncExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
 
+    private val notifyThread = HandlerThread("repo-notify").apply { start() }
+    private val notifyHandler = Handler(notifyThread.looper)
+    private val notifyRunnable = Runnable { listeners.forEach { it() } }
+
     fun notifyChanged() {
-        listeners.forEach { it() }
+        notifyHandler.removeCallbacks(notifyRunnable)
+        notifyHandler.postDelayed(notifyRunnable, 100)
     }
 
     private fun <T> observe(block: () -> T): Flow<T> = callbackFlow {
