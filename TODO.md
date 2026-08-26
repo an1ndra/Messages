@@ -267,6 +267,7 @@ File: `ui/ContactDetailsScreen.kt`, `data/SettingsStore.kt`, `ui/SettingsScreen.
 - ✅ Issue #104+#105: `refreshContactNames()` and `syncFromSystem()` ran unconditionally on every `onResume()`. Added 5-minute throttle via `lastResumeTime` timestamp in `MainActivity`
 - ✅ Issue #108: `notifyChanged()` was called per-write during sync. `syncFromSystem()` already batches the single call at end; the real fix was #104/#105 throttle reducing resume-time calls
 - ✅ Issue #114: `ImageBubble` and `PersonAvatar` decoded bitmaps from disk on every recomposition/scroll with zero caching. Added singleton `BitmapCache` (`LruCache`, 50 entries) in `Components.kt`; both composables now check cache before disk decode and store decoded bitmaps after
+- ✅ Issue #112: `syncFromSystem()` performed individual INSERT/UPDATE per message without explicit SQLite transaction (each auto-commits = fsync per statement). Wrapped the entire sync loop in `beginTransaction()`/`setTransactionSuccessful()`/`endTransaction()`. Reduces ~20,000 fsyncs to 1 for 10k messages — expected 10-100x faster initial sync
 - ✅ Bugfix: `ChatTopBar` guarded block/unblock menu with `SettingsStore::blockingEnabled.javaClass != null` (always true). Replaced with proper `blockingEnabled: Boolean` parameter
 
 File: `ui/ChatScreen.kt`, `ui/ConversationsScreen.kt`, `data/Repository.kt`, `MainActivity.kt`, `ui/Components.kt`
