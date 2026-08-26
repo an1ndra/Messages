@@ -145,7 +145,17 @@ private fun loadContactPhoto(context: Context, number: String): Bitmap? {
             val photoUri = if (c.moveToFirst()) c.getString(0) else null
             if (photoUri.isNullOrBlank()) null
             else resolver.openInputStream(Uri.parse(photoUri))?.use { input ->
-                BitmapFactory.decodeStream(input)
+                val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeStream(input, null, opts)
+                val req = 144 * context.resources.displayMetrics.densityDpi / 160
+                var sample = 1
+                while (opts.outWidth / sample > req * 2 || opts.outHeight / sample > req * 2) {
+                    sample *= 2
+                }
+                val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sample }
+                resolver.openInputStream(Uri.parse(photoUri))?.use { s ->
+                    BitmapFactory.decodeStream(s, null, decodeOpts)
+                }
             }
         }
     } catch (_: Exception) {
