@@ -1204,7 +1204,10 @@ fun MessageRow(
 @Composable
 private fun ImageBubble(uri: String, isMe: Boolean) {
     val context = LocalContext.current
-    val bitmap by produceState<Bitmap?>(initialValue = null, uri) {
+    val cached = remember(uri) { BitmapCache.get(uri) }
+    val bitmap by produceState<Bitmap?>(initialValue = cached, uri) {
+        val hit = BitmapCache.get(uri)
+        if (hit != null) { value = hit; return@produceState }
         value = withContext(Dispatchers.IO) {
             try {
                 context.contentResolver.openInputStream(Uri.parse(uri))?.use { stream ->
@@ -1223,6 +1226,8 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
                 }
             } catch (_: Exception) {
                 null
+            }.also { bmp ->
+                if (bmp != null) BitmapCache.put(uri, bmp)
             }
         }
     }
