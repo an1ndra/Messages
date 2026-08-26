@@ -214,6 +214,13 @@ File: `ui/ConversationsScreen.kt`, `scripts/test-archive-undo.sh`
 
 File: `sms/QuickReplyReceiver.kt`, `scripts/test-quick-reply.sh`
 
+## Chat list O(n²) fix (2026-08-26)
+
+- ✅ Issue #94: `messages.indexOfFirst { it.id == msg.id }` ran inside the LazyColumn `items` lambda — O(n) per composed item, O(n²) per frame during scroll; replaced with `itemsIndexed(messages, key = { _, msg -> msg.id })` so the index comes from LazyListScope directly (zero lookups, zero allocations)
+- ✅ Regression script opens a conversation, flings to top to assert the idx==0 "Today" divider renders (chat opens bottom-scrolled, so the first divider is lazily off-screen — assertion scrolls up first), plus asserts the last-own-message status line (`H:MM • SMS`) at the bottom — test: `scripts/test-chat-render.sh`
+
+File: `ui/ChatScreen.kt`, `scripts/test-chat-render.sh`
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots

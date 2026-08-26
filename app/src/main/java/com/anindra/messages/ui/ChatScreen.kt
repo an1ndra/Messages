@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -523,8 +524,7 @@ fun ChatScreen(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(messages, key = { it.id }) { msg ->
-                    val idx = messages.indexOfFirst { it.id == msg.id }
+                itemsIndexed(messages, key = { _, msg -> msg.id }) { idx, msg ->
                     MessageRow(
                         msg = msg,
                         showDividerBefore = idx == 0 || !sameDay(messages[idx - 1].timestamp, msg.timestamp),
