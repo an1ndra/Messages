@@ -82,7 +82,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _themeState = androidx.compose.runtime.mutableStateOf(settings.themeMode)
 
-    fun messages(conversationId: Long): Flow<List<Message>> = repo.messages(conversationId)
+    fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> =
+        repo.messages(conversationId, limit, offset)
+
+    fun messageCount(conversationId: Long): Int = repo.messageCount(conversationId)
 
     fun conversationById(id: Long): Flow<Conversation?> =
         repo.conversationByIdFlow(id)
