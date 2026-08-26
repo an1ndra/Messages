@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.ContactsContract
@@ -95,6 +96,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -127,9 +129,11 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val EMOJIS = listOf("👍", "😂", "❤️", "🔥", "😢", "😮", "🙏", "🎉")
 
@@ -1089,18 +1093,21 @@ fun MessageRow(
 @Composable
 private fun ImageBubble(uri: String, isMe: Boolean) {
     val context = LocalContext.current
-    val bitmap = remember(uri) {
-        try {
-            context.contentResolver.openInputStream(Uri.parse(uri))?.use {
-                BitmapFactory.decodeStream(it)
+    val bitmap by produceState<Bitmap?>(initialValue = null, uri) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                context.contentResolver.openInputStream(Uri.parse(uri))?.use {
+                    BitmapFactory.decodeStream(it)
+                }
+            } catch (_: Exception) {
+                null
             }
-        } catch (_: Exception) {
-            null
         }
     }
-    if (bitmap != null) {
+    val bmp = bitmap
+    if (bmp != null) {
         Image(
-            bitmap = bitmap.asImageBitmap(),
+            bitmap = bmp.asImageBitmap(),
             contentDescription = "Photo",
             contentScale = ContentScale.Crop,
             modifier = Modifier

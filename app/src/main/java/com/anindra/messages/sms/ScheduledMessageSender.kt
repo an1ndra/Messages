@@ -29,11 +29,20 @@ class ScheduledMessageSender : BroadcastReceiver() {
                     body
                 )
                 if (stored != null) {
-                    SmsSender.send(
-                        context, stored.id, address, body, subId,
-                        repo.settings.deliveryReportsEnabled
-                    )
+                    try {
+                        SmsSender.send(
+                            context, stored.id, address, body, subId,
+                            repo.settings.deliveryReportsEnabled
+                        )
+                    } catch (_: Exception) {
+                        // hand-off failed but the text is durably stored — surface it as
+                        // a retriable failed message instead of leaving status "sending"
+                        repo.markMessageStatusSuspend(stored.id, "failed")
+                    }
                 }
+                // the schedule entry must always go away once the content lives on
+                // as a normal message row; keeping it would leave a ghost that can
+                // never fire again (the alarm is one-shot)
                 repo.deleteScheduledMessage(id)
             } catch (_: Exception) {
             } finally {
