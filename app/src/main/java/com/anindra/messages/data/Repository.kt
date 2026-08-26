@@ -858,52 +858,56 @@ class Repository(private val context: Context) {
                 val pending = byAddress.values.sumOf { list -> list.count { it.sysId !in existing } }
                 if (pending > 0) _initialSyncProgress.value = 0f
 
-                var done = 0
                 var changed = false
-                byAddress.forEach { (addr, msgs) ->
-                    if (msgs.all { it.sysId in existing }) return@forEach
-                    val cid = getOrCreateConversationBlocking(addr)
-                    msgs.forEach { m ->
-                        if (m.sysId in existing) return@forEach
-                        val isMe = m.type != android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX
-                        // Link a locally-stored copy (same body within ±24 h) instead of
-                        // duplicating; SMSC timestamps can skew hours from device clock.
-                        var localId = -1L
-                        db.readableDatabase.rawQuery(
-                            """SELECT id FROM messages
-                               WHERE conversation_id=? AND sys_id=0 AND body=? AND is_me=?
-                                 AND ABS(timestamp-?) < 86400000
-                               ORDER BY ABS(timestamp-?) LIMIT 1""",
-                            arrayOf(cid.toString(), m.body, if (isMe) "1" else "0",
-                                m.date.toString(), m.date.toString())
-                        ).use { c -> if (c.moveToFirst()) localId = c.getLong(0) }
+                db.writableDatabase.beginTransaction()
+                try {
+                    var done = 0
+                    byAddress.forEach { (addr, msgs) ->
+                        if (msgs.all { it.sysId in existing }) return@forEach
+                        val cid = getOrCreateConversationBlocking(addr)
+                        msgs.forEach { m ->
+                            if (m.sysId in existing) return@forEach
+                            val isMe = m.type != android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX
+                            var localId = -1L
+                            db.readableDatabase.rawQuery(
+                                """SELECT id FROM messages
+                                   WHERE conversation_id=? AND sys_id=0 AND body=? AND is_me=?
+                                     AND ABS(timestamp-?) < 86400000
+                                   ORDER BY ABS(timestamp-?) LIMIT 1""",
+                                arrayOf(cid.toString(), m.body, if (isMe) "1" else "0",
+                                    m.date.toString(), m.date.toString())
+                            ).use { c -> if (c.moveToFirst()) localId = c.getLong(0) }
 
-                        try {
-                            if (localId != -1L) {
-                                db.writableDatabase.execSQL(
-                                    "UPDATE messages SET sys_id=? WHERE id=?",
-                                    arrayOf(m.sysId.toString(), localId.toString())
-                                )
-                            } else {
-                                db.writableDatabase.execSQL(
-                                    """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id)
-                                       VALUES(?,?,?,?,?,?)""",
-                                    arrayOf(cid, m.body, m.date, if (isMe) 1 else 0,
-                                        when (m.type) {
-                                            android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
-                                            android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
-                                            else -> "sent"
-                                        },
-                                        m.sysId)
-                                )
+                            try {
+                                if (localId != -1L) {
+                                    db.writableDatabase.execSQL(
+                                        "UPDATE messages SET sys_id=? WHERE id=?",
+                                        arrayOf(m.sysId.toString(), localId.toString())
+                                    )
+                                } else {
+                                    db.writableDatabase.execSQL(
+                                        """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id)
+                                           VALUES(?,?,?,?,?,?)""",
+                                        arrayOf(cid, m.body, m.date, if (isMe) 1 else 0,
+                                            when (m.type) {
+                                                android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
+                                                android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
+                                                else -> "sent"
+                                            },
+                                            m.sysId)
+                                    )
+                                }
+                            } catch (_: android.database.sqlite.SQLiteException) {
                             }
-                        } catch (_: android.database.sqlite.SQLiteException) {
+                            existing.add(m.sysId)
+                            done++
+                            _initialSyncProgress.value = done.toFloat() / pending
+                            changed = true
                         }
-                        existing.add(m.sysId)
-                        done++
-                        _initialSyncProgress.value = done.toFloat() / pending
-                        changed = true
                     }
+                    db.writableDatabase.setTransactionSuccessful()
+                } finally {
+                    db.writableDatabase.endTransaction()
                 }
 
                 val stale = db.readableDatabase.rawQuery(
