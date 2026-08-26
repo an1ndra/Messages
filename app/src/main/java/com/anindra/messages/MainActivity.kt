@@ -311,6 +311,14 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         requestSmsPermissions()
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val modes = window.context.display?.supportedModes
+            val highRefresh = modes?.maxByOrNull { it.refreshRate }
+            if (highRefresh != null) {
+                window.attributes.preferredDisplayModeId = highRefresh.modeId
+            }
+        }
+
         val bootVm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         if (bootVm.settings.privacyModeEnabled) {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
