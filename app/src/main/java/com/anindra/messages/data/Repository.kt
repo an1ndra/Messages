@@ -266,6 +266,33 @@ class Repository(private val context: Context) {
         out
     }
 
+    fun conversationByIdFlow(id: Long): Flow<Conversation?> = observe {
+        var out: Conversation? = null
+        db.readableDatabase.rawQuery(
+            """SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date,deleted_at
+               FROM conversations WHERE id=? AND deleted_at=0""",
+            arrayOf(id.toString())
+        ).use { c ->
+            if (c.moveToFirst()) {
+                out = Conversation(
+                    id = c.getLong(0),
+                    address = c.getString(1),
+                    name = c.getString(2),
+                    snippet = c.getString(3),
+                    timestamp = c.getLong(4),
+                    unreadCount = c.getInt(5),
+                    isMe = c.getInt(6) == 1,
+                    archived = c.getInt(7) == 1,
+                    pinned = c.getInt(8) == 1,
+                    draft = c.getString(9),
+                    draftDate = c.getLong(10),
+                    deletedAt = c.getLong(11)
+                )
+            }
+        }
+        out
+    }
+
     fun trashedConversations(): Flow<List<Conversation>> = observe {
         val out = mutableListOf<Conversation>()
         db.readableDatabase.rawQuery(

@@ -85,7 +85,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun messages(conversationId: Long): Flow<List<Message>> = repo.messages(conversationId)
 
     fun conversationById(id: Long): Flow<Conversation?> =
-        conversations.map { list -> list.firstOrNull { it.id == id } }
+        repo.conversationByIdFlow(id)
 
     fun markRead(id: Long) = scope.launch { repo.markReadSuspend(id) }
 
@@ -265,6 +265,8 @@ class MainActivity : FragmentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
+
+    private var lastResumeTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -450,8 +452,12 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         val repo = (application as MessagesApplication).repository
-        repo.syncFromSystem()
-        repo.refreshContactNames()
+        val now = System.currentTimeMillis()
+        if (now - lastResumeTime > 5 * 60_000L) {
+            repo.syncFromSystem()
+            repo.refreshContactNames()
+            lastResumeTime = now
+        }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
