@@ -46,12 +46,18 @@ object NotificationHelper {
         val convoId = app.repository.conversationIdForAddress(from)
         if (convoId != null && !app.repository.getConversationNotificationsEnabled(convoId)) return
 
+        // stable per-conversation id: hashCode collisions between different
+        // senders would otherwise overwrite each other's PendingIntents and
+        // dismiss the wrong notification on quick-reply
+        val notifId = (convoId ?: from.hashCode().toLong()).toInt()
+        val reqCode = notifId and 0x7FFFFFFF
+
         playReceiveSound(context)
 
         val privacyMode = app.repository.settings.privacyModeEnabled
 
         val tap = PendingIntent.getActivity(
-            context, 0,
+            context, reqCode,
             Intent(context, MainActivity::class.java).apply {
                 putExtra("open_conversation_address", from)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -60,8 +66,9 @@ object NotificationHelper {
         )
 
         val replyIntent = PendingIntent.getBroadcast(
-            context, from.hashCode(),
-            QuickReplyReceiver.createReplyIntent(context, from, from, from.hashCode()),
+            context, reqCode,
+            QuickReplyReceiver.createReplyIntent(context, from, from)
+                .putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
 
@@ -85,7 +92,7 @@ object NotificationHelper {
             .build()
 
         try {
-            NotificationManagerCompat.from(context).notify(from.hashCode(), notif)
+            NotificationManagerCompat.from(context).notify(notifId, notif)
         } catch (_: SecurityException) {
         }
     }
@@ -95,8 +102,12 @@ object NotificationHelper {
         ensureChannel(context)
         if (!canPost(context)) return
 
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val failId = (app.repository.conversationIdForAddress(to) ?: to.hashCode().toLong()).toInt()
+
+        // "failed" tag decouples failure notifications from incoming-message ids
         val tap = PendingIntent.getActivity(
-            context, 1,
+            context, failId and 0x7FFFFFFF,
             Intent(context, MainActivity::class.java).apply {
                 putExtra("open_conversation_address", to)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -113,7 +124,7 @@ object NotificationHelper {
             .build()
 
         try {
-            NotificationManagerCompat.from(context).notify("failed:$to".hashCode(), notif)
+            NotificationManagerCompat.from(context).notify("failed", failId, notif)
         } catch (_: SecurityException) {
         }
     }
