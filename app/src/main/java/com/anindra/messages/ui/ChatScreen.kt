@@ -594,7 +594,9 @@ fun ChatScreen(
     }
 
     if (showForwardPicker) {
+        val vmContacts by vm.contacts.collectAsState()
         ForwardPicker(
+            contacts = vmContacts,
             onPick = { address, name ->
                 showForwardPicker = false
                 vm.openOrCreate(address, name) { targetId ->
@@ -1414,11 +1416,12 @@ private fun SimPickerDialog(
 
 @Composable
 private fun ForwardPicker(
+    contacts: List<Contact>,
     onPick: (String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    val contacts = rememberContacts().filter {
+    val filtered = contacts.filter {
         it.name.contains(query, ignoreCase = true) || it.number.contains(query)
     }
     AlertDialog(
@@ -1441,7 +1444,7 @@ private fun ForwardPicker(
                 )
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(Modifier.heightIn(max = 300.dp)) {
-                    items(contacts) { contact ->
+                    items(filtered) { contact ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier

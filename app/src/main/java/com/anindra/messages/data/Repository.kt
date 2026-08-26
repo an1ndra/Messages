@@ -389,7 +389,7 @@ class Repository(private val context: Context) {
     fun conversationByIdSuspend(id: Long): Conversation? {
         var found: Conversation? = null
         db.readableDatabase.rawQuery(
-            "SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date FROM conversations WHERE id=?",
+            "SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date FROM conversations WHERE id=? AND deleted_at=0",
             arrayOf(id.toString())
         ).use { c ->
             if (c.moveToFirst()) found = Conversation(
@@ -762,26 +762,31 @@ class Repository(private val context: Context) {
         return found
     }
 
+    private val contactCache = HashMap<String, Pair<String?, Long>>()
+    private val CONTACT_CACHE_TTL = 5 * 60 * 1000L
+
     fun contactNameFor(address: String): String? {
-        val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-        val nameCol = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
-        val lastDigits = address.filter { it.isDigit() }.takeLast(8)
-        if (lastDigits.isBlank()) return null
+        val now = System.currentTimeMillis()
+        contactCache[address]?.let { (name, ts) ->
+            if (now - ts < CONTACT_CACHE_TTL) return name
+        }
+        val resolved = lookupContactName(address)
+        contactCache[address] = resolved to now
+        return resolved
+    }
+
+    private fun lookupContactName(address: String): String? {
+        if (address.isBlank()) return null
         return try {
+            val lookupUri = android.net.Uri.withAppendedPath(
+                android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                android.net.Uri.encode(address)
+            )
             context.contentResolver.query(
-                uri,
-                arrayOf(nameCol),
-                android.provider.ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER + " LIKE ?",
-                arrayOf("%$lastDigits%"),
-                null
+                lookupUri,
+                arrayOf(android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME),
+                null, null, null
             )?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
-                ?: context.contentResolver.query(
-                    uri,
-                    arrayOf(nameCol),
-                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?",
-                    arrayOf("%$lastDigits%"),
-                    null
-                )?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
         } catch (_: SecurityException) {
             null
         }
@@ -857,9 +862,14 @@ class Repository(private val context: Context) {
                     }
                 }
 
-                val existing = HashSet<Long>()
-                db.readableDatabase.rawQuery("SELECT sys_id FROM messages WHERE sys_id!=0", null).use { c ->
-                    while (c.moveToNext()) existing.add(c.getLong(0))
+                val incomingSysIds = byAddress.values.flatMapTo(mutableSetOf()) { list -> list.map { it.sysId } }
+                val existing = mutableSetOf<Long>()
+                incomingSysIds.chunked(500).forEach { chunk ->
+                    val ph = chunk.joinToString(",") { "?" }
+                    db.readableDatabase.rawQuery(
+                        "SELECT sys_id FROM messages WHERE sys_id IN ($ph)",
+                        chunk.map { it.toString() }.toTypedArray()
+                    ).use { c -> while (c.moveToNext()) existing.add(c.getLong(0)) }
                 }
 
                 val pending = byAddress.values.sumOf { list -> list.count { it.sysId !in existing } }

@@ -193,11 +193,15 @@ fun formatDividerTime(ts: Long): String {
 
 fun formatTimeOnly(ts: Long): String = timeFmt.format(zoned(ts))
 
-fun sameDay(a: Long, b: Long): Boolean =
-    zoned(a).toLocalDate() == zoned(b).toLocalDate()
+private fun epochDay(ts: Long): Long {
+    val offset = zone.rules.getOffset(Instant.ofEpochMilli(ts))
+    return (ts + offset.totalSeconds * 1000L) / 86400000L
+}
+
+fun sameDay(a: Long, b: Long): Boolean = epochDay(a) == epochDay(b)
 
 private fun isYesterday(ts: Long): Boolean =
-    zoned(ts).toLocalDate() == LocalDate.now(zone).minusDays(1)
+    epochDay(ts) == epochDay(System.currentTimeMillis()) - 1
 
 @Composable
 fun UnreadBadge(count: Int, modifier: Modifier = Modifier) {
