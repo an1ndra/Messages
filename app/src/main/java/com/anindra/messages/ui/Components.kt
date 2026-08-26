@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,7 +46,16 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import android.util.LruCache
 import java.util.Locale
+
+object BitmapCache {
+    private val cache = object : LruCache<String, Bitmap>(50) {
+        override fun sizeOf(key: String, value: Bitmap) = 1
+    }
+    fun get(key: String): Bitmap? = cache.get(key)
+    fun put(key: String, bitmap: Bitmap) { cache.put(key, bitmap) }
+}
 
 // Google Messages avatar palette
 private val avatarColors = listOf(
@@ -85,8 +95,15 @@ fun PersonAvatar(
     tint: Color? = null
 ) {
     val context = LocalContext.current
-    val photo by produceState<Bitmap?>(initialValue = null, key) {
-        value = withContext(Dispatchers.IO) { loadContactPhoto(context, key) }
+    val cached = remember(key) { BitmapCache.get(key) }
+    val photo by produceState<Bitmap?>(initialValue = cached, key) {
+        val hit = BitmapCache.get(key)
+        if (hit != null) { value = hit; return@produceState }
+        value = withContext(Dispatchers.IO) {
+            loadContactPhoto(context, key).also { bmp ->
+                if (bmp != null) BitmapCache.put(key, bmp)
+            }
+        }
     }
     Box(
         modifier = modifier
