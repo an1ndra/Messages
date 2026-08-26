@@ -189,6 +189,14 @@ File: `data/SettingsStore.kt`, `data/Repository.kt`
 - ✅ Removed the duplicate "Update fdroiddata MR" step + `update_fdroiddata` input from `fdroid-release.yml` (Release workflow is now the single owner; no push race)
 - ✅ `fdroid-release.yml` deleted — one-click UI release-cutting dropped; releases are cut locally (bump + signed commit/tag push), `release.yml` handles everything after
 
+## Contact picker truncation fix (2026-08-26)
+
+- ✅ Issue #98: NewChatScreen hard-capped contacts at 200 (`out.size < 200`) with no truncation indicator; worse, the picker's search filter ran POST-truncation, so contacts beyond #200 were unfindable by name
+- ✅ Removed the cap; `rememberContacts()` loads unbounded off the main thread via `produceState` + `Dispatchers.IO` (same pattern as contact photos in Components.kt); LazyColumn already virtualizes rendering
+- ✅ Regression script seeds >200 uniquely-named ("ZzqNNN", sort-last) contacts via parallel content-provider workers, then asserts the LAST one appears when searched — test: `scripts/test-contacts-limit.sh`
+
+File: `ui/NewChatScreen.kt`, `scripts/test-contacts-limit.sh`
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots
