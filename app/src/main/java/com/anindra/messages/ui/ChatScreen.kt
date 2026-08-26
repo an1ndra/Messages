@@ -130,7 +130,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -181,7 +180,22 @@ fun ChatScreen(
         kotlinx.coroutines.delay(800)
         bannerVisible = true
     }
-    var sendCountdownJob by remember { mutableStateOf<Job?>(null) }
+    // bumping sendAttempt (re)arms the countdown effect; Compose cancels the
+    // previous attempt automatically — no Job state to race against (#93)
+    var sendAttempt by remember { mutableIntStateOf(0) }
+    LaunchedEffect(sendAttempt) {
+        if (sendAttempt == 0 || pendingSendText.isEmpty() || sendCountdown <= 0) return@LaunchedEffect
+        while (sendCountdown > 0) {
+            delay(1000L)
+            sendCountdown--
+        }
+        val toSend = pendingSendText
+        pendingSendText = ""
+        vm.send(conversationId, toSend)
+        vm.saveDraft(conversationId, "")
+        draft = ""
+        showEmoji = false
+    }
 
     // SIM management
     var currentSimId by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
@@ -470,20 +484,7 @@ fun ChatScreen(
                             if (vm.settings.delayedSendingEnabled) {
                                 pendingSendText = text
                                 sendCountdown = vm.settings.delaySeconds
-                                sendCountdownJob?.cancel()
-                                sendCountdownJob = scope.launch {
-                                    for (i in sendCountdown downTo 1) {
-                                        sendCountdown = i
-                                        delay(1000L)
-                                    }
-                                    sendCountdown = 0
-                                    val toSend = pendingSendText
-                                    pendingSendText = ""
-                                    vm.send(conversationId, toSend)
-                                    vm.saveDraft(conversationId, "")
-                                    draft = ""
-                                    showEmoji = false
-                                }
+                                sendAttempt++
                             } else {
                                 vm.send(conversationId, text)
                                 vm.saveDraft(conversationId, "")
@@ -580,8 +581,7 @@ fun ChatScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         TextButton(onClick = {
-                            sendCountdownJob?.cancel()
-                            sendCountdownJob = null
+                            sendAttempt++          // cancels the ticking effect
                             sendCountdown = 0
                             pendingSendText = ""
                         }) {

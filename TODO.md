@@ -241,6 +241,14 @@ File: `sms/ScheduledMessageSender.kt`, `sms/SmsReceiver.kt`, `ui/ChatScreen.kt`,
 
 File: `sms/SmsSupport.kt`, `MessagesApplication.kt`, `MainActivity.kt`, `ui/ConversationsScreen.kt`, `ui/Components.kt`
 
+## Medium/low batch B fixes (2026-08-26)
+
+- ✅ Issue #92: `NotificationHelper` used `from.hashCode()` for notification ids and QuickReplyReceiver's PendingIntent, so two senders sharing a hash could overwrite each other's notification; `showSendFailed()` also collided with incoming ids. Now uses `(convoId ?: from.hashCode().toLong()).toInt()` as the stable notifId; `QuickReplyReceiver` reads `EXTRA_NOTIF_ID` from the intent (with hashCode fallback for stale intents); `showSendFailed` posts under a `"failed"` tag to decouple from incoming ids
+- ✅ Issue #93: `ChatScreen` stored the delayed-send `Job` in `mutableStateOf` — cancel and restart raced against Compose recomposition. Replaced with a counter-based `LaunchedEffect(sendAttempt)` that Compose cancels/rearms automatically on key change; no mutable `Job` state needed
+- ✅ Verified: `test-delayed-send.sh` PASS (auto-send after 5s countdown, Cancel aborts with no Sent-box entry)
+
+File: `sms/SmsSupport.kt`, `sms/QuickReplyReceiver.kt`, `ui/ChatScreen.kt`
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots

@@ -17,7 +17,9 @@ class QuickReplyReceiver : BroadcastReceiver() {
         val address = intent.getStringExtra(EXTRA_ADDRESS) ?: return
         val from = intent.getStringExtra(EXTRA_FROM) ?: address
         val replyText = extractReplyText(intent) ?: return
-        val notificationId = from.hashCode()
+        // NotificationHelper passes the exact id it posted under; the hashCode
+        // fallback covers stale intents from before the id scheme changed
+        val notificationId = intent.getIntExtra(EXTRA_NOTIF_ID, from.hashCode())
 
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
@@ -55,12 +57,12 @@ class QuickReplyReceiver : BroadcastReceiver() {
         const val ACTION_REPLY = "com.anindra.messages.QUICK_REPLY"
         const val EXTRA_ADDRESS = "address"
         const val EXTRA_FROM = "from"
+        const val EXTRA_NOTIF_ID = "notif_id"
 
         fun createReplyIntent(
             context: Context,
             address: String,
-            from: String,
-            requestCode: Int
+            from: String
         ): Intent {
             return Intent(ACTION_REPLY).apply {
                 setPackage(context.packageName)

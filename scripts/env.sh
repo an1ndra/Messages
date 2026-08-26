@@ -32,6 +32,10 @@ dump_ui() {
     [ -f "$TMP/ui.xml" ]
 }
 
+# Split the dumped hierarchy into individual <node> tags — some builds pack
+# many nodes onto one line, so line-based greps over ui.xml are unreliable.
+ui_tags() { grep -oE '<node[^>]*>' "$TMP/ui.xml"; }
+
 # Find node by text/content-desc and print "x y" of its center, or fail.
 # Usage: center_of "Start chat"
 center_of() {
