@@ -1,14 +1,15 @@
 package com.anindra.messages.sms
 
-import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
-import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
 import com.anindra.messages.MessagesApplication
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class QuickReplyReceiver : BroadcastReceiver() {
 
@@ -18,23 +19,30 @@ class QuickReplyReceiver : BroadcastReceiver() {
         val replyText = extractReplyText(intent) ?: return
         val notificationId = from.hashCode()
 
-        val app = context.applicationContext as MessagesApplication
-        val repo = app.repository
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                val app = context.applicationContext as MessagesApplication
+                val repo = app.repository
 
-        val convoId = repo.getOrCreateConversationBlocking(address)
-        val message = repo.sendText(convoId, replyText) ?: return
+                val convoId = repo.getOrCreateConversationBlocking(address)
+                val message = repo.sendText(convoId, replyText)
 
-        Thread {
-            val subId = repo.settings.simSubscriptionId
-            SmsSender.send(context, message.id, address, replyText, subId)
-            if (android.provider.Telephony.Sms.getDefaultSmsPackage(context) == context.packageName) {
-                repo.writeSentToSystem(address, replyText)
+                if (message != null) {
+                    try {
+                        NotificationManagerCompat.from(context).cancel(notificationId)
+                    } catch (_: SecurityException) {
+                    }
+                    val subId = repo.settings.simSubscriptionId
+                    SmsSender.send(context, message.id, address, replyText, subId)
+                    if (android.provider.Telephony.Sms.getDefaultSmsPackage(context) == context.packageName) {
+                        repo.writeSentToSystem(address, replyText)
+                    }
+                }
+            } catch (_: Exception) {
+            } finally {
+                pendingResult.finish()
             }
-        }.start()
-
-        try {
-            NotificationManagerCompat.from(context).cancel(notificationId)
-        } catch (_: SecurityException) {
         }
     }
 
