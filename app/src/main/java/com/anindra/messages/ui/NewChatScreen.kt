@@ -27,6 +27,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,35 +36,39 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class Contact(val name: String, val number: String)
 
 @Composable
 fun rememberContacts(): List<Contact> {
     val context = LocalContext.current
-    return remember {
-        val out = mutableListOf<Contact>()
-        try {
-            context.contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                arrayOf(
-                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                    ContactsContract.CommonDataKinds.Phone.NUMBER
-                ),
-                null, null,
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
-            )?.use { c ->
-                val seen = mutableSetOf<String>()
-                while (c.moveToNext() && out.size < 200) {
-                    val name = c.getString(0) ?: continue
-                    val num = c.getString(1) ?: continue
-                    if (seen.add(num.filter { it.isDigit() })) out.add(Contact(name, num))
+    return produceState(initialValue = emptyList()) {
+        value = withContext(Dispatchers.IO) {
+            val out = mutableListOf<Contact>()
+            try {
+                context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        ContactsContract.CommonDataKinds.Phone.NUMBER
+                    ),
+                    null, null,
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+                )?.use { c ->
+                    val seen = mutableSetOf<String>()
+                    while (c.moveToNext()) {
+                        val name = c.getString(0) ?: continue
+                        val num = c.getString(1) ?: continue
+                        if (seen.add(num.filter { it.isDigit() })) out.add(Contact(name, num))
+                    }
                 }
+            } catch (_: SecurityException) {
             }
-        } catch (_: SecurityException) {
+            out
         }
-        out
-    }
+    }.value
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
