@@ -322,12 +322,12 @@ class Repository(private val context: Context) {
         out
     }
 
-    fun messages(conversationId: Long): Flow<List<Message>> = observe {
+    fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> = observe {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
             """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked FROM messages
-               WHERE conversation_id=? ORDER BY timestamp ASC""",
-            arrayOf(conversationId.toString())
+               WHERE conversation_id=? ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
+            arrayOf(conversationId.toString(), limit.toString(), offset.toString())
         ).use { c ->
             while (c.moveToNext()) {
                 out.add(
@@ -346,7 +346,16 @@ class Repository(private val context: Context) {
                 )
             }
         }
-        out
+        out.reversed()
+    }
+
+    fun messageCount(conversationId: Long): Int {
+        var count = 0
+        db.readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM messages WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { if (it.moveToFirst()) count = it.getInt(0) }
+        return count
     }
 
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =

@@ -272,7 +272,7 @@ File: `ui/ChatScreen.kt`, `ui/ConversationsScreen.kt`, `data/Repository.kt`, `Ma
 
 ## Deferred
 
-- ⏳ Issue #106: No message pagination — full conversation loaded into memory. Requires Paging 3 library integration; defer to future release
+- ✅ Issue #106: Implemented simple LIMIT200 pagination. `Repository.messages()` now accepts `limit`/`offset` params (default `Int.MAX_VALUE`/0 for backward compat). Added `messageCount()`. `ChatScreen` maintains `pageLimit` state starting at200; "Load earlier messages" button at top of chat list increases limit by200. No new dependencies.
 
 ## Regression guardrails
 

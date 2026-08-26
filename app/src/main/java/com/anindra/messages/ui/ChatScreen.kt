@@ -148,7 +148,10 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val convo by vm.conversationById(conversationId).collectAsState(initial = null)
-    val messages by vm.messages(conversationId).collectAsState(initial = emptyList())
+    var pageLimit by remember { mutableIntStateOf(200) }
+    val messages by vm.messages(conversationId, limit = pageLimit).collectAsState(initial = emptyList())
+    val totalCount = vm.messageCount(conversationId)
+    val hasEarlier = totalCount > pageLimit
     var draft by remember { mutableStateOf("") }
     var draftLoaded by remember { mutableStateOf(false) }
     var showEmoji by remember { mutableStateOf(false) }
@@ -429,6 +432,8 @@ fun ChatScreen(
                 sims = sims,
                 highlightLinks = vm.settings.highlightLinks,
                 unlockedIds = unlockedIds,
+                hasEarlier = hasEarlier,
+                onLoadEarlier = { pageLimit += 200 },
                 onRetry = { vm.retryMessage(it) },
                 onRetryWithPicker = { retryingMessageId = it; showRetrySimPicker = true },
                 onLongPress = { msgId ->
@@ -778,6 +783,8 @@ private fun ChatMessageList(
     sims: List<SubscriptionInfo>,
     highlightLinks: Boolean,
     unlockedIds: Set<Long>,
+    hasEarlier: Boolean,
+    onLoadEarlier: () -> Unit,
     onRetry: (msgId: Long) -> Unit,
     onRetryWithPicker: (msgId: Long) -> Unit,
     onLongPress: (msgId: Long) -> Unit,
@@ -789,6 +796,16 @@ private fun ChatMessageList(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        if (hasEarlier) {
+            item(key = "load_earlier") {
+                TextButton(
+                    onClick = onLoadEarlier,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    Text("Load earlier messages")
+                }
+            }
+        }
         itemsIndexed(messages, key = { _, msg -> msg.id }) { idx, msg ->
             MessageRow(
                 msg = msg,
