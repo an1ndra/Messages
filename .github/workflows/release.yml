@@ -106,3 +106,54 @@ jobs:
           generate_release_notes: true
           body_path: release-notes.md
           files: Messages-*.apk
+
+  sync-fdroiddata:
+    name: Update fdroiddata MR
+    needs: build-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read released version
+        id: ver
+        run: |
+          NAME=$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+          CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
+          echo "Released $NAME ($CODE) @ $(git rev-parse HEAD)"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Push metadata update to an1ndra/fdroiddata
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          NAME: ${{ steps.ver.outputs.name }}
+          CODE: ${{ steps.ver.outputs.code }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          if [ -z "$GITLAB_TOKEN" ]; then
+            echo "::error::Set the GITLAB_TOKEN secret (GitLab PAT with write_repository scope)"
+            exit 1
+          fi
+          MET=metadata/com.anindra.messages.yml
+          git clone --depth 1 -b com.anindra.messages \
+            "https://oauth2:${GITLAB_TOKEN}@gitlab.com/an1ndra/fdroiddata.git" fdd
+          cd fdd
+          sed -i "s/versionName: .*/versionName: $NAME/"          "$MET"
+          sed -i "s/^\( *\)versionCode: .*/\1versionCode: $CODE/" "$MET"
+          sed -i "s/commit: [0-9a-f]\{40\}/commit: $COMMIT/"      "$MET"
+          sed -i "s/^CurrentVersion: .*/CurrentVersion: $NAME/"   "$MET"
+          sed -i "s/^CurrentVersionCode: .*/CurrentVersionCode: $CODE/" "$MET"
+          git config user.name "anindra"
+          git config user.email "anindrakarmakar+git@proton.me"
+          git add "$MET"
+          if git diff --cached --quiet; then
+            echo "::notice::fdroiddata already at $NAME ($CODE) - nothing to push"
+            exit 0
+          fi
+          git commit -m "Update to $NAME ($CODE)"
+          git push
+          echo "::notice::fdroiddata MR updated: https://gitlab.com/fdroid/fdroiddata/-/merge_requests/46632"

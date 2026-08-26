@@ -11,11 +11,6 @@ on:
         description: New versionCode (blank = current + 1)
         required: false
         type: string
-      update_fdroiddata:
-        description: Also update the fdroiddata MR
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -26,7 +21,7 @@ concurrency:
 
 jobs:
   cut-release:
-    name: Bump, tag, publish & sync fdroiddata
+    name: Bump, tag & publish
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -128,30 +123,3 @@ jobs:
           done
           echo "::error::Timed out waiting for release v$NAME (check the Release workflow run)"
           exit 1
-
-      - name: Update fdroiddata MR
-        if: ${{ inputs.update_fdroiddata }}
-        env:
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-          NAME: ${{ steps.ver.outputs.name }}
-          CODE: ${{ steps.ver.outputs.code }}
-        run: |
-          if [ -z "$GITLAB_TOKEN" ]; then
-            echo "::error::Set the GITLAB_TOKEN secret (PAT with write_repository scope) to enable this step"
-            exit 1
-          fi
-          COMMIT=$(git rev-parse HEAD)
-          git clone --depth 1 -b com.anindra.messages \
-            "https://oauth2:${GITLAB_TOKEN}@gitlab.com/an1ndra/fdroiddata.git" fdd
-          sed -i "s/versionName: .*/versionName: $NAME/"       fdd/metadata/com.anindra.messages.yml
-          sed -i "s/^\( *\)versionCode: .*/\1versionCode: $CODE/" fdd/metadata/com.anindra.messages.yml
-          sed -i "s/commit: [0-9a-f]\{40\}/commit: $COMMIT/"    fdd/metadata/com.anindra.messages.yml
-          sed -i "s/^CurrentVersion: .*/CurrentVersion: $NAME/"  fdd/metadata/com.anindra.messages.yml
-          sed -i "s/^CurrentVersionCode: .*/CurrentVersionCode: $CODE/" fdd/metadata/com.anindra.messages.yml
-          cd fdd
-          git config user.name "anindra"
-          git config user.email "anindrakarmakar+git@proton.me"
-          git add metadata/com.anindra.messages.yml
-          git commit -m "Update to $NAME ($CODE)"
-          git push
-          echo "fdroiddata MR updated: https://gitlab.com/an1ndra/fdroiddata/-/tree/com.anindra.messages"
