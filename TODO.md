@@ -221,6 +221,16 @@ File: `sms/QuickReplyReceiver.kt`, `scripts/test-quick-reply.sh`
 
 File: `ui/ChatScreen.kt`, `scripts/test-chat-render.sh`
 
+## Critical/high batch fixes (2026-08-26)
+
+- ✅ Issue #81 (critical): scheduled sends could lose text or leave ghost rows — `ScheduledMessageSender` now wraps the radio hand-off in its own try/catch: on throw, the stored message is marked `"failed"` (retriable "Not sent · Tap to retry") instead of staying `"sending"` forever; `deleteScheduledMessage` runs unconditionally once content is durably stored, so no zombie schedule entries can accumulate
+- ✅ Issue #82 (high): `SmsReceiver.onReceive` did system-provider insert + local DB write + notification synchronously on the main thread with no goAsync — restructured to goAsync + `CoroutineScope(SupervisorJob() + Dispatchers.IO)` with processing in `processIncoming()` and finish in finally; multipart grouping and role checks unchanged
+- ✅ Issue #85 (high): `ImageBubble` decoded full bitmaps inside `remember {}` on the main thread — now `produceState` + `withContext(Dispatchers.IO)` keyed on uri (same pattern as PersonAvatar); null-check moved to a local val for smart-cast
+- ✅ Regression scripts: `test-scheduled-send.sh` (drives ScheduledMessageSender via root broadcast — receiver is exported=false so plain shell broadcasts are dropped; asserts message renders + mirrors to Sent box), plus existing `test-sms-mirror.sh` (incoming path) and `test-chat-render.sh` all PASS on emulator-5554
+- ⚠️ Pre-existing stale script noticed: `test-p2-p3-p5.sh` P3 step expects `resource-id="row_N"` nodes that no longer exist in ChatScreen — broken before today's changes, needs a separate refresh
+
+File: `sms/ScheduledMessageSender.kt`, `sms/SmsReceiver.kt`, `ui/ChatScreen.kt`, `scripts/test-scheduled-send.sh`
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots
