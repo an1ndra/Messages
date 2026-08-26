@@ -231,6 +231,16 @@ File: `ui/ChatScreen.kt`, `scripts/test-chat-render.sh`
 
 File: `sms/ScheduledMessageSender.kt`, `sms/SmsReceiver.kt`, `ui/ChatScreen.kt`, `scripts/test-scheduled-send.sh`
 
+## Medium/low batch A fixes (2026-08-26)
+
+- ✅ Issue #89: `ensureChannel()` moved above the `canPost()` early-return in both `show()` and `showSendFailed()` — notify() with an unknown channel is a silent no-op, so the channel must exist before any bail-out; verified with a pm-clear cold install + injected SMS (notification posts)
+- ✅ Issue #83: `MessagesApplication.onCreate` no longer runs trash purge + system-SMS sync on the main thread — both launched in `CoroutineScope(SupervisorJob() + Dispatchers.IO)`; UI already gates on `initialSyncDone`
+- ✅ Issue #95: file-level `private var hasLoadedOnce` replaced by a process-scoped field on `AppViewModel` (`vm.hasLoadedOnce`) — same skeleton-flash suppression semantics without module-wide mutable state
+- ✅ Issues #84 + #100: Components.kt date helpers migrated to thread-safe `java.time` — shared `SimpleDateFormat` vals gone (DateTimeFormatter is immutable), `sameDay`/`isYesterday` now compare `LocalDate`s (zero Calendar allocations per row, DST-correct yesterday via `LocalDate.now(zone).minusDays(1)`); divider format hoisted to a named formatter
+- ✅ Verified: build green; `test-chat-render.sh` PASS ("Today" divider via new java.time path), cold-start + incoming-notification probe PASS
+
+File: `sms/SmsSupport.kt`, `MessagesApplication.kt`, `MainActivity.kt`, `ui/ConversationsScreen.kt`, `ui/Components.kt`
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots

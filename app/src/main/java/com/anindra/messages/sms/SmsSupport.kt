@@ -37,6 +37,9 @@ object NotificationHelper {
     }
 
     fun show(context: Context, from: String, body: String) {
+        // create the channel before any early-return: notify() with an unknown
+        // channel id is a silent no-op, so the first-ever post must have it ready
+        ensureChannel(context)
         if (!canPost(context)) return
 
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
@@ -44,8 +47,6 @@ object NotificationHelper {
         if (convoId != null && !app.repository.getConversationNotificationsEnabled(convoId)) return
 
         playReceiveSound(context)
-
-        ensureChannel(context)
 
         val privacyMode = app.repository.settings.privacyModeEnabled
 
@@ -91,8 +92,8 @@ object NotificationHelper {
 
     /** Posted when an outgoing SMS/MMS fails to hand off to the radio. */
     fun showSendFailed(context: Context, to: String) {
-        if (!canPost(context)) return
         ensureChannel(context)
+        if (!canPost(context)) return
 
         val tap = PendingIntent.getActivity(
             context, 1,

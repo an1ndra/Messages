@@ -79,8 +79,6 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.Conversation
 import kotlinx.coroutines.launch
 
-private var hasLoadedOnce = false
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationsScreen(
@@ -100,7 +98,7 @@ fun ConversationsScreen(
     val syncDone by vm.initialSyncDone.collectAsState()
     val syncProgress by vm.initialSyncProgress.collectAsState()
     var minSkeletonShown by rememberSaveable {
-        mutableStateOf(hasLoadedOnce || vm.settings.firstImportDone)
+        mutableStateOf(vm.hasLoadedOnce || vm.settings.firstImportDone)
     }
     val loaded = minSkeletonShown && syncDone
 
@@ -111,7 +109,7 @@ fun ConversationsScreen(
         }
     }
     LaunchedEffect(loaded) {
-        if (loaded && !hasLoadedOnce) hasLoadedOnce = true
+        if (loaded && !vm.hasLoadedOnce) vm.hasLoadedOnce = true
     }
 
     BackHandler(enabled = searching) {
