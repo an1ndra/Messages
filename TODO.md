@@ -266,9 +266,10 @@ File: `ui/ContactDetailsScreen.kt`, `data/SettingsStore.kt`, `ui/SettingsScreen.
 - ✅ Issue #107: `AppViewModel.conversationById()` filtered the full conversation list on every DB change. Added `Repository.conversationByIdFlow()` with a direct `SELECT ... WHERE id=?` query
 - ✅ Issue #104+#105: `refreshContactNames()` and `syncFromSystem()` ran unconditionally on every `onResume()`. Added 5-minute throttle via `lastResumeTime` timestamp in `MainActivity`
 - ✅ Issue #108: `notifyChanged()` was called per-write during sync. `syncFromSystem()` already batches the single call at end; the real fix was #104/#105 throttle reducing resume-time calls
+- ✅ Issue #114: `ImageBubble` and `PersonAvatar` decoded bitmaps from disk on every recomposition/scroll with zero caching. Added singleton `BitmapCache` (`LruCache`, 50 entries) in `Components.kt`; both composables now check cache before disk decode and store decoded bitmaps after
 - ✅ Bugfix: `ChatTopBar` guarded block/unblock menu with `SettingsStore::blockingEnabled.javaClass != null` (always true). Replaced with proper `blockingEnabled: Boolean` parameter
 
-File: `ui/ChatScreen.kt`, `ui/ConversationsScreen.kt`, `data/Repository.kt`, `MainActivity.kt`
+File: `ui/ChatScreen.kt`, `ui/ConversationsScreen.kt`, `data/Repository.kt`, `MainActivity.kt`, `ui/Components.kt`
 
 ## Deferred
 
