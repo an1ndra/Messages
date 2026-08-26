@@ -40,9 +40,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 // Google Messages avatar palette
@@ -134,14 +136,13 @@ private fun loadContactPhoto(context: Context, number: String): Bitmap? {
     }
 }
 
-private val timeFmt = SimpleDateFormat("h:mm a", Locale.getDefault())
-private val dayFmt = SimpleDateFormat("MMM d", Locale.getDefault())
+private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+private val dividerFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())
 
-private fun startOfDay(cal: Calendar): Calendar =
-    (cal.clone() as Calendar).apply {
-        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-    }
+private val zone: ZoneId get() = ZoneId.systemDefault()
+
+private fun zoned(ts: Long): ZonedDateTime = Instant.ofEpochMilli(ts).atZone(zone)
 
 fun formatListTime(ts: Long): String {
     if (ts <= 0) return ""
@@ -149,33 +150,27 @@ fun formatListTime(ts: Long): String {
     return when {
         now - ts < 60_000L -> "Now"
         now - ts < 3_600_000L -> "${(now - ts) / 60_000} min"
-        sameDay(ts, now) -> timeFmt.format(Date(ts))
+        sameDay(ts, now) -> timeFmt.format(zoned(ts))
         isYesterday(ts) -> "Yesterday"
-        else -> dayFmt.format(Date(ts))
+        else -> dayFmt.format(zoned(ts))
     }
 }
 
 fun formatDividerTime(ts: Long): String {
-    val now = System.currentTimeMillis()
     return when {
-        sameDay(ts, now) -> "Today"
+        sameDay(ts, System.currentTimeMillis()) -> "Today"
         isYesterday(ts) -> "Yesterday"
-        else -> SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(Date(ts))
+        else -> dividerFmt.format(zoned(ts))
     }
 }
 
-fun formatTimeOnly(ts: Long): String = timeFmt.format(Date(ts))
+fun formatTimeOnly(ts: Long): String = timeFmt.format(zoned(ts))
 
-fun sameDay(a: Long, b: Long): Boolean {
-    val ca = Calendar.getInstance().apply { timeInMillis = a }
-    val cb = Calendar.getInstance().apply { timeInMillis = b }
-    return startOfDay(ca).timeInMillis == startOfDay(cb).timeInMillis
-}
+fun sameDay(a: Long, b: Long): Boolean =
+    zoned(a).toLocalDate() == zoned(b).toLocalDate()
 
-private fun isYesterday(ts: Long): Boolean {
-    val y = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.timeInMillis
-    return sameDay(ts, y)
-}
+private fun isYesterday(ts: Long): Boolean =
+    zoned(ts).toLocalDate() == LocalDate.now(zone).minusDays(1)
 
 @Composable
 fun UnreadBadge(count: Int, modifier: Modifier = Modifier) {

@@ -69,6 +69,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Null = idle; 0..1 = fraction of pending system SMS imported. */
     val initialSyncProgress = repo.initialSyncProgress
 
+    /** True once this process has fully shown the conversation list; used to
+     *  suppress the skeleton flash on back-navigation (process-scoped on purpose). */
+    var hasLoadedOnce: Boolean = false
+
     // Observable theme state; SettingsScreen updates it via setTheme()
     var themeMode: String
         get() = _themeState.value
