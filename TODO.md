@@ -205,13 +205,12 @@ File: `ui/NewChatScreen.kt`, `scripts/test-contacts-limit.sh`
 
 File: `ui/ConversationsScreen.kt`, `scripts/test-archive-undo.sh`
 
-## Quick-reply receiver threading fix (2026-08-26) — ⏳ awaiting manual verification
+## Quick-reply receiver threading fix (2026-08-26)
 
-- ✅ Issue #90 code fix DONE + installed on emulator: `QuickReplyReceiver` now uses `goAsync()` + `CoroutineScope(SupervisorJob() + Dispatchers.IO)` (ScheduledMessageSender pattern); DB write, SMS send and system-mirror all off the main thread with try/catch + `finish()` in `finally`; notification cancel moved after durable DB insert
+- ✅ Issue #90 code fix: `QuickReplyReceiver` now uses `goAsync()` + `CoroutineScope(SupervisorJob() + Dispatchers.IO)` (ScheduledMessageSender pattern); DB write, SMS send and system-mirror all off the main thread with try/catch + `finish()` in `finally`; notification cancel moved after durable DB insert
 - ✅ Regression script `scripts/test-quick-reply.sh`: clears shade → injects fresh SMS (app force-stopped = cold path) → opens notification → tries raw `motionevent DOWN/UP` on the Reply action → types reply → asserts the row lands in system Sent box (`content://sms/sent`) + crash buffer clean
-- ❌ BLOCKED (automation limit): systemui re-routes injected taps (`input tap`, swipe-hold, motionevent) from action buttons to the row body → auto-cancels the notification instead of opening inline reply. Verified across tap/swipe/motionevent variants with stable coords
-- 🔜 WHAT REMAINS (manual, one human step): run `scripts/test-quick-reply.sh`; when it prints "MANUAL STEP NEEDED", on the EMULATOR: 1. tap Reply on the notification, 2. type `autoreplyping90`, 3. send, 4. press ENTER in the terminal — script then verifies Sent-box row + crash-free automatically
-- 🔜 After PASS: commit QuickReplyReceiver.kt + script + TODO, push, comment & close #90
+- ⚠️ Automation limit (documented in script): systemui re-routes injected taps (`input tap`, swipe-hold, motionevent) from action buttons to the row body → auto-cancels instead of opening inline reply; script falls back to a MANUAL STEP prompt for that one tap, then resumes automated verification
+- ✅ Verified end-to-end with manual shade tap: `autoreplyping90` landed in system Sent box, crash buffer clean — test: `scripts/test-quick-reply.sh`
 
 File: `sms/QuickReplyReceiver.kt`, `scripts/test-quick-reply.sh`
 
