@@ -153,6 +153,7 @@ fun ChatScreen(
     val messages by vm.messages(conversationId, limit = pageLimit).collectAsState(initial = emptyList())
     val totalCount = vm.messageCount(conversationId)
     val hasEarlier = totalCount > pageLimit
+    val deliveryReports = remember { vm.deliveryReportsEnabled() }
     var draft by remember { mutableStateOf("") }
     var draftLoaded by remember { mutableStateOf(false) }
     var showEmoji by remember { mutableStateOf(false) }
@@ -432,7 +433,7 @@ fun ChatScreen(
             ChatMessageList(
                 messages = messages,
                 listState = listState,
-                deliveryReports = vm.deliveryReportsEnabled(),
+                deliveryReports = deliveryReports,
                 sims = sims,
                 highlightLinks = vm.settings.highlightLinks,
                 unlockedIds = unlockedIds,
@@ -914,7 +915,7 @@ fun openUrl(context: android.content.Context, url: String) {
 @Composable
 private fun rememberLinkedText(body: String, highlight: Boolean): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
-    return remember(body, highlight) {
+    return remember(body, highlight, linkColor) {
         if (!highlight) {
             AnnotatedString(body)
         } else {

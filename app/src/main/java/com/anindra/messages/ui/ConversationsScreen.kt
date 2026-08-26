@@ -101,6 +101,16 @@ fun ConversationsScreen(
         mutableStateOf(vm.hasLoadedOnce || vm.settings.firstImportDone)
     }
     val loaded = minSkeletonShown && syncDone
+    var sheetConvoId by remember { mutableLongStateOf(-1L) }
+    val sheetConvo = conversations.find { it.id == sheetConvoId }
+    val rowSettings = remember(vm.settings) {
+        RowSettings(
+            pinnedEnabled = vm.settings.pinnedEnabled,
+            draftsEnabled = vm.settings.draftsEnabled,
+            archivingEnabled = vm.settings.archivingEnabled,
+            blockingEnabled = vm.settings.blockingEnabled
+        )
+    }
 
     LaunchedEffect(Unit) {
         if (!minSkeletonShown) {
@@ -260,50 +270,107 @@ fun ConversationsScreen(
 
             if (!loaded) {
                 LazyColumn {
-                    items(8) { SkeletonConversationRow() }
-                    item { Spacer(Modifier.height(96.dp)) }
+                    items(8, key = { "skeleton_$it" }) { SkeletonConversationRow() }
+                    item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
                 }
             } else {
                 LazyColumn {
                     items(displayed, key = { it.id }) { convo ->
                         SwipeableConversationItem(
-                            vm = vm,
+                            settings = rowSettings,
+                            swipeEnabled = vm.settings.swipeActionsEnabled && !showArchived,
                             convo = convo,
                             showArchived = showArchived,
                             onClick = { onOpenConversation(convo.id) },
                             onDelete = { moveToTrash(convo) },
-                            onArchive = { archiveWithUndo(convo) }
+                            onArchive = { archiveWithUndo(convo) },
+                            onLongClick = { sheetConvoId = convo.id }
                         )
                     }
-                    item { Spacer(Modifier.height(96.dp)) }
+                    item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
+                }
+            }
+        }
+    }
+
+    if (sheetConvo != null) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { sheetConvoId = -1L },
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    text = if (sheetConvo.name == sheetConvo.address) formatPhoneNumber(sheetConvo.name) else sheetConvo.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                if (showArchived) {
+                    SheetActionRow(Icons.Rounded.Archive, "Unarchive", MaterialTheme.colorScheme.primary) {
+                        sheetConvoId = -1L; vm.unarchiveConversation(sheetConvo.id)
+                    }
+                } else {
+                    if (rowSettings.pinnedEnabled) {
+                        SheetActionRow(
+                            Icons.Rounded.PushPin,
+                            if (sheetConvo.pinned) "Unpin" else "Pin",
+                            MaterialTheme.colorScheme.primary
+                        ) { sheetConvoId = -1L; vm.togglePin(sheetConvo.id) }
+                    }
+                    if (rowSettings.archivingEnabled) {
+                        SheetActionRow(Icons.Rounded.Archive, "Archive", MaterialTheme.colorScheme.primary) {
+                            sheetConvoId = -1L; archiveWithUndo(sheetConvo)
+                        }
+                    }
+                    SheetActionRow(Icons.Rounded.Delete, "Delete", MaterialTheme.colorScheme.error) {
+                        sheetConvoId = -1L; moveToTrash(sheetConvo)
+                    }
+                    if (rowSettings.blockingEnabled) {
+                        SheetActionRow(Icons.Rounded.Block, "Block", MaterialTheme.colorScheme.error) {
+                            sheetConvoId = -1L; vm.blockNumber(sheetConvo.address)
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SwipeableConversationItem(
-    vm: AppViewModel,
+    settings: RowSettings,
+    swipeEnabled: Boolean,
     convo: Conversation,
     showArchived: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    onArchive: () -> Unit = {}
+    onArchive: () -> Unit = {},
+    onLongClick: () -> Unit = {}
 ) {
-    val swipeEnabled = vm.settings.swipeActionsEnabled && !showArchived
-
     if (swipeEnabled) {
-        SwipeConversationItem(vm, convo, onClick, onDelete, onArchive)
+        SwipeConversationItem(settings, convo, onClick, onDelete, onArchive, onLongClick)
     } else {
         ConversationRow(
-            vm = vm,
+            settings = settings,
             convo = convo,
             showArchived = showArchived,
             onClick = onClick,
             onDelete = onDelete,
-            onArchive = onArchive
+            onArchive = onArchive,
+            onLongClick = onLongClick
         )
     }
 }
@@ -311,11 +378,12 @@ private fun SwipeableConversationItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeConversationItem(
-    vm: AppViewModel,
+    settings: RowSettings,
     convo: Conversation,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    onArchive: () -> Unit
+    onArchive: () -> Unit,
+    onLongClick: () -> Unit = {}
 ) {
     var dismissStateRef: SwipeToDismissBoxState? = null
     val dismissState = rememberSwipeToDismissBoxState(
@@ -374,12 +442,13 @@ private fun SwipeConversationItem(
         enableDismissFromEndToStart = true
     ) {
         ConversationRow(
-            vm = vm,
+            settings = settings,
             convo = convo,
             showArchived = false,
             onClick = onClick,
             onDelete = onDelete,
-            onArchive = onArchive
+            onArchive = onArchive,
+            onLongClick = onLongClick
         )
     }
 
@@ -398,21 +467,26 @@ private fun SwipeConversationItem(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+private data class RowSettings(
+    val pinnedEnabled: Boolean,
+    val draftsEnabled: Boolean,
+    val archivingEnabled: Boolean,
+    val blockingEnabled: Boolean
+)
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConversationRow(
-    vm: AppViewModel,
+    settings: RowSettings,
     convo: Conversation,
     showArchived: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit = {},
-    onArchive: () -> Unit = {}
+    onArchive: () -> Unit = {},
+    onLongClick: () -> Unit = {}
 ) {
-    var showSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
     Box(modifier = Modifier.fillMaxWidth()) {
-        val pinnedTint = if (convo.pinned && vm.settings.pinnedEnabled) {
+        val pinnedTint = if (convo.pinned && settings.pinnedEnabled) {
             MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
         } else {
             MaterialTheme.colorScheme.background
@@ -423,7 +497,7 @@ private fun ConversationRow(
                 .fillMaxSize()
                 .combinedClickable(
                     onClick = onClick,
-                    onLongClick = { showSheet = true }
+                    onLongClick = onLongClick
                 )
                 .background(pinnedTint)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -441,7 +515,7 @@ private fun ConversationRow(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    if (convo.pinned && vm.settings.pinnedEnabled) {
+                    if (convo.pinned && settings.pinnedEnabled) {
                         Spacer(Modifier.width(4.dp))
                         Icon(
                             Icons.Rounded.PushPin,
@@ -452,7 +526,7 @@ private fun ConversationRow(
                     }
                 }
                 Spacer(Modifier.height(2.dp))
-                val hasDraft = vm.settings.draftsEnabled && convo.draft.isNotBlank()
+                val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
                 if (hasDraft) {
                     Text(
                         text = "Draft: ${convo.draft}",
@@ -485,60 +559,6 @@ private fun ConversationRow(
                 )
                 Spacer(Modifier.height(6.dp))
                 if (convo.unreadCount > 0) UnreadBadge(convo.unreadCount) else Spacer(Modifier.height(20.dp))
-            }
-        }
-
-        if (showSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showSheet = false },
-                sheetState = sheetState,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 32.dp)
-                ) {
-                    Text(
-                        text = if (convo.name == convo.address) formatPhoneNumber(convo.name) else convo.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                    if (showArchived) {
-                        SheetActionRow(Icons.Rounded.Archive, "Unarchive", MaterialTheme.colorScheme.primary) {
-                            showSheet = false; vm.unarchiveConversation(convo.id)
-                        }
-                    } else {
-                        if (vm.settings.pinnedEnabled) {
-                            SheetActionRow(
-                                Icons.Rounded.PushPin,
-                                if (convo.pinned) "Unpin" else "Pin",
-                                MaterialTheme.colorScheme.primary
-                            ) { showSheet = false; vm.togglePin(convo.id) }
-                        }
-                        if (vm.settings.archivingEnabled) {
-                            SheetActionRow(Icons.Rounded.Archive, "Archive", MaterialTheme.colorScheme.primary) {
-                                showSheet = false; onArchive()
-                            }
-                        }
-                        SheetActionRow(Icons.Rounded.Delete, "Delete", MaterialTheme.colorScheme.error) {
-                            showSheet = false; onDelete()
-                        }
-                        if (vm.settings.blockingEnabled) {
-                            SheetActionRow(Icons.Rounded.Block, "Block", MaterialTheme.colorScheme.error) {
-                                showSheet = false; vm.blockNumber(convo.address)
-                            }
-                        }
-                    }
-                }
             }
         }
     }
