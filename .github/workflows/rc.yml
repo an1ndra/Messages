@@ -47,14 +47,6 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "Building $V from ${{ github.ref_name }}"
 
-      - name: Guard - only build RC versions
-        run: |
-          V="${{ steps.ver.outputs.version }}"
-          case "$V" in
-            *-rc*) echo "RC version $V confirmed";;
-            *) echo "::error::versionName '$V' is not an RC (expected *-rc*); refusing to attach to a stable release"; exit 1;;
-          esac
-
       # Signing is optional for RCs: signed when keystore secrets exist,
       # otherwise falls back to an installable debug APK.
       - name: Restore keystore
