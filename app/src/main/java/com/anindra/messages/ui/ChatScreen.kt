@@ -91,6 +91,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -210,6 +211,9 @@ fun ChatScreen(
     var unlockedIds by remember { mutableStateOf(setOf<Long>()) }
     val activity = context as? androidx.fragment.app.FragmentActivity
     val biometricExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
+    DisposableEffect(Unit) {
+        onDispose { biometricExecutor.shutdown() }
+    }
 
     fun cycleSim() {
         if (sims.size < 2) return
