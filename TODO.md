@@ -187,6 +187,7 @@ File: `data/SettingsStore.kt`, `data/Repository.kt`
 
 - ✅ `release.yml` now syncs the F-Droid metadata automatically: after the GitHub Release publishes, a `sync-fdroiddata` job clones `an1ndra/fdroiddata` (branch `com.anindra.messages`) with the `GITLAB_TOKEN` secret and rewrites versionName/versionCode/pinned commit/CurrentVersion(Code) in `metadata/com.anindra.messages.yml`, then pushes — updating fdroid MR !46632; no-op-safe on re-runs
 - ✅ Removed the duplicate "Update fdroiddata MR" step + `update_fdroiddata` input from `fdroid-release.yml` (Release workflow is now the single owner; no push race)
+- ✅ `fdroid-release.yml` deleted — one-click UI release-cutting dropped; releases are cut locally (bump + signed commit/tag push), `release.yml` handles everything after
 
 ## Regression guardrails
 
