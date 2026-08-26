@@ -249,6 +249,14 @@ File: `sms/SmsSupport.kt`, `MessagesApplication.kt`, `MainActivity.kt`, `ui/Conv
 
 File: `sms/SmsSupport.kt`, `sms/QuickReplyReceiver.kt`, `ui/ChatScreen.kt`
 
+## Medium/low batch C fixes (2026-08-26)
+
+- ✅ Issue #88: `ContactDetailsScreen` had a "Search" `DetailActionButton` with `onClick = {}` — removed the button and its `Icons.Rounded.Search` import (hard rule #2: every visible control must do something real)
+- ✅ Issue #96: `SettingsScreen` copied all settings into `remember` state at initial composition; external changes (e.g. `--es set_theme dark` deep link) never synced. `SettingsStore` now emits a `revision: StateFlow<Int>` that increments on every write; `SettingsScreen` collects it and re-keys each `remember(revision)` block so stale locals are replaced on recomposition
+- ✅ Issue #99: `ChatScreen.kt` was 1341 lines with a ~640-line `ChatScreen` composable. Extracted three focused composables: `ChatTopBar` (top bar + 3-dot menu with SIM picker, archive, delete, block/unblock), `ChatMessageList` (LazyColumn with message rows, retry, forward, lock/unlock), `ChatSchedulePicker` (date + time picker flow). `ChatScreen` now delegates to these composables, reducing inline logic and improving maintainability
+
+File: `ui/ContactDetailsScreen.kt`, `data/SettingsStore.kt`, `ui/SettingsScreen.kt`, `ui/ChatScreen.kt`
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots
