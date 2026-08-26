@@ -822,7 +822,7 @@ private fun ChatMessageList(
                 onLongPress = { onLongPress(msg.id) },
                 highlightLinks = highlightLinks,
                 onLockUnlock = { wantLock -> onLockUnlock(msg.id, wantLock) },
-                unlockedIds = unlockedIds
+                isUnlocked = msg.id in unlockedIds
             )
         }
     }
@@ -1058,12 +1058,12 @@ fun MessageRow(
     onLongPress: () -> Unit = {},
     highlightLinks: Boolean = false,
     onLockUnlock: (Boolean) -> Unit = {},
-    unlockedIds: Set<Long> = emptySet()
+    isUnlocked: Boolean = false
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
     var showContextMenu by remember { mutableStateOf(false) }
-    val isLockedAndHidden = msg.locked && msg.id !in unlockedIds
+    val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "\uD83D\uDD12 Locked" else msg.body
     val bodyText = rememberLinkedText(displayBody, highlightLinks && !isLockedAndHidden)
 
