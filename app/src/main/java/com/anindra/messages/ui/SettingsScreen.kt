@@ -77,25 +77,27 @@ fun SettingsScreen(
 
     val context = LocalContext.current
 
+    val revision by vm.settings.revision.collectAsState()
+
     var themeDialog by remember { mutableStateOf(false) }
-    var notifications by remember { mutableStateOf(vm.settings.notificationsEnabled) }
-    var sounds by remember { mutableStateOf(vm.settings.soundsEnabled) }
-    var delivery by remember { mutableStateOf(vm.settings.deliveryReportsEnabled) }
+    var notifications by remember(revision) { mutableStateOf(vm.settings.notificationsEnabled) }
+    var sounds by remember(revision) { mutableStateOf(vm.settings.soundsEnabled) }
+    var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
     val themeMode = vm.themeMode
 
-    var pinned by remember { mutableStateOf(vm.settings.pinnedEnabled) }
-    var archiving by remember { mutableStateOf(vm.settings.archivingEnabled) }
-    var drafts by remember { mutableStateOf(vm.settings.draftsEnabled) }
-    var swipeActions by remember { mutableStateOf(vm.settings.swipeActionsEnabled) }
-    var blocking by remember { mutableStateOf(vm.settings.blockingEnabled) }
-    var forwarding by remember { mutableStateOf(vm.settings.forwardingEnabled) }
-    var unreadAtTop by remember { mutableStateOf(vm.settings.unreadAtTopEnabled) }
-    var scheduledMessages by remember { mutableStateOf(vm.settings.scheduledMessagesEnabled) }
-    var delayedSending by remember { mutableStateOf(vm.settings.delayedSendingEnabled) }
-    var highlightLinks by remember { mutableStateOf(vm.settings.highlightLinks) }
-    var privacyMode by remember { mutableStateOf(vm.settings.privacyModeEnabled) }
-    var appLock by remember { mutableStateOf(vm.settings.appLockEnabled) }
-    var delaySeconds by remember { mutableIntStateOf(vm.settings.delaySeconds) }
+    var pinned by remember(revision) { mutableStateOf(vm.settings.pinnedEnabled) }
+    var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
+    var drafts by remember(revision) { mutableStateOf(vm.settings.draftsEnabled) }
+    var swipeActions by remember(revision) { mutableStateOf(vm.settings.swipeActionsEnabled) }
+    var blocking by remember(revision) { mutableStateOf(vm.settings.blockingEnabled) }
+    var forwarding by remember(revision) { mutableStateOf(vm.settings.forwardingEnabled) }
+    var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
+    var scheduledMessages by remember(revision) { mutableStateOf(vm.settings.scheduledMessagesEnabled) }
+    var delayedSending by remember(revision) { mutableStateOf(vm.settings.delayedSendingEnabled) }
+    var highlightLinks by remember(revision) { mutableStateOf(vm.settings.highlightLinks) }
+    var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
+    var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
+    var delaySeconds by remember(revision) { mutableIntStateOf(vm.settings.delaySeconds) }
 
     var simDialog by remember { mutableStateOf(false) }
     var sims by remember { mutableStateOf(emptyList<SubscriptionInfo>()) }

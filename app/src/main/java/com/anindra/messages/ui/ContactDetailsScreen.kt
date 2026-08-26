@@ -27,7 +27,6 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -151,12 +150,6 @@ fun ContactDetailsScreen(
                                 }
                             )
                         }
-                    )
-                    Spacer(Modifier.width(32.dp))
-                    DetailActionButton(
-                        icon = Icons.Rounded.Search,
-                        label = "Search",
-                        onClick = {}
                     )
                 }
             }

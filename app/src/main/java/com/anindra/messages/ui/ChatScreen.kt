@@ -272,155 +272,53 @@ fun ChatScreen(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.chatBar
-                ),
-                navigationIcon = {
-                    IconButton(onClick = ::leaveChat) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+            ChatTopBar(
+                convo = convo,
+                sims = sims,
+                currentSimId = currentSimId,
+                menuOpen = menuOpen,
+                numberIsBlocked = numberIsBlocked,
+                sendCountdown = sendCountdown,
+                onBack = ::leaveChat,
+                onOpenDetails = onOpenDetails,
+                onMenuToggle = { menuOpen = true },
+                onMenuDismiss = { menuOpen = false },
+                onSimSelect = { simId, label ->
+                    currentSimId = simId
+                    vm.settings.simSubscriptionId = simId
+                    Toast.makeText(context, "Sending via $label", Toast.LENGTH_SHORT).show()
+                },
+                onArchive = {
+                    vm.setArchived(conversationId, true)
+                    Toast.makeText(context, "Conversation archived", Toast.LENGTH_SHORT).show()
+                    onBack()
+                },
+                onDelete = {
+                    vm.deleteConversation(conversationId)
+                    Toast.makeText(context, "Conversation moved to trash", Toast.LENGTH_SHORT).show()
+                    onBack()
+                },
+                onBlock = {
+                    convo?.address?.let { addr ->
+                        vm.blockNumber(addr)
+                        numberIsBlocked = true
+                        Toast.makeText(context, "Number blocked", Toast.LENGTH_SHORT).show()
                     }
                 },
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { onOpenDetails() }
-                    ) {
-                        PersonAvatar(convo?.address ?: "?", size = 36.dp)
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                convo?.let {
-                                    if (it.name != it.address) it.name
-                                    else formatPhoneNumber(it.address)
-                                } ?: "",
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1
-                            )
-                            if (convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
-                                Text(
-                                    "Draft",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
+                onUnblock = {
+                    convo?.address?.let { addr ->
+                        vm.unblockNumber(addr)
+                        numberIsBlocked = false
+                        Toast.makeText(context, "Number unblocked", Toast.LENGTH_SHORT).show()
                     }
                 },
-                actions = {
-                    IconButton(onClick = {
-                        convo?.address?.let {
-                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$it")))
-                        }
-                    }) { Icon(Icons.Rounded.Call, "Call") }
-
-                    Box {
-                        IconButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Rounded.MoreVert, "More options")
-                        }
-                        DropdownMenu(
-                            expanded = menuOpen,
-                            onDismissRequest = { menuOpen = false },
-                            containerColor = MaterialTheme.colorScheme.chatBar
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Add people") },
-                                onClick = {
-                                    menuOpen = false
-                                    convo?.address?.let {
-                                        context.startActivity(
-                                            Intent(ContactsContract.Intents.Insert.ACTION).apply {
-                                                type = ContactsContract.RawContacts.CONTENT_TYPE
-                                                putExtra(ContactsContract.Intents.Insert.PHONE, it)
-                                            })
-                                    }
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Details") },
-                                onClick = {
-                                    menuOpen = false
-                                    onOpenDetails()
-                                }
-                            )
-                            if (sims.size > 1) {
-                                sims.sortedBy { it.simSlotIndex }.forEach { sub ->
-                                    val carrier = sub.carrierName?.toString()?.ifBlank { null }
-                                    val simLabel = buildString {
-                                        append("SIM ${sub.simSlotIndex + 1}")
-                                        if (carrier != null) append(" · $carrier")
-                                    }
-                                    DropdownMenuItem(
-                                        text = {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.fillMaxWidth()
-                                            ) {
-                                                Text(simLabel, modifier = Modifier.weight(1f))
-                                                RadioButton(
-                                                    selected = sub.subscriptionId == currentSimId,
-                                                    onClick = null
-                                                )
-                                            }
-                                        },
-                                        onClick = {
-                                            menuOpen = false
-                                            currentSimId = sub.subscriptionId
-                                            vm.settings.simSubscriptionId = sub.subscriptionId
-                                            Toast.makeText(context, "Sending via $simLabel", Toast.LENGTH_SHORT).show()
-                                        }
-                                    )
-                                }
-                            }
-                            DropdownMenuItem(
-                                text = { Text("Archive") },
-                                onClick = {
-                                    menuOpen = false
-                                    vm.setArchived(conversationId, true)
-                                    Toast.makeText(context, "Conversation archived", Toast.LENGTH_SHORT).show()
-                                    onBack()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Delete") },
-                                onClick = {
-                                    menuOpen = false
-                                    vm.deleteConversation(conversationId)
-                                    Toast.makeText(
-                                        context, "Conversation moved to trash",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    onBack()
-                                }
-                            )
-                            if (vm.settings.blockingEnabled) {
-                                if (numberIsBlocked) {
-                                    DropdownMenuItem(
-                                        text = { Text("Unblock number") },
-                                        onClick = {
-                                            menuOpen = false
-                                            convo?.address?.let { addr ->
-                                                vm.unblockNumber(addr)
-                                                numberIsBlocked = false
-                                                Toast.makeText(context, "Number unblocked", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    )
-                                } else {
-                                    DropdownMenuItem(
-                                        text = { Text("Block number") },
-                                        onClick = {
-                                            menuOpen = false
-                                            convo?.address?.let { addr ->
-                                                vm.blockNumber(addr)
-                                                numberIsBlocked = true
-                                                Toast.makeText(context, "Number blocked", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                onAddPeople = {
+                    convo?.address?.let {
+                        context.startActivity(
+                            Intent(ContactsContract.Intents.Insert.ACTION).apply {
+                                type = ContactsContract.RawContacts.CONTENT_TYPE
+                                putExtra(ContactsContract.Intents.Insert.PHONE, it)
+                            })
                     }
                 }
             )
@@ -523,45 +421,30 @@ fun ChatScreen(
         }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                itemsIndexed(messages, key = { _, msg -> msg.id }) { idx, msg ->
-                    MessageRow(
-                        msg = msg,
-                        showDividerBefore = idx == 0 || !sameDay(messages[idx - 1].timestamp, msg.timestamp),
-                        showStatus = idx == messages.lastIndex && msg.isMe,
-                        deliveryReports = vm.deliveryReportsEnabled(),
-                        onRetry = {
-                            if (sims.size > 1) {
-                                retryingMessageId = msg.id
-                                showRetrySimPicker = true
-                            } else {
-                                vm.retryMessage(msg.id)
-                            }
-                        },
-                        onLongPress = {
-                            if (vm.settings.forwardingEnabled) {
-                                forwardingMessageId = msg.id
-                                showForwardPicker = true
-                            }
-                        },
-                        highlightLinks = vm.settings.highlightLinks,
-                        onLockUnlock = { wantLock ->
-                            if (wantLock) {
-                                vm.setLocked(msg.id, true)
-                            } else {
-                                vm.setLocked(msg.id, false)
-                                unlockedIds = unlockedIds + msg.id
-                            }
-                        },
-                        unlockedIds = unlockedIds
-                    )
+            ChatMessageList(
+                messages = messages,
+                listState = listState,
+                deliveryReports = vm.deliveryReportsEnabled(),
+                sims = sims,
+                highlightLinks = vm.settings.highlightLinks,
+                unlockedIds = unlockedIds,
+                onRetry = { vm.retryMessage(it) },
+                onRetryWithPicker = { retryingMessageId = it; showRetrySimPicker = true },
+                onLongPress = { msgId ->
+                    if (vm.settings.forwardingEnabled) {
+                        forwardingMessageId = msgId
+                        showForwardPicker = true
+                    }
+                },
+                onLockUnlock = { msgId, wantLock ->
+                    if (wantLock) {
+                        vm.setLocked(msgId, true)
+                    } else {
+                        vm.setLocked(msgId, false)
+                        unlockedIds = unlockedIds + msgId
+                    }
                 }
-            }
+            )
 
             if (sendCountdown > 0) {
                 Surface(
@@ -718,61 +601,270 @@ fun ChatScreen(
     }
 
     if (showSchedulePicker) {
-        if (scheduleStep == "date") {
-            val datePickerState = rememberDatePickerState(
-                initialSelectedDateMillis = scheduledDateMillis ?: System.currentTimeMillis()
-            )
-            DatePickerDialog(
-                onDismissRequest = { showSchedulePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        scheduledDateMillis = datePickerState.selectedDateMillis
-                        scheduleStep = "time"
-                    }) { Text("Next") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showSchedulePicker = false }) { Text("Cancel") }
-                }
-            ) {
-                DatePicker(state = datePickerState)
+        ChatSchedulePicker(
+            visible = showSchedulePicker,
+            step = scheduleStep,
+            conversationId = conversationId,
+            address = convo?.address ?: "",
+            draft = draft,
+            scheduledDateMillis = scheduledDateMillis,
+            scheduledHour = scheduledHour,
+            scheduledMinute = scheduledMinute,
+            onDateSelected = { millis ->
+                scheduledDateMillis = millis
+                scheduleStep = "time"
+            },
+            onTimeSelected = { hour, minute ->
+                scheduledHour = hour
+                scheduledMinute = minute
+            },
+            onSchedule = { ts ->
+                val text = draft.trim()
+                val addr = convo?.address ?: return@ChatSchedulePicker
+                vm.scheduleMessage(addr, text, ts, conversationId)
+                val fmt = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
+                Toast.makeText(context, "Scheduled for ${fmt.format(Date(ts))}", Toast.LENGTH_SHORT).show()
+                vm.saveDraft(conversationId, "")
+                draft = ""
+                showEmoji = false
+                showSchedulePicker = false
+            },
+            onDismiss = { showSchedulePicker = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChatTopBar(
+    convo: com.anindra.messages.data.Conversation?,
+    sims: List<SubscriptionInfo>,
+    currentSimId: Int,
+    menuOpen: Boolean,
+    numberIsBlocked: Boolean,
+    sendCountdown: Int,
+    onBack: () -> Unit,
+    onOpenDetails: () -> Unit,
+    onMenuToggle: () -> Unit,
+    onMenuDismiss: () -> Unit,
+    onSimSelect: (subscriptionId: Int, label: String) -> Unit,
+    onArchive: () -> Unit,
+    onDelete: () -> Unit,
+    onBlock: () -> Unit,
+    onUnblock: () -> Unit,
+    onAddPeople: () -> Unit
+) {
+    val context = LocalContext.current
+    TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.chatBar
+        ),
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
             }
-        } else if (scheduleStep == "time") {
-            val timePickerState = rememberTimePickerState(
-                initialHour = scheduledHour,
-                initialMinute = scheduledMinute
-            )
-            AlertDialog(
-                onDismissRequest = { showSchedulePicker = false },
-                title = { Text("Select time") },
-                text = { TimePicker(state = timePickerState) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        scheduledHour = timePickerState.hour
-                        scheduledMinute = timePickerState.minute
-                        val cal = Calendar.getInstance().apply {
-                            timeInMillis = scheduledDateMillis ?: System.currentTimeMillis()
-                            set(Calendar.HOUR_OF_DAY, scheduledHour)
-                            set(Calendar.MINUTE, scheduledMinute)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }
-                        val ts = cal.timeInMillis
-                        val text = draft.trim()
-                        val addr = convo?.address ?: return@TextButton
-                        vm.scheduleMessage(addr, text, ts, conversationId)
-                        val fmt = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
-                        Toast.makeText(context, "Scheduled for ${fmt.format(Date(ts))}", Toast.LENGTH_SHORT).show()
-                        vm.saveDraft(conversationId, "")
-                        draft = ""
-                        showEmoji = false
-                        showSchedulePicker = false
-                    }) { Text("Schedule") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showSchedulePicker = false }) { Text("Cancel") }
+        },
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onOpenDetails() }
+            ) {
+                PersonAvatar(convo?.address ?: "?", size = 36.dp)
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        convo?.let {
+                            if (it.name != it.address) it.name
+                            else formatPhoneNumber(it.address)
+                        } ?: "",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1
+                    )
+                    if (convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
+                        Text(
+                            "Draft",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
+            }
+        },
+        actions = {
+            IconButton(onClick = {
+                convo?.address?.let {
+                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$it")))
+                }
+            }) { Icon(Icons.Rounded.Call, "Call") }
+
+            Box {
+                IconButton(onClick = onMenuToggle) {
+                    Icon(Icons.Rounded.MoreVert, "More options")
+                }
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = onMenuDismiss,
+                    containerColor = MaterialTheme.colorScheme.chatBar
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Add people") },
+                        onClick = { onMenuDismiss(); onAddPeople() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Details") },
+                        onClick = { onMenuDismiss(); onOpenDetails() }
+                    )
+                    if (sims.size > 1) {
+                        sims.sortedBy { it.simSlotIndex }.forEach { sub ->
+                            val carrier = sub.carrierName?.toString()?.ifBlank { null }
+                            val simLabel = buildString {
+                                append("SIM ${sub.simSlotIndex + 1}")
+                                if (carrier != null) append(" · $carrier")
+                            }
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(simLabel, modifier = Modifier.weight(1f))
+                                        RadioButton(
+                                            selected = sub.subscriptionId == currentSimId,
+                                            onClick = null
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    onMenuDismiss()
+                                    onSimSelect(sub.subscriptionId, simLabel)
+                                }
+                            )
+                        }
+                    }
+                    DropdownMenuItem(
+                        text = { Text("Archive") },
+                        onClick = { onMenuDismiss(); onArchive() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = { onMenuDismiss(); onDelete() }
+                    )
+                    if (com.anindra.messages.data.SettingsStore::blockingEnabled.javaClass != null) {
+                        if (numberIsBlocked) {
+                            DropdownMenuItem(
+                                text = { Text("Unblock number") },
+                                onClick = { onMenuDismiss(); onUnblock() }
+                            )
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text("Block number") },
+                                onClick = { onMenuDismiss(); onBlock() }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun ChatMessageList(
+    messages: List<com.anindra.messages.data.Message>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    deliveryReports: Boolean,
+    sims: List<SubscriptionInfo>,
+    highlightLinks: Boolean,
+    unlockedIds: Set<Long>,
+    onRetry: (msgId: Long) -> Unit,
+    onRetryWithPicker: (msgId: Long) -> Unit,
+    onLongPress: (msgId: Long) -> Unit,
+    onLockUnlock: (msgId: Long, wantLock: Boolean) -> Unit
+) {
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        itemsIndexed(messages, key = { _, msg -> msg.id }) { idx, msg ->
+            MessageRow(
+                msg = msg,
+                showDividerBefore = idx == 0 || !sameDay(messages[idx - 1].timestamp, msg.timestamp),
+                showStatus = idx == messages.lastIndex && msg.isMe,
+                deliveryReports = deliveryReports,
+                onRetry = {
+                    if (sims.size > 1) onRetryWithPicker(msg.id) else onRetry(msg.id)
+                },
+                onLongPress = { onLongPress(msg.id) },
+                highlightLinks = highlightLinks,
+                onLockUnlock = { wantLock -> onLockUnlock(msg.id, wantLock) },
+                unlockedIds = unlockedIds
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChatSchedulePicker(
+    visible: Boolean,
+    step: String,
+    conversationId: Long,
+    address: String,
+    draft: String,
+    scheduledDateMillis: Long?,
+    scheduledHour: Int,
+    scheduledMinute: Int,
+    onDateSelected: (millis: Long) -> Unit,
+    onTimeSelected: (hour: Int, minute: Int) -> Unit,
+    onSchedule: (millis: Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (!visible) return
+    if (step == "date") {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = scheduledDateMillis ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton(onClick = { onDateSelected(datePickerState.selectedDateMillis ?: System.currentTimeMillis()) }) {
+                    Text("Next")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    } else if (step == "time") {
+        val timePickerState = rememberTimePickerState(
+            initialHour = scheduledHour,
+            initialMinute = scheduledMinute
+        )
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Select time") },
+            text = { TimePicker(state = timePickerState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onTimeSelected(timePickerState.hour, timePickerState.minute)
+                    val cal = Calendar.getInstance().apply {
+                        timeInMillis = scheduledDateMillis ?: System.currentTimeMillis()
+                        set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                        set(Calendar.MINUTE, timePickerState.minute)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    onSchedule(cal.timeInMillis)
+                }) { Text("Schedule") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        )
     }
 }
 
