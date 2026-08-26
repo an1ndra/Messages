@@ -143,6 +143,18 @@ fun ConversationsScreen(
         }
     }
 
+    fun archiveWithUndo(convo: Conversation) {
+        vm.archiveConversation(convo.id)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "Conversation archived",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Long
+            )
+            if (result == SnackbarResult.ActionPerformed) vm.unarchiveConversation(convo.id)
+        }
+    }
+
     val showArchiving = vm.settings.archivingEnabled
 
     val displayed = conversations.filter { convo ->
@@ -259,7 +271,8 @@ fun ConversationsScreen(
                             convo = convo,
                             showArchived = showArchived,
                             onClick = { onOpenConversation(convo.id) },
-                            onDelete = { moveToTrash(convo) }
+                            onDelete = { moveToTrash(convo) },
+                            onArchive = { archiveWithUndo(convo) }
                         )
                     }
                     item { Spacer(Modifier.height(96.dp)) }
@@ -276,19 +289,21 @@ private fun SwipeableConversationItem(
     convo: Conversation,
     showArchived: Boolean,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onArchive: () -> Unit = {}
 ) {
     val swipeEnabled = vm.settings.swipeActionsEnabled && !showArchived
 
     if (swipeEnabled) {
-        SwipeConversationItem(vm, convo, onClick, onDelete)
+        SwipeConversationItem(vm, convo, onClick, onDelete, onArchive)
     } else {
         ConversationRow(
             vm = vm,
             convo = convo,
             showArchived = showArchived,
             onClick = onClick,
-            onDelete = onDelete
+            onDelete = onDelete,
+            onArchive = onArchive
         )
     }
 }
@@ -299,7 +314,8 @@ private fun SwipeConversationItem(
     vm: AppViewModel,
     convo: Conversation,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onArchive: () -> Unit
 ) {
     var dismissStateRef: SwipeToDismissBoxState? = null
     val dismissState = rememberSwipeToDismissBoxState(
@@ -362,14 +378,15 @@ private fun SwipeConversationItem(
             convo = convo,
             showArchived = false,
             onClick = onClick,
-            onDelete = onDelete
+            onDelete = onDelete,
+            onArchive = onArchive
         )
     }
 
     LaunchedEffect(dismissState.currentValue) {
         when (dismissState.currentValue) {
             SwipeToDismissBoxValue.StartToEnd -> {
-                vm.archiveConversation(convo.id)
+                onArchive()
                 dismissState.snapTo(SwipeToDismissBoxValue.Settled)
             }
             SwipeToDismissBoxValue.EndToStart -> {
@@ -388,7 +405,8 @@ private fun ConversationRow(
     convo: Conversation,
     showArchived: Boolean,
     onClick: () -> Unit,
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
+    onArchive: () -> Unit = {}
 ) {
     var showSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -508,7 +526,7 @@ private fun ConversationRow(
                         }
                         if (vm.settings.archivingEnabled) {
                             SheetActionRow(Icons.Rounded.Archive, "Archive", MaterialTheme.colorScheme.primary) {
-                                showSheet = false; vm.archiveConversation(convo.id)
+                                showSheet = false; onArchive()
                             }
                         }
                         SheetActionRow(Icons.Rounded.Delete, "Delete", MaterialTheme.colorScheme.error) {

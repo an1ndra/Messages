@@ -197,6 +197,14 @@ File: `data/SettingsStore.kt`, `data/Repository.kt`
 
 File: `ui/NewChatScreen.kt`, `scripts/test-contacts-limit.sh`
 
+## Archive swipe UNDO (2026-08-26)
+
+- ✅ Issue #97: swipe-right archive fired silently while swipe-left delete showed an UNDO snackbar; also bottom-sheet "Archive" had zero feedback
+- ✅ Added `archiveWithUndo()` (archive → "Conversation archived · Undo" snackbar → unarchive on tap), threaded as `onArchive` callback through `SwipeableConversationItem`/`SwipeConversationItem`; bottom-sheet Archive now routes through it too (chat 3-dot menu keeps its toast — no snackbar host in ChatScreen)
+- ✅ Regression script swipes right on the topmost list row, asserts the snackbar + Undo action appear, taps Undo and asserts the row returns — test: `scripts/test-archive-undo.sh`
+
+File: `ui/ConversationsScreen.kt`, `scripts/test-archive-undo.sh`
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots
