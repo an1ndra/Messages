@@ -50,6 +50,7 @@ import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.MessagesTheme
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
@@ -60,6 +61,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val repo: Repository = (app as MessagesApplication).repository
     val settings = repo.settings
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    override fun onCleared() {
+        super.onCleared()
+        scope.cancel()
+    }
+
+    val contacts = kotlinx.coroutines.flow.MutableStateFlow<List<com.anindra.messages.ui.Contact>>(emptyList())
+
+    init {
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val ctx = app.applicationContext
+            val out = mutableListOf<com.anindra.messages.ui.Contact>()
+            try {
+                ctx.contentResolver.query(
+                    android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(
+                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+                    ),
+                    null, null,
+                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+                )?.use { c ->
+                    val seen = mutableSetOf<String>()
+                    while (c.moveToNext()) {
+                        val name = c.getString(0) ?: continue
+                        val num = c.getString(1) ?: continue
+                        if (seen.add(num.filter { it.isDigit() })) out.add(com.anindra.messages.ui.Contact(name, num))
+                    }
+                }
+            } catch (_: SecurityException) {
+            }
+            contacts.value = out
+        }
+    }
 
     val conversations: Flow<List<Conversation>> = repo.conversations()
 
@@ -406,6 +441,7 @@ class MainActivity : FragmentActivity() {
                                 onOpenSettings = { navRoute = "settings" }
                             )
                             "new" -> NewChatScreen(
+                                vm = vm,
                                 onBack = { navRoute = "list" },
                                 onPick = { address, name ->
                                     vm.openOrCreate(address, name) { id ->
