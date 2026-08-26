@@ -155,14 +155,16 @@ fun ConversationsScreen(
 
     val showArchiving = vm.settings.archivingEnabled
 
-    val displayed = conversations.filter { convo ->
-        if (showArchived) convo.archived
-        else !convo.archived
-    }.let { list ->
-        if (query.isBlank()) list
-        else list.filter {
-            it.name.contains(query, true) || it.address.contains(query) ||
-                    it.snippet.contains(query, true)
+    val displayed = remember(conversations, showArchived, query) {
+        conversations.filter { convo ->
+            if (showArchived) convo.archived
+            else !convo.archived
+        }.let { list ->
+            if (query.isBlank()) list
+            else list.filter {
+                it.name.contains(query, true) || it.address.contains(query) ||
+                        it.snippet.contains(query, true)
+            }
         }
     }
 

@@ -206,7 +206,7 @@ fun ChatScreen(
     // Message locking
     var unlockedIds by remember { mutableStateOf(setOf<Long>()) }
     val activity = context as? androidx.fragment.app.FragmentActivity
-    val biometricExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    val biometricExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
 
     fun cycleSim() {
         if (sims.size < 2) return
@@ -278,6 +278,7 @@ fun ChatScreen(
                 currentSimId = currentSimId,
                 menuOpen = menuOpen,
                 numberIsBlocked = numberIsBlocked,
+                blockingEnabled = vm.settings.blockingEnabled,
                 sendCountdown = sendCountdown,
                 onBack = ::leaveChat,
                 onOpenDetails = onOpenDetails,
@@ -642,6 +643,7 @@ private fun ChatTopBar(
     currentSimId: Int,
     menuOpen: Boolean,
     numberIsBlocked: Boolean,
+    blockingEnabled: Boolean,
     sendCountdown: Int,
     onBack: () -> Unit,
     onOpenDetails: () -> Unit,
@@ -749,7 +751,7 @@ private fun ChatTopBar(
                         text = { Text("Delete") },
                         onClick = { onMenuDismiss(); onDelete() }
                     )
-                    if (com.anindra.messages.data.SettingsStore::blockingEnabled.javaClass != null) {
+                    if (blockingEnabled) {
                         if (numberIsBlocked) {
                             DropdownMenuItem(
                                 text = { Text("Unblock number") },
@@ -1188,8 +1190,19 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
     val bitmap by produceState<Bitmap?>(initialValue = null, uri) {
         value = withContext(Dispatchers.IO) {
             try {
-                context.contentResolver.openInputStream(Uri.parse(uri))?.use {
-                    BitmapFactory.decodeStream(it)
+                context.contentResolver.openInputStream(Uri.parse(uri))?.use { stream ->
+                    val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeStream(stream, null, opts)
+                    val reqW = 260 * context.resources.displayMetrics.densityDpi / 160
+                    val reqH = 300 * context.resources.displayMetrics.densityDpi / 160
+                    var sample = 1
+                    while (opts.outWidth / sample > reqW * 2 || opts.outHeight / sample > reqH * 2) {
+                        sample *= 2
+                    }
+                    val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sample }
+                    context.contentResolver.openInputStream(Uri.parse(uri))?.use { s ->
+                        BitmapFactory.decodeStream(s, null, decodeOpts)
+                    }
                 }
             } catch (_: Exception) {
                 null

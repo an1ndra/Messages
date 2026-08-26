@@ -257,6 +257,23 @@ File: `sms/SmsSupport.kt`, `sms/QuickReplyReceiver.kt`, `ui/ChatScreen.kt`
 
 File: `ui/ContactDetailsScreen.kt`, `data/SettingsStore.kt`, `ui/SettingsScreen.kt`, `ui/ChatScreen.kt`
 
+## Performance batch D fixes (2026-08-26)
+
+- ✅ Issue #111: `ChatScreen` created a new `Executors.newSingleThreadExecutor()` on every recomposition. Wrapped in `remember { }` so the executor survives recomposition
+- ✅ Issue #110: `ConversationsScreen` computed `displayed = conversations.filter { ... }` on every recomposition, allocating a new List each time. Wrapped in `remember(conversations, showArchived, query)` to avoid unnecessary allocations
+- ✅ Issue #103: `ImageBubble` called `BitmapFactory.decodeStream` without `inSampleSize`, causing OOM on large photos. Added two-pass decode: bounds first with `inJustDecodeBounds=true`, then downsampled decode
+- ✅ Issue #109: Already fixed — `PersonAvatar` uses `produceState` + `Dispatchers.IO`
+- ✅ Issue #107: `AppViewModel.conversationById()` filtered the full conversation list on every DB change. Added `Repository.conversationByIdFlow()` with a direct `SELECT ... WHERE id=?` query
+- ✅ Issue #104+#105: `refreshContactNames()` and `syncFromSystem()` ran unconditionally on every `onResume()`. Added 5-minute throttle via `lastResumeTime` timestamp in `MainActivity`
+- ✅ Issue #108: `notifyChanged()` was called per-write during sync. `syncFromSystem()` already batches the single call at end; the real fix was #104/#105 throttle reducing resume-time calls
+- ✅ Bugfix: `ChatTopBar` guarded block/unblock menu with `SettingsStore::blockingEnabled.javaClass != null` (always true). Replaced with proper `blockingEnabled: Boolean` parameter
+
+File: `ui/ChatScreen.kt`, `ui/ConversationsScreen.kt`, `data/Repository.kt`, `MainActivity.kt`
+
+## Deferred
+
+- ⏳ Issue #106: No message pagination — full conversation loaded into memory. Requires Paging 3 library integration; defer to future release
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots
