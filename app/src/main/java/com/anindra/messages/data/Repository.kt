@@ -180,6 +180,7 @@ class Repository(private val context: Context) {
 
     private val db = Db(context)
     val settings = SettingsStore(context)
+    private val dbExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
 
     init {
         when (systemSmsCount()) {
@@ -369,21 +370,25 @@ class Repository(private val context: Context) {
         getOrCreateConversationBlocking(address, displayName)
 
     fun getOrCreateConversationBlocking(address: String, displayName: String? = null): Long {
-        var convoId = -1L
-        db.writableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE address=?",
-            arrayOf(address)
-        ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
+        val result = java.util.concurrent.CompletableFuture<Long>()
+        dbExecutor.submit {
+            var convoId = -1L
+            db.writableDatabase.rawQuery(
+                "SELECT id FROM conversations WHERE address=?",
+                arrayOf(address)
+            ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
 
-        if (convoId == -1L) {
-            val cv = ContentValues().apply {
-                put("address", address)
-                put("name", displayName ?: contactNameFor(address) ?: address)
+            if (convoId == -1L) {
+                val cv = ContentValues().apply {
+                    put("address", address)
+                    put("name", displayName ?: contactNameFor(address) ?: address)
+                }
+                convoId = db.writableDatabase.insert("conversations", null, cv)
+                notifyChanged()
             }
-            convoId = db.writableDatabase.insert("conversations", null, cv)
-            notifyChanged()
+            result.complete(convoId)
         }
-        return convoId
+        return result.get()
     }
 
     fun conversationByIdSuspend(id: Long): Conversation? {
@@ -696,6 +701,10 @@ class Repository(private val context: Context) {
     }
 
     fun addScheduledMessage(address: String, body: String, timestamp: Long, conversationId: Long, subId: Int): Long {
+        require(address.isNotBlank()) { "Address must not be blank" }
+        require(body.isNotBlank()) { "Message body must not be blank" }
+        require(body.length <= 1600) { "Message body exceeds 1600 characters" }
+        require(timestamp > System.currentTimeMillis()) { "Scheduled time must be in the future" }
         val cv = ContentValues().apply {
             put("address", address)
             put("body", body)
@@ -719,12 +728,14 @@ class Repository(private val context: Context) {
             if (!dbFile.exists()) return false
             val resolver = context.contentResolver
             val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, "messages_backup_${System.currentTimeMillis()}.db")
+                put(MediaStore.MediaColumns.DISPLAY_NAME, "messages_backup_${System.currentTimeMillis()}.enc")
                 put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
                 put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/Messages")
             }
             val uri = resolver.insert(MediaStore.Files.getContentUri("external"), values) ?: return false
-            resolver.openOutputStream(uri)?.use { out -> dbFile.inputStream().use { it.copyTo(out) } }
+            resolver.openOutputStream(uri)?.use { out ->
+                dbFile.inputStream().use { inp -> BackupCrypto.encrypt(inp, out) }
+            }
             true
         } catch (_: Exception) { false }
     }
@@ -733,9 +744,23 @@ class Repository(private val context: Context) {
         return try {
             val dbFile = context.getDatabasePath(DB_NAME)
             db.close()
+            val tempFile = File(dbFile.parent, "import_temp.db")
             context.contentResolver.openInputStream(sourceUri)?.use { inp ->
-                FileOutputStream(dbFile).use { out -> inp.copyTo(out) }
+                FileOutputStream(tempFile).use { out ->
+                    val decrypted = BackupCrypto.decrypt(inp, out)
+                    if (!decrypted) {
+                        // Legacy unencrypted backup — copy raw
+                        FileOutputStream(dbFile).use { dbOut ->
+                            context.contentResolver.openInputStream(sourceUri)!!.use { raw ->
+                                raw.copyTo(dbOut)
+                            }
+                        }
+                        tempFile.delete()
+                        return true
+                    }
+                }
             }
+            tempFile.renameTo(dbFile)
             true
         } catch (_: Exception) { false }
     }

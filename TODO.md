@@ -268,9 +268,31 @@ File: `ui/ContactDetailsScreen.kt`, `data/SettingsStore.kt`, `ui/SettingsScreen.
 - ✅ Issue #108: `notifyChanged()` was called per-write during sync. `syncFromSystem()` already batches the single call at end; the real fix was #104/#105 throttle reducing resume-time calls
 - ✅ Issue #114: `ImageBubble` and `PersonAvatar` decoded bitmaps from disk on every recomposition/scroll with zero caching. Added singleton `BitmapCache` (`LruCache`, 50 entries) in `Components.kt`; both composables now check cache before disk decode and store decoded bitmaps after
 - ✅ Issue #112: `syncFromSystem()` performed individual INSERT/UPDATE per message without explicit SQLite transaction (each auto-commits = fsync per statement). Wrapped the entire sync loop in `beginTransaction()`/`setTransactionSuccessful()`/`endTransaction()`. Reduces ~20,000 fsyncs to 1 for 10k messages — expected 10-100x faster initial sync
+- ✅ Issue #120: `biometricExecutor` created via `remember{}` in ChatScreen but never shut down — each chat visit leaked a thread. Added `DisposableEffect(Unit) { onDispose { biometricExecutor.shutdown() } }` so threads are reclaimed when ChatScreen leaves composition
+- ✅ Issue #116: `notifyChanged()` fired on every DB write (23 call sites), each re-querying the full conversations table. Added 100ms debounce via HandlerThread — rapid successive writes (send+receive+markRead) coalesce into a single re-query, eliminating UI flicker and redundant table scans
+- ✅ Issue #115: `loadContactPhoto()` decoded full-resolution bitmaps (~48MB for 4000x3000 photos) for 48dp avatars. Added two-pass decode with `inSampleSize` targeting 144px, reducing memory to ~65KB per photo
+- ✅ Issue #113: `MessageRow` received full `unlockedIds: Set<Long>` — unlocking one message created a new Set causing ALL rows to recompose. Replaced with `isUnlocked: Boolean` computed per-message in `ChatMessageList`, so only the affected row recomposes
 - ✅ Bugfix: `ChatTopBar` guarded block/unblock menu with `SettingsStore::blockingEnabled.javaClass != null` (always true). Replaced with proper `blockingEnabled: Boolean` parameter
 
 File: `ui/ChatScreen.kt`, `ui/ConversationsScreen.kt`, `data/Repository.kt`, `MainActivity.kt`, `ui/Components.kt`
+
+## Security hardening (2026-08-27)
+
+- ✅ Issue #129: `allowBackup="false"` in AndroidManifest to prevent unencrypted ADB backups
+- ✅ Issue #130: All notification builders use `VISIBILITY_PRIVATE` — no message content in lock screen
+- ✅ Issue #131: Biometric bypass fixed — `canAuth` checked on app resume, not just first launch
+- ✅ Issue #132: All PendingIntents use `FLAG_IMMUTABLE` — prevents mutation attacks
+- ✅ Issue #133: Clipboard auto-clear after 60s in ChatScreen
+- ✅ Issue #134: Phone number masked in failure notification when privacy mode is on
+- ✅ Issue #135: URL validation — non-http/https schemes rejected in link tap handler
+- ✅ Issue #136: Scheduled message input validation — phone number format + empty body check
+- ✅ Issue #137: Debug log statements removed from SmsReceiver and SmsSupport
+- ✅ Issue #139: Encrypted backup with Android Keystore AES-256-GCM (`BackupCrypto.kt`)
+- ✅ Issue #141: Biometric prompt required to unlock individual messages in ChatScreen
+- ✅ Issue #142: Thread safety — `dbExecutor` single-threaded executor for all DB writes in Repository
+- ✅ Issue #145: Removed unused `NoConfirmationSmsSendService` stub from manifest
+
+File: `AndroidManifest.xml`, `sms/SmsSupport.kt`, `MainActivity.kt`, `ui/ChatScreen.kt`, `sms/SmsReceiver.kt`, `data/Repository.kt`, `data/BackupCrypto.kt`
 
 ## Deferred
 

@@ -345,7 +345,8 @@ class MainActivity : FragmentActivity() {
             if (appLockEnabled && !appUnlocked) {
                 LaunchedEffect(Unit) {
                     val biometricManager = BiometricManager.from(this@MainActivity)
-                    if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS) {
+                    val canAuth = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                    if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
                         val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
                         val prompt = BiometricPrompt(this@MainActivity, executor,
                             object : BiometricPrompt.AuthenticationCallback() {
@@ -363,8 +364,28 @@ class MainActivity : FragmentActivity() {
                                 .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                                 .build()
                         )
-                    } else {
+                    } else if (canAuth == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE) {
+                        // No biometric sensor and no fallback — cannot lock, allow access
                         appUnlocked = true
+                    } else {
+                        // Biometrics not enrolled but device has PIN/password — try prompt anyway
+                        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+                        val prompt = BiometricPrompt(this@MainActivity, executor,
+                            object : BiometricPrompt.AuthenticationCallback() {
+                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                    runOnUiThread { appUnlocked = true }
+                                }
+                                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                                    runOnUiThread { finish() }
+                                }
+                            })
+                        prompt.authenticate(
+                            BiometricPrompt.PromptInfo.Builder()
+                                .setTitle("Unlock Messages")
+                                .setSubtitle("Authenticate to access your messages")
+                                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                                .build()
+                        )
                     }
                 }
             }
