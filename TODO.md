@@ -294,6 +294,16 @@ File: `ui/ChatScreen.kt`, `ui/ConversationsScreen.kt`, `data/Repository.kt`, `Ma
 
 File: `AndroidManifest.xml`, `sms/SmsSupport.kt`, `MainActivity.kt`, `ui/ChatScreen.kt`, `sms/SmsReceiver.kt`, `data/Repository.kt`, `data/BackupCrypto.kt`
 
+## Stability bug fixes (2026-08-27)
+
+- ✅ Issue #146: `importDatabase()` crashed on corrupted/non-SQLite files — rewrote with `ImportResult` sealed class, pre-validation via `isValidSqliteFile()` (checks magic header), backup-before-swap, `db` changed from `val` to `var` for safe reinit
+- ✅ Issue #147: Closed as `not_planned` — `SmsReceiver` already uses `goAsync()` + `Dispatchers.IO`
+- ✅ Issue #148: `conversationByIdSuspend()` ran DB query on Main thread — wrapped in `dbExecutor.submit` + `CompletableFuture.get()` to dispatch to background thread
+- ✅ Issue #149: `messageCount` called as direct DB query inside Composable — added `messageCountFlow()` using existing `observe` pattern; `ChatScreen` now uses `collectAsState` with sync fallback
+- ✅ Issue #150: `importDatabase()` failure silently swallowed — `ImportResult.Error` carries specific message; `SettingsScreen` shows "Import failed: {message}" toast
+
+File: `MainActivity.kt`, `data/Repository.kt`, `ui/ChatScreen.kt`, `ui/SettingsScreen.kt`
+
 ## Deferred
 
 - ✅ Issue #106: Implemented simple LIMIT200 pagination. `Repository.messages()` now accepts `limit`/`offset` params (default `Int.MAX_VALUE`/0 for backward compat). Added `messageCount()`. `ChatScreen` maintains `pageLimit` state starting at200; "Load earlier messages" button at top of chat list increases limit by200. No new dependencies.
