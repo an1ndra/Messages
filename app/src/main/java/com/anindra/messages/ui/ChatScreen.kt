@@ -450,9 +450,34 @@ fun ChatScreen(
                 onLockUnlock = { msgId, wantLock ->
                     if (wantLock) {
                         vm.setLocked(msgId, true)
-                    } else {
-                        vm.setLocked(msgId, false)
-                        unlockedIds = unlockedIds + msgId
+                    } else if (activity != null) {
+                        val biometricManager = BiometricManager.from(activity)
+                        val canAuth = biometricManager.canAuthenticate(
+                            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                        )
+                        if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                            val prompt = BiometricPrompt(activity, biometricExecutor,
+                                object : BiometricPrompt.AuthenticationCallback() {
+                                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                        activity.runOnUiThread {
+                                            vm.setLocked(msgId, false)
+                                            unlockedIds = unlockedIds + msgId
+                                        }
+                                    }
+                                })
+                            prompt.authenticate(
+                                BiometricPrompt.PromptInfo.Builder()
+                                    .setTitle("Unlock Message")
+                                    .setSubtitle("Authenticate to reveal this message")
+                                    .setAllowedAuthenticators(
+                                        BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                                    )
+                                    .build()
+                            )
+                        } else {
+                            vm.setLocked(msgId, false)
+                            unlockedIds = unlockedIds + msgId
+                        }
                     }
                 }
             )
@@ -905,7 +930,7 @@ fun isPhoneNumber(address: String): Boolean =
     address.count { it.isDigit() } >= 4 && address.all { it.isDigit() || it == '+' }
 
 fun openUrl(context: android.content.Context, url: String) {
-    val target = if (url.startsWith("http://") || url.startsWith("https://")) url else "http://$url"
+    val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return
     try {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
     } catch (_: Exception) {
@@ -1147,7 +1172,11 @@ fun MessageRow(
                         showContextMenu = false
                         val clipboard = android.content.Context.CLIPBOARD_SERVICE
                         val clip = android.content.ClipData.newPlainText("message", msg.body)
-                        (context.getSystemService(clipboard) as android.content.ClipboardManager).setPrimaryClip(clip)
+                        val cm = context.getSystemService(clipboard) as android.content.ClipboardManager
+                        cm.setPrimaryClip(clip)
+                        android.os.Handler(context.mainLooper).postDelayed({
+                            try { cm.setPrimaryClip(android.content.ClipData.newPlainText("", "")) } catch (_: Exception) {}
+                        }, 60_000)
                         Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                     }
                 )

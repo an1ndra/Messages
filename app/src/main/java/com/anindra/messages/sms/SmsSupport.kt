@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.util.Log
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -69,7 +68,7 @@ object NotificationHelper {
             context, reqCode,
             QuickReplyReceiver.createReplyIntent(context, from, from)
                 .putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val remoteInput = RemoteInput.Builder("quick_reply").setLabel("Reply").build()
@@ -86,6 +85,7 @@ object NotificationHelper {
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
             .setContentIntent(tap)
             .addAction(replyAction)
@@ -115,10 +115,15 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val privacyMode = app.repository.settings.privacyModeEnabled
+        val failText = if (privacyMode) "Couldn't send message. Tap to retry."
+            else "Couldn't send message to $to. Tap to retry."
+
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Message not delivered")
-            .setContentText("Couldn't send message to $to. Tap to retry.")
+            .setContentText(failText)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
             .setContentIntent(tap)
             .build()
@@ -206,8 +211,7 @@ object SmsSender {
             )
         }
         true
-    } catch (e: Exception) {
-        Log.e("SmsSend", "text handoff failed", e)
+    } catch (_: Exception) {
         false
     }
 

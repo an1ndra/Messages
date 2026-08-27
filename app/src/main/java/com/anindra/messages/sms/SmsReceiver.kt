@@ -21,8 +21,7 @@ class SmsReceiver : BroadcastReceiver() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 processIncoming(context, intent)
-            } catch (e: Exception) {
-                android.util.Log.w("SmsReceiver", "incoming SMS processing failed", e)
+            } catch (_: Exception) {
             } finally {
                 pendingResult.finish()
             }
@@ -59,8 +58,7 @@ class SmsReceiver : BroadcastReceiver() {
                     }
                     sysId = context.contentResolver.insert(Telephony.Sms.Inbox.CONTENT_URI, values)
                         ?.lastPathSegment?.toLongOrNull() ?: 0L
-                } catch (e: Exception) {
-                    android.util.Log.w("SmsReceiver", "system inbox write-back failed", e)
+                } catch (_: Exception) {
                 }
             }
 
