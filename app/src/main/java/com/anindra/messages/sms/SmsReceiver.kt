@@ -43,6 +43,7 @@ class SmsReceiver : BroadcastReceiver() {
         // own message + notification.
         val msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent)
             .filter { it.originatingAddress != null && !it.messageBody.isNullOrEmpty() }
+        val subId = intent.getIntExtra("subscription", -1)
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
             val body = parts.joinToString("") { it.messageBody!! }
 
@@ -55,6 +56,7 @@ class SmsReceiver : BroadcastReceiver() {
                         put(Telephony.Sms.DATE, parts.first().timestampMillis)
                         put(Telephony.Sms.READ, 0)
                         put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_INBOX)
+                        put(Telephony.Sms.SUBSCRIPTION_ID, subId)
                     }
                     sysId = context.contentResolver.insert(Telephony.Sms.Inbox.CONTENT_URI, values)
                         ?.lastPathSegment?.toLongOrNull() ?: 0L
@@ -62,7 +64,7 @@ class SmsReceiver : BroadcastReceiver() {
                 }
             }
 
-            repo.receiveMessage(address, body, sysId)
+            repo.receiveMessage(address, body, sysId, subId)
             NotificationHelper.show(context, address, body)
         }
     }

@@ -39,10 +39,6 @@ class SettingsStore(context: Context) {
         const val KEY_PRIVACY_MODE = "privacy_mode"
         const val KEY_APP_LOCK = "app_lock_enabled"
         const val KEY_FIRST_IMPORT_DONE = "first_import_done"
-        const val KEY_INCOMING_SOUND = "incoming_sound_uri"
-        const val KEY_OUTGOING_SOUND = "outgoing_sound_uri"
-        const val SOUND_DEFAULT = "default"
-        const val SOUND_SILENT = "silent"
         const val DEFAULTS_NOTIFICATIONS = true
         const val DEFAULTS_SOUNDS = true
         const val DEFAULTS_DELIVERY = false
@@ -124,20 +120,4 @@ class SettingsStore(context: Context) {
     var delaySeconds: Int
         get() = prefs.getInt(KEY_DELAY_SECONDS, 3)
         set(v) { prefs.edit().putInt(KEY_DELAY_SECONDS, v).apply(); _revision.value++ }
-
-    var incomingSound: String
-        get() = prefs.getString(KEY_INCOMING_SOUND, SOUND_DEFAULT) ?: SOUND_DEFAULT
-        set(v) { prefs.edit().putString(KEY_INCOMING_SOUND, v).apply(); _revision.value++ }
-
-    var outgoingSound: String
-        get() = prefs.getString(KEY_OUTGOING_SOUND, SOUND_DEFAULT) ?: SOUND_DEFAULT
-        set(v) { prefs.edit().putString(KEY_OUTGOING_SOUND, v).apply(); _revision.value++ }
-
-    var incomingSoundLabel: String
-        get() = prefs.getString("${KEY_INCOMING_SOUND}_label", "") ?: ""
-        set(v) { prefs.edit().putString("${KEY_INCOMING_SOUND}_label", v).apply(); _revision.value++ }
-
-    var outgoingSoundLabel: String
-        get() = prefs.getString("${KEY_OUTGOING_SOUND}_label", "") ?: ""
-        set(v) { prefs.edit().putString("${KEY_OUTGOING_SOUND}_label", v).apply(); _revision.value++ }
 }

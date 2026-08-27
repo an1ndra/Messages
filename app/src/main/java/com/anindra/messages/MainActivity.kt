@@ -168,11 +168,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun send(conversationId: Long, body: String) {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
-            val stored = repo.sendText(conversationId, body) ?: return@launch
+            val subId = settings.simSubscriptionId
+            val stored = repo.sendText(conversationId, body, subId) ?: return@launch
             if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
             val handedOff = SmsSender.send(
                 getApplication(), stored.id, convo.address, body,
-                settings.simSubscriptionId, settings.deliveryReportsEnabled
+                subId, settings.deliveryReportsEnabled
             )
             // ok == accepted by framework; SmsStatusReceiver confirms sent/failed.
             if (!handedOff) {
@@ -275,7 +276,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun forwardMessage(messageId: Long, targetConversationId: Long) {
         scope.launch {
             val msg = repo.messageByIdSuspend(messageId) ?: return@launch
-            repo.sendText(targetConversationId, msg.body)
+            repo.sendText(targetConversationId, msg.body, settings.simSubscriptionId)
         }
     }
 

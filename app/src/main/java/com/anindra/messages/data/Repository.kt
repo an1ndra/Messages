@@ -21,7 +21,7 @@ import java.io.File
 import java.io.FileOutputStream
 
 private const val DB_NAME = "messages.db"
-private const val DB_VERSION = 11
+private const val DB_VERSION = 12
 
 class Db(context: Context) :
     SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
@@ -54,7 +54,8 @@ class Db(context: Context) :
                 media_uri TEXT NOT NULL DEFAULT '',
                 reactions TEXT NOT NULL DEFAULT '',
                 sys_id INTEGER NOT NULL DEFAULT 0,
-                locked INTEGER NOT NULL DEFAULT 0)"""
+                locked INTEGER NOT NULL DEFAULT 0,
+                sub_id INTEGER NOT NULL DEFAULT -1)"""
         )
         db.execSQL("CREATE INDEX idx_messages_conversation ON messages(conversation_id)")
         db.execSQL(
@@ -129,6 +130,9 @@ class Db(context: Context) :
         if (oldVersion < 11) {
             dedupeSysIds(db)
         }
+        if (oldVersion < 12) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN sub_id INTEGER NOT NULL DEFAULT -1")
+        }
     }
 
     /** Collapses rows that share a system-provider id (legacy double-imports,
@@ -172,6 +176,10 @@ class Db(context: Context) :
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_sys_id " +
                     "ON messages(sys_id) WHERE sys_id>0"
             )
+        } catch (_: android.database.sqlite.SQLiteException) {
+        }
+        try {
+            db.execSQL("ALTER TABLE messages ADD COLUMN sub_id INTEGER NOT NULL DEFAULT -1")
         } catch (_: android.database.sqlite.SQLiteException) {
         }
     }
@@ -334,7 +342,7 @@ class Repository(private val context: Context) {
     fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> = observe {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
-            """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked FROM messages
+            """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id FROM messages
                WHERE conversation_id=? ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
             arrayOf(conversationId.toString(), limit.toString(), offset.toString())
         ).use { c ->
@@ -350,7 +358,8 @@ class Repository(private val context: Context) {
                         mediaType = c.getString(5),
                         mediaUri = c.getString(6),
                         reactions = parseReactions(c.getString(7)),
-                        locked = c.getInt(8) == 1
+                        locked = c.getInt(8) == 1,
+                        subId = c.getInt(9)
                     )
                 )
             }
@@ -421,7 +430,7 @@ class Repository(private val context: Context) {
     }
 
     /** Stores a text message as 'sending'; SmsStatusReceiver confirms the final state. */
-    fun sendText(conversationId: Long, body: String): Message? {
+    fun sendText(conversationId: Long, body: String, subId: Int = -1): Message? {
         val now = System.currentTimeMillis()
         val cv = ContentValues().apply {
             put("conversation_id", conversationId)
@@ -430,10 +439,11 @@ class Repository(private val context: Context) {
             put("is_me", 1)
             put("status", "sending")
             put("media_type", "text")
+            put("sub_id", subId)
         }
         val id = db.writableDatabase.insertOrThrow("messages", null, cv)
         touchConversation(conversationId, body, now, isMe = true)
-        return Message(id, conversationId, body, now, true, "sending")
+        return Message(id, conversationId, body, now, true, "sending", subId = subId)
     }
 
     fun sendMedia(conversationId: Long, mediaType: String, uri: String, caption: String = ""): Message? {
@@ -461,15 +471,16 @@ class Repository(private val context: Context) {
     }
 
     /** Store an incoming SMS. Returns conversation id. [sysId] links the row to
-     *  its system-provider copy so the next sync skips it instead of duplicating. */
-    fun receiveMessage(address: String, body: String, sysId: Long = 0L): Long {
+     *  its system-provider copy so the next sync skips it instead of duplicating.
+     *  [subId] is the SIM subscription id for dual-SIM display. */
+    fun receiveMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
         val convoId = getOrCreateConversationBlocking(address)
 
         db.writableDatabase.execSQL(
-            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id)
-               VALUES(?,?,?,?,?,?)""",
-            arrayOf(convoId, body, now, 0, "received", sysId)
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,sub_id)
+               VALUES(?,?,?,?,?,?,?)""",
+            arrayOf(convoId, body, now, 0, "received", sysId, subId)
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
@@ -926,13 +937,14 @@ class Repository(private val context: Context) {
                         android.provider.Telephony.Sms.ADDRESS,
                         android.provider.Telephony.Sms.BODY,
                         android.provider.Telephony.Sms.DATE,
-                        android.provider.Telephony.Sms.TYPE
+                        android.provider.Telephony.Sms.TYPE,
+                        android.provider.Telephony.Sms.SUBSCRIPTION_ID
                     ),
                     null, null,
                     android.provider.Telephony.Sms.DATE + " ASC"
                 ) ?: return@execute
 
-                data class SysSms(val sysId: Long, val body: String, val date: Long, val type: Int)
+                data class SysSms(val sysId: Long, val body: String, val date: Long, val type: Int, val subId: Int)
                 val byAddress = LinkedHashMap<String, MutableList<SysSms>>()
                 cursor.use { c ->
                     while (c.moveToNext()) {
@@ -940,11 +952,12 @@ class Repository(private val context: Context) {
                         val body = c.getString(2) ?: continue
                         val date = c.getLong(3)
                         val type = c.getInt(4)
+                        val subId = c.getInt(5)
                         if (type == android.provider.Telephony.Sms.MESSAGE_TYPE_DRAFT ||
                             type == android.provider.Telephony.Sms.MESSAGE_TYPE_OUTBOX
                         ) continue
                         byAddress.getOrPut(addr) { mutableListOf() }.add(
-                            SysSms(c.getLong(0), body, date, type)
+                            SysSms(c.getLong(0), body, date, type, subId)
                         )
                     }
                 }
@@ -990,15 +1003,15 @@ class Repository(private val context: Context) {
                                     )
                                 } else {
                                     db.writableDatabase.execSQL(
-                                        """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id)
-                                           VALUES(?,?,?,?,?,?)""",
+                                        """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,sub_id)
+                                           VALUES(?,?,?,?,?,?,?)""",
                                         arrayOf(cid, m.body, m.date, if (isMe) 1 else 0,
                                             when (m.type) {
                                                 android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
                                                 android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
                                                 else -> "sent"
                                             },
-                                            m.sysId)
+                                            m.sysId, m.subId)
                                     )
                                 }
                             } catch (_: android.database.sqlite.SQLiteException) {
@@ -1046,7 +1059,7 @@ class Repository(private val context: Context) {
 
     /** Writes an outgoing SMS into the system Sent box (required when default app)
      *  and links the new provider id to our local row, preventing re-import dups. */
-    fun writeSentToSystem(address: String, body: String) {
+    fun writeSentToSystem(address: String, body: String, subId: Int = -1) {
         try {
             val now = System.currentTimeMillis()
             val cv = ContentValues().apply {
@@ -1058,6 +1071,7 @@ class Repository(private val context: Context) {
                     android.provider.Telephony.Sms.TYPE,
                     android.provider.Telephony.Sms.MESSAGE_TYPE_SENT
                 )
+                if (subId > 0) put(android.provider.Telephony.Sms.SUBSCRIPTION_ID, subId)
             }
             val sysId = context.contentResolver.insert(
                 android.provider.Telephony.Sms.Sent.CONTENT_URI, cv

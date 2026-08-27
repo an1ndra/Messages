@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,12 +56,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
-import com.anindra.messages.data.SoundStore
+
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -134,27 +134,6 @@ fun SettingsScreen(
         }
     }
 
-    var incomingSoundKey by remember { mutableStateOf(vm.settings.incomingSound) }
-    var outgoingSoundKey by remember { mutableStateOf(vm.settings.outgoingSound) }
-    var incomingSoundLabel by remember { mutableStateOf(vm.settings.incomingSoundLabel) }
-    var outgoingSoundLabel by remember { mutableStateOf(vm.settings.outgoingSoundLabel) }
-    var soundPickerOpen by remember { mutableStateOf<String?>(null) }
-
-    fun selectSound(target: String, key: String, label: String?) {
-        if (target == "incoming") {
-            vm.settings.incomingSound = key
-            vm.settings.incomingSoundLabel = label.orEmpty()
-            incomingSoundKey = key
-            incomingSoundLabel = label.orEmpty()
-        } else {
-            vm.settings.outgoingSound = key
-            vm.settings.outgoingSoundLabel = label.orEmpty()
-            outgoingSoundKey = key
-            outgoingSoundLabel = label.orEmpty()
-        }
-        SoundStore.play(context, key)
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -202,21 +181,6 @@ fun SettingsScreen(
                         vm.markAllRead()
                         Toast.makeText(context, "All conversations marked as read", Toast.LENGTH_SHORT).show()
                     }
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
-                SettingsRow(
-                    title = "Incoming message sound",
-                    subtitle = soundSubtitle(incomingSoundKey, incomingSoundLabel),
-                    onClick = { soundPickerOpen = "incoming" }
-                )
-                SettingsRow(
-                    title = "Sent message sound",
-                    subtitle = soundSubtitle(outgoingSoundKey, outgoingSoundLabel),
-                    onClick = { soundPickerOpen = "outgoing" }
                 )
             }
 
@@ -557,15 +521,6 @@ fun SettingsScreen(
         )
     }
 
-    soundPickerOpen?.let { target ->
-        val currentKey = if (target == "incoming") incomingSoundKey else outgoingSoundKey
-        SoundPickerDialog(
-            context = context,
-            currentKey = currentKey,
-            onSelect = { key, label -> selectSound(target, key, label) },
-            onDismiss = { soundPickerOpen = null }
-        )
-    }
 }
 
 @Composable
@@ -585,96 +540,6 @@ private fun themeLabel(mode: String) = when (mode) {
     "light" -> "Light"
     "dark" -> "Dark"
     else -> "System default"
-}
-
-private fun soundSubtitle(key: String, label: String): String = when {
-    key == SettingsStore.SOUND_DEFAULT -> "Default (system tone)"
-    key == SettingsStore.SOUND_SILENT -> "Silent"
-    else -> label.ifEmpty { "System sound" }
-}
-
-@Composable
-private fun SoundPickerDialog(
-    context: android.content.Context,
-    currentKey: String,
-    onSelect: (String, String?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val systemSounds = remember {
-        runCatching { SoundStore.listSystemSounds(context) }.getOrDefault(emptyList())
-    }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Choose sound") },
-        text = {
-            LazyColumn(modifier = Modifier.height(360.dp)) {
-                item {
-                    SoundOption(
-                        selected = currentKey == SettingsStore.SOUND_DEFAULT,
-                        title = "App default (beep)",
-                        icon = Icons.Rounded.Notifications,
-                        onClick = { onSelect(SettingsStore.SOUND_DEFAULT, null) }
-                    )
-                }
-                item {
-                    SoundOption(
-                        selected = currentKey == SettingsStore.SOUND_SILENT,
-                        title = "Silent",
-                        icon = Icons.Rounded.Cancel,
-                        onClick = { onSelect(SettingsStore.SOUND_SILENT, null) }
-                    )
-                }
-                items(systemSounds) { sound ->
-                    SoundOption(
-                        selected = currentKey == sound.key,
-                        title = sound.title,
-                        icon = Icons.Rounded.VolumeUp,
-                        onClick = { onSelect(sound.key, sound.title) }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
-        }
-    )
-}
-
-@Composable
-private fun SoundOption(
-    selected: Boolean,
-    title: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(22.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.width(14.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-        if (selected) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = "Selected",
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
 }
 
 @Composable
