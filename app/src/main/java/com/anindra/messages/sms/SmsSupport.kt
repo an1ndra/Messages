@@ -148,14 +148,16 @@ object NotificationHelper {
         }
     }
 
-    fun playSentSound(context: Context) = playSound(context, incoming = false)
+    fun playSentSound(context: Context) = playSound(context, send = true)
 
     private fun playReceiveSound(context: Context) =
-        playSound(context, incoming = true)
+        playSound(context, send = false)
 
-    private fun playSound(context: Context, incoming: Boolean) {
+    private fun playSound(context: Context, send: Boolean) {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        if (!app.repository.settings.soundsEnabled) return
+        val enabled = if (send) app.repository.settings.sendSoundEnabled
+                      else app.repository.settings.receiveSoundEnabled
+        if (!enabled) return
         try {
             val uri = Uri.parse("android.resource://${context.packageName}/${R.raw.notification_sound}")
             val mp = android.media.MediaPlayer()

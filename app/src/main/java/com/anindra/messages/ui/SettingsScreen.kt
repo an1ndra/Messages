@@ -81,8 +81,10 @@ fun SettingsScreen(
 
     var themeDialog by remember { mutableStateOf(false) }
     var notifications by remember(revision) { mutableStateOf(vm.settings.notificationsEnabled) }
-    var sounds by remember(revision) { mutableStateOf(vm.settings.soundsEnabled) }
     var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
+    var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
+    var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
+    var showSim by remember(revision) { mutableStateOf(vm.settings.showSimIndicator) }
     val themeMode = vm.themeMode
 
     var pinned by remember(revision) { mutableStateOf(vm.settings.pinnedEnabled) }
@@ -157,16 +159,22 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Notifications",
+                    title = "Notification sounds",
                     subtitle = "Show message notifications",
                     checked = notifications,
                     onChecked = { notifications = it; vm.settings.notificationsEnabled = it }
                 )
                 SettingsRow(
-                    title = "Message sounds",
-                    subtitle = "Hear outgoing and incoming message sounds",
-                    checked = sounds,
-                    onChecked = { sounds = it; vm.settings.soundsEnabled = it }
+                    title = "Send sound",
+                    subtitle = "Play sound when sending a message",
+                    checked = sendSound,
+                    onChecked = { sendSound = it; vm.settings.sendSoundEnabled = it }
+                )
+                SettingsRow(
+                    title = "Receive sound",
+                    subtitle = "Play sound when receiving a message",
+                    checked = receiveSound,
+                    onChecked = { receiveSound = it; vm.settings.receiveSoundEnabled = it }
                 )
                 SettingsRow(
                     title = "Delivery reports",
@@ -213,6 +221,12 @@ fun SettingsScreen(
                             simPermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
                         }
                     }
+                )
+                SettingsRow(
+                    title = "SIM indicator",
+                    subtitle = "Show which SIM was used for each message",
+                    checked = showSim,
+                    onChecked = { showSim = it; vm.settings.showSimIndicator = it }
                 )
             }
 

@@ -307,6 +307,15 @@ File: `AndroidManifest.xml`, `sms/SmsSupport.kt`, `MainActivity.kt`, `ui/ChatScr
 
 File: `MainActivity.kt`, `data/Repository.kt`, `ui/ChatScreen.kt`, `ui/SettingsScreen.kt`
 
+## Settings toggles: SIM indicator + send/receive sounds (2026-08-27)
+
+- ✅ Split single "Message sounds" toggle into separate "Send sound" and "Receive sound" toggles in SettingsStore + SettingsScreen
+- ✅ Added "SIM indicator" toggle in Settings → Appearance section — when off, SIM label hidden from chat bubbles
+- ✅ Wired `showSimIndicator` setting through `ChatMessageList` → `MessageRow` in ChatScreen
+- ✅ Wired `sendSoundEnabled`/`receiveSoundEnabled` into `SmsSupport.playSound()`
+
+File: `data/SettingsStore.kt`, `ui/SettingsScreen.kt`, `ui/ChatScreen.kt`, `sms/SmsSupport.kt`
+
 ## Deferred
 
 - ✅ Issue #106: Implemented simple LIMIT200 pagination. `Repository.messages()` now accepts `limit`/`offset` params (default `Int.MAX_VALUE`/0 for backward compat). Added `messageCount()`. `ChatScreen` maintains `pageLimit` state starting at200; "Load earlier messages" button at top of chat list increases limit by200. No new dependencies.

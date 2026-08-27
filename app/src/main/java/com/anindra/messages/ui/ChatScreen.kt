@@ -509,7 +509,8 @@ fun ChatScreen(
                             unlockedIds = unlockedIds + msgId
                         }
                     }
-                }
+                },
+                showSimIndicator = vm.settings.showSimIndicator
             )
 
             if (sendCountdown > 0) {
@@ -850,7 +851,8 @@ private fun ChatMessageList(
     onRetry: (msgId: Long) -> Unit,
     onRetryWithPicker: (msgId: Long) -> Unit,
     onLongPress: (msgId: Long) -> Unit,
-    onLockUnlock: (msgId: Long, wantLock: Boolean) -> Unit
+    onLockUnlock: (msgId: Long, wantLock: Boolean) -> Unit,
+    showSimIndicator: Boolean = true
 ) {
     LazyColumn(
         state = listState,
@@ -880,7 +882,8 @@ private fun ChatMessageList(
                 onLongPress = { onLongPress(msg.id) },
                 highlightLinks = highlightLinks,
                 onLockUnlock = { wantLock -> onLockUnlock(msg.id, wantLock) },
-                isUnlocked = msg.id in unlockedIds
+                isUnlocked = msg.id in unlockedIds,
+                showSimIndicator = showSimIndicator
             )
         }
     }
@@ -1116,7 +1119,8 @@ fun MessageRow(
     onLongPress: () -> Unit = {},
     highlightLinks: Boolean = false,
     onLockUnlock: (Boolean) -> Unit = {},
-    isUnlocked: Boolean = false
+    isUnlocked: Boolean = false,
+    showSimIndicator: Boolean = true
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -1227,54 +1231,54 @@ fun MessageRow(
             }
         }
 
-        if (msg.isMe && showStatus) {
-            if (msg.status == "failed") {
-                Row(
-                    modifier = Modifier.padding(top = 2.dp, end = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Not sent",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = cs.error
-                    )
-                    Text(
-                        " · ",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = cs.error
-                    )
-                    Text(
-                        "Tap to retry",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = cs.error,
-                        modifier = Modifier.clickable { onRetry() }
-                    )
-                }
-            } else {
-                val simLabel = if (msg.subId > 0) {
-                    try {
-                        val slotIndex = android.telephony.SubscriptionManager.getSlotIndex(msg.subId)
-                        if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
-                    } catch (_: Exception) { "" }
-                } else if (msg.subId == 0) {
-                    try {
-                        val sm = context.getSystemService(SubscriptionManager::class.java)
-                        val defaultSub = sm?.activeSubscriptionInfoList?.minByOrNull { it.simSlotIndex }
-                        if (defaultSub != null) " · SIM ${defaultSub.simSlotIndex + 1}" else ""
-                    } catch (_: Exception) { "" }
-                } else ""
+        val simLabel = if (showSimIndicator && msg.subId > 0) {
+            try {
+                val slotIndex = android.telephony.SubscriptionManager.getSlotIndex(msg.subId)
+                if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
+            } catch (_: Exception) { "" }
+        } else ""
+
+        if (msg.status == "failed" && msg.isMe) {
+            Row(
+                modifier = Modifier.padding(top = 2.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = formatTimeOnly(msg.timestamp) + " • " +
-                            when {
-                                deliveryReports && msg.status == "delivered" -> "Delivered"
-                                msg.status == "sending" -> "Sending…"
-                                else -> "SMS"
-                            } + simLabel,
+                    "Not sent",
                     style = MaterialTheme.typography.labelSmall,
-                    color = cs.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp, end = 4.dp)
+                    color = cs.error
+                )
+                Text(
+                    " · ",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = cs.error
+                )
+                Text(
+                    "Tap to retry",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = cs.error,
+                    modifier = Modifier.clickable { onRetry() }
                 )
             }
+        } else {
+            val statusText = if (msg.isMe) {
+                when {
+                    showStatus && deliveryReports && msg.status == "delivered" -> "Delivered"
+                    showStatus && msg.status == "sending" -> "Sending…"
+                    else -> "SMS"
+                }
+            } else ""
+            val prefix = if (statusText.isNotEmpty()) " • $statusText" else ""
+            Text(
+                text = formatTimeOnly(msg.timestamp) + prefix + simLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = cs.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    top = 2.dp,
+                    start = if (!msg.isMe) 4.dp else 0.dp,
+                    end = if (msg.isMe) 4.dp else 0.dp
+                )
+            )
         }
     }
 }
