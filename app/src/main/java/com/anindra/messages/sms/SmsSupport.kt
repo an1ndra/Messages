@@ -17,12 +17,24 @@ import com.anindra.messages.R
 object NotificationHelper {
     private const val CHANNEL_ID = "messages"
 
+    private var channelCreated = false
+
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
+        if (channelCreated) return
+        val soundUri = Uri.parse("android.resource://${context.packageName}/${R.raw.notification_sound}")
+        val audioAttr = android.media.AudioAttributes.Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
         val channel = NotificationChannel(
             CHANNEL_ID, "Messages", NotificationManager.IMPORTANCE_HIGH
-        ).apply { description = "New message notifications" }
+        ).apply {
+            description = "New message notifications"
+            setSound(soundUri, audioAttr)
+        }
         nm.createNotificationChannel(channel)
+        channelCreated = true
     }
 
     private fun canPost(context: Context): Boolean {
@@ -80,6 +92,7 @@ object NotificationHelper {
         val title = if (privacyMode) "New message" else from
         val text = if (privacyMode) "You have a new message" else body
 
+        val soundUri = Uri.parse("android.resource://${context.packageName}/${R.raw.notification_sound}")
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
@@ -89,6 +102,7 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setContentIntent(tap)
             .addAction(replyAction)
+            .setSound(soundUri)
             .build()
 
         try {
@@ -142,16 +156,19 @@ object NotificationHelper {
     private fun playSound(context: Context, incoming: Boolean) {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         if (!app.repository.settings.soundsEnabled) return
-        playTone(context, if (incoming) android.media.ToneGenerator.TONE_PROP_BEEP2 else android.media.ToneGenerator.TONE_PROP_ACK)
-    }
-
-    private fun playTone(context: Context, tone: Int) {
-        val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        if (!app.repository.settings.soundsEnabled) return
         try {
-            val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION, 80)
-            tg.startTone(tone, 150)
-            android.os.Handler(context.mainLooper).postDelayed({ tg.release() }, 400)
+            val uri = Uri.parse("android.resource://${context.packageName}/${R.raw.notification_sound}")
+            val mp = android.media.MediaPlayer()
+            mp.setDataSource(context, uri)
+            mp.setAudioAttributes(
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            mp.setOnCompletionListener { it.release() }
+            mp.prepareAsync()
+            mp.setOnPreparedListener { it.start() }
         } catch (_: Exception) {
         }
     }

@@ -1,5 +1,6 @@
 package com.anindra.messages.ui
 
+import android.Manifest
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -208,6 +209,19 @@ fun ChatScreen(
     var retryingMessageId by remember { mutableStateOf(-1L) }
     var showRetrySimPicker by remember { mutableStateOf(false) }
 
+    val phoneStatePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            try {
+                val sm = context.getSystemService(SubscriptionManager::class.java)
+                sims = sm?.activeSubscriptionInfoList?.filter {
+                    it.simSlotIndex >= 0
+                }?.sortedBy { it.simSlotIndex } ?: emptyList()
+            } catch (_: Exception) {}
+        }
+    }
+
     // Message locking
     var unlockedIds by remember { mutableStateOf(setOf<Long>()) }
     val activity = context as? androidx.fragment.app.FragmentActivity
@@ -234,7 +248,14 @@ fun ChatScreen(
                 it.simSlotIndex >= 0
             }?.sortedBy { it.simSlotIndex } ?: emptyList()
         } catch (_: SecurityException) {
-            sims = emptyList()
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) !=
+                    android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+                }
+            } else {
+                phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+            }
         }
     }
 
@@ -1225,6 +1246,12 @@ fun MessageRow(
                     try {
                         val slotIndex = android.telephony.SubscriptionManager.getSlotIndex(msg.subId)
                         if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
+                    } catch (_: Exception) { "" }
+                } else if (msg.subId == 0) {
+                    try {
+                        val sm = context.getSystemService(SubscriptionManager::class.java)
+                        val defaultSub = sm?.activeSubscriptionInfoList?.minByOrNull { it.simSlotIndex }
+                        if (defaultSub != null) " · SIM ${defaultSub.simSlotIndex + 1}" else ""
                     } catch (_: Exception) { "" }
                 } else ""
                 Text(
