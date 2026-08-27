@@ -269,12 +269,12 @@ fun ConversationsScreen(
             }
 
             if (!loaded) {
-                LazyColumn {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     items(8, key = { "skeleton_$it" }) { SkeletonConversationRow() }
                     item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
                 }
             } else {
-                LazyColumn {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     items(displayed, key = { it.id }) { convo ->
                         SwipeableConversationItem(
                             settings = rowSettings,
