@@ -42,7 +42,7 @@ class SmsStatusReceiver : BroadcastReceiver() {
         val msg = repo.messageByIdSuspend(messageId) ?: return
         if (msg.mediaType == "text") {
             val convo = repo.conversationByIdSuspend(msg.conversationId) ?: return
-            repo.writeSentToSystem(convo.address, msg.body)
+            repo.writeSentToSystem(convo.address, msg.body, msg.subId)
         }
     }
 

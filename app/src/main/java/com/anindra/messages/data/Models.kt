@@ -25,7 +25,8 @@ data class Message(
     val mediaType: String = "text",
     val mediaUri: String = "",
     val reactions: Map<String, Int> = emptyMap(),
-    val locked: Boolean = false
+    val locked: Boolean = false,
+    val subId: Int = -1
 )
 
 data class BlockedNumber(

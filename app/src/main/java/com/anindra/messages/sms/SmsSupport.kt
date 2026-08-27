@@ -142,14 +142,7 @@ object NotificationHelper {
     private fun playSound(context: Context, incoming: Boolean) {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         if (!app.repository.settings.soundsEnabled) return
-        val key = if (incoming) app.repository.settings.incomingSound
-        else app.repository.settings.outgoingSound
-        when (key) {
-            com.anindra.messages.data.SettingsStore.SOUND_SILENT -> return
-            com.anindra.messages.data.SettingsStore.SOUND_DEFAULT ->
-                playTone(context, if (incoming) android.media.ToneGenerator.TONE_PROP_BEEP2 else android.media.ToneGenerator.TONE_PROP_ACK)
-            else -> com.anindra.messages.data.SoundStore.play(context, key)
-        }
+        playTone(context, if (incoming) android.media.ToneGenerator.TONE_PROP_BEEP2 else android.media.ToneGenerator.TONE_PROP_ACK)
     }
 
     private fun playTone(context: Context, tone: Int) {

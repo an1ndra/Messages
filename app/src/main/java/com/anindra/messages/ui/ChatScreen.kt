@@ -1221,13 +1221,19 @@ fun MessageRow(
                     )
                 }
             } else {
+                val simLabel = if (msg.subId > 0) {
+                    try {
+                        val slotIndex = android.telephony.SubscriptionManager.getSlotIndex(msg.subId)
+                        if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
+                    } catch (_: Exception) { "" }
+                } else ""
                 Text(
                     text = formatTimeOnly(msg.timestamp) + " • " +
                             when {
                                 deliveryReports && msg.status == "delivered" -> "Delivered"
                                 msg.status == "sending" -> "Sending…"
                                 else -> "SMS"
-                            },
+                            } + simLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = cs.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, end = 4.dp)

@@ -28,17 +28,17 @@ class QuickReplyReceiver : BroadcastReceiver() {
                 val repo = app.repository
 
                 val convoId = repo.getOrCreateConversationBlocking(address)
-                val message = repo.sendText(convoId, replyText)
+                val subId = repo.settings.simSubscriptionId
+                val message = repo.sendText(convoId, replyText, subId)
 
                 if (message != null) {
                     try {
                         NotificationManagerCompat.from(context).cancel(notificationId)
                     } catch (_: SecurityException) {
                     }
-                    val subId = repo.settings.simSubscriptionId
                     SmsSender.send(context, message.id, address, replyText, subId)
                     if (android.provider.Telephony.Sms.getDefaultSmsPackage(context) == context.packageName) {
-                        repo.writeSentToSystem(address, replyText)
+                        repo.writeSentToSystem(address, replyText, subId)
                     }
                 }
             } catch (_: Exception) {
