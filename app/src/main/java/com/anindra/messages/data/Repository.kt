@@ -930,6 +930,7 @@ class Repository(private val context: Context) {
         syncExecutor.execute {
             try {
                 val resolver = context.contentResolver
+                android.util.Log.d("RepoSync", "Starting syncFromSystem")
                 val cursor = resolver.query(
                     android.provider.Telephony.Sms.CONTENT_URI,
                     arrayOf(
@@ -942,7 +943,7 @@ class Repository(private val context: Context) {
                     ),
                     null, null,
                     android.provider.Telephony.Sms.DATE + " ASC"
-                ) ?: return@execute
+                ) ?: run { android.util.Log.e("RepoSync", "Cursor is null — READ_SMS not granted?"); return@execute }
 
                 data class SysSms(val sysId: Long, val body: String, val date: Long, val type: Int, val subId: Int)
                 val byAddress = LinkedHashMap<String, MutableList<SysSms>>()
@@ -973,6 +974,7 @@ class Repository(private val context: Context) {
                 }
 
                 val pending = byAddress.values.sumOf { list -> list.count { it.sysId !in existing } }
+                android.util.Log.d("RepoSync", "Loaded ${byAddress.size} addresses, $pending pending messages")
                 if (pending > 0) _initialSyncProgress.value = 0f
 
                 var changed = false
@@ -1020,7 +1022,8 @@ class Repository(private val context: Context) {
                                             m.sysId, m.subId)
                                     )
                                 }
-                            } catch (_: android.database.sqlite.SQLiteException) {
+                            } catch (e: android.database.sqlite.SQLiteException) {
+                                android.util.Log.e("RepoSync", "INSERT failed: ${e.message}", e)
                             }
                             existing.add(m.sysId)
                             done++
@@ -1043,7 +1046,8 @@ class Repository(private val context: Context) {
                     refreshConversationSnippets()
                     notifyChanged()
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("RepoSync", "syncFromSystem failed: ${e.message}", e)
             } finally {
                 _initialSyncProgress.value = null
                 _initialSyncDone.value = true

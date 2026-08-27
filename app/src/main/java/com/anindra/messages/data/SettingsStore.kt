@@ -39,6 +39,9 @@ class SettingsStore(context: Context) {
         const val KEY_PRIVACY_MODE = "privacy_mode"
         const val KEY_APP_LOCK = "app_lock_enabled"
         const val KEY_FIRST_IMPORT_DONE = "first_import_done"
+        const val KEY_SEND_SOUND = "send_sound_enabled"
+        const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
+        const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
         const val DEFAULTS_NOTIFICATIONS = true
         const val DEFAULTS_SOUNDS = true
         const val DEFAULTS_DELIVERY = false
@@ -120,4 +123,16 @@ class SettingsStore(context: Context) {
     var delaySeconds: Int
         get() = prefs.getInt(KEY_DELAY_SECONDS, 3)
         set(v) { prefs.edit().putInt(KEY_DELAY_SECONDS, v).apply(); _revision.value++ }
+
+    var sendSoundEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SEND_SOUND, DEFAULTS_SOUNDS)
+        set(v) { prefs.edit().putBoolean(KEY_SEND_SOUND, v).apply(); _revision.value++ }
+
+    var receiveSoundEnabled: Boolean
+        get() = prefs.getBoolean(KEY_RECEIVE_SOUND, DEFAULTS_SOUNDS)
+        set(v) { prefs.edit().putBoolean(KEY_RECEIVE_SOUND, v).apply(); _revision.value++ }
+
+    var showSimIndicator: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_SIM_INDICATOR, true)
+        set(v) { prefs.edit().putBoolean(KEY_SHOW_SIM_INDICATOR, v).apply(); _revision.value++ }
 }
