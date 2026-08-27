@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,7 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.VolumeUp
@@ -137,40 +137,8 @@ fun SettingsScreen(
     var incomingSoundLabel by remember { mutableStateOf(vm.settings.incomingSoundLabel) }
     var outgoingSoundLabel by remember { mutableStateOf(vm.settings.outgoingSoundLabel) }
     var soundPickerOpen by remember { mutableStateOf<String?>(null) }
-    var soundImportTarget by remember { mutableStateOf<String?>(null) }
 
-    val soundImportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        val target = soundImportTarget
-        if (uri != null && target != null) {
-            val key = SoundStore.importCustom(context, uri)
-            if (key != null) {
-                val label = SoundStore.entryTitle(context, key, "")
-                if (target == "incoming") {
-                    vm.settings.incomingSound = key
-                    vm.settings.incomingSoundLabel = label
-                    incomingSoundKey = key
-                    incomingSoundLabel = label
-                } else {
-                    vm.settings.outgoingSound = key
-                    vm.settings.outgoingSoundLabel = label
-                    outgoingSoundKey = key
-                    outgoingSoundLabel = label
-                }
-                SoundStore.play(context, key)
-            } else {
-                Toast.makeText(context, "Couldn't import that audio file", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    fun selectSound(target: String, key: String?, label: String?) {
-        if (key == null) {
-            soundImportTarget = target
-            soundImportLauncher.launch(arrayOf("audio/*", "application/ogg"))
-            return
-        }
+    fun selectSound(target: String, key: String, label: String?) {
         if (target == "incoming") {
             vm.settings.incomingSound = key
             vm.settings.incomingSoundLabel = label.orEmpty()
@@ -620,14 +588,14 @@ private fun themeLabel(mode: String) = when (mode) {
 private fun soundSubtitle(key: String, label: String): String = when {
     key == SettingsStore.SOUND_DEFAULT -> "Default (system tone)"
     key == SettingsStore.SOUND_SILENT -> "Silent"
-    else -> label.ifEmpty { "Custom sound" }
+    else -> label.ifEmpty { "System sound" }
 }
 
 @Composable
 private fun SoundPickerDialog(
     context: android.content.Context,
     currentKey: String,
-    onSelect: (String?, String?) -> Unit,
+    onSelect: (String, String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     val systemSounds = remember {
@@ -660,16 +628,6 @@ private fun SoundPickerDialog(
                         title = sound.title,
                         icon = Icons.Rounded.VolumeUp,
                         onClick = { onSelect(sound.key, sound.title) }
-                    )
-                }
-                item {
-                    SoundOption(
-                        selected = currentKey.startsWith("custom:"),
-                        title = if (currentKey.startsWith("custom:"))
-                            SoundStore.entryTitle(context, currentKey, "Custom sound")
-                        else "Choose from storage...",
-                        icon = Icons.Rounded.FolderOpen,
-                        onClick = { onSelect(null, null) }
                     )
                 }
             }
