@@ -166,6 +166,9 @@ fun ChatScreen(
 
     var cameraFileUri by remember { mutableStateOf<Uri?>(null) }
 
+    var currentSimId by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
+    var sims by remember { mutableStateOf(emptyList<SubscriptionInfo>()) }
+
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
     var showAlphanumericDialog by remember { mutableStateOf(false) }
@@ -197,15 +200,13 @@ fun ChatScreen(
         }
         val toSend = pendingSendText
         pendingSendText = ""
-        vm.send(conversationId, toSend)
+        vm.send(conversationId, toSend, currentSimId)
         vm.saveDraft(conversationId, "")
         draft = ""
         showEmoji = false
     }
 
     // SIM management
-    var currentSimId by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
-    var sims by remember { mutableStateOf(emptyList<SubscriptionInfo>()) }
     var retryingMessageId by remember { mutableStateOf(-1L) }
     var showRetrySimPicker by remember { mutableStateOf(false) }
 
@@ -218,6 +219,10 @@ fun ChatScreen(
                 sims = sm?.activeSubscriptionInfoList?.filter {
                     it.simSlotIndex >= 0
                 }?.sortedBy { it.simSlotIndex } ?: emptyList()
+                if (sims.isNotEmpty() && currentSimId == -1) {
+                    currentSimId = sims.first().subscriptionId
+                    vm.settings.simSubscriptionId = currentSimId
+                }
             } catch (_: Exception) {}
         }
     }
@@ -247,6 +252,10 @@ fun ChatScreen(
             sims = sm?.activeSubscriptionInfoList?.filter {
                 it.simSlotIndex >= 0
             }?.sortedBy { it.simSlotIndex } ?: emptyList()
+            if (sims.isNotEmpty() && currentSimId == -1) {
+                currentSimId = sims.first().subscriptionId
+                vm.settings.simSubscriptionId = currentSimId
+            }
         } catch (_: SecurityException) {
             if (android.os.Build.VERSION.SDK_INT >= 33) {
                 if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) !=
@@ -414,7 +423,7 @@ fun ChatScreen(
                                 sendCountdown = vm.settings.delaySeconds
                                 sendAttempt++
                             } else {
-                                vm.send(conversationId, text)
+                                vm.send(conversationId, text, currentSimId)
                                 vm.saveDraft(conversationId, "")
                                 draft = ""
                                 showEmoji = false
