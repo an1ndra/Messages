@@ -976,14 +976,20 @@ class Repository(private val context: Context) {
                 if (pending > 0) _initialSyncProgress.value = 0f
 
                 var changed = false
-                db.writableDatabase.beginTransaction()
-                try {
-                    var done = 0
-                    byAddress.forEach { (addr, msgs) ->
-                        if (msgs.all { it.sysId in existing }) return@forEach
-                        val cid = getOrCreateConversationBlocking(addr)
-                        msgs.forEach { m ->
-                            if (m.sysId in existing) return@forEach
+                var done = 0
+                val batchSize = 50
+                val pendingMessages = mutableListOf<Triple<String, Long, SysSms>>()
+                byAddress.forEach { (addr, msgs) ->
+                    if (msgs.all { it.sysId in existing }) return@forEach
+                    val cid = getOrCreateConversationBlocking(addr)
+                    msgs.filter { it.sysId !in existing }.forEach { m ->
+                        pendingMessages.add(Triple(addr, cid, m))
+                    }
+                }
+                pendingMessages.chunked(batchSize).forEach { batch ->
+                    db.writableDatabase.beginTransaction()
+                    try {
+                        for ((addr, cid, m) in batch) {
                             val isMe = m.type != android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX
                             var localId = -1L
                             db.readableDatabase.rawQuery(
@@ -1021,10 +1027,10 @@ class Repository(private val context: Context) {
                             _initialSyncProgress.value = done.toFloat() / pending
                             changed = true
                         }
+                        db.writableDatabase.setTransactionSuccessful()
+                    } finally {
+                        db.writableDatabase.endTransaction()
                     }
-                    db.writableDatabase.setTransactionSuccessful()
-                } finally {
-                    db.writableDatabase.endTransaction()
                 }
 
                 val stale = db.readableDatabase.rawQuery(

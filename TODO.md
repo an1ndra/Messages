@@ -57,6 +57,9 @@ priority; each has acceptance criteria and file pointers. Verify on
 - ✅ Save-contact banner: floating overlay (78% opacity), phone-number-only guard, no layout push
 - ✅ Release signing: release.keystore + Messages-release.apk
 - ✅ Per-SIM switcher icon: `ic_sim_1.xml`/`ic_sim_2.xml` show the SELECTED SIM's card+number in the input pill (top-right of field); hidden while typing; tap = cycle SIMs — test: `scripts/test-sim-inputbar.sh`
+- ✅ SIM indicator in chat status line: sent messages show "· SIM 1" or "· SIM 2" when sub_id is available (dual-SIM display like Google Messages)
+- ✅ SIM tracking: Message model includes subId field, DB v12 migration, SmsReceiver extracts subscription ID from intent, sendText/receiveMessage/writeSentToSystem pass subId
+- ✅ Sound picker removed: custom notification sound import feature removed entirely; hardcoded default beep (TONE_PROP_BEEP2/TONE_PROP_ACK) for message sounds; "Message sounds" on/off toggle kept
 - ✅ Block sends to alphanumeric sender IDs (DK-AIRCEL…): chat send/schedule guarded with dialog; NewChat manual entry restricted to phone numbers — test: `scripts/test-links-and-senders.sh`
 - ✅ Highlight links in messages: URLs become tappable (blue underline) opening the browser; Settings → Messages → "Highlight links" toggle (default on) — test: `scripts/test-links-and-senders.sh`
 - ✅ Trash system: swipe-left / sheet Delete moves conversations to trash (DB v8 `deleted_at`), UNDO snackbar, Settings → Privacy → Trash screen (restore / delete forever / empty trash), auto-purge after 30 days on app start, new SMS from trashed address restores the thread; swipe needs ~65% travel (less sensitive) — test: `scripts/test-trash.sh`
