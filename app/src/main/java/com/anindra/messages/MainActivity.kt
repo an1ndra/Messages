@@ -122,6 +122,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun messageCount(conversationId: Long): Int = repo.messageCount(conversationId)
 
+    fun messageCountFlow(conversationId: Long): Flow<Int> = repo.messageCountFlow(conversationId)
+
     fun conversationById(id: Long): Flow<Conversation?> =
         repo.conversationByIdFlow(id)
 
@@ -229,12 +231,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun importDatabase(uri: Uri, onResult: (Boolean) -> Unit) {
+    fun importDatabase(uri: Uri, onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit) {
         scope.launch {
-            val ok = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 repo.importDatabase(getApplication(), uri)
             }
-            onResult(ok)
+            onResult(result)
         }
     }
 

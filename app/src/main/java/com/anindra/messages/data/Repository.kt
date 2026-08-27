@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.RandomAccessFile
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
@@ -178,7 +179,7 @@ class Db(context: Context) :
 
 class Repository(private val context: Context) {
 
-    private val db = Db(context)
+    private var db = Db(context)
     val settings = SettingsStore(context)
     private val dbExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
 
@@ -366,6 +367,15 @@ class Repository(private val context: Context) {
         return count
     }
 
+    fun messageCountFlow(conversationId: Long): Flow<Int> = observe {
+        var count = 0
+        db.readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM messages WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { if (it.moveToFirst()) count = it.getInt(0) }
+        count
+    }
+
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =
         getOrCreateConversationBlocking(address, displayName)
 
@@ -392,18 +402,22 @@ class Repository(private val context: Context) {
     }
 
     fun conversationByIdSuspend(id: Long): Conversation? {
-        var found: Conversation? = null
-        db.readableDatabase.rawQuery(
-            "SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date FROM conversations WHERE id=? AND deleted_at=0",
-            arrayOf(id.toString())
-        ).use { c ->
-            if (c.moveToFirst()) found = Conversation(
-                c.getLong(0), c.getString(1), c.getString(2), c.getString(3),
-                c.getLong(4), c.getInt(5), c.getInt(6) == 1, c.getInt(7) == 1,
-                c.getInt(8) == 1, c.getString(9), c.getLong(10)
-            )
+        val result = java.util.concurrent.CompletableFuture<Conversation?>()
+        dbExecutor.submit {
+            var found: Conversation? = null
+            db.readableDatabase.rawQuery(
+                "SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date FROM conversations WHERE id=? AND deleted_at=0",
+                arrayOf(id.toString())
+            ).use { c ->
+                if (c.moveToFirst()) found = Conversation(
+                    c.getLong(0), c.getString(1), c.getString(2), c.getString(3),
+                    c.getLong(4), c.getInt(5), c.getInt(6) == 1, c.getInt(7) == 1,
+                    c.getInt(8) == 1, c.getString(9), c.getLong(10)
+                )
+            }
+            result.complete(found)
         }
-        return found
+        return result.get()
     }
 
     /** Stores a text message as 'sending'; SmsStatusReceiver confirms the final state. */
@@ -740,29 +754,77 @@ class Repository(private val context: Context) {
         } catch (_: Exception) { false }
     }
 
-    fun importDatabase(context: Context, sourceUri: android.net.Uri): Boolean {
-        return try {
-            val dbFile = context.getDatabasePath(DB_NAME)
-            db.close()
-            val tempFile = File(dbFile.parent, "import_temp.db")
+    sealed class ImportResult {
+        data object Success : ImportResult()
+        data class Error(val message: String) : ImportResult()
+    }
+
+    fun importDatabase(context: Context, sourceUri: android.net.Uri): ImportResult {
+        val dbFile = context.getDatabasePath(DB_NAME)
+        val backupFile = File(dbFile.parent, "pre_import_backup.db")
+        val tempFile = File(dbFile.parent, "import_temp.db")
+        try {
+            // Decrypt to temp file first (never touch the live DB until we have a valid file)
             context.contentResolver.openInputStream(sourceUri)?.use { inp ->
                 FileOutputStream(tempFile).use { out ->
                     val decrypted = BackupCrypto.decrypt(inp, out)
                     if (!decrypted) {
                         // Legacy unencrypted backup — copy raw
-                        FileOutputStream(dbFile).use { dbOut ->
-                            context.contentResolver.openInputStream(sourceUri)!!.use { raw ->
-                                raw.copyTo(dbOut)
-                            }
-                        }
                         tempFile.delete()
-                        return true
+                        context.contentResolver.openInputStream(sourceUri)?.use { raw ->
+                            FileOutputStream(tempFile).use { raw::copyTo }
+                        }
                     }
                 }
+            } ?: return ImportResult.Error("Cannot open backup file")
+
+            // Validate the temp file is a real SQLite database
+            if (!isValidSqliteFile(tempFile)) {
+                tempFile.delete()
+                return ImportResult.Error("Invalid or corrupted backup file")
             }
-            tempFile.renameTo(dbFile)
-            true
-        } catch (_: Exception) { false }
+
+            // Backup current DB in case swap fails
+            dbFile.copyTo(backupFile, overwrite = true)
+
+            // Close the shared DB, swap files, and reopen
+            db.close()
+            try {
+                tempFile.renameTo(dbFile)
+                if (!dbFile.exists()) {
+                    // Restore from backup
+                    backupFile.renameTo(dbFile)
+                    db = Db(context)
+                    return ImportResult.Error("Failed to replace database file")
+                }
+                db = Db(context)
+                // Clean up
+                tempFile.delete()
+                backupFile.delete()
+                return ImportResult.Success
+            } catch (e: Exception) {
+                // Restore backup on failure
+                if (!dbFile.exists()) backupFile.renameTo(dbFile)
+                db = Db(context)
+                tempFile.delete()
+                return ImportResult.Error("Database swap failed: ${e.message}")
+            }
+        } catch (e: Exception) {
+            tempFile.delete()
+            return ImportResult.Error("Import failed: ${e.message}")
+        }
+    }
+
+    private fun isValidSqliteFile(file: File): Boolean {
+        return try {
+            RandomAccessFile(file, "r").use { raf ->
+                val header = ByteArray(16)
+                raf.readFully(header)
+                String(header).startsWith("SQLite format 3")
+            }
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun messageByIdSuspend(messageId: Long): Message? {

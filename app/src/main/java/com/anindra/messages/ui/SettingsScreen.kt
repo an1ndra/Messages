@@ -122,12 +122,14 @@ fun SettingsScreen(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            vm.importDatabase(it) { ok ->
-                Toast.makeText(
-                    context,
-                    if (ok) "Backup restored. Restart app to apply." else "Import failed",
-                    Toast.LENGTH_LONG
-                ).show()
+            vm.importDatabase(it) { result ->
+                val msg = when (result) {
+                    is com.anindra.messages.data.Repository.ImportResult.Success ->
+                        "Backup restored. Restart app to apply."
+                    is com.anindra.messages.data.Repository.ImportResult.Error ->
+                        "Import failed: ${result.message}"
+                }
+                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
             }
         }
     }
