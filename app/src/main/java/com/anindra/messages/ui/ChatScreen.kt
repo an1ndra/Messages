@@ -151,7 +151,7 @@ fun ChatScreen(
     val convo by vm.conversationById(conversationId).collectAsState(initial = null)
     var pageLimit by remember { mutableIntStateOf(200) }
     val messages by vm.messages(conversationId, limit = pageLimit).collectAsState(initial = emptyList())
-    val totalCount = vm.messageCount(conversationId)
+    val totalCount by vm.messageCountFlow(conversationId).collectAsState(initial = vm.messageCount(conversationId))
     val hasEarlier = totalCount > pageLimit
     val deliveryReports = remember { vm.deliveryReportsEnabled() }
     var draft by remember { mutableStateOf("") }
