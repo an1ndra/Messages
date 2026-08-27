@@ -165,10 +165,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setReactions(messageId: Long, reactions: Map<String, Int>) =
         scope.launch { repo.setReactionsSuspend(messageId, reactions) }
 
-    fun send(conversationId: Long, body: String) {
+    fun send(conversationId: Long, body: String, subId: Int = settings.simSubscriptionId) {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
-            val subId = settings.simSubscriptionId
             val stored = repo.sendText(conversationId, body, subId) ?: return@launch
             if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
             val handedOff = SmsSender.send(

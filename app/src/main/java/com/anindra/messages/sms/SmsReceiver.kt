@@ -43,7 +43,17 @@ class SmsReceiver : BroadcastReceiver() {
         // own message + notification.
         val msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent)
             .filter { it.originatingAddress != null && !it.messageBody.isNullOrEmpty() }
-        val subId = intent.getIntExtra("subscription", -1)
+        val subId: Int = run {
+            val fromIntent = intent.getIntExtra("subscription", -1)
+            if (fromIntent > 0) return@run fromIntent
+            val fromExtra = intent.getIntExtra("android.telephony.extra.SUBSCRIPTION_INDEX", -1)
+            if (fromExtra > 0) return@run fromExtra
+            val fromPhone = intent.getIntExtra("phone", -1)
+            if (fromPhone > 0) return@run fromPhone
+            val fromSim = intent.getIntExtra("simId", -1)
+            if (fromSim > 0) return@run fromSim
+            -1
+        }
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
             val body = parts.joinToString("") { it.messageBody!! }
 
