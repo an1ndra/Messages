@@ -18,11 +18,13 @@ class SmsReceiver : BroadcastReceiver() {
             intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
         val pendingResult = goAsync()
+        val wakeLock = ReceiverWakeLock.acquire(context, "sms-incoming")
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 processIncoming(context, intent)
             } catch (_: Exception) {
             } finally {
+                wakeLock.safeRelease()
                 pendingResult.finish()
             }
         }
@@ -54,6 +56,7 @@ class SmsReceiver : BroadcastReceiver() {
             if (fromSim > 0) return@run fromSim
             -1
         }
+        val appInForeground = ForegroundTracker.isAppInForeground
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
             val body = parts.joinToString("") { it.messageBody!! }
 
@@ -75,6 +78,10 @@ class SmsReceiver : BroadcastReceiver() {
             }
 
             repo.receiveMessage(address, body, sysId, subId)
+            // Skip the sound + system notification pipeline when the user is
+            // already in the app — the chat screen will render the new bubble
+            // and bumping the notification would be noise + extra work.
+            if (!appInForeground || ForegroundTracker.isConversationOpen(address)) continue
             NotificationHelper.show(context, address, body)
         }
     }

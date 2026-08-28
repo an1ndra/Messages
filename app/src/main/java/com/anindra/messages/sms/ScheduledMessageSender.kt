@@ -20,6 +20,7 @@ class ScheduledMessageSender : BroadcastReceiver() {
         val subId = intent.getIntExtra(EXTRA_SUB_ID, -1)
 
         val pendingResult = goAsync()
+        val wakeLock = ReceiverWakeLock.acquire(context, "scheduled-send")
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 val app = context.applicationContext as MessagesApplication
@@ -35,17 +36,13 @@ class ScheduledMessageSender : BroadcastReceiver() {
                             repo.settings.deliveryReportsEnabled
                         )
                     } catch (_: Exception) {
-                        // hand-off failed but the text is durably stored — surface it as
-                        // a retriable failed message instead of leaving status "sending"
                         repo.markMessageStatusSuspend(stored.id, "failed")
                     }
                 }
-                // the schedule entry must always go away once the content lives on
-                // as a normal message row; keeping it would leave a ghost that can
-                // never fire again (the alarm is one-shot)
                 repo.deleteScheduledMessage(id)
             } catch (_: Exception) {
             } finally {
+                wakeLock.safeRelease()
                 pendingResult.finish()
             }
         }
@@ -59,39 +56,49 @@ class ScheduledMessageSender : BroadcastReceiver() {
         private const val ACTION_SEND = "com.anindra.messages.SCHEDULED_SEND"
 
         fun schedule(context: Context, id: Long, address: String, body: String, subId: Int, triggerAtMillis: Long) {
-            val alarmManager = context.getSystemService(AlarmManager::class.java)
-            val intent = Intent(context, ScheduledMessageSender::class.java).apply {
-                action = ACTION_SEND
-                putExtra(EXTRA_ID, id)
-                putExtra(EXTRA_ADDRESS, address)
-                putExtra(EXTRA_BODY, body)
-                putExtra(EXTRA_SUB_ID, subId)
+            val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+            val pendingIntent = buildPendingIntent(context, id, address, body, subId)
+            // Prefer setAlarmClock — it does NOT require SCHEDULE_EXACT_ALARM,
+            // and Android will not silently downgrade it like it does
+            // setExactAndAllowWhileIdle on API 31+ without that permission.
+            // The user-visible alarm clock affordance is acceptable for a
+            // scheduled message use case.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                val showIntent = android.app.PendingIntent.getActivity(
+                    context, id.toInt(),
+                    android.content.Intent(context, com.anindra.messages.MainActivity::class.java),
+                    android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                )
+                val info = AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent)
+                alarmManager.setAlarmClock(info, pendingIntent)
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
             }
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                id.toInt(),
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            alarmManager?.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                pendingIntent
-            )
         }
 
         fun cancel(context: Context, id: Long) {
-            val alarmManager = context.getSystemService(AlarmManager::class.java)
+            val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+            val pendingIntent = buildPendingIntent(context, id, "", "", -1)
+            alarmManager.cancel(pendingIntent)
+        }
+
+        /** PendingIntent equality is based on the Intent's component + action
+         *  + data + type (not extras), so [cancel] can pass placeholder extras
+         *  and still match the same alarm that [schedule] registered. */
+        private fun buildPendingIntent(
+            context: Context, id: Long, address: String, body: String, subId: Int
+        ): PendingIntent {
             val intent = Intent(context, ScheduledMessageSender::class.java).apply {
                 action = ACTION_SEND
+                if (address.isNotEmpty()) putExtra(EXTRA_ADDRESS, address)
+                if (body.isNotEmpty()) putExtra(EXTRA_BODY, body)
+                if (subId != -1) putExtra(EXTRA_SUB_ID, subId)
+                putExtra(EXTRA_ID, id)
             }
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                id.toInt(),
-                intent,
+            return PendingIntent.getBroadcast(
+                context, id.toInt(), intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            alarmManager?.cancel(pendingIntent)
         }
     }
 }

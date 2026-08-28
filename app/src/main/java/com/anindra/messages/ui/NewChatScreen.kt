@@ -96,7 +96,7 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
             HorizontalDivider()
 
             LazyColumn {
-                items(filtered) { contact ->
+                items(filtered, key = { it.number }) { contact ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier

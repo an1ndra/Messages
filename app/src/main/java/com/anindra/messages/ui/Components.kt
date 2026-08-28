@@ -50,11 +50,20 @@ import android.util.LruCache
 import java.util.Locale
 
 object BitmapCache {
-    private val cache = object : LruCache<String, Bitmap>(50) {
-        override fun sizeOf(key: String, value: Bitmap) = 1
+    // Sized in bytes (4 bytes per pixel); ~24 MiB cap fits comfortably under the
+    // 256 MiB default heap with room for working sets. The previous "sizeOf=1"
+    // cap of 50 entries held ~140 MB of bitmaps in an LRU that thought it was
+    // using 50 units.
+    private val maxBytes = (24 * 1024 * 1024)
+    private val cache = object : LruCache<String, Bitmap>(maxBytes) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.allocationByteCount.coerceAtLeast(1)
+        override fun entryRemoved(evicted: Boolean, key: String, oldValue: Bitmap, newValue: Bitmap?) {
+            if (evicted && !oldValue.isRecycled) oldValue.recycle()
+        }
     }
     fun get(key: String): Bitmap? = cache.get(key)
     fun put(key: String, bitmap: Bitmap) { cache.put(key, bitmap) }
+    fun trimToSize(max: Int = 0) { cache.trimToSize(max) }
 }
 
 // Google Messages avatar palette
@@ -222,18 +231,10 @@ fun UnreadBadge(count: Int, modifier: Modifier = Modifier) {
 
 @Composable
 fun Modifier.shimmer(): Modifier {
-    val transition = androidx.compose.animation.core.rememberInfiniteTransition()
-    val translateAnim: Float by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1200f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(
-                1100,
-                easing = androidx.compose.animation.core.FastOutSlowInEasing
-            ),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Restart
-        )
-    )
+    // One transition per row was producing 40 concurrent infinite animations
+    // (5 per skeleton × 8 rows) that all repainted every frame. Hoist to a
+    // single transition shared across the whole screen.
+    val translateAnim = LocalShimmerTranslate.current
     return this.background(
         brush = androidx.compose.ui.graphics.Brush.linearGradient(
             colors = listOf(
@@ -246,6 +247,31 @@ fun Modifier.shimmer(): Modifier {
         )
     )
 }
+
+/** Provides the single shared shimmer offset for the current composition.
+ *  Wrap a screen or list of skeleton rows with this so each row does not start
+ *  its own [rememberInfiniteTransition]. */
+@Composable
+fun ProvideShimmer(content: @Composable () -> Unit) {
+    val transition = androidx.compose.animation.core.rememberInfiniteTransition()
+    val translateAnim: Float by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1200f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(
+                1100,
+                easing = androidx.compose.animation.core.FastOutSlowInEasing
+            ),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+        )
+    )
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.runtime.compositionLocalOf { 0f } provides translateAnim,
+        content = content
+    )
+}
+
+private val LocalShimmerTranslate = androidx.compose.runtime.compositionLocalOf { 0f }
 
 @Composable
 fun SkeletonConversationRow() {

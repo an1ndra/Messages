@@ -21,8 +21,10 @@ class SmsStatusReceiver : BroadcastReceiver() {
         val resultCodeSnapshot = resultCode
         val action = intent.action
 
-        val repo = (context.applicationContext as MessagesApplication).repository
+        val app = context.applicationContext as MessagesApplication
+        val repo = app.repository
         val pending = goAsync()
+        val wakeLock = ReceiverWakeLock.acquire(context, "sms-status")
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 when {
@@ -32,12 +34,18 @@ class SmsStatusReceiver : BroadcastReceiver() {
                     else -> sent(repo, messageId)
                 }
             } finally {
+                wakeLock.safeRelease()
                 pending.finish()
             }
         }
     }
 
-    private fun sent(repo: Repository, messageId: Long) {
+    private suspend fun sent(repo: Repository, messageId: Long) {
+        // Fetch the row + parent conversation once, then run the two writes and
+        // (if applicable) the system provider write inside a single coroutine.
+        // Previously each step was its own suspending hop, which could hold
+        // the PendingResult across multiple executor round-trips and exceed
+        // the ~10s goAsync() timeout, leaving rows stuck in "sending".
         repo.markMessageStatusSuspend(messageId, "sent")
         val msg = repo.messageByIdSuspend(messageId) ?: return
         if (msg.mediaType == "text") {
@@ -46,7 +54,7 @@ class SmsStatusReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun fail(repo: Repository, context: Context, messageId: Long) {
+    private suspend fun fail(repo: Repository, context: Context, messageId: Long) {
         repo.markMessageStatusSuspend(messageId, "failed")
         val msg = repo.messageByIdSuspend(messageId) ?: return
         val convo = repo.conversationByIdSuspend(msg.conversationId) ?: return
