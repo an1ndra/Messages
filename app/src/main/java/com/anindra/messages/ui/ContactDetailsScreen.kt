@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,10 +77,15 @@ fun ContactDetailsScreen(
     val name = convo!!.name
     val isKnownContact = name != null && name != address
 
-    val notificationsEnabled = vm.getConversationNotificationsEnabled(conversationId)
-    var notifState by remember { mutableStateOf(notificationsEnabled) }
+    // Resolve notifications toggle + blocked status via flows instead of running
+    // synchronous SQLite SELECTs during composition. The VM retains the last
+    // value so the first paint shows the correct state.
+    val notificationsEnabled by vm.conversationNotificationsEnabledFlow(conversationId)
+        .collectAsState(initial = true)
+    var notifState by remember(notificationsEnabled) { mutableStateOf(notificationsEnabled) }
     var showBlockDialog by remember { mutableStateOf(false) }
-    var numberIsBlocked by remember { mutableStateOf(vm.isNumberBlocked(address)) }
+    var numberIsBlocked by remember { mutableStateOf(false) }
+    LaunchedEffect(address) { numberIsBlocked = vm.isNumberBlocked(address) }
 
     BackHandler(onBack = onBack)
 

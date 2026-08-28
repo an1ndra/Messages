@@ -55,7 +55,7 @@ object NotificationHelper {
 
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val convoId = app.repository.conversationIdForAddress(from)
-        if (convoId != null && !app.repository.getConversationNotificationsEnabled(convoId)) return
+        if (convoId != null && !app.repository.getConversationNotificationsEnabledBlocking(convoId)) return
 
         // stable per-conversation id: hashCode collisions between different
         // senders would otherwise overwrite each other's PendingIntents and

@@ -16,15 +16,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.RandomAccessFile
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
 import java.io.FileOutputStream
 
 private const val DB_NAME = "messages.db"
-private const val DB_VERSION = 12
+private const val DB_VERSION = 13
+private const val PREFS_NAME = "messages_schema"
+private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
 class Db(context: Context) :
     SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
+
+    private val schemaPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -58,6 +63,11 @@ class Db(context: Context) :
                 sub_id INTEGER NOT NULL DEFAULT -1)"""
         )
         db.execSQL("CREATE INDEX idx_messages_conversation ON messages(conversation_id)")
+        db.execSQL("CREATE INDEX idx_messages_conv_ts ON messages(conversation_id, timestamp)")
+        db.execSQL("CREATE UNIQUE INDEX idx_messages_sys_id ON messages(sys_id) WHERE sys_id>0")
+        db.execSQL("CREATE INDEX idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
+        db.execSQL("CREATE INDEX idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
+        db.execSQL("CREATE INDEX idx_scheduled_timestamp ON scheduled_messages(timestamp)")
         db.execSQL(
             """CREATE TABLE blocked_numbers(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -133,6 +143,16 @@ class Db(context: Context) :
         if (oldVersion < 12) {
             db.execSQL("ALTER TABLE messages ADD COLUMN sub_id INTEGER NOT NULL DEFAULT -1")
         }
+        if (oldVersion < 13) {
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_conv_ts ON messages(conversation_id, timestamp)")
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_sys_id " +
+                    "ON messages(sys_id) WHERE sys_id>0"
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_scheduled_timestamp ON scheduled_messages(timestamp)")
+        }
     }
 
     /** Collapses rows that share a system-provider id (legacy double-imports,
@@ -160,13 +180,15 @@ class Db(context: Context) :
     }
 
     override fun onOpen(db: SQLiteDatabase) {
-        // Heals databases whose version advanced without running every upgrade step
-        // (e.g., an intermediate APK shipped a broken migration).
         db.execSQL(
             """CREATE TABLE IF NOT EXISTS conversation_notifications(
                 conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
                 notifications_enabled INTEGER NOT NULL DEFAULT 1)"""
         )
+        // The ALTER/INDEX healing below only needs to run once per install; running
+        // it on every DB open rebuilds the unique index over the whole messages
+        // table (and re-throws exceptions) on the main thread at app start.
+        if (schemaPrefs.getBoolean(PREF_HEAL_APPLIED, false)) return
         try {
             db.execSQL("ALTER TABLE messages ADD COLUMN locked INTEGER NOT NULL DEFAULT 0")
         } catch (_: android.database.sqlite.SQLiteException) {
@@ -182,6 +204,7 @@ class Db(context: Context) :
             db.execSQL("ALTER TABLE messages ADD COLUMN sub_id INTEGER NOT NULL DEFAULT -1")
         } catch (_: android.database.sqlite.SQLiteException) {
         }
+        schemaPrefs.edit().putBoolean(PREF_HEAL_APPLIED, true).apply()
     }
 }
 
@@ -190,6 +213,33 @@ class Repository(private val context: Context) {
     private var db = Db(context)
     val settings = SettingsStore(context)
     private val dbExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val ioDispatcher = kotlinx.coroutines.Dispatchers.IO
+
+    /** Runs the block on a single dedicated IO thread; the result is returned
+     *  synchronously to the caller. Used by receiver/UI paths that need DB
+     *  access but cannot suspend. The shared executor serializes writes so we
+     *  never collide with concurrent [notifyChanged] listeners. */
+    private fun <T> runOnIo(block: () -> T): T {
+        val future = java.util.concurrent.CompletableFuture<T>()
+        dbExecutor.execute {
+            try { future.complete(block()) } catch (t: Throwable) { future.completeExceptionally(t) }
+        }
+        return future.get()
+    }
+
+    /** Same as [runOnIo] but coroutine-friendly: suspends on the same single
+     *  executor. Preferred over [runOnIo] from `viewModelScope`/composables. */
+    private suspend inline fun <T> runOnIoAsync(crossinline block: () -> T): T =
+        kotlinx.coroutines.withContext(ioDispatcher) {
+            kotlinx.coroutines.suspendCancellableCoroutine<T> { cont ->
+                dbExecutor.execute {
+                    if (cont.isActive) {
+                        try { cont.resumeWith(kotlin.runCatching { block() }) }
+                        catch (t: Throwable) { cont.resumeWith(kotlin.Result.failure(t)) }
+                    }
+                }
+            }
+        }
 
     init {
         when (systemSmsCount()) {
@@ -252,7 +302,7 @@ class Repository(private val context: Context) {
         listeners += update
         trySend(block())
         awaitClose { listeners.remove(update) }
-    }.flowOn(Dispatchers.IO)
+    }.flowOn(Dispatchers.IO).distinctUntilChanged()
 
     fun conversations(): Flow<List<Conversation>> = observe {
         val out = mutableListOf<Conversation>()
@@ -367,13 +417,13 @@ class Repository(private val context: Context) {
         out.reversed()
     }
 
-    fun messageCount(conversationId: Long): Int {
+    fun messageCount(conversationId: Long): Int = runOnIo {
         var count = 0
         db.readableDatabase.rawQuery(
             "SELECT COUNT(*) FROM messages WHERE conversation_id=?",
             arrayOf(conversationId.toString())
         ).use { if (it.moveToFirst()) count = it.getInt(0) }
-        return count
+        count
     }
 
     fun messageCountFlow(conversationId: Long): Flow<Int> = observe {
@@ -388,45 +438,37 @@ class Repository(private val context: Context) {
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =
         getOrCreateConversationBlocking(address, displayName)
 
-    fun getOrCreateConversationBlocking(address: String, displayName: String? = null): Long {
-        val result = java.util.concurrent.CompletableFuture<Long>()
-        dbExecutor.submit {
-            var convoId = -1L
-            db.writableDatabase.rawQuery(
-                "SELECT id FROM conversations WHERE address=?",
-                arrayOf(address)
-            ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
+    fun getOrCreateConversationBlocking(address: String, displayName: String? = null): Long = runOnIo {
+        var convoId = -1L
+        db.writableDatabase.rawQuery(
+            "SELECT id FROM conversations WHERE address=?",
+            arrayOf(address)
+        ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
 
-            if (convoId == -1L) {
-                val cv = ContentValues().apply {
-                    put("address", address)
-                    put("name", displayName ?: contactNameFor(address) ?: address)
-                }
-                convoId = db.writableDatabase.insert("conversations", null, cv)
-                notifyChanged()
+        if (convoId == -1L) {
+            val cv = ContentValues().apply {
+                put("address", address)
+                put("name", displayName ?: contactNameFor(address) ?: address)
             }
-            result.complete(convoId)
+            convoId = db.writableDatabase.insert("conversations", null, cv)
+            notifyChanged()
         }
-        return result.get()
+        convoId
     }
 
-    fun conversationByIdSuspend(id: Long): Conversation? {
-        val result = java.util.concurrent.CompletableFuture<Conversation?>()
-        dbExecutor.submit {
-            var found: Conversation? = null
-            db.readableDatabase.rawQuery(
-                "SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date FROM conversations WHERE id=? AND deleted_at=0",
-                arrayOf(id.toString())
-            ).use { c ->
-                if (c.moveToFirst()) found = Conversation(
-                    c.getLong(0), c.getString(1), c.getString(2), c.getString(3),
-                    c.getLong(4), c.getInt(5), c.getInt(6) == 1, c.getInt(7) == 1,
-                    c.getInt(8) == 1, c.getString(9), c.getLong(10)
-                )
-            }
-            result.complete(found)
+    suspend fun conversationByIdSuspend(id: Long): Conversation? = runOnIoAsync {
+        var found: Conversation? = null
+        db.readableDatabase.rawQuery(
+            "SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date FROM conversations WHERE id=? AND deleted_at=0",
+            arrayOf(id.toString())
+        ).use { c ->
+            if (c.moveToFirst()) found = Conversation(
+                c.getLong(0), c.getString(1), c.getString(2), c.getString(3),
+                c.getLong(4), c.getInt(5), c.getInt(6) == 1, c.getInt(7) == 1,
+                c.getInt(8) == 1, c.getString(9), c.getLong(10)
+            )
         }
-        return result.get()
+        found
     }
 
     /** Stores a text message as 'sending'; SmsStatusReceiver confirms the final state. */
@@ -629,26 +671,36 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
+    private val blockedCache = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
     fun isNumberBlocked(number: String): Boolean {
-        var blocked = false
-        db.readableDatabase.rawQuery(
-            "SELECT COUNT(*) FROM blocked_numbers WHERE number=?",
-            arrayOf(number)
-        ).use { c ->
-            if (c.moveToFirst()) blocked = c.getInt(0) > 0
+        blockedCache[number]?.let { return it }
+        val blocked = runOnIo {
+            var b = false
+            db.readableDatabase.rawQuery(
+                "SELECT COUNT(*) FROM blocked_numbers WHERE number=?",
+                arrayOf(number)
+            ).use { c ->
+                if (c.moveToFirst()) b = c.getInt(0) > 0
+            }
+            b
         }
+        blockedCache[number] = blocked
         return blocked
     }
 
-    fun conversationIdForAddress(address: String): Long? {
+    /** Invalidates the in-process block cache; call after [blockNumber]/[unblockNumber]. */
+    private fun invalidateBlockCache(number: String) { blockedCache.remove(number) }
+
+    fun conversationIdForAddress(address: String): Long? = runOnIo {
         var id: Long? = null
         db.readableDatabase.rawQuery(
             "SELECT id FROM conversations WHERE address=?", arrayOf(address)
         ).use { c -> if (c.moveToFirst()) id = c.getLong(0) }
-        return id
+        id
     }
 
-    fun getConversationNotificationsEnabled(conversationId: Long): Boolean {
+    suspend fun getConversationNotificationsEnabled(conversationId: Long): Boolean = runOnIoAsync {
         var enabled = true
         db.readableDatabase.rawQuery(
             "SELECT notifications_enabled FROM conversation_notifications WHERE conversation_id=?",
@@ -656,7 +708,30 @@ class Repository(private val context: Context) {
         ).use { c ->
             if (c.moveToFirst()) enabled = c.getInt(0) == 1
         }
-        return enabled
+        enabled
+    }
+
+    fun conversationNotificationsEnabledFlow(conversationId: Long): Flow<Boolean> = observe {
+        var enabled = true
+        db.readableDatabase.rawQuery(
+            "SELECT notifications_enabled FROM conversation_notifications WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) enabled = c.getInt(0) == 1
+        }
+        enabled
+    }
+
+    /** Synchronous variant for receivers already on a background thread. */
+    fun getConversationNotificationsEnabledBlocking(conversationId: Long): Boolean = runOnIo {
+        var enabled = true
+        db.readableDatabase.rawQuery(
+            "SELECT notifications_enabled FROM conversation_notifications WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) enabled = c.getInt(0) == 1
+        }
+        enabled
     }
 
     fun setConversationNotificationsEnabled(conversationId: Long, enabled: Boolean) {
@@ -695,11 +770,13 @@ class Repository(private val context: Context) {
             put("timestamp", System.currentTimeMillis())
         }
         db.writableDatabase.insertWithOnConflict("blocked_numbers", null, cv, SQLiteDatabase.CONFLICT_IGNORE)
+        invalidateBlockCache(number)
         notifyChanged()
     }
 
     fun unblockNumber(number: String) {
         db.writableDatabase.execSQL("DELETE FROM blocked_numbers WHERE number=?", arrayOf(number))
+        invalidateBlockCache(number)
         notifyChanged()
     }
 
@@ -838,7 +915,7 @@ class Repository(private val context: Context) {
         }
     }
 
-    fun messageByIdSuspend(messageId: Long): Message? {
+    suspend fun messageByIdSuspend(messageId: Long): Message? = runOnIoAsync {
         var found: Message? = null
         db.readableDatabase.rawQuery(
             """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,reactions
@@ -857,7 +934,7 @@ class Repository(private val context: Context) {
                 reactions = parseReactions(c.getString(7))
             )
         }
-        return found
+        found
     }
 
     private val contactCache = HashMap<String, Pair<String?, Long>>()
@@ -894,28 +971,32 @@ class Repository(private val context: Context) {
     fun refreshContactNames() {
         Thread {
             try {
-                val rows = mutableListOf<Pair<Long, String>>()
+                val ids = mutableListOf<Long>()
+                val addresses = mutableListOf<String>()
                 db.readableDatabase.rawQuery(
                     "SELECT id,address FROM conversations", null
                 ).use { c ->
-                    while (c.moveToNext()) rows.add(c.getLong(0) to c.getString(1))
-                }
-                var changed = false
-                rows.forEach { (id, address) ->
-                    val resolved = contactNameFor(address) ?: return@forEach
-                    var current: String? = null
-                    db.readableDatabase.rawQuery(
-                        "SELECT name FROM conversations WHERE id=?", arrayOf(id.toString())
-                    ).use { c -> if (c.moveToFirst()) current = c.getString(0) }
-                    if (current != resolved) {
-                        db.writableDatabase.execSQL(
-                            "UPDATE conversations SET name=? WHERE id=?",
-                            arrayOf(resolved, id.toString())
-                        )
-                        changed = true
+                    while (c.moveToNext()) {
+                        ids.add(c.getLong(0))
+                        addresses.add(c.getString(1))
                     }
                 }
-                if (changed) notifyChanged()
+                // Resolve every contact (cached) up front, then issue a single
+                // CASE-based UPDATE instead of N+1 SELECT/UPDATE round trips.
+                val resolved = addresses.map { contactNameFor(it) ?: it }
+                if (resolved.zip(addresses).all { (a, b) -> a == b }) {
+                    // Names already match — skip the write entirely.
+                    return@Thread
+                }
+                val cases = ids.zip(resolved)
+                    .joinToString(" ") { (id, name) ->
+                        "WHEN $id THEN ${android.database.DatabaseUtils.sqlEscapeString(name)}"
+                    }
+                val idsList = ids.joinToString(",")
+                db.writableDatabase.execSQL(
+                    "UPDATE conversations SET name = CASE id $cases END WHERE id IN ($idsList)"
+                )
+                notifyChanged()
             } catch (_: Exception) {
             }
         }.start()
@@ -1087,13 +1168,16 @@ class Repository(private val context: Context) {
                 android.provider.Telephony.Sms.Sent.CONTENT_URI, cv
             )?.lastPathSegment?.toLongOrNull() ?: -1L
             if (sysId > 0) {
+                // Pick the message we just created: same body+is_me+sys_id=0, most recent
+                // for that conversation. The (conversation_id, timestamp DESC) index
+                // makes this O(log n) rather than a full messages scan with ABS().
+                val convoId = conversationIdForAddress(address) ?: return
                 db.writableDatabase.execSQL(
                     """UPDATE messages SET sys_id=? WHERE id=(
-                       SELECT m.id FROM messages m
-                       JOIN conversations c ON c.id=m.conversation_id
-                       WHERE c.address=? AND m.sys_id=0 AND m.body=? AND m.is_me=1
-                       ORDER BY ABS(m.timestamp-?) LIMIT 1)""",
-                    arrayOf(sysId.toString(), address, body, now.toString())
+                       SELECT id FROM messages
+                       WHERE conversation_id=? AND sys_id=0 AND body=? AND is_me=1
+                       ORDER BY timestamp DESC LIMIT 1)""",
+                    arrayOf(sysId.toString(), convoId.toString(), body)
                 )
             }
         } catch (_: Exception) {

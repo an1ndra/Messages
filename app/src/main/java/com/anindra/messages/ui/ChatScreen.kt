@@ -152,7 +152,9 @@ fun ChatScreen(
     val convo by vm.conversationById(conversationId).collectAsState(initial = null)
     var pageLimit by remember { mutableIntStateOf(200) }
     val messages by vm.messages(conversationId, limit = pageLimit).collectAsState(initial = emptyList())
-    val totalCount by vm.messageCountFlow(conversationId).collectAsState(initial = vm.messageCount(conversationId))
+    // Page length is 0 until the first emission — avoids a sync COUNT(*) on the
+    // UI thread during composition (was running rawQuery inside .collectAsState).
+    val totalCount by vm.messageCountFlow(conversationId).collectAsState(initial = 0)
     val hasEarlier = totalCount > pageLimit
     val deliveryReports = remember { vm.deliveryReportsEnabled() }
     var draft by remember { mutableStateOf("") }
@@ -288,12 +290,19 @@ fun ChatScreen(
     }
     BackHandler(onBack = ::leaveChat)
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.scrollToItem(messages.size - 1)
+    // Auto-scroll to bottom only on a NEW message id, not on every status
+    // transition (sending→sent→delivered was force-scrolling the list every
+    // time the SmsStatusReceiver fired notifyChanged()).
+    val newestId = messages.lastOrNull()?.id
+    LaunchedEffect(newestId) {
+        if (newestId != null) listState.scrollToItem(messages.size - 1)
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)
         draftLoaded = false
+    }
+    LaunchedEffect(convo?.address) {
+        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(convo?.address)
     }
     LaunchedEffect(convo) {
         if (convo != null && !draftLoaded) {
@@ -871,6 +880,11 @@ private fun ChatMessageList(
             }
         }
         itemsIndexed(messages, key = { _, msg -> msg.id }) { idx, msg ->
+            // Capture the unlocked bit per-row at composition time so the row's
+            // recomposition is bounded to that one item; the screen-level
+            // unlockedIds read previously caused the whole list to recompose
+            // on any unlock.
+            val rowIsUnlocked = remember(msg.id, unlockedIds) { msg.id in unlockedIds }
             MessageRow(
                 msg = msg,
                 showDividerBefore = idx == 0 || !sameDay(messages[idx - 1].timestamp, msg.timestamp),
@@ -882,7 +896,7 @@ private fun ChatMessageList(
                 onLongPress = { onLongPress(msg.id) },
                 highlightLinks = highlightLinks,
                 onLockUnlock = { wantLock -> onLockUnlock(msg.id, wantLock) },
-                isUnlocked = msg.id in unlockedIds,
+                isUnlocked = rowIsUnlocked,
                 showSimIndicator = showSimIndicator
             )
         }
@@ -973,10 +987,13 @@ fun openUrl(context: android.content.Context, url: String) {
 @Composable
 private fun rememberLinkedText(body: String, highlight: Boolean): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
-    return remember(body, highlight, linkColor) {
+    val context = LocalContext.current
+    return produceState(AnnotatedString(body), body, highlight, linkColor) {
         if (!highlight) {
-            AnnotatedString(body)
-        } else {
+            value = AnnotatedString(body)
+            return@produceState
+        }
+        value = withContext(Dispatchers.Default) {
             val spanned = SpannableStringBuilder(body)
             Linkify.addLinks(spanned, Linkify.WEB_URLS)
             val builder = AnnotatedString.Builder(body)
@@ -1000,7 +1017,7 @@ private fun rememberLinkedText(body: String, highlight: Boolean): AnnotatedStrin
                 }
             builder.toAnnotatedString()
         }
-    }
+    }.value
 }
 
 @Composable
@@ -1129,10 +1146,24 @@ fun MessageRow(
     val displayBody = if (isLockedAndHidden) "\uD83D\uDD12 Locked" else msg.body
     val bodyText = rememberLinkedText(displayBody, highlightLinks && !isLockedAndHidden)
 
+    // Cache the per-row derived text/sim so that an unlock (which changes
+    // isUnlocked at the row level) doesn't recompute these allocations. They
+    // also no longer depend on the screen-level unlockedIds set.
+    val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp) }
+    val timeText = remember(msg.timestamp) { formatTimeOnly(msg.timestamp) }
+    val simLabel = remember(msg.subId, showSimIndicator) {
+        if (showSimIndicator && msg.subId > 0) {
+            try {
+                val slotIndex = SubscriptionManager.getSlotIndex(msg.subId)
+                if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
+            } catch (_: Exception) { "" }
+        } else ""
+    }
+
     if (showDividerBefore) {
         Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), Alignment.Center) {
             Text(
-                formatDividerTime(msg.timestamp),
+                dividerText,
                 style = MaterialTheme.typography.labelSmall,
                 color = cs.onSurfaceVariant
             )
@@ -1200,43 +1231,40 @@ fun MessageRow(
                 expanded = showContextMenu,
                 onDismissRequest = { showContextMenu = false }
             ) {
-                DropdownMenuItem(
-                    text = { Text("Copy") },
-                    onClick = {
-                        showContextMenu = false
-                        val clipboard = android.content.Context.CLIPBOARD_SERVICE
-                        val clip = android.content.ClipData.newPlainText("message", msg.body)
-                        val cm = context.getSystemService(clipboard) as android.content.ClipboardManager
-                        cm.setPrimaryClip(clip)
-                        android.os.Handler(context.mainLooper).postDelayed({
-                            try { cm.setPrimaryClip(android.content.ClipData.newPlainText("", "")) } catch (_: Exception) {}
-                        }, 60_000)
-                        Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Forward") },
-                    onClick = {
-                        showContextMenu = false
-                        onLongPress()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text(if (msg.locked) "Unlock" else "Lock") },
-                    onClick = {
-                        showContextMenu = false
-                        onLockUnlock(!msg.locked)
-                    }
-                )
+                if (showContextMenu) {
+                    DropdownMenuItem(
+                        text = { Text("Copy") },
+                        onClick = {
+                            showContextMenu = false
+                            val clipboard = android.content.Context.CLIPBOARD_SERVICE
+                            val clip = android.content.ClipData.newPlainText("message", msg.body)
+                            val cm = context.getSystemService(clipboard) as android.content.ClipboardManager
+                            cm.setPrimaryClip(clip)
+                            android.os.Handler(context.mainLooper).postDelayed({
+                                try { cm.setPrimaryClip(android.content.ClipData.newPlainText("", "")) } catch (_: Exception) {}
+                            }, 60_000)
+                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Forward") },
+                        onClick = {
+                            showContextMenu = false
+                            onLongPress()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (msg.locked) "Unlock" else "Lock") },
+                        onClick = {
+                            showContextMenu = false
+                            onLockUnlock(!msg.locked)
+                        }
+                    )
+                }
             }
         }
 
-        val simLabel = if (showSimIndicator && msg.subId > 0) {
-            try {
-                val slotIndex = android.telephony.SubscriptionManager.getSlotIndex(msg.subId)
-                if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
-            } catch (_: Exception) { "" }
-        } else ""
+        val simLabelFinal = simLabel
 
         if (msg.status == "failed" && msg.isMe) {
             Row(
@@ -1270,7 +1298,7 @@ fun MessageRow(
             } else ""
             val prefix = if (statusText.isNotEmpty()) " • $statusText" else ""
             Text(
-                text = formatTimeOnly(msg.timestamp) + prefix + simLabel,
+                text = timeText + prefix + simLabelFinal,
                 style = MaterialTheme.typography.labelSmall,
                 color = cs.onSurfaceVariant,
                 modifier = Modifier.padding(
@@ -1520,7 +1548,7 @@ private fun ForwardPicker(
                 )
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(Modifier.heightIn(max = 300.dp)) {
-                    items(filtered) { contact ->
+                    items(filtered, key = { it.number }) { contact ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier

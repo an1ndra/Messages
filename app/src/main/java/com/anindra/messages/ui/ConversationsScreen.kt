@@ -269,9 +269,11 @@ fun ConversationsScreen(
             }
 
             if (!loaded) {
-                LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(8, key = { "skeleton_$it" }) { SkeletonConversationRow() }
-                    item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
+                ProvideShimmer {
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(8, key = { "skeleton_$it" }) { SkeletonConversationRow() }
+                        item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
+                    }
                 }
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {

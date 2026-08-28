@@ -263,8 +263,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isNumberBlocked(number: String): Boolean = repo.isNumberBlocked(number)
 
-    fun getConversationNotificationsEnabled(conversationId: Long): Boolean =
-        repo.getConversationNotificationsEnabled(conversationId)
+    fun conversationNotificationsEnabledFlow(conversationId: Long): Flow<Boolean> =
+        repo.conversationNotificationsEnabledFlow(conversationId)
 
     fun setConversationNotificationsEnabled(conversationId: Long, enabled: Boolean) {
         scope.launch(Dispatchers.IO) { repo.setConversationNotificationsEnabled(conversationId, enabled) }
@@ -446,58 +446,67 @@ class MainActivity : FragmentActivity() {
                 }
 
                 val routeDepth = mapOf("list" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2)
-                AnimatedContent(
-                    targetState = navRoute,
-                    transitionSpec = {
-                        val from = routeDepth[initialState] ?: 0
-                        val to = routeDepth[targetState] ?: 0
-                        when {
-                            to > from -> slideInHorizontally(tween(280)) { it } + fadeIn(tween(180)) togetherWith
-                                slideOutHorizontally(tween(280)) { -it / 3 } + fadeOut(tween(150))
-                            to < from -> slideInHorizontally(tween(280)) { -it / 3 } + fadeIn(tween(180)) togetherWith
-                                slideOutHorizontally(tween(280)) { it } + fadeOut(tween(150))
-                            else -> fadeIn(tween(150)) togetherWith fadeOut(tween(150))
-                        }
-                    },
-                    label = "nav"
-                ) { target ->
-                    androidx.compose.foundation.layout.Box(
-                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
-                    ) {
-                        when (target) {
-                            "list" -> ConversationsScreen(
-                                vm = vm,
-                                onOpenConversation = { id -> chatId = id; navRoute = "chat" },
-                                onNewChat = { navRoute = "new" },
-                                onOpenSettings = { navRoute = "settings" }
-                            )
-                            "new" -> NewChatScreen(
-                                vm = vm,
-                                onBack = { navRoute = "list" },
-                                onPick = { address, name ->
-                                    vm.openOrCreate(address, name) { id ->
-                                        chatId = id
-                                        navRoute = "chat"
-                                    }
+                val isList = navRoute == "list"
+                val isChat = navRoute == "chat"
+
+                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                    ConversationsScreen(
+                        vm = vm,
+                        onOpenConversation = { id -> chatId = id; navRoute = "chat" },
+                        onNewChat = { navRoute = "new" },
+                        onOpenSettings = { navRoute = "settings" }
+                    )
+
+                    AnimatedContent(
+                        targetState = navRoute,
+                        transitionSpec = {
+                            val from = routeDepth[initialState] ?: 0
+                            val to = routeDepth[targetState] ?: 0
+                            when {
+                                to > from -> slideInHorizontally(tween(280)) { it } + fadeIn(tween(180)) togetherWith
+                                    slideOutHorizontally(tween(280)) { -it / 3 } + fadeOut(tween(150))
+                                to < from -> slideInHorizontally(tween(280)) { -it / 3 } + fadeIn(tween(180)) togetherWith
+                                    slideOutHorizontally(tween(280)) { it } + fadeOut(tween(150))
+                                else -> fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        label = "nav"
+                    ) { target ->
+                        if (target == "list") {
+                            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())
+                        } else {
+                            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                                when (target) {
+                                    "new" -> NewChatScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "list" },
+                                        onPick = { address, name ->
+                                            vm.openOrCreate(address, name) { id ->
+                                                chatId = id
+                                                navRoute = "chat"
+                                            }
+                                        }
+                                    )
+                                    "settings" -> SettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "list" },
+                                        onOpenTrash = { navRoute = "trash" }
+                                    )
+                                    "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
+                                    "details" -> ContactDetailsScreen(
+                                        vm = vm,
+                                        conversationId = detailsId,
+                                        onBack = { navRoute = "chat" }
+                                    )
+                                    else -> ChatScreen(
+                                        vm = vm,
+                                        conversationId = chatId,
+                                        onBack = { navRoute = "list" },
+                                        onOpenDetails = { detailsId = chatId; navRoute = "details" }
+                                    )
                                 }
-                            )
-                            "settings" -> SettingsScreen(
-                                vm = vm,
-                                onBack = { navRoute = "list" },
-                                onOpenTrash = { navRoute = "trash" }
-                            )
-                            "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
-                            "details" -> ContactDetailsScreen(
-                                vm = vm,
-                                conversationId = detailsId,
-                                onBack = { navRoute = "chat" }
-                            )
-                            else -> ChatScreen(
-                                vm = vm,
-                                conversationId = chatId,
-                                onBack = { navRoute = "list" },
-                                onOpenDetails = { detailsId = chatId; navRoute = "details" }
-                            )
+                            }
                         }
                     }
                 }
@@ -521,6 +530,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
+        com.anindra.messages.sms.ForegroundTracker.setAppForeground(true)
         val repo = (application as MessagesApplication).repository
         val now = System.currentTimeMillis()
         if (now - lastResumeTime > 5 * 60_000L) {
@@ -528,6 +538,11 @@ class MainActivity : FragmentActivity() {
             repo.refreshContactNames()
             lastResumeTime = now
         }
+    }
+
+    override fun onPause() {
+        com.anindra.messages.sms.ForegroundTracker.setAppForeground(false)
+        super.onPause()
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
