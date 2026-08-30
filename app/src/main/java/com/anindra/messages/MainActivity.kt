@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.Manifest
 import android.net.Uri
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Telephony
@@ -104,8 +105,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Null = idle; 0..1 = fraction of pending system SMS imported. */
     val initialSyncProgress = repo.initialSyncProgress
 
-    /** True once this process has fully shown the conversation list; used to
-     *  suppress the skeleton flash on back-navigation (process-scoped on purpose). */
+    /** True once this process fully showed the list; suppresses skeleton flash on back-nav. */
     var hasLoadedOnce: Boolean = false
 
     // Observable theme state; SettingsScreen updates it via setTheme()
@@ -123,6 +123,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun messageCount(conversationId: Long): Int = repo.messageCount(conversationId)
 
     fun messageCountFlow(conversationId: Long): Flow<Int> = repo.messageCountFlow(conversationId)
+
+    fun syncFromSystem() = repo.syncFromSystem()
+
+    fun requeryFromSystem() = repo.requeryFromSystem()
 
     fun conversationById(id: Long): Flow<Conversation?> =
         repo.conversationByIdFlow(id)
@@ -174,7 +178,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 getApplication(), stored.id, convo.address, body,
                 subId, settings.deliveryReportsEnabled
             )
-            // ok == accepted by framework; SmsStatusReceiver confirms sent/failed.
+            // accepted by framework; SmsStatusReceiver confirms sent/failed.
             if (!handedOff) {
                 repo.markMessageStatusSuspend(stored.id, "failed")
                 NotificationHelper.showSendFailed(getApplication(), convo.address)
@@ -302,7 +306,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 class MainActivity : FragmentActivity() {
 
     private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            if (grants[Manifest.permission.READ_SMS] == true) {
+                val repo = (application as MessagesApplication).repository
+                if (repo.needsInitialImport) repo.requeryFromSystem()
+            }
+        }
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
 
@@ -328,9 +337,7 @@ class MainActivity : FragmentActivity() {
 
         val appLockEnabled = bootVm.settings.appLockEnabled
 
-        // Script hooks:
-        //   adb shell am start -n $PKG/.MainActivity --es set_theme dark|light|system
-        //   adb shell am start -n $PKG/.MainActivity --ez open_settings true
+        // Script hooks: --es set_theme dark|light|system, --ez open_settings true
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
@@ -367,10 +374,10 @@ class MainActivity : FragmentActivity() {
                                 .build()
                         )
                     } else if (canAuth == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE) {
-                        // No biometric sensor and no fallback — cannot lock, allow access
+                        // no sensor, no fallback — cannot lock
                         appUnlocked = true
                     } else {
-                        // Biometrics not enrolled but device has PIN/password — try prompt anyway
+                        // no enrollment but PIN/password exists — try prompt anyway
                         val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
                         val prompt = BiometricPrompt(this@MainActivity, executor,
                             object : BiometricPrompt.AuthenticationCallback() {
@@ -435,8 +442,7 @@ class MainActivity : FragmentActivity() {
                     )
                 }
 
-                // Single back dispatcher for all routes. Child screens may
-                // register their own BackHandler first; last-registered wins.
+                // Single back dispatcher for all routes; child screen BackHandlers win.
                 androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
                     when (navRoute) {
                         "details" -> navRoute = "chat"
@@ -532,6 +538,12 @@ class MainActivity : FragmentActivity() {
         super.onResume()
         com.anindra.messages.sms.ForegroundTracker.setAppForeground(true)
         val repo = (application as MessagesApplication).repository
+        // import right away once SMS access appears (default-app role, dialog)
+        if (checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED &&
+            repo.needsInitialImport
+        ) {
+            repo.requeryFromSystem()
+        }
         val now = System.currentTimeMillis()
         if (now - lastResumeTime > 5 * 60_000L) {
             repo.syncFromSystem()

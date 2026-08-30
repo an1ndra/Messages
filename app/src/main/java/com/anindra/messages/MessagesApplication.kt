@@ -1,6 +1,8 @@
 package com.anindra.messages
 
+import android.Manifest
 import android.app.Application
+import android.content.pm.PackageManager
 import com.anindra.messages.data.Repository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +18,10 @@ class MessagesApplication : Application() {
         repository = Repository(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             repository.purgeOldTrashSuspend()
-            repository.syncFromSystem()
+            // skip until SMS access is granted; MainActivity re-imports then
+            if (checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
+                repository.syncFromSystem()
+            }
         }
     }
 }

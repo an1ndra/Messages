@@ -320,6 +320,16 @@ File: `data/SettingsStore.kt`, `ui/SettingsScreen.kt`, `ui/ChatScreen.kt`, `sms/
 
 - ✅ Issue #106: Implemented simple LIMIT200 pagination. `Repository.messages()` now accepts `limit`/`offset` params (default `Int.MAX_VALUE`/0 for backward compat). Added `messageCount()`. `ChatScreen` maintains `pageLimit` state starting at200; "Load earlier messages" button at top of chat list increases limit by200. No new dependencies.
 
+## Progressive chat loading + visible conversations loading (2026-08-30)
+
+- ✅ Chat screen no longer loads every message at once: latest 40 render first with a 3-row shimmer skeleton, then 40 more load automatically as you scroll (capped at 400), then a "Load earlier messages" button appears for older history (`INITIAL_CHUNK`/`AUTO_CHUNK`/`AUTO_CAP`/`LOAD_EARLIER_STEP` in ChatScreen). Flows re-keyed on `remember(conversationId[, pageLimit])` because Compose `collectAsState` keys on the flow instance (verified in bytecode).
+- ✅ Conversations screen keeps the skeleton + determinate "Loading messages" bar up for the WHOLE system import on a first/empty-DB launch (`loaded = minSkeletonShown && syncDone`, removed the premature `|| listArrived` escape hatch that let an empty first DB emission skip the loading UI). Warm starts skip it because `initialSyncDone` seeds from `firstImportDone`.
+- ✅ When the inbox is empty because SMS access is missing (or was denied), the screen shows an "Allow SMS access" panel instead of a blank list — buttons: **Allow access** (request READ_SMS, then re-import), **Retry loading** (`Repository.requeryFromSystem()` resets `initialSyncDone` so skeleton/bar show again), **Open app settings**. Permitted state re-checked via a `LifecycleEventObserver`.
+- ✅ `vm.conversations` remembered (`remember(vm)`) so the DB flow isn't recreated per recomposition.
+- Note: READ_SMS is auto-granted (`GRANTED_BY_ROLE`) to the default SMS handler, overriding `pm revoke` — panel only manifests on first-run denial before the role is granted.
+
+File: `ui/ConversationsScreen.kt`, `ui/ChatScreen.kt`, `data/Repository.kt`, `MainActivity.kt` · test: `scripts/test-loading-screen.sh`
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots

@@ -1,8 +1,15 @@
 package com.anindra.messages.ui
 
+import android.Manifest
 import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -30,6 +37,7 @@ import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -54,6 +62,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -74,7 +83,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.Conversation
 import kotlinx.coroutines.launch
@@ -87,7 +100,7 @@ fun ConversationsScreen(
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    val conversations by vm.conversations.collectAsState(initial = emptyList())
+    val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var showArchived by remember { mutableStateOf(false) }
@@ -97,10 +110,32 @@ fun ConversationsScreen(
     var lastBackExitAt by remember { mutableLongStateOf(0L) }
     val syncDone by vm.initialSyncDone.collectAsState()
     val syncProgress by vm.initialSyncProgress.collectAsState()
+    // live SMS access state (re-checked on resume)
+    var readSmsAllowed by remember {
+        mutableStateOf(
+            context.checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, _ ->
+            readSmsAllowed =
+                context.checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val readSmsPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        readSmsAllowed = granted
+        if (granted) vm.requeryFromSystem()
+    }
     var minSkeletonShown by rememberSaveable {
         mutableStateOf(vm.hasLoadedOnce || vm.settings.firstImportDone)
     }
-    val loaded = minSkeletonShown && syncDone
+    // skeleton stays while importing; denied SMS access ends it (panel takes over)
+    val loaded = minSkeletonShown && (syncDone || !readSmsAllowed)
     var sheetConvoId by remember { mutableLongStateOf(-1L) }
     val sheetConvo = conversations.find { it.id == sheetConvoId }
     val rowSettings = remember(vm.settings) {
@@ -273,6 +308,54 @@ fun ConversationsScreen(
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(8, key = { "skeleton_$it" }) { SkeletonConversationRow() }
                         item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
+                    }
+                }
+            } else if (!readSmsAllowed && conversations.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 40.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    PersonAvatar(
+                        "sms-launcher",
+                        size = 72.dp,
+                        backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        "Allow SMS access",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Messages needs permission to read your SMS so your conversations appear here.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Button(onClick = { readSmsPermissionLauncher.launch(Manifest.permission.READ_SMS) }) {
+                        Text("Allow access")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { vm.requeryFromSystem() }) {
+                        Text("Retry loading")
+                    }
+                    TextButton(onClick = {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                        )
+                    }) {
+                        Text("Open app settings")
                     }
                 }
             } else {
