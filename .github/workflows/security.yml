@@ -75,7 +75,8 @@ jobs:
       - name: Run Semgrep
         run: |
           python3 -m pip install --quiet --user semgrep
-          python3 -m semgrep scan \
+          export PATH="$HOME/.local/bin:$PATH"
+          semgrep scan \
             --config p/security-audit \
             --config p/secrets \
             --sarif \
