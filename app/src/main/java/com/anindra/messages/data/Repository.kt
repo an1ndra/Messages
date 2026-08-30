@@ -67,7 +67,6 @@ class Db(context: Context) :
         db.execSQL("CREATE UNIQUE INDEX idx_messages_sys_id ON messages(sys_id) WHERE sys_id>0")
         db.execSQL("CREATE INDEX idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
         db.execSQL("CREATE INDEX idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
-        db.execSQL("CREATE INDEX idx_scheduled_timestamp ON scheduled_messages(timestamp)")
         db.execSQL(
             """CREATE TABLE blocked_numbers(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,6 +82,7 @@ class Db(context: Context) :
                 conversation_id INTEGER NOT NULL,
                 sub_id INTEGER NOT NULL DEFAULT -1)"""
         )
+        db.execSQL("CREATE INDEX idx_scheduled_timestamp ON scheduled_messages(timestamp)")
         db.execSQL(
             """CREATE TABLE conversation_notifications(
                 conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
@@ -276,16 +276,15 @@ class Repository(private val context: Context) {
 
     private val _initialSyncDone = MutableStateFlow(settings.firstImportDone)
 
-    /** True when the UI may skip the loading state: either the post-install
-     *  import already finished once (persisted), or it just completed. */
+    /** True when the UI may skip the loading state. */
     val initialSyncDone: StateFlow<Boolean> = _initialSyncDone.asStateFlow()
 
     private val _initialSyncProgress = MutableStateFlow<Float?>(null)
 
-    /** Null = idle; 0..1 = fraction of the pending system SMS imported this pass. */
+    /** Null = idle; 0..1 = fraction imported this pass. */
     val initialSyncProgress: StateFlow<Float?> = _initialSyncProgress.asStateFlow()
 
-    // Serializes sync runs so overlapping onResume calls cannot double-import
+    // One IO thread — overlapping onResume calls can't double-import
     private val syncExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
 
     private val notifyThread = HandlerThread("repo-notify").apply { start() }
@@ -1002,12 +1001,15 @@ class Repository(private val context: Context) {
         }.start()
     }
 
-    /**
-     * Imports all real SMS from the system Telephony provider into the local
-     * DB, grouped by address into conversations. Deduped via sys_id.
-     * Reports fraction-complete via [initialSyncProgress] while work is pending.
-     */
+@Volatile private var syncRunning = false
+
+    /** True until a sync that actually had SMS access completes. */
+    val needsInitialImport: Boolean get() = !settings.firstImportDone
+
+    /** Imports system SMS into the local DB, grouped by address, deduped by sys_id. */
     fun syncFromSystem() {
+        if (syncRunning) return
+        syncRunning = true
         syncExecutor.execute {
             try {
                 val resolver = context.contentResolver
@@ -1127,14 +1129,26 @@ class Repository(private val context: Context) {
                     refreshConversationSnippets()
                     notifyChanged()
                 }
+                settings.firstImportDone = true
+            } catch (e: SecurityException) {
+                // no SMS access yet — keep firstImportDone=false so grant re-imports
+                android.util.Log.e("RepoSync", "syncFromSystem skipped: ${e.message}", e)
             } catch (e: Exception) {
                 android.util.Log.e("RepoSync", "syncFromSystem failed: ${e.message}", e)
+                settings.firstImportDone = true
             } finally {
                 _initialSyncProgress.value = null
                 _initialSyncDone.value = true
-                settings.firstImportDone = true
+                syncRunning = false
             }
         }
+    }
+
+    /** Re-runs [syncFromSystem] with the loading UI active. */
+    fun requeryFromSystem() {
+        if (syncRunning || !needsInitialImport) return
+        _initialSyncDone.value = false
+        syncFromSystem()
     }
 
     /** Recomputes snippet/timestamp/last_is_me from each conversation's newest message. */

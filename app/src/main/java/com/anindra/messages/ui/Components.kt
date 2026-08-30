@@ -50,10 +50,7 @@ import android.util.LruCache
 import java.util.Locale
 
 object BitmapCache {
-    // Sized in bytes (4 bytes per pixel); ~24 MiB cap fits comfortably under the
-    // 256 MiB default heap with room for working sets. The previous "sizeOf=1"
-    // cap of 50 entries held ~140 MB of bitmaps in an LRU that thought it was
-    // using 50 units.
+    // ~24 MiB cap in bytes; prior sizeOf=1 cap actually held ~140 MB of bitmaps
     private val maxBytes = (24 * 1024 * 1024)
     private val cache = object : LruCache<String, Bitmap>(maxBytes) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.allocationByteCount.coerceAtLeast(1)
@@ -231,9 +228,7 @@ fun UnreadBadge(count: Int, modifier: Modifier = Modifier) {
 
 @Composable
 fun Modifier.shimmer(): Modifier {
-    // One transition per row was producing 40 concurrent infinite animations
-    // (5 per skeleton × 8 rows) that all repainted every frame. Hoist to a
-    // single transition shared across the whole screen.
+    // one transition shared across the screen, not 40 per-row animations
     val translateAnim = LocalShimmerTranslate.current
     return this.background(
         brush = androidx.compose.ui.graphics.Brush.linearGradient(

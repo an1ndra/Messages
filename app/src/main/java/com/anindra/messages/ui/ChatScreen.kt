@@ -60,7 +60,6 @@ import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PersonAddAlt1
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
@@ -104,7 +103,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -133,10 +131,16 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val EMOJIS = listOf("👍", "😂", "❤️", "🔥", "😢", "😮", "🙏", "🎉")
+
+private const val INITIAL_CHUNK = 40
+private const val AUTO_CHUNK = 40
+private const val AUTO_CAP = 400
+private const val LOAD_EARLIER_STEP = 200
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,22 +153,25 @@ fun ChatScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val convo by vm.conversationById(conversationId).collectAsState(initial = null)
-    var pageLimit by remember { mutableIntStateOf(200) }
-    val messages by vm.messages(conversationId, limit = pageLimit).collectAsState(initial = emptyList())
-    // Page length is 0 until the first emission — avoids a sync COUNT(*) on the
-    // UI thread during composition (was running rawQuery inside .collectAsState).
-    val totalCount by vm.messageCountFlow(conversationId).collectAsState(initial = 0)
-    val hasEarlier = totalCount > pageLimit
+    val convo by remember(conversationId) { vm.conversationById(conversationId) }.collectAsState(initial = null)
+    val listState = rememberLazyListState()
+    // Progressive loading: latest chunk first, shimmer while older messages queue
+    var pageLimit by remember(conversationId) { mutableIntStateOf(INITIAL_CHUNK) }
+    var messagesLoaded by remember(conversationId) { mutableStateOf(false) }
+    val messagesFlow = remember(conversationId, pageLimit) { vm.messages(conversationId, limit = pageLimit) }
+    val messages by messagesFlow
+        .onEach { messagesLoaded = true }
+        .collectAsState(initial = emptyList())
+    val totalCount by remember(conversationId) { vm.messageCountFlow(conversationId) }.collectAsState(initial = 0)
+    val showEntrySkeleton = !messagesLoaded
+    val pendingEarlier = messagesLoaded && totalCount > pageLimit && pageLimit < AUTO_CAP
+    val hasEarlierButton = messagesLoaded && totalCount > pageLimit && pageLimit >= AUTO_CAP
     val deliveryReports = remember { vm.deliveryReportsEnabled() }
     var draft by remember { mutableStateOf("") }
     var draftLoaded by remember { mutableStateOf(false) }
     var showEmoji by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
-    var bannerDismissed by remember { mutableStateOf(false) }
-    var bannerVisible by remember { mutableStateOf(false) }
     var attachSheet by remember { mutableStateOf(false) }
-    val listState = rememberLazyListState()
 
     var cameraFileUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -187,12 +194,7 @@ fun ChatScreen(
     var scheduledHour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
     var scheduledMinute by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.MINUTE)) }
 
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(800)
-        bannerVisible = true
-    }
-    // bumping sendAttempt (re)arms the countdown effect; Compose cancels the
-    // previous attempt automatically — no Job state to race against (#93)
+    // sendAttempt (re)arms the countdown effect; Compose cancels the old one (#93)
     var sendAttempt by remember { mutableIntStateOf(0) }
     LaunchedEffect(sendAttempt) {
         if (sendAttempt == 0 || pendingSendText.isEmpty() || sendCountdown <= 0) return@LaunchedEffect
@@ -290,12 +292,22 @@ fun ChatScreen(
     }
     BackHandler(onBack = ::leaveChat)
 
-    // Auto-scroll to bottom only on a NEW message id, not on every status
-    // transition (sending→sent→delivered was force-scrolling the list every
-    // time the SmsStatusReceiver fired notifyChanged()).
+    // Auto-scroll only on a NEW message id, not on status transitions
     val newestId = messages.lastOrNull()?.id
     LaunchedEffect(newestId) {
         if (newestId != null) listState.scrollToItem(messages.size - 1)
+    }
+    // Load chunks while pinned near the bottom so inserting rows doesn't jump the view
+    LaunchedEffect(pageLimit, totalCount) {
+        if (!pendingEarlier) return@LaunchedEffect
+        val nearBottom: () -> Boolean = {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            info.totalItemsCount == 0 || last >= info.totalItemsCount - 2
+        }
+        while (!nearBottom()) delay(80)
+        delay(240)
+        pageLimit = (pageLimit + AUTO_CHUNK).coerceAtMost(AUTO_CAP)
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)
@@ -396,24 +408,6 @@ fun ChatScreen(
                 InputBar(
                     draft = draft,
                     placeholder = "Text message",
-                    // SIM switcher moved to the 3-dot chat menu (user request)
-                    // simTrailing = {
-                    //     if (sims.size > 1 && draft.isEmpty()) {
-                    //         val simIdx = sims.indexOfFirst { it.subscriptionId == currentSimId }
-                    //         val iconRes = when {
-                    //             sims.size >= 3 -> R.drawable.ic_dual_sim
-                    //             simIdx == 1 -> R.drawable.ic_sim_2
-                    //             else -> R.drawable.ic_sim_1
-                    //         }
-                    //         IconButton(onClick = { cycleSim() }) {
-                    //             Icon(
-                    //                 painterResource(iconRes),
-                    //                 contentDescription = "Switch SIM",
-                    //                 tint = MaterialTheme.colorScheme.primary
-                    //             )
-                    //         }
-                    //     }
-                    // },
                     onDraftChange = { draft = it },
                     onSend = {
                         val text = draft.trim()
@@ -469,58 +463,64 @@ fun ChatScreen(
         }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            ChatMessageList(
-                messages = messages,
-                listState = listState,
-                deliveryReports = deliveryReports,
-                sims = sims,
-                highlightLinks = vm.settings.highlightLinks,
-                unlockedIds = unlockedIds,
-                hasEarlier = hasEarlier,
-                onLoadEarlier = { pageLimit += 200 },
-                onRetry = { vm.retryMessage(it) },
-                onRetryWithPicker = { retryingMessageId = it; showRetrySimPicker = true },
-                onLongPress = { msgId ->
-                    if (vm.settings.forwardingEnabled) {
-                        forwardingMessageId = msgId
-                        showForwardPicker = true
-                    }
-                },
-                onLockUnlock = { msgId, wantLock ->
-                    if (wantLock) {
-                        vm.setLocked(msgId, true)
-                    } else if (activity != null) {
-                        val biometricManager = BiometricManager.from(activity)
-                        val canAuth = biometricManager.canAuthenticate(
-                            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                        )
-                        if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
-                            val prompt = BiometricPrompt(activity, biometricExecutor,
-                                object : BiometricPrompt.AuthenticationCallback() {
-                                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                        activity.runOnUiThread {
-                                            vm.setLocked(msgId, false)
-                                            unlockedIds = unlockedIds + msgId
-                                        }
-                                    }
-                                })
-                            prompt.authenticate(
-                                BiometricPrompt.PromptInfo.Builder()
-                                    .setTitle("Unlock Message")
-                                    .setSubtitle("Authenticate to reveal this message")
-                                    .setAllowedAuthenticators(
-                                        BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                                    )
-                                    .build()
-                            )
-                        } else {
-                            vm.setLocked(msgId, false)
-                            unlockedIds = unlockedIds + msgId
+            val messageList = @Composable {
+                ChatMessageList(
+                    messages = messages,
+                    listState = listState,
+                    deliveryReports = deliveryReports,
+                    sims = sims,
+                    highlightLinks = vm.settings.highlightLinks,
+                    unlockedIds = unlockedIds,
+                    showEntrySkeleton = showEntrySkeleton,
+                    pendingEarlier = pendingEarlier,
+                    hasEarlierButton = hasEarlierButton,
+                    onLoadEarlier = { pageLimit += LOAD_EARLIER_STEP },
+                    onRetry = { vm.retryMessage(it) },
+                    onRetryWithPicker = { retryingMessageId = it; showRetrySimPicker = true },
+                    onLongPress = { msgId ->
+                        if (vm.settings.forwardingEnabled) {
+                            forwardingMessageId = msgId
+                            showForwardPicker = true
                         }
-                    }
-                },
-                showSimIndicator = vm.settings.showSimIndicator
-            )
+                    },
+                    onLockUnlock = { msgId, wantLock ->
+                        if (wantLock) {
+                            vm.setLocked(msgId, true)
+                        } else if (activity != null) {
+                            val biometricManager = BiometricManager.from(activity)
+                            val canAuth = biometricManager.canAuthenticate(
+                                BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                            )
+                            if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                                val prompt = BiometricPrompt(activity, biometricExecutor,
+                                    object : BiometricPrompt.AuthenticationCallback() {
+                                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                            activity.runOnUiThread {
+                                                vm.setLocked(msgId, false)
+                                                unlockedIds = unlockedIds + msgId
+                                            }
+                                        }
+                                    })
+                                prompt.authenticate(
+                                    BiometricPrompt.PromptInfo.Builder()
+                                        .setTitle("Unlock Message")
+                                        .setSubtitle("Authenticate to reveal this message")
+                                        .setAllowedAuthenticators(
+                                            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                                        )
+                                        .build()
+                                )
+                            } else {
+                                vm.setLocked(msgId, false)
+                                unlockedIds = unlockedIds + msgId
+                            }
+                        }
+                    },
+                    showSimIndicator = vm.settings.showSimIndicator
+                )
+            }
+            // animate shimmer only while a skeleton is visible
+            if (showEntrySkeleton || pendingEarlier) ProvideShimmer { messageList() } else messageList()
 
             if (sendCountdown > 0) {
                 Surface(
@@ -550,43 +550,6 @@ fun ChatScreen(
                 }
             }
 
-            val c = convo
-            // Save-contact banner hidden for now (user request)
-            // AnimatedVisibility(
-            //     visible = c != null && c.name == c.address && isPhoneNumber(c.address) &&
-            //             !bannerDismissed && bannerVisible,
-            //     modifier = Modifier.align(Alignment.TopCenter).padding(horizontal = 12.dp),
-            //     enter = androidx.compose.animation.fadeIn(
-            //         animationSpec = androidx.compose.animation.core.tween(
-            //             300,
-            //             easing = androidx.compose.animation.core.FastOutSlowInEasing
-            //         )
-            //     ) + androidx.compose.animation.slideInVertically(
-            //         initialOffsetY = { -it },
-            //         animationSpec = androidx.compose.animation.core.tween(
-            //             400,
-            //             easing = androidx.compose.animation.core.FastOutSlowInEasing
-            //         )
-            //     ),
-            //     exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically(
-            //         targetOffsetY = { -it },
-            //         animationSpec = androidx.compose.animation.core.tween(300)
-            //     )
-            // ) {
-            //     SaveContactBanner(
-            //         address = c?.address ?: "",
-            //         onDismiss = { bannerDismissed = true },
-            //         onAddContact = {
-            //             bannerDismissed = true
-            //             c?.address?.let { addr ->
-            //                 context.startActivity(Intent(ContactsContract.Intents.Insert.ACTION).apply {
-            //                     type = ContactsContract.RawContacts.CONTENT_TYPE
-            //                     putExtra(ContactsContract.Intents.Insert.PHONE, addr)
-            //                 })
-            //             }
-            //         }
-            //     )
-            // }
         }
     }
 
@@ -855,7 +818,9 @@ private fun ChatMessageList(
     sims: List<SubscriptionInfo>,
     highlightLinks: Boolean,
     unlockedIds: Set<Long>,
-    hasEarlier: Boolean,
+    showEntrySkeleton: Boolean,
+    pendingEarlier: Boolean,
+    hasEarlierButton: Boolean,
     onLoadEarlier: () -> Unit,
     onRetry: (msgId: Long) -> Unit,
     onRetryWithPicker: (msgId: Long) -> Unit,
@@ -869,21 +834,25 @@ private fun ChatMessageList(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        if (hasEarlier) {
-            item(key = "load_earlier") {
-                TextButton(
-                    onClick = onLoadEarlier,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                ) {
-                    Text("Load earlier messages")
+        if (showEntrySkeleton) {
+            items(3, key = { "entry_skeleton_$it" }) { SkeletonMessageRow() }
+        } else {
+            if (pendingEarlier) {
+                items(3, key = { "skeleton_$it" }) { SkeletonMessageRow() }
+            }
+            if (hasEarlierButton) {
+                item(key = "load_earlier") {
+                    TextButton(
+                        onClick = onLoadEarlier,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Text("Load earlier messages")
+                    }
                 }
             }
         }
         itemsIndexed(messages, key = { _, msg -> msg.id }) { idx, msg ->
-            // Capture the unlocked bit per-row at composition time so the row's
-            // recomposition is bounded to that one item; the screen-level
-            // unlockedIds read previously caused the whole list to recompose
-            // on any unlock.
+            // per-row unlock bit bounds recomposition to that single item
             val rowIsUnlocked = remember(msg.id, unlockedIds) { msg.id in unlockedIds }
             MessageRow(
                 msg = msg,
@@ -898,6 +867,32 @@ private fun ChatMessageList(
                 onLockUnlock = { wantLock -> onLockUnlock(msg.id, wantLock) },
                 isUnlocked = rowIsUnlocked,
                 showSimIndicator = showSimIndicator
+            )
+        }
+    }
+}
+
+/** Shimmer placeholder bubbles shown while earlier messages are still loading. */
+@Composable
+private fun SkeletonMessageRow() {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Box(
+                Modifier
+                    .width(210.dp)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp))
+                    .shimmer()
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+            Box(
+                Modifier
+                    .width(160.dp)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp))
+                    .shimmer()
             )
         }
     }
@@ -1021,61 +1016,6 @@ private fun rememberLinkedText(body: String, highlight: Boolean): AnnotatedStrin
 }
 
 @Composable
-private fun SaveContactBanner(address: String, onDismiss: () -> Unit, onAddContact: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth().alpha(0.78f).padding(horizontal = 12.dp, vertical = 4.dp)
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
-                Box(
-                    Modifier
-                        .size(40.dp)
-                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.PersonAddAlt1,
-                        null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        "Save ${formatPhoneNumber(address)}?",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "Saving this number will add a new contact",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        Icons.Rounded.Close,
-                        contentDescription = "Dismiss",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("Report spam") }
-                Spacer(Modifier.width(8.dp))
-                TextButton(onClick = onAddContact) { Text("Add contact") }
-            }
-        }
-    }
-}
-
-@Composable
 private fun ConversationDetailsDialog(
     address: String,
     name: String?,
@@ -1146,9 +1086,7 @@ fun MessageRow(
     val displayBody = if (isLockedAndHidden) "\uD83D\uDD12 Locked" else msg.body
     val bodyText = rememberLinkedText(displayBody, highlightLinks && !isLockedAndHidden)
 
-    // Cache the per-row derived text/sim so that an unlock (which changes
-    // isUnlocked at the row level) doesn't recompute these allocations. They
-    // also no longer depend on the screen-level unlockedIds set.
+    // cache derived text/sim so an unlock doesn't recompute row allocations
     val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp) }
     val timeText = remember(msg.timestamp) { formatTimeOnly(msg.timestamp) }
     val simLabel = remember(msg.subId, showSimIndicator) {

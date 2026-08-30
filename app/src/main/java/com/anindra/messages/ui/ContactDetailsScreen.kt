@@ -77,9 +77,7 @@ fun ContactDetailsScreen(
     val name = convo!!.name
     val isKnownContact = name != null && name != address
 
-    // Resolve notifications toggle + blocked status via flows instead of running
-    // synchronous SQLite SELECTs during composition. The VM retains the last
-    // value so the first paint shows the correct state.
+    // flows (not sync SELECTs) for notify/block state; VM retains last value
     val notificationsEnabled by vm.conversationNotificationsEnabledFlow(conversationId)
         .collectAsState(initial = true)
     var notifState by remember(notificationsEnabled) { mutableStateOf(notificationsEnabled) }
