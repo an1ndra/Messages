@@ -311,9 +311,19 @@ class MainActivity : FragmentActivity() {
                 val repo = (application as MessagesApplication).repository
                 if (repo.needsInitialImport) repo.requeryFromSystem()
             }
+            if (Build.VERSION.SDK_INT >= 33 &&
+                grants[Manifest.permission.POST_NOTIFICATIONS] == false
+            ) {
+                android.widget.Toast.makeText(
+                    this,
+                    "Notifications disabled — you won't be alerted for new messages",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
         }
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
+    private var pendingOpenAddress: String? = null
 
     private var lastResumeTime = 0L
 
@@ -342,6 +352,7 @@ class MainActivity : FragmentActivity() {
             "dark", "light", "system" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
+        intent.getStringExtra("open_conversation_address")?.let { pendingOpenAddress = it }
 
         val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -360,6 +371,7 @@ class MainActivity : FragmentActivity() {
                         val prompt = BiometricPrompt(this@MainActivity, executor,
                             object : BiometricPrompt.AuthenticationCallback() {
                                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                    result.cryptoObject
                                     runOnUiThread { appUnlocked = true }
                                 }
                                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -382,6 +394,7 @@ class MainActivity : FragmentActivity() {
                         val prompt = BiometricPrompt(this@MainActivity, executor,
                             object : BiometricPrompt.AuthenticationCallback() {
                                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                    result.cryptoObject
                                     runOnUiThread { appUnlocked = true }
                                 }
                                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -418,6 +431,17 @@ class MainActivity : FragmentActivity() {
                         }
                     }
                     defaultSmsChecked = true
+                }
+
+                androidx.compose.runtime.LaunchedEffect(pendingOpenAddress) {
+                    val addr = pendingOpenAddress ?: return@LaunchedEffect
+                    pendingOpenAddress = null
+                    val repo = (application as com.anindra.messages.MessagesApplication).repository
+                    val id = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        repo.conversationIdForAddress(addr) ?: repo.getOrCreateConversationBlocking(addr)
+                    }
+                    chatId = id
+                    navRoute = "chat"
                 }
 
                 if (showDefaultSmsDialog) {
@@ -565,5 +589,6 @@ class MainActivity : FragmentActivity() {
             "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
+        intent.getStringExtra("open_conversation_address")?.let { pendingOpenAddress = it }
     }
 }

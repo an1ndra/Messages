@@ -495,6 +495,7 @@ fun ChatScreen(
                                 val prompt = BiometricPrompt(activity, biometricExecutor,
                                     object : BiometricPrompt.AuthenticationCallback() {
                                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                            result.cryptoObject
                                             activity.runOnUiThread {
                                                 vm.setLocked(msgId, false)
                                                 unlockedIds = unlockedIds + msgId
