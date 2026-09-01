@@ -67,12 +67,13 @@ object NotificationHelper {
 
         val privacyMode = app.repository.settings.privacyModeEnabled
 
+        val tapIntent = Intent(context, MainActivity::class.java)
+        tapIntent.putExtra("open_conversation_address", from)
+        tapIntent.setPackage(context.packageName)
+        tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val tap = PendingIntent.getActivity(
             context, reqCode,
-            Intent(context, MainActivity::class.java).apply {
-                putExtra("open_conversation_address", from)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },
+            tapIntent,
             PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -120,12 +121,14 @@ object NotificationHelper {
         val failId = (app.repository.conversationIdForAddress(to) ?: to.hashCode().toLong()).toInt()
 
         // "failed" tag decouples failure notifications from incoming-message ids
+        val tapIntent = Intent(context, MainActivity::class.java)
+        tapIntent.putExtra("open_conversation_address", to)
+        tapIntent.setPackage(context.packageName)
+        tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        tapIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val tap = PendingIntent.getActivity(
             context, failId and 0x7FFFFFFF,
-            Intent(context, MainActivity::class.java).apply {
-                putExtra("open_conversation_address", to)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },
+            tapIntent,
             PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -201,15 +204,17 @@ object SmsSender {
             context, (messageId % Int.MAX_VALUE).toInt(),
             Intent(SmsStatusReceiver.ACTION_SMS_SENT)
                 .setPackage(context.packageName)
+                .setComponent(android.content.ComponentName(context, SmsStatusReceiver::class.java))
                 .putExtra(SmsStatusReceiver.EXTRA_MESSAGE_ID, messageId),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE
         )
         val delivered = if (wantDeliveryReport) PendingIntent.getBroadcast(
             context, (messageId % Int.MAX_VALUE).toInt(),
             Intent(SmsStatusReceiver.ACTION_SMS_DELIVERED)
                 .setPackage(context.packageName)
+                .setComponent(android.content.ComponentName(context, SmsStatusReceiver::class.java))
                 .putExtra(SmsStatusReceiver.EXTRA_MESSAGE_ID, messageId),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE
         ) else null
 
         val parts = sm.divideMessage(body)
@@ -242,8 +247,9 @@ object SmsSender {
             context, (messageId % Int.MAX_VALUE).toInt(),
             Intent(SmsStatusReceiver.ACTION_MMS_SENT)
                 .setPackage(context.packageName)
+                .setComponent(android.content.ComponentName(context, SmsStatusReceiver::class.java))
                 .putExtra(SmsStatusReceiver.EXTRA_MESSAGE_ID, messageId),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE
         )
         manager(subscriptionId).sendMultimediaMessage(context, media, null, null, sent)
         true
