@@ -66,6 +66,7 @@ class QuickReplyReceiver : BroadcastReceiver() {
         ): Intent {
             return Intent(context, QuickReplyReceiver::class.java).apply {
                 action = ACTION_REPLY
+                setPackage(context.packageName)
                 putExtra(EXTRA_ADDRESS, address)
                 putExtra(EXTRA_FROM, from)
             }
