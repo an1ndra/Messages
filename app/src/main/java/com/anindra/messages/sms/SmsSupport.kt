@@ -73,14 +73,14 @@ object NotificationHelper {
                 putExtra("open_conversation_address", from)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE
         )
 
         val replyIntent = PendingIntent.getBroadcast(
             context, reqCode,
             QuickReplyReceiver.createReplyIntent(context, from, from)
                 .putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE
         )
 
         val remoteInput = RemoteInput.Builder("quick_reply").setLabel("Reply").build()
@@ -126,7 +126,7 @@ object NotificationHelper {
                 putExtra("open_conversation_address", to)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE
         )
 
         val privacyMode = app.repository.settings.privacyModeEnabled
