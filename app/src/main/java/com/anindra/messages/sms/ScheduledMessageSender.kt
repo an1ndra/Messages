@@ -67,7 +67,7 @@ class ScheduledMessageSender : BroadcastReceiver() {
                 val showIntent = android.app.PendingIntent.getActivity(
                     context, id.toInt(),
                     android.content.Intent(context, com.anindra.messages.MainActivity::class.java),
-                    android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                    android.app.PendingIntent.FLAG_IMMUTABLE
                 )
                 val info = AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent)
                 alarmManager.setAlarmClock(info, pendingIntent)
@@ -97,7 +97,7 @@ class ScheduledMessageSender : BroadcastReceiver() {
             }
             return PendingIntent.getBroadcast(
                 context, id.toInt(), intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_IMMUTABLE
             )
         }
     }
