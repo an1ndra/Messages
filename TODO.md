@@ -331,6 +331,17 @@ File: `data/SettingsStore.kt`, `ui/SettingsScreen.kt`, `ui/ChatScreen.kt`, `sms/
 
 File: `ui/ConversationsScreen.kt`, `ui/ChatScreen.kt`, `data/Repository.kt`, `MainActivity.kt` · test: `scripts/test-loading-screen.sh`
 
+## Incoming-SMS notification silently dropped / never posted (2026-09-05)
+
+- ✅ BUG: with the app as default SMS handler, injected inbound SMS stored to the DB but NO system notification ever appeared — on the emulator (API 35) AND the vivo (API 36)
+- ✅ ROOT CAUSE #1 (SmsReceiver.kt:84): the foreground guard was INVERTED — `if (!appInForeground || isConversationOpen(...)) continue` skipped the notification pipeline whenever the app was NOT in the foreground (i.e. always — the normal background case). Corrected to `if (appInForeground && isConversationOpen(...)) continue`
+- ✅ ROOT CAUSE #2 (SmsSupport.kt): the reply action's PendingIntent used `FLAG_IMMUTABLE`. On Android 15+ a RemoteInput reply action backed by an IMMUTABLE PendingIntent is SILENTLY dropped by NotificationManagerService — `numEnqueuedByApp` increments in `dumpsys notification` usage-stats but `numPostedByApp` stays 0, no logged reason. The system must inject the reply text into the intent, so it must be MUTABLE (matches Quik/QKSMS: `FLAG_UPDATE_CURRENT or FLAG_MUTABLE`). Bisected on emulator: minimal notif posts → +RemoteInput drops → +icon unchanged (drops) → +`FLAG_MUTABLE` + `setSemanticAction(SEMANTIC_ACTION_REPLY)` posts
+- ✅ Also added `setSemanticAction(SEMANTIC_ACTION_REPLY)` and a real action icon (`ic_reply`) to match the canonical Google Messages / Quik form (hard rule #2 — toolbar action no longer icon=0)
+- ✅ Restored full production notification (BigTextStyle + custom channel sound) on top of the fix; verified cold AND warm-background paths both post with Reply action wired + sound present (`mSound=android.resource://...`)
+- Resume-point: verify on the real vivo later (needs a release build signed with the vivo keystore `223e351c`, PM will replace the 1.0.14 build) — test: `scripts/test-notification-posts.sh`
+
+File: `sms/SmsReceiver.kt`, `sms/SmsSupport.kt`, `res/drawable/ic_reply.xml`
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots
