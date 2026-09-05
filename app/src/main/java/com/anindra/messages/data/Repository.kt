@@ -547,6 +547,10 @@ class Repository(private val context: Context) {
     }
 
     fun emptyTrashSuspend() {
+        val trashed = mutableListOf<Long>()
+        db.readableDatabase.rawQuery("SELECT id FROM conversations WHERE deleted_at>0", null)
+            .use { c -> while (c.moveToNext()) trashed.add(c.getLong(0)) }
+        purgeProviderMessages(trashed)
         db.writableDatabase.execSQL(
             "DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE deleted_at>0)"
         )
@@ -554,9 +558,41 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
+    /** Best-effort removal of permanently-deleted messages from the system
+     *  SMS provider, so the periodic [syncFromSystem] doesn't resurrect them.
+     *  Needs default-SMS-app (or WRITE_SMS); skipped silently otherwise. */
+    private fun purgeProviderMessages(conversationIds: List<Long>) {
+        try {
+            if (conversationIds.isEmpty()) return
+            val ph = conversationIds.joinToString(",") { "?" }
+            val sysIds = mutableListOf<Long>()
+            db.readableDatabase.rawQuery(
+                "SELECT sys_id FROM messages WHERE conversation_id IN ($ph) AND sys_id>0",
+                conversationIds.map { it.toString() }.toTypedArray()
+            ).use { c -> while (c.moveToNext()) sysIds.add(c.getLong(0)) }
+            if (sysIds.isEmpty()) return
+            sysIds.chunked(200).forEach { chunk ->
+                val placeholders = chunk.joinToString(",") { "?" }
+                context.contentResolver.delete(
+                    android.provider.Telephony.Sms.CONTENT_URI,
+                    android.provider.Telephony.Sms._ID + " IN ($placeholders)",
+                    chunk.map { it.toString() }.toTypedArray()
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("RepoSync", "Provider purge skipped: ${e.message}")
+        }
+    }
+
     /** Hard-deletes conversations trashed more than [days] ago. */
     fun purgeOldTrashSuspend(days: Int = 30) {
         val cutoff = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
+        val stale = mutableListOf<Long>()
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM conversations WHERE deleted_at>0 AND deleted_at<?",
+            arrayOf(cutoff.toString())
+        ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
+        purgeProviderMessages(stale)
         db.writableDatabase.execSQL(
             "DELETE FROM messages WHERE conversation_id IN " +
                 "(SELECT id FROM conversations WHERE deleted_at>0 AND deleted_at<?)",
@@ -570,6 +606,7 @@ class Repository(private val context: Context) {
 
     /** Permanently deletes a conversation and its messages. */
     fun deleteConversationSuspend(conversationId: Long) {
+        purgeProviderMessages(listOf(conversationId))
         db.writableDatabase.execSQL(
             "DELETE FROM messages WHERE conversation_id=?", arrayOf(conversationId)
         )
