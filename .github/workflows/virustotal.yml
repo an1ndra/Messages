@@ -1,8 +1,9 @@
 name: VirusTotal Scan
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   workflow_dispatch:
     inputs:
       tag:
@@ -13,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: virustotal-${{ github.event.release.tag_name || github.event.inputs.tag || 'manual' }}
+  group: virustotal-${{ github.event.inputs.tag || github.event.workflow_run.head_sha || 'manual' }}
   cancel-in-progress: false
 
 env:
@@ -24,6 +25,7 @@ jobs:
     name: Scan release APK
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

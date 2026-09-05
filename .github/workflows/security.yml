@@ -138,7 +138,7 @@ jobs:
 
       - name: Start MobSF
         run: |
-          docker run -d --name mobsf -p 8000:8000 docker.io/opensecurity/mobsf:latest
+          docker run -d --name mobsf -p 8000:8000 docker.io/opensecurity/mobile-security-framework-mobsf:latest
           for i in $(seq 1 60); do
             curl -sf http://127.0.0.1:8000/api_docs >/dev/null 2>&1 && break
             sleep 5
