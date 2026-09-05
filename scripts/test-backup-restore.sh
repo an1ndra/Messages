@@ -1,104 +1,168 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Backup → restore round trip (regression test for the GCM null doFinal bug).
-# Assumes the app is built + installed and that SMS/READ_SMS permissions are
-# already granted. Passes when Settings → "Import messages" restores the file
-# written by Settings → "Backup messages", no "Import failed" toast fires, and
-# the conversation list still renders after an app restart.
+# Backup → restore round trip (regression test for PIN-protected backups).
+# Assumes the app is built + installed and SMS permissions are already granted.
+# Flow (drive matches the current Settings UI):
+#   Home → avatar (top-right) → Settings → scroll to "Backup messages" →
+#   tap → "Set backup PIN" dialog: enter the test PIN twice → Save →
+#   a new .enc lands in Documents/Messages → record the live DB mtime →
+#   "Import messages" (SAF picker) → pick the newest .enc →
+#   "Enter backup PIN" dialog: enter the PIN → Import →
+#   confirm the live DB file was swapped (mtime changed) → restart →
+#   conversation list renders.
+# PIN="${PIN:-1234}" overrides the test PIN.
 export ADB="${ADB:-$HOME/android/platform-tools/adb}"
 source "$(dirname "$0")/env.sh"
-PKG="com.anindra.messages"
 
 dump_ui() {
   adb_ shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
   adb_ shell cat /sdcard/ui.xml > "$TMP/ui.xml" 2>/dev/null || true
 }
-
-bounds_center() { # prints "x y" for a node string's bounds attribute
-  local b xs ys
-  b=$(printf '%s' "$1" | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' | head -1)
-  [ -z "$b" ] && return 1
-  xs=$(sed -E 's/\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]/\1/' <<< "$b")
-  ys=$(sed -E 's/\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]/\2/' <<< "$b")
-  xe=$(sed -E 's/\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]/\3/' <<< "$b")
-  ye=$(sed -E 's/\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]/\4/' <<< "$b")
-  echo "$(( (xs + xe) / 2 )) $(( (ys + ye) / 2 ))"
+bounds_of() { # prints bounds of first node whose text==="$1"
+  grep -oE "<node[^>]*text=\"$1\"[^>]*bounds=\"[^\"]*\"" "$TMP/ui.xml" | head -1 \
+    | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' || true
 }
-
-node_of() { # prints the full <node ... text="..."> tag matching a label
-  grep -oE "<node[^>]*text=\"$1\"[^>]*>" "$TMP/ui.xml" | head -1 || true
+first_enc_bounds() { # prints bounds of first picker row whose text starts with messages_backup_
+  grep -oE '<node[^>]*text="messages_backup_[^"]*\.enc"[^>]*bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' \
+    "$TMP/ui.xml" | head -1 | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' || true
 }
-
-tap_label() { # taps the center of a node matching text="$1"
-  local c
-  c=$(bounds_center "$(node_of "$1")") || { echo "[fail] '$1' not found"; exit 1; }
-  adb_ shell input tap $c
-  sleep 1
+tap_center() { # taps center of a bounds string
+  local b=$1 x1 y1 x2 y2
+  x1=$(sed -E 's/\[([0-9]+),([0-9]+)\].*/\1/' <<< "$b")
+  y1=$(sed -E 's/\[[0-9]+,([0-9]+)\].*/\1/' <<< "$b")
+  x2=$(sed -E 's/.*\]\[([0-9]+),[0-9]+\]/\1/' <<< "$b")
+  y2=$(sed -E 's/.*\]\[[0-9]+,([0-9]+)\]/\1/' <<< "$b")
+  adb_ shell input tap $(( (x1 + x2) / 2 )) $(( (y1 + y2) / 2 ))
 }
+tap_label() { # taps center of first node with exact text="$1"
+  local b
+  b=$(bounds_of "$1") || true
+  [ -z "$b" ] && { echo "[fail] '$1' not found on screen"; return 1; }
+  tap_center "$b"
+}
+edits() { # bounds of every EditText node (screen order), one per line
+  grep -oE 'class="android.widget.EditText"[^>]*bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' \
+    "$TMP/ui.xml" | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' || true
+}
+nth_edit() { edits | sed -n "${1}p"; }
+greps_ui() { grep -q "$1" "$TMP/ui.xml"; }
 
-# 1. Open the app and dismiss the default-SMS dialog if present.
+# 1. Open the app, dismiss any first-run dialogs.
 adb_ shell am start -n "$PKG/.MainActivity"
 sleep 4
 dump_ui
-if grep -q 'Set as default SMS app' "$TMP/ui.xml"; then
-  adb_ shell input tap 540 1700
-  sleep 2
-  dump_ui
-fi
+for _ in 1 2 3; do
+  if greps_ui 'Set as default SMS app?'; then
+    adb_ shell input tap 533 1352; sleep 2; dump_ui
+  elif grep -qE 'Allow Messages to (access|send|start)' "$TMP/ui.xml"; then
+    adb_ shell input tap 900 1470; sleep 1; dump_ui
+  else break; fi
+done
 
-# 2. Open settings (top-right avatar/menu) and scroll to the backup group.
-if ! grep -q 'Save database to Documents/Messages' "$TMP/ui.xml"; then
-  adb_ shell input tap 976 164
-  sleep 2
-  for _ in 1 2 3; do
-    adb_ shell input swipe 540 2000 540 400 300
-    sleep 1
-  done
+# 2. Settings via the top-right avatar (no content-desc, fixed coords).
+adb_ shell input tap 975 226
+sleep 2
+# 3. Scroll until the General/backup group is in view.
+for _ in 1 2 3 4; do
+  if greps_ui 'Backup messages'; then break; fi
+  adb_ shell input swipe 540 1900 540 400 300
+  sleep 1
   dump_ui
-fi
-grep -q 'Backup messages' "$TMP/ui.xml" || { echo "[fail] settings backup row not visible"; exit 1; }
+done
+grep -q 'Backup messages' "$TMP/ui.xml" || { echo "[fail] Settings backup rows not visible"; exit 1; }
 
-# 3. Backup.
+# 4. Backup → "Set backup PIN" dialog (two fields + Save) → new .enc in Documents/Messages.
 echo "== Step 1: Backup =="
-tap_label 'Backup messages'
+BACKDIR="storage/emulated/0/Documents/Messages"
+PIN="${PIN:-1234}"
+before=$(adb_ shell "ls $BACKDIR | grep -c '\.enc'" 2>/dev/null | tr -dc '0-9')
+tap_center "$(bounds_of 'Backup messages')"
 sleep 3
-adb_ shell ls /sdcard/Documents/Messages/ 2>/dev/null | grep -q '\.enc' \
-  && echo "[ok] backup file written" \
-  || { echo "[fail] no .enc backup produced"; exit 1; }
-# Save the row label for later pass/fail; dump is stale, refresh it.
 dump_ui
+greps_ui 'Set backup PIN' || { echo "[fail] Set backup PIN dialog not shown"; exit 1; }
+[ -z "$(nth_edit 1)" ] && { echo "[fail] PIN field 1 missing"; exit 1; }
+tap_center "$(nth_edit 1)"
+adb_ shell input text "$PIN"
+sleep 1
+dump_ui # the IME shifts the dialog → re-resolve field 2
+[ -z "$(nth_edit 2)" ] && { echo "[fail] PIN field 2 missing"; exit 1; }
+tap_center "$(nth_edit 2)"
+adb_ shell input text "$PIN"
+sleep 1
+dump_ui
+b=$(bounds_of 'Save'); [ -z "$b" ] && { echo "[fail] Save button not found"; exit 1; }
+tap_center "$b"
+sleep 4
+after=$(adb_ shell "ls $BACKDIR | grep -c '\.enc'" 2>/dev/null | tr -dc '0-9')
+[ "$after" -gt "$before" ] \
+  && echo "[ok] PIN-protected backup written ($before -> $after .enc)" \
+  || { echo "[fail] no new .enc backup produced (was $before, now $after)"; exit 1; }
 
-# 4. Restore via SAF picker.
+# 5. Record the live DB mtime BEFORE the swap (epoch seconds — minute
+#    granularity tools can't resolve swaps inside the same minute).
+dbmtime() { adb_ shell "run-as $PKG toybox stat -c %Y databases/messages.db" 2>/dev/null | tr -dc '0-9'; }
+MT_BEFORE=$(dbmtime)
+echo "[db] pre-import mtime: $MT_BEFORE"
+
+# 6. Import → SAF picker (opens inside Documents/Messages). Target the
+#    NEWEST .enc by filename (the one we just wrote in Step 1) — the picker's
+#    "first visible row" is the OLDEST file, which may belong to a different
+#    (lost) keystore key and would legitimately fail to decrypt.
 echo "== Step 2: Restore =="
-tap_label 'Import messages'
+NEWEST=$(adb_ shell "ls storage/emulated/0/Documents/Messages/messages_backup_*.enc 2>/dev/null" \
+  | xargs -n1 basename 2>/dev/null | sort | tail -1)
+echo "[ok] newest backup: $NEWEST"
+tap_center "$(bounds_of 'Import messages')"
 sleep 3
-adb_ shell input tap 100 170; sleep 2   # roots drawer
-adb_ shell input tap 400 717; sleep 2   # internal storage
-adb_ shell input tap 300 1044; sleep 2  # Documents
-adb_ shell input tap 300 746; sleep 2   # Messages
-dump_ui
-f=$(grep -oE "<node[^>]*text=\"messages_backup[^\"]*\.enc\"[^>]*>" "$TMP/ui.xml" | head -1 || true)
-[ -z "$f" ] && { echo "[fail] backup file not shown in picker"; exit 1; }
-c=$(bounds_center "$f")
-adb_ shell input tap $c
-sleep 5
+b=""
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+  dump_ui
+  b=$(grep -oE "<node[^>]*text=\"$NEWEST\"[^>]*bounds=\"\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]\"" \
+    "$TMP/ui.xml" | head -1 | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' || true)
+  [ -n "$b" ] && break
+  adb_ shell input swipe 540 2000 540 400 600
+  sleep 1
+done
+[ -z "$b" ] && { echo "[fail] $NEWEST not found in picker"; exit 1; }
+echo "[ok] picking $NEWEST at $b"
+tap_center "$b"
+sleep 3
 
-# 5. Restart and confirm the app still renders the conversation list.
+# 6b. PIN-format backup → "Enter backup PIN" dialog → type PIN → Import.
+dump_ui
+greps_ui 'Enter backup PIN' || { echo "[fail] Enter backup PIN dialog not shown"; exit 1; }
+[ -z "$(nth_edit 1)" ] && { echo "[fail] PIN entry field missing"; exit 1; }
+tap_center "$(nth_edit 1)"
+adb_ shell input text "$PIN"
+sleep 1
+dump_ui # re-resolve Import after IME shift
+b=$(bounds_of 'Import'); [ -z "$b" ] && { echo "[fail] Import button not found"; exit 1; }
+tap_center "$b"
+sleep 8
+
+# 7. The live DB must have been swapped (new inode → mtime changes).
+MT_AFTER=$(dbmtime)
+echo "[db] post-import mtime: $MT_AFTER"
+[ "$MT_AFTER" != "$MT_BEFORE" ] \
+  && echo "[ok] live DB file replaced by import" \
+  || { echo "[fail] live DB file unchanged after import"; exit 1; }
+
+# 8. Restart and confirm the conversation list still renders.
 echo "== Step 3: Restart + verify =="
 adb_ shell am force-stop "$PKG"
+sleep 1
 adb_ shell am start -n "$PKG/.MainActivity"
 sleep 5
 dump_ui
-if grep -q 'Set as default SMS app' "$TMP/ui.xml"; then
-  adb_ shell input tap 540 1700
-  sleep 2
-  dump_ui
-fi
+for _ in 1 2 3; do
+  if greps_ui 'Set as default SMS app?'; then
+    adb_ shell input tap 533 1352; sleep 2; dump_ui
+  else break; fi
+done
 grep -q 'text="Messages"' "$TMP/ui.xml" \
   && echo "[ok] conversation list rendered after restore" \
   || { echo "[fail] home list missing after restore"; exit 1; }
 
-# 6. Surface restore diagnostics so the developer can confirm the success
-#    toast ("Backup restored. Restart app to apply.") or any failure log.
-adb_ logcat -d -t 300 2>/dev/null | grep -E "BackupCrypto|BackupImport|NotificationService.*Toast" | tail -10 || true
+# 9. Surface restore diagnostics (toast/logcat) for the developer.
+adb_ logcat -d -t 300 2>/dev/null | grep -iE "BackupCrypto|ImportResult|Import failed" | tail -5 || true
 echo "[done] backup → restore round trip OK"

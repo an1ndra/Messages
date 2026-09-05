@@ -17,5 +17,6 @@ run bash "$S/theme.sh" dark
 run bash "$S/theme.sh" light
 run bash "$S/theme.sh" system
 run bash "$S/test-notification-posts.sh"
+run bash "$S/test-backup-restore.sh"
 
 info "ALL DONE — screenshots in $SHOTS_DIR"
