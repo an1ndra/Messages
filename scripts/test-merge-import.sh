@@ -3,6 +3,9 @@ set -euo pipefail
 # Merge-import regression test: import a PIN-protected .enc backup with the
 # new "Merge with existing messages" option and prove that BOTH the merge
 # source and the pre-existing device messages survive (no replace/restart).
+# NOTE: conversation presence is asserted by matching the LAST-MESSAGE PREVIEW
+# text, not the phone number — the UI formats numbers per locale
+# (e.g. "+1-555-123-4501") so raw-address greps are unreliable.
 # Flow (drives the current Settings UI):
 #   inject SMS to NUM_A (conversation exists in the backup) →
 #   Settings → Backup messages → set PIN → write .enc (contains NUM_A) →
@@ -49,14 +52,17 @@ edits() {
 nth_edit() { edits | sed -n "${1}p"; }
 greps_ui() { grep -q "$1" "$TMP/ui.xml"; }
 
+PREVIEW_A="merge source conversation"
+PREVIEW_B="live device only message"
 NUM_A="+15551234501"
 NUM_B="+15551234502"
 PIN="${PIN:-1234}"
 BACKDIR="storage/emulated/0/Documents/Messages"
 
 echo "== Step 0: seed conversations =="
-adb_ emu sms send "$NUM_A" "merge source conversation" >/dev/null 2>&1 || true
+adb_ emu sms send "$NUM_A" "$PREVIEW_A" >/dev/null 2>&1 || true
 sleep 2
+adb_ shell am force-stop "$PKG"; sleep 1
 adb_ shell am start -n "$PKG/.MainActivity"
 sleep 4
 dump_ui
@@ -67,7 +73,7 @@ for _ in 1 2 3; do
     adb_ shell input tap 900 1470; sleep 1; dump_ui
   else break; fi
 done
-greps_ui '1551234501' || { echo "[fail] $NUM_A not on home list"; exit 1; }
+greps_ui "$PREVIEW_A" || { echo "[fail] $NUM_A (preview '$PREVIEW_A') not on home list"; exit 1; }
 echo "[ok] $NUM_A conversation present"
 
 echo "== Step 1: create a PIN backup (contains $NUM_A) =="
@@ -110,7 +116,7 @@ adb_ shell am force-stop "$PKG"; sleep 1
 adb_ shell am start -n "$PKG/.MainActivity"
 sleep 4
 dump_ui
-greps_ui '1551234502' || { echo "[fail] $NUM_B not on home list"; exit 1; }
+greps_ui "$PREVIEW_B" || { echo "[fail] $NUM_B (preview '$PREVIEW_B') not on home list"; exit 1; }
 echo "[ok] $NUM_B conversation present (would be lost by a replace)"
 
 echo "== Step 3: import the newest .enc via MERGE =="
@@ -162,19 +168,23 @@ tap_center "$b"
 sleep 6
 
 echo "== Step 4: assert BOTH conversations survived (no restart) =="
+# Merge writes in place with no restart, so we're still on Settings after the
+# import — navigate back to the home list the way the user would.
+adb_ shell input keyevent KEYCODE_BACK
+sleep 3
 dump_ui
 okA=0; okB=0
 for _ in 1 2 3; do
-  greps_ui '1551234501' && okA=1
-  greps_ui '1551234502' && okB=1
+  greps_ui "$PREVIEW_A" && okA=1
+  greps_ui "$PREVIEW_B" && okB=1
   [ "$okA" = "1" ] && [ "$okB" = "1" ] && break
   sleep 1
   dump_ui
 done
 [ "$okA" = "1" ] && echo "[ok] $NUM_A present after merge (from backup)" \
-                  || { echo "[fail] $NUM_A missing after merge"; exit 1; }
+                  || { echo "[fail] $NUM_A ($PREVIEW_A) missing after merge"; exit 1; }
 [ "$okB" = "1" ] && echo "[ok] $NUM_B present after merge (pre-existing kept)" \
-                  || { echo "[fail] $NUM_B lost — replace happened instead of merge"; exit 1; }
+                  || { echo "[fail] $NUM_B ($PREVIEW_B) lost — replace happened instead of merge"; exit 1; }
 
 adb_ logcat -d -t 400 2>/dev/null | grep -iE "ImportResult|Import failed" | tail -5 || true
 echo "[done] merge-import round trip OK"
