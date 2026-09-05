@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import com.anindra.messages.R
-import com.anindra.messages.data.DemoData
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -138,10 +137,6 @@ fun PersonAvatar(
 
 /** Loads the contact's profile photo thumbnail for a phone number, or null. */
 private fun loadContactPhoto(context: Context, number: String): Bitmap? {
-    val demoRes = DemoData.AVATAR_MAP[number]
-    if (demoRes != null) {
-        return BitmapFactory.decodeResource(context.resources, demoRes)
-    }
     return try {
         val resolver = context.contentResolver
         val lookupUri = Uri.withAppendedPath(

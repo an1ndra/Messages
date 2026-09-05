@@ -241,37 +241,6 @@ class Repository(private val context: Context) {
             }
         }
 
-    init {
-        when (systemSmsCount()) {
-            // Fresh device with no SMS anywhere: safe to seed F-Droid demo data
-            0 -> DemoData.seedIfNeeded(db.writableDatabase)
-            // Device has real SMS: never seed, and heal installs polluted by
-            // older builds that seeded unconditionally
-            else -> purgeDemoConversations()
-        }
-    }
-
-    /** -1 = unknown (READ_SMS missing or provider error), otherwise row count. */
-    private fun systemSmsCount(): Int = try {
-        context.contentResolver.query(
-            android.provider.Telephony.Sms.CONTENT_URI,
-            arrayOf(android.provider.Telephony.Sms._ID),
-            null, null, null
-        )?.use { it.count } ?: -1
-    } catch (_: Exception) {
-        -1
-    }
-
-    private fun purgeDemoConversations() {
-        val numbers = DemoData.DEMO_NUMBERS.joinToString(",") { "'$it'" }
-        db.writableDatabase.execSQL(
-            "DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE address IN ($numbers))"
-        )
-        db.writableDatabase.execSQL(
-            "DELETE FROM conversations WHERE address IN ($numbers)"
-        )
-    }
-
     private val listeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
 
     private val _initialSyncDone = MutableStateFlow(settings.firstImportDone)
