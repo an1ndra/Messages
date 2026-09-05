@@ -873,7 +873,8 @@ class Repository(private val context: Context) {
         context: Context,
         sourceUri: android.net.Uri,
         pin: String?,
-        mode: ImportMode = ImportMode.REPLACE
+        mode: ImportMode = ImportMode.REPLACE,
+        onProgress: (Int) -> Unit = {}
     ): ImportResult {
         val dbFile = context.getDatabasePath(DB_NAME)
         val backupFile = File(dbFile.parent, "pre_import_backup.db")
@@ -911,13 +912,14 @@ class Repository(private val context: Context) {
             }
 
             if (mode == ImportMode.MERGE) {
-                val merged = mergeDatabase(tempFile)
+                val merged = mergeDatabase(tempFile, onProgress)
                 tempFile.delete()
                 notifyChanged()
                 return ImportResult.Success(merged)
             }
 
             // Backup current DB in case swap fails
+            onProgress(countMessages(tempFile))
             dbFile.copyTo(backupFile, overwrite = true)
 
             // Close the shared DB, swap files, and reopen
@@ -951,10 +953,21 @@ class Repository(private val context: Context) {
         }
     }
 
+    /** Total message rows in a decrypted backup—shown as the target count for a replace import. */
+    private fun countMessages(file: File): Int = try {
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+            db.rawQuery("SELECT COUNT(*) FROM messages", null).use { c ->
+                if (c.moveToFirst()) c.getInt(0) else 0
+            }
+        }
+    } catch (_: Exception) {
+        0
+    }
+
     /** Merges the backup DB's conversations and messages into the live DB, keeping
      *  existing rows and adding only backup rows not already present. Returns the
      *  number of messages written. */
-    private fun mergeDatabase(backupFile: File): Int {
+    private fun mergeDatabase(backupFile: File, onProgress: (Int) -> Unit): Int {
         val target = db.writableDatabase
         var added = 0
         SQLiteDatabase.openDatabase(backupFile.path, null, SQLiteDatabase.OPEN_READONLY).use { backup ->
@@ -1043,6 +1056,7 @@ class Repository(private val context: Context) {
                             }
                         )
                         added++
+                        onProgress(added)
                         val snippet = when (m.getString(5)) {
                             "text" -> body
                             "image" -> "Photo"

@@ -19,5 +19,6 @@ run bash "$S/theme.sh" system
 run bash "$S/test-notification-posts.sh"
 run bash "$S/test-backup-restore.sh"
 run bash "$S/test-merge-import.sh"
+run bash "$S/test-import-loading.sh"
 
 info "ALL DONE — screenshots in $SHOTS_DIR"

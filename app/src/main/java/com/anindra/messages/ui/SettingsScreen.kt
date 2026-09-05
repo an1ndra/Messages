@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -720,6 +721,26 @@ fun SettingsScreen(
                     pendingImportUri = null
                 }) { Text("Cancel") }
             }
+        )
+    }
+
+    val importLoading = vm.importLoading.value
+    if (importLoading != null) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Loading messages") },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(12.dp))
+                    Text("$importLoading messages loaded", style = MaterialTheme.typography.bodyMedium)
+                }
+            },
+            confirmButton = {},
+            dismissButton = {}
         )
     }
 }

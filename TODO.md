@@ -367,8 +367,10 @@ File: `ui/ConversationsScreen.kt`, `ui/ChatScreen.kt`, `data/Repository.kt`, `Ma
 - ✅ `mergeDatabase()` (in-place, no file swap, no restart needed): matches conversations by `address`, lifts trash on backup-imported conversations (`deleted_at=0`), inserts messages deduped by (conversation, timestamp, is_me, body) + unique `sys_id>0` guarded, refreshes the newest-preview only when merged rows are newer, merges `blocked_numbers` (INSERT OR IGNORE) and per-conversation notification toggles for newly added conversations — all atomic in one transaction
 - ✅ Wired `mode` through `AppViewModel.importDatabase` and the SettingsScreen import UI + PIN flow; merge emits `notifyChanged()` so the home list refreshes live (only replace needs the restart)
 - ✅ Merge SQL validated against real SQLite dumps (dedupe, trash-lift, preview guard, blocked/notif merge); JUnit-only project (no Robolectric), full UI drive deferred to emulator — test: `scripts/test-merge-import.sh` (injects NUM_A + NUM_B, imports the newest .enc via Merge, asserts BOTH survive without restart)
+- ✅ Import now shows a blocking M3 "Loading messages" dialog (`CircularProgressIndicator` + live "N messages loaded") while a backup applies — MERGE reports rows written so far (throttle-free, per-row `onProgress` marshalled to the main thread), REPLACE reports the backup's total message count before the atomic file swap; dialog is un-dismissable and always closes (VM catches repo throws). Test: `scripts/test-import-loading.sh` — generates a 10 000-message PIN backup on the host (Python + cryptography, exact BackupCrypto format), merges into a cleared app, verifies the dialog appears with an INCREASING count (observed 1894/10000 mid-import) and the 20 conversations land on the home list
+- ✅ Test-script hardening: merge-import test matches conversations by last-message preview (number formatting is locale-dependent), force-stops for a clean home landing in Step 0, and navigate Back to the list in Step 4 (merge refreshes in place — no restart)
 
-File: `data/Repository.kt`, `MainActivity.kt`, `ui/SettingsScreen.kt`, `scripts/test-merge-import.sh`
+File: `data/Repository.kt`, `MainActivity.kt`, `ui/SettingsScreen.kt`, `scripts/test-merge-import.sh`, `scripts/test-import-loading.sh`
 
 ## Incoming-SMS notification silently dropped / never posted (2026-09-05)
 

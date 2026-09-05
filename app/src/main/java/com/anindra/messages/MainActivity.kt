@@ -253,16 +253,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Non-null while an import is running; value = messages processed/target.
+     *  MERGE reports rows written so far, REPLACE reports the backup's total
+     *  message count before the atomic file swap. */
+    val importLoading = androidx.compose.runtime.mutableStateOf<Int?>(null)
+
     fun importDatabase(
         uri: Uri,
         pin: String?,
         mode: com.anindra.messages.data.ImportMode,
         onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit
     ) {
+        importLoading.value = 0
+        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
         scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                repo.importDatabase(getApplication(), uri, pin, mode)
+            val result = try {
+                withContext(Dispatchers.IO) {
+                    repo.importDatabase(getApplication(), uri, pin, mode) { n ->
+                        mainHandler.post { importLoading.value = n }
+                    }
+                }
+            } catch (e: Exception) {
+                com.anindra.messages.data.Repository.ImportResult.Error("Import error: ${e.message}")
             }
+            importLoading.value = null
             onResult(result)
         }
     }
