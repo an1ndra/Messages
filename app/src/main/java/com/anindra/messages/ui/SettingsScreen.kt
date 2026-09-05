@@ -57,6 +57,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -111,6 +112,13 @@ fun SettingsScreen(
 
     var pinMode by remember { mutableStateOf<PinDialogMode?>(null) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingImportMode by remember {
+        mutableStateOf(com.anindra.messages.data.ImportMode.MERGE)
+    }
+    var pendingImportFormat by remember {
+        mutableStateOf(com.anindra.messages.data.BackupFormat.LEGACY)
+    }
+    var importModeDialog by remember { mutableStateOf(false) }
     var pinInput by remember { mutableStateOf("") }
     var pinConfirm by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
@@ -129,27 +137,25 @@ fun SettingsScreen(
         }
     }
 
+    val showImportResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit = { result ->
+        val msg = when (result) {
+            is com.anindra.messages.data.Repository.ImportResult.Success ->
+                if (result.merged != null) "Backup merged (${result.merged} messages). Existing conversations kept."
+                else "Backup restored. Restart app to apply."
+            is com.anindra.messages.data.Repository.ImportResult.Error ->
+                "Import failed: ${result.message}"
+        }
+        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+    }
+
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
             vm.peekBackupFormat(it) { format ->
-                if (format == com.anindra.messages.data.BackupFormat.PIN) {
-                    pendingImportUri = it
-                    pinInput = ""
-                    pinError = null
-                    pinMode = PinDialogMode.ENTER
-                } else {
-                    vm.importDatabase(it, null) { result ->
-                        val msg = when (result) {
-                            is com.anindra.messages.data.Repository.ImportResult.Success ->
-                                "Backup restored. Restart app to apply."
-                            is com.anindra.messages.data.Repository.ImportResult.Error ->
-                                "Import failed: ${result.message}"
-                        }
-                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                    }
-                }
+                pendingImportUri = it
+                pendingImportFormat = format
+                importModeDialog = true
             }
         }
     }
@@ -561,6 +567,64 @@ fun SettingsScreen(
         )
     }
 
+    if (importModeDialog) {
+        val uri = pendingImportUri
+        AlertDialog(
+            onDismissRequest = {
+                importModeDialog = false
+                pendingImportUri = null
+            },
+            title = { Text("Import backup") },
+            text = {
+                Column {
+                    Text(
+                        "How should this backup be applied to your current messages?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    ImportChoiceRow(
+                        title = "Merge with existing messages",
+                        subtitle = "Keep current messages and add the backup's",
+                        onClick = {
+                            importModeDialog = false
+                            pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
+                            if (pendingImportFormat == com.anindra.messages.data.BackupFormat.PIN) {
+                                pinInput = ""
+                                pinError = null
+                                pinMode = PinDialogMode.ENTER
+                            } else if (uri != null) {
+                                vm.importDatabase(uri, null, pendingImportMode, showImportResult)
+                            }
+                        }
+                    )
+                    ImportChoiceRow(
+                        title = "Restore (replace all)",
+                        subtitle = "Remove current messages and restore the backup",
+                        onClick = {
+                            importModeDialog = false
+                            pendingImportMode = com.anindra.messages.data.ImportMode.REPLACE
+                            if (pendingImportFormat == com.anindra.messages.data.BackupFormat.PIN) {
+                                pinInput = ""
+                                pinError = null
+                                pinMode = PinDialogMode.ENTER
+                            } else if (uri != null) {
+                                vm.importDatabase(uri, null, pendingImportMode, showImportResult)
+                            }
+                        }
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    importModeDialog = false
+                    pendingImportUri = null
+                }) { Text("Cancel") }
+            }
+        )
+    }
+
     pinMode?.let { mode ->
         AlertDialog(
             onDismissRequest = {
@@ -643,15 +707,7 @@ fun SettingsScreen(
                                 if (uri != null) {
                                     pinMode = null
                                     pendingImportUri = null
-                                    vm.importDatabase(uri, pin) { result ->
-                                        val msg = when (result) {
-                                            is com.anindra.messages.data.Repository.ImportResult.Success ->
-                                                "Backup restored. Restart app to apply."
-                                            is com.anindra.messages.data.Repository.ImportResult.Error ->
-                                                "Import failed: ${result.message}"
-                                        }
-                                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                                    }
+                                    vm.importDatabase(uri, pin, pendingImportMode, showImportResult)
                                 }
                             }
                         }
@@ -685,6 +741,33 @@ private fun themeLabel(mode: String) = when (mode) {
     "light" -> "Light"
     "dark" -> "Dark"
     else -> "System default"
+}
+
+@Composable
+private fun ImportChoiceRow(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        RadioButton(selected = false, onClick = onClick)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Composable
