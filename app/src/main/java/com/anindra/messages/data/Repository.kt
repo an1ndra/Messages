@@ -22,6 +22,8 @@ import java.io.File
 import java.io.FileOutputStream
 
 private const val DB_NAME = "messages.db"
+enum class BackupFormat { PIN, LEGACY }
+
 private const val DB_VERSION = 13
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
@@ -829,8 +831,21 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
-    fun backupDatabase(context: Context): Boolean {
+    fun peekBackupFormat(context: Context, sourceUri: android.net.Uri): BackupFormat {
         return try {
+            context.contentResolver.openInputStream(sourceUri)?.use { inp ->
+                val magic = ByteArray(4)
+                if (inp.read(magic) == 4 && BackupCrypto.isPinMagic(magic)) BackupFormat.PIN
+                else BackupFormat.LEGACY
+            } ?: BackupFormat.LEGACY
+        } catch (_: Exception) {
+            BackupFormat.LEGACY
+        }
+    }
+
+    fun backupDatabase(context: Context, pin: String): Boolean {
+        return try {
+            if (!BackupCrypto.isValidPin(pin)) return false
             val dbFile = context.getDatabasePath(DB_NAME)
             if (!dbFile.exists()) return false
             val resolver = context.contentResolver
@@ -841,7 +856,7 @@ class Repository(private val context: Context) {
             }
             val uri = resolver.insert(MediaStore.Files.getContentUri("external"), values) ?: return false
             resolver.openOutputStream(uri)?.use { out ->
-                dbFile.inputStream().use { inp -> BackupCrypto.encrypt(inp, out) }
+                dbFile.inputStream().use { inp -> BackupCrypto.encryptWithPin(inp, out, pin) }
             }
             true
         } catch (_: Exception) { false }
@@ -852,24 +867,35 @@ class Repository(private val context: Context) {
         data class Error(val message: String) : ImportResult()
     }
 
-    fun importDatabase(context: Context, sourceUri: android.net.Uri): ImportResult {
+    fun importDatabase(context: Context, sourceUri: android.net.Uri, pin: String?): ImportResult {
         val dbFile = context.getDatabasePath(DB_NAME)
         val backupFile = File(dbFile.parent, "pre_import_backup.db")
         val tempFile = File(dbFile.parent, "import_temp.db")
         try {
+            val isPin = peekBackupFormat(context, sourceUri) == BackupFormat.PIN
+            if (isPin && pin == null) {
+                return ImportResult.Error("Backup is PIN-protected. Enter the PIN to import.")
+            }
             // Decrypt to temp file first (never touch the live DB until we have a valid file)
-            context.contentResolver.openInputStream(sourceUri)?.use { inp ->
+            val decrypted = context.contentResolver.openInputStream(sourceUri)?.use { inp ->
                 FileOutputStream(tempFile).use { out ->
-                    val decrypted = BackupCrypto.decrypt(inp, out)
-                    if (!decrypted) {
-                        // Legacy unencrypted backup — copy raw
-                        tempFile.delete()
-                        context.contentResolver.openInputStream(sourceUri)?.use { raw ->
-                            FileOutputStream(tempFile).use { raw::copyTo }
-                        }
-                    }
+                    if (isPin) BackupCrypto.decryptWithPin(inp, out, pin!!)
+                    else BackupCrypto.decrypt(inp, out)
                 }
             } ?: return ImportResult.Error("Cannot open backup file")
+
+            if (!decrypted) {
+                if (isPin) {
+                    // Wrong PIN (or tampered). A PIN file is never a raw sqlite dump.
+                    tempFile.delete()
+                    return ImportResult.Error("Wrong PIN or corrupted file")
+                }
+                // Legacy (or raw) backup that doesn't decrypt — try a raw import
+                tempFile.delete()
+                context.contentResolver.openInputStream(sourceUri)?.use { raw ->
+                    FileOutputStream(tempFile).use { raw::copyTo }
+                }
+            }
 
             // Validate the temp file is a real SQLite database
             if (!isValidSqliteFile(tempFile)) {
