@@ -891,6 +891,9 @@ class Repository(private val context: Context) {
                     return ImportResult.Error("Failed to replace database file")
                 }
                 db = Db(context)
+                // A restored backup should be fully visible: lift any
+                // conversations that were in the trash when the backup was made.
+                db.writableDatabase.execSQL("UPDATE conversations SET deleted_at=0 WHERE deleted_at>0")
                 // Clean up
                 tempFile.delete()
                 backupFile.delete()
