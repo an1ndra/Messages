@@ -894,11 +894,11 @@ class Repository(private val context: Context) {
                 if (!dbFile.exists()) backupFile.renameTo(dbFile)
                 db = Db(context)
                 tempFile.delete()
-                return ImportResult.Error("Database swap failed: ${e.message}")
+                return ImportResult.Error("Database swap failed: ${e.message ?: e.javaClass.simpleName}")
             }
         } catch (e: Exception) {
             tempFile.delete()
-            return ImportResult.Error("Import failed: ${e.message}")
+            return ImportResult.Error("Import failed: ${e.message ?: e.javaClass.simpleName}")
         }
     }
 

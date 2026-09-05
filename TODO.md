@@ -76,6 +76,7 @@ priority; each has acceptance criteria and file pointers. Verify on
 - ✅ Draft fix v2: leaving chat via top-bar ← arrow also saves/clears draft (was bypassing BackHandler)
 - ✅ F-Droid prep: conditional release signing (keystore optional, passwords via env), machine-specific JDK pin moved out of repo, GPL-3.0 LICENSE, README, gradle wrapper, fastlane metadata (title/descriptions/changelogs), .gitignore covers keystore/apk/local caches
 - ✅ CI GPG signing (fdroid-release.yml): gpg wrapper as `gpg.program` passing passphrase via `--passphrase` + loopback pinentry — `--passphrase-fd 0` is unusable with git (git feeds commit data on stdin); GNUPGHOME exported in-step AND via GITHUB_ENV; GPG_PASSPHRASE passed to later steps via multi-line `<<EOF` env format. E2E verified locally: signed commit + signed tag through the wrapper. Requires secrets GPG_PRIVATE_KEY + GPG_PASSPHRASE.
+- ✅ Backup restore fix: encrypt/decrypt failed when the DB size made the ciphertext an exact multiple of GCM's 16-byte block — Android's provider returns `null` from `Cipher.doFinal()` when all input was already flushed by `update()`, so `write(null)` raised NPE inside `decrypt()`, the valid backup was misread as "legacy unencrypted", and import reported a misleading error; `update()`/`doFinal()` outputs are now null-guarded before write. Verify — test: `scripts/test-backup-restore.sh`
 
 ## P1 · Scheduled messages UI
 
