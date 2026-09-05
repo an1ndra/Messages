@@ -12,9 +12,9 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 - **Drafts**: Auto-save drafts, restore on conversation open
 - **Scheduled Messages**: Long-press send to schedule messages with DatePicker + TimePicker
 - **Quick Reply**: Reply directly from notifications
-- **Message Lock**: Biometric-protect sensitive messages
+- **Message Lock**: Protect sensitive messages
+- **Privacy Mode**: Protect messages from screenrecord, screenshots
 - **OTP Highlighting**: One-time passwords automatically highlighted in blue
-- **Contact Photos**: Loads real contact profile pictures
 - **Delayed Sending**: Configurable delay before sending messages
 
 ## Screenshots
@@ -38,8 +38,6 @@ Download the latest APK directly from [GitHub Releases](https://github.com/an1nd
 <a href="https://f-droid.org/packages/com.anindra.messages/"><img src="docs/get-it-on-fdroid.png" alt="Get it on F-Droid" height="80"></a>
 
 F-Droid builds the app from source and signs it with the F-Droid project key.
-
-> Badge artwork: ["Get it on F-Droid" badge](https://gitlab.com/fdroid/artwork), CC-BY-4.0
 
 ## Requirements
 
