@@ -3,13 +3,13 @@ package com.anindra.messages.ui
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,10 +21,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -40,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -56,15 +57,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
-
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private enum class PinDialogMode { SET, ENTER }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +109,12 @@ fun SettingsScreen(
     var backingUp by remember { mutableStateOf(false) }
     var delayDialog by remember { mutableStateOf(false) }
 
+    var pinMode by remember { mutableStateOf<PinDialogMode?>(null) }
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var pinInput by remember { mutableStateOf("") }
+    var pinConfirm by remember { mutableStateOf("") }
+    var pinError by remember { mutableStateOf<String?>(null) }
+
     val simPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -124,14 +133,23 @@ fun SettingsScreen(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            vm.importDatabase(it) { result ->
-                val msg = when (result) {
-                    is com.anindra.messages.data.Repository.ImportResult.Success ->
-                        "Backup restored. Restart app to apply."
-                    is com.anindra.messages.data.Repository.ImportResult.Error ->
-                        "Import failed: ${result.message}"
+            vm.peekBackupFormat(it) { format ->
+                if (format == com.anindra.messages.data.BackupFormat.PIN) {
+                    pendingImportUri = it
+                    pinInput = ""
+                    pinError = null
+                    pinMode = PinDialogMode.ENTER
+                } else {
+                    vm.importDatabase(it, null) { result ->
+                        val msg = when (result) {
+                            is com.anindra.messages.data.Repository.ImportResult.Success ->
+                                "Backup restored. Restart app to apply."
+                            is com.anindra.messages.data.Repository.ImportResult.Error ->
+                                "Import failed: ${result.message}"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                    }
                 }
-                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -326,9 +344,22 @@ fun SettingsScreen(
                     title = "App lock",
                     subtitle = "Require fingerprint or PIN to open app",
                     checked = appLock,
-                    onChecked = {
-                        appLock = it
-                        vm.settings.appLockEnabled = it
+                    onChecked = { enable ->
+                        val canAuth = androidx.biometric.BiometricManager.from(context)
+                            .canAuthenticate(
+                                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                                    androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                            )
+                        if (enable && canAuth != androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS) {
+                            Toast.makeText(
+                                context,
+                                "Set up a screen lock (fingerprint, face, or PIN) on your device first",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            appLock = enable
+                            vm.settings.appLockEnabled = enable
+                        }
                     }
                 )
                 SettingsRow(
@@ -338,17 +369,12 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     title = "Backup messages",
-                    subtitle = if (backingUp) "Saving..." else "Save database to Documents/Messages",
+                    subtitle = if (backingUp) "Saving..." else "PIN-protected save to Documents/Messages",
                     onClick = {
-                        backingUp = true
-                        vm.backupDatabase { ok ->
-                            backingUp = false
-                            Toast.makeText(
-                                context,
-                                if (ok) "Backup saved to Documents/Messages" else "Backup failed",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                        pinMode = PinDialogMode.SET
+                        pinInput = ""
+                        pinConfirm = ""
+                        pinError = null
                     }
                 )
                 SettingsRow(
@@ -535,6 +561,111 @@ fun SettingsScreen(
         )
     }
 
+    pinMode?.let { mode ->
+        AlertDialog(
+            onDismissRequest = {
+                pinMode = null
+                pendingImportUri = null
+            },
+            title = {
+                Text(
+                    if (mode == PinDialogMode.SET) "Set backup PIN"
+                    else "Enter backup PIN"
+                )
+            },
+            text = {
+                Column {
+                    if (mode == PinDialogMode.SET) {
+                        Text(
+                            "Your backup is protected by this PIN. You'll need it to " +
+                                "restore — even after reinstalling the app or on a new phone.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                    }
+                    OutlinedTextField(
+                        value = pinInput,
+                        onValueChange = { new ->
+                            if (new.length <= 16 && new.all { it.isDigit() }) pinInput = new
+                        },
+                        label = { Text("4-16 digit PIN") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (mode == PinDialogMode.SET) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = pinConfirm,
+                            onValueChange = { new ->
+                                if (new.length <= 16 && new.all { it.isDigit() }) pinConfirm = new
+                            },
+                            label = { Text("Repeat PIN") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (pinError != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = pinError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val pin = pinInput.trim()
+                    when {
+                        pin.length < 4 -> pinError = "PIN must be at least 4 digits"
+                        mode == PinDialogMode.SET && pin != pinConfirm ->
+                            pinError = "PINs do not match"
+                        else -> {
+                            if (mode == PinDialogMode.SET) {
+                                pinMode = null
+                                backingUp = true
+                                vm.backupDatabase(pin) { ok ->
+                                    backingUp = false
+                                    Toast.makeText(
+                                        context,
+                                        if (ok) "Backup saved with PIN to Documents/Messages"
+                                        else "Backup failed",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            } else {
+                                val uri = pendingImportUri
+                                if (uri != null) {
+                                    pinMode = null
+                                    pendingImportUri = null
+                                    vm.importDatabase(uri, pin) { result ->
+                                        val msg = when (result) {
+                                            is com.anindra.messages.data.Repository.ImportResult.Success ->
+                                                "Backup restored. Restart app to apply."
+                                            is com.anindra.messages.data.Repository.ImportResult.Error ->
+                                                "Import failed: ${result.message}"
+                                        }
+                                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }) { Text(if (mode == PinDialogMode.SET) "Save" else "Import") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pinMode = null
+                    pendingImportUri = null
+                }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 @Composable

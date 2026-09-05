@@ -3,10 +3,12 @@ package com.anindra.messages
 import android.app.Activity
 import android.app.Application
 import android.Manifest
+import android.content.Intent
 import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.provider.Telephony
 import android.app.role.RoleManager
 import kotlinx.coroutines.withContext
@@ -18,8 +20,24 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -226,21 +244,34 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun backupDatabase(onResult: (Boolean) -> Unit) {
+    fun backupDatabase(pin: String, onResult: (Boolean) -> Unit) {
         scope.launch {
             val ok = withContext(Dispatchers.IO) {
-                repo.backupDatabase(getApplication())
+                repo.backupDatabase(getApplication(), pin)
             }
             onResult(ok)
         }
     }
 
-    fun importDatabase(uri: Uri, onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit) {
+    fun importDatabase(
+        uri: Uri,
+        pin: String?,
+        onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit
+    ) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
-                repo.importDatabase(getApplication(), uri)
+                repo.importDatabase(getApplication(), uri, pin)
             }
             onResult(result)
+        }
+    }
+
+    fun peekBackupFormat(uri: Uri, onResult: (com.anindra.messages.data.BackupFormat) -> Unit) {
+        scope.launch {
+            val format = withContext(Dispatchers.IO) {
+                repo.peekBackupFormat(getApplication(), uri)
+            }
+            onResult(format)
         }
     }
 
@@ -361,6 +392,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             val vm: AppViewModel = viewModel()
             var appUnlocked by remember { mutableStateOf(!appLockEnabled) }
+            var lockNotAvailable by remember { mutableStateOf(false) }
 
             if (appLockEnabled && !appUnlocked) {
                 LaunchedEffect(Unit) {
@@ -385,34 +417,72 @@ class MainActivity : FragmentActivity() {
                                 .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                                 .build()
                         )
-                    } else if (canAuth == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE) {
-                        // no sensor, no fallback — cannot lock
-                        appUnlocked = true
                     } else {
-                        // no enrollment but PIN/password exists — try prompt anyway
-                        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
-                        val prompt = BiometricPrompt(this@MainActivity, executor,
-                            object : BiometricPrompt.AuthenticationCallback() {
-                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                    result.cryptoObject
-                                    runOnUiThread { appUnlocked = true }
-                                }
-                                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                                    runOnUiThread { finish() }
-                                }
-                            })
-                        prompt.authenticate(
-                            BiometricPrompt.PromptInfo.Builder()
-                                .setTitle("Unlock Messages")
-                                .setSubtitle("Authenticate to access your messages")
-                                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                                .build()
-                        )
+                        // No credential to verify against (no fingerprint/PIN, or no
+                        // auth hardware): the lock could not actually protect anything,
+                        // so disable it instead of stranding the user behind an inert
+                        // lock that "anyone could turn off" — there is no working lock
+                        // to bypass, and never fake one.
+                        bootVm.settings.appLockEnabled = false
+                        lockNotAvailable = true
                     }
                 }
             }
 
-            if (!appUnlocked) return@setContent
+            if (!appUnlocked) {
+                if (lockNotAvailable) {
+                    MessagesTheme(mode = vm.themeMode) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.background
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxSize().padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(56.dp)
+                                )
+                                Spacer(Modifier.height(24.dp))
+                                Text(
+                                    "App lock is off",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                Text(
+                                    "App lock can't be used because this device has no " +
+                                        "screen lock (fingerprint, face, or PIN) to verify it's you. " +
+                                        "Set one up to turn App lock back on.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(32.dp))
+                                Button(onClick = {
+                                    val lockIntent = Intent(Settings.ACTION_BIOMETRIC_ENROLL)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    try {
+                                        startActivity(lockIntent)
+                                    } catch (_: android.content.ActivityNotFoundException) {
+                                        startActivity(
+                                            Intent(Settings.ACTION_SECURITY_SETTINGS)
+                                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        )
+                                    }
+                                }) { Text("Set up screen lock") }
+                                Spacer(Modifier.height(8.dp))
+                                TextButton(onClick = { appUnlocked = true }) { Text("Got it") }
+                            }
+                        }
+                    }
+                }
+                return@setContent
+            }
 
             MessagesTheme(mode = vm.themeMode) {
                 var chatId by remember { mutableStateOf(-1L) }
