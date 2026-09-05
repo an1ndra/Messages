@@ -142,9 +142,12 @@ jobs:
               jobs=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" \
                 --jq '[.jobs[] | select(.name == "MobSF (APK)")]')
               [ "$(jq -r 'length' <<<"$jobs")" -gt 0 ] || continue
-              found=1
               status=$(jq -r '.[0].status' <<<"$jobs")
               concl=$(jq -r '.[0].conclusion // "null"' <<<"$jobs")
+              # MobSF is auto-skipped on branch pushes; such runs are not
+              # the release-scan verdict
+              [ "$concl" = "skipped" ] && continue
+              found=1
               echo "Security run ${run_id}: status=${status} conclusion=${concl}"
               if [ "$status" != "completed" ]; then
                 pending=1
