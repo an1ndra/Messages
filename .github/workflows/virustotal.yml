@@ -37,13 +37,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.event.release.tag_name }}"
+          TAG="${{ github.event.inputs.tag }}"
           if [ -z "$TAG" ]; then
-            TAG="${{ github.event.inputs.tag }}"
+            # sorted by creation order; avoids the eventually-consistent
+            # "latest" view that returns "release not found" right after
+            # softprops publishes a fresh release
+            TAG=$(gh api "/repos/${GITHUB_REPOSITORY}/releases?per_page=1" --jq '.[0].tag_name')
           fi
-          if [ -z "$TAG" ]; then
-            TAG=$(gh release view latest --json tagName --jq .tagName)
-          fi
+          TAG=${TAG:-latest}
           ID=$(gh release view "$TAG" --json id --jq .id)
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "id=$ID" >> "$GITHUB_OUTPUT"
