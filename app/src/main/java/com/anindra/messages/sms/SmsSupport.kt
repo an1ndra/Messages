@@ -81,14 +81,15 @@ object NotificationHelper {
             context, reqCode,
             QuickReplyReceiver.createReplyIntent(context, from, from)
                 .putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId),
-            PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_MUTABLE
         )
 
         val remoteInput = RemoteInput.Builder("quick_reply").setLabel("Reply").build()
 
         val replyAction = NotificationCompat.Action.Builder(
-            0, "Reply", replyIntent
-        ).addRemoteInput(remoteInput).build()
+            R.drawable.ic_reply, "Reply", replyIntent
+        ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+            .addRemoteInput(remoteInput).build()
 
         val title = if (privacyMode) "New message" else from
         val text = if (privacyMode) "You have a new message" else body

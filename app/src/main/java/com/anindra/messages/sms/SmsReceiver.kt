@@ -78,10 +78,10 @@ class SmsReceiver : BroadcastReceiver() {
             }
 
             repo.receiveMessage(address, body, sysId, subId)
-            // Skip the sound + system notification pipeline when the user is
-            // already in the app — the chat screen will render the new bubble
-            // and bumping the notification would be noise + extra work.
-            if (!appInForeground || ForegroundTracker.isConversationOpen(address)) continue
+            // Skip the sound + system notification pipeline only when the user
+            // is actively reading this exact thread — the chat screen will
+            // render the new bubble and a notification would be noise.
+            if (appInForeground && ForegroundTracker.isConversationOpen(address)) continue
             NotificationHelper.show(context, address, body)
         }
     }
