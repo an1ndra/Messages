@@ -51,9 +51,11 @@ object BackupCrypto {
         val buf = ByteArray(8192)
         var read: Int
         while (input.read(buf).also { read = it } != -1) {
-            output.write(cipher.update(buf, 0, read))
+            cipher.update(buf, 0, read)?.let { output.write(it) }
         }
-        output.write(cipher.doFinal())
+        // GCM emits nothing on doFinal() when input was fully flushed by
+        // update() (provider returns null instead of an empty array).
+        cipher.doFinal()?.let { output.write(it) }
     }
 
     fun decrypt(input: InputStream, output: OutputStream): Boolean {
@@ -66,9 +68,9 @@ object BackupCrypto {
             val buf = ByteArray(8192 + GCM_TAG_LENGTH)
             var read: Int
             while (input.read(buf).also { read = it } != -1) {
-                output.write(cipher.update(buf, 0, read))
+                cipher.update(buf, 0, read)?.let { output.write(it) }
             }
-            output.write(cipher.doFinal())
+            cipher.doFinal()?.let { output.write(it) }
             true
         } catch (_: Exception) {
             false
