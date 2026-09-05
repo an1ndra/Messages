@@ -144,6 +144,11 @@ Note: `pm clear` wipes grants → dialogs reappear (this is how you see them).
   current default SMS handler and mirrors all traffic. Our app coexists.
 - Emulator phone numbers: own = `+15551230004`-range; inject inbound SMS via
   `adb -s emulator-5554 emu sms send <number> "<text>"`.
+- On this host the AVD segfaults (SIGSEGV, exit 139) on the AMD radeonsi Vulkan
+  driver. Launch with software rendering: `setsid nohup ~/android/emulator/emulator
+  -avd Pixel_7_API_35 -no-snapshot-load -no-boot-anim -gpu swiftshader_indirect
+  -feature -Vulkan`. Ignore a "boot_completed" false-alarm on the first poll before
+  qemu exec; loop `adb shell getprop sys.boot_completed` until `1`.
 - DB v10 recreates tables on upgrade (dev-mode). Seed data auto-inserts on
   first run only if table empty. Self-healing onOpen handles corrupted states.
 
