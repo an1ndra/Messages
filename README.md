@@ -19,21 +19,25 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 ## Screenshots
 
-| Home (Dark) | Chat (Dark) | Settings (Dark) |
-|---|---|---|
-| ![Home Dark](screenshots/fdroid/01-home-dark.png) | ![Chat Dark](screenshots/fdroid/02-chat-dark.png) | ![Settings Dark](screenshots/fdroid/06-settings-dark.png) |
+| Home (Dark) | Chat (Dark) | Settings (Dark) | Reply (Dark) |
+|---|---|---|---|
+| ![Home Dark](screenshots/fdroid/01-home-dark.png) | ![Chat Dark](screenshots/fdroid/02-chat-dark.png) | ![Settings Dark](screenshots/fdroid/06-settings-dark.png) | ![Reply Dark](screenshots/fdroid/07-reply-dark.png) |
 
-| Home (Light) | Chat (Light) | Settings (Light) |
-|---|---|---|
-| ![Home Light](screenshots/fdroid/03-home-light.png) | ![Chat Light](screenshots/fdroid/04-chat-light.png) | ![Settings Light](screenshots/fdroid/05-settings-light.png) |
+| Home (Light) | Chat (Light) | Settings (Light) | Reply (Light) |
+|---|---|---|---|
+| ![Home Light](screenshots/fdroid/03-home-light.png) | ![Chat Light](screenshots/fdroid/04-chat-light.png) | ![Settings Light](screenshots/fdroid/05-settings-light.png) | ![Reply Light](screenshots/fdroid/08-reply-light.png) |
 
 ## Download
+
+### GitHub Releases
+<a href="https://github.com/an1ndra/Messages/releases/latest"><img src="https://raw.githubusercontent.com/rubenpgrady/get-it-on-github/refs/heads/main/get-it-on-github.png" alt="Get it on GitHub" height="80"></a>
+
+Download the latest APK directly from [GitHub Releases](https://github.com/an1ndra/Messages/releases/latest) — no store account needed. Every release is scanned with VirusTotal (report posted on the release page).
 
 ### F-Droid
 <a href="https://f-droid.org/packages/com.anindra.messages/"><img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80"></a>
 
-### Manual Install
-Download the latest APK from [Releases](https://github.com/an1ndra/Messages/releases) and install it on your Android device.
+F-Droid builds the app from source and signs it with the F-Droid project key.
 
 ## Requirements
 

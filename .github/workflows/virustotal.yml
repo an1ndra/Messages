@@ -1,0 +1,160 @@
+name: VirusTotal Scan
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to scan (default: latest)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: virustotal-${{ github.event.release.tag_name || github.event.inputs.tag || 'manual' }}
+  cancel-in-progress: false
+
+env:
+  VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+
+jobs:
+  scan:
+    name: Scan release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve release
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$TAG" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+          if [ -z "$TAG" ]; then
+            TAG=$(gh release view latest --json tagName --jq .tagName)
+          fi
+          ID=$(gh release view "$TAG" --json id --jq .id)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo "Scanning release $TAG (id $ID)"
+
+      - name: Check VirusTotal API key
+        run: |
+          if [ -z "$VT_API_KEY" ]; then
+            echo "::error::Set the VIRUSTOTAL_API_KEY secret"
+            exit 1
+          fi
+
+      - name: Download APK asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.rel.outputs.tag }}
+        run: |
+          mkdir -p /tmp/vt
+          gh release download "$TAG" --pattern "Messages-*.apk" --dir /tmp/vt
+          ls -lh /tmp/vt
+
+      - name: Upload to VirusTotal
+        id: upload
+        run: |
+          APK=$(ls /tmp/vt/Messages-*.apk | head -1)
+          echo "Uploading $APK ($(stat -c%s "$APK") bytes)"
+          RESP=$(curl -sf -H "x-apikey: $VT_API_KEY" -F "file=@$APK" \
+            https://www.virustotal.com/api/v3/files)
+          ID=$(echo "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['id'])")
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          echo "analysis_id=$ID" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Analysis id: $ID"
+
+      - name: Wait for analysis and extract stats
+        id: result
+        run: |
+          ANALY="${{ steps.upload.outputs.analysis_id }}"
+          for i in $(seq 1 60); do
+            if RESP=$(curl -sf -H "x-apikey: $VT_API_KEY" \
+              "https://www.virustotal.com/api/v3/analyses/$ANALY"); then
+              ST=$(echo "$RESP" | python3 -c \
+                "import sys,json;print(json.load(sys.stdin)['data']['attributes']['status'])")
+              if [ "$ST" = "completed" ]; then
+                echo "$RESP" > /tmp/vt/result.json
+                break
+              fi
+            fi
+            sleep 15
+          done
+          test -f /tmp/vt/result.json || { echo "::error::Analysis did not finish in time"; exit 1; }
+          python3 - "$GITHUB_OUTPUT" <<'PY'
+          import json,sys
+          d=json.load(open('/tmp/vt/result.json'))
+          attr=d['data']['attributes']
+          st=attr.get('stats',{})
+          fi=d.get('meta',{}).get('file_info',{})
+          total=sum(st.values())
+          with open(sys.argv[1],'a') as f:
+              for k in ('harmless','malicious','suspicious','undetected','timeout',
+                        'confirmed-timeout','failure','type-unsupported'):
+                  f.write(f"{k}={st.get(k,0)}\n")
+              f.write(f"total={total}\n")
+              f.write(f"sha256={fi.get('sha256','')}\n")
+          print(f"engines={total} malicious={st.get('malicious',0)} suspicious={st.get('suspicious',0)}")
+          PY
+
+      - name: Post scan report to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ steps.rel.outputs.id }}
+          TAG: ${{ steps.rel.outputs.tag }}
+          SHA: ${{ steps.result.outputs.sha256 }}
+          MAL: ${{ steps.result.outputs.malicious }}
+          SUS: ${{ steps.result.outputs.suspicious }}
+          GOOD: ${{ steps.result.outputs.harmless }}
+          UNDET: ${{ steps.result.outputs.undetected }}
+          TOTAL: ${{ steps.result.outputs.total }}
+        run: |
+          GUILINK="https://www.virustotal.com/gui/file/$SHA"
+          BODY=$(cat <<EOF
+          ## VirusTotal Scan Report
+
+          Results for **\`Messages-$TAG.apk\`** - SHA-256: \`$SHA\`
+
+          | Result | Count |
+          |---|---|
+          | Malicious | **$MAL** |
+          | Suspicious | $SUS |
+          | Harmless | $GOOD |
+          | Undetected | $UNDET |
+          | Total engines | $TOTAL |
+
+          [View the full report on VirusTotal]($GUILINK)
+          EOF
+          )
+          gh api -X POST "repos/${{ github.repository }}/releases/$ID/comments" -f body="$BODY"
+          {
+            echo "## VirusTotal Scan Report"
+            echo ""
+            echo "Results for **Messages-$TAG.apk** - [full report]($GUILINK)"
+            echo ""
+            echo "| Result | Count |"
+            echo "|---|---|"
+            echo "| Malicious | **$MAL** |"
+            echo "| Suspicious | $SUS |"
+            echo "| Harmless | $GOOD |"
+            echo "| Undetected | $UNDET |"
+            echo "| Total engines | $TOTAL |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Flag malware detections
+        if: steps.result.outputs.malicious != '' && steps.result.outputs.malicious != '0'
+        run: |
+          echo "::error::VirusTotal reported ${{ steps.result.outputs.malicious }} malicious detection(s) for this APK - investigate before distributing"
+          exit 1
