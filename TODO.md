@@ -107,7 +107,7 @@ File: `data/Repository.kt`, `data/Models.kt`, `ui/ChatScreen.kt`
 - ✅ 10 realistic conversations seeded on fresh install (Sarah, Mom, Work, Jake, Emma, Dad, Pizza Palace, Alex, Dr. Patel, Gym Buddy) with 3-5 messages each, unread badges, pinned item
 - ✅ 6 contact avatar PNGs (colored circles with initials) in `res/drawable-xxhdpi/`
 - ✅ `DemoData.kt` seeds conversations + messages when DB is empty; `loadContactPhoto` returns demo avatars for seeded numbers
-- ✅ F-Droid screenshots saved in `screenshots/fdroid/` (8 images: home/chat/settings/reply × dark/light). Script: `scripts/take-fdroid-screenshots.sh`
+- ✅ F-Droid/README screenshots saved in `screenshots/fdroid/` (20 images: home/chat/settings/reply × dark/light, plus scheduled picker, trash, contact details, new chat, archive × dark/light; mirrored in `fastlane/.../phoneScreenshots`). Script: `scripts/take-fdroid-screenshots.sh` (all taps dump-derived, per-shot verify). Prereq: `scripts/insert-demo-contacts.sh` seeds the Contacts provider for the demo numbers
 
 ## Chat UI adjustments (user request)
 
