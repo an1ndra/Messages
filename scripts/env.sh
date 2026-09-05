@@ -3,7 +3,7 @@
 # Source this file from other scripts: source "$(dirname "$0")/env.sh"
 
 export ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5554}
-ADB="${ADB:-$HOME/Android/Sdk/platform-tools/adb}"
+ADB="${ADB:-$HOME/android/platform-tools/adb}"
 PKG="com.anindra.messages"
 ACT="$PKG/.MainActivity"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
