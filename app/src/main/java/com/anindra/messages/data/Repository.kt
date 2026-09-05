@@ -23,6 +23,7 @@ import java.io.FileOutputStream
 
 private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
+enum class ImportMode { REPLACE, MERGE }
 
 private const val DB_VERSION = 13
 private const val PREFS_NAME = "messages_schema"
@@ -863,11 +864,17 @@ class Repository(private val context: Context) {
     }
 
     sealed class ImportResult {
-        data object Success : ImportResult()
+        /** [merged] is the number of messages added, non-null only for a merge import. */
+        data class Success(val merged: Int? = null) : ImportResult()
         data class Error(val message: String) : ImportResult()
     }
 
-    fun importDatabase(context: Context, sourceUri: android.net.Uri, pin: String?): ImportResult {
+    fun importDatabase(
+        context: Context,
+        sourceUri: android.net.Uri,
+        pin: String?,
+        mode: ImportMode = ImportMode.REPLACE
+    ): ImportResult {
         val dbFile = context.getDatabasePath(DB_NAME)
         val backupFile = File(dbFile.parent, "pre_import_backup.db")
         val tempFile = File(dbFile.parent, "import_temp.db")
@@ -903,6 +910,13 @@ class Repository(private val context: Context) {
                 return ImportResult.Error("Invalid or corrupted backup file")
             }
 
+            if (mode == ImportMode.MERGE) {
+                val merged = mergeDatabase(tempFile)
+                tempFile.delete()
+                notifyChanged()
+                return ImportResult.Success(merged)
+            }
+
             // Backup current DB in case swap fails
             dbFile.copyTo(backupFile, overwrite = true)
 
@@ -923,7 +937,7 @@ class Repository(private val context: Context) {
                 // Clean up
                 tempFile.delete()
                 backupFile.delete()
-                return ImportResult.Success
+                return ImportResult.Success()
             } catch (e: Exception) {
                 // Restore backup on failure
                 if (!dbFile.exists()) backupFile.renameTo(dbFile)
@@ -935,6 +949,146 @@ class Repository(private val context: Context) {
             tempFile.delete()
             return ImportResult.Error("Import failed: ${e.message ?: e.javaClass.simpleName}")
         }
+    }
+
+    /** Merges the backup DB's conversations and messages into the live DB, keeping
+     *  existing rows and adding only backup rows not already present. Returns the
+     *  number of messages written. */
+    private fun mergeDatabase(backupFile: File): Int {
+        val target = db.writableDatabase
+        var added = 0
+        SQLiteDatabase.openDatabase(backupFile.path, null, SQLiteDatabase.OPEN_READONLY).use { backup ->
+            val existing = HashSet<String>()
+            target.rawQuery("SELECT address FROM conversations", null).use { c ->
+                while (c.moveToNext()) existing.add(c.getString(0))
+            }
+            val convoMap = HashMap<Long, Long>()
+            // Newest message per live conversation, refreshed only when merged rows are newer
+            val newest = HashMap<Long, Triple<Long, String, Int>>()
+            target.beginTransaction()
+            try {
+                backup.rawQuery(
+                    """SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,
+                       archived,pinned,draft,draft_date,deleted_at FROM conversations""", null
+                ).use { c ->
+                    while (c.moveToNext()) {
+                        val address = c.getString(1)
+                        val tId: Long =
+                            if (existing.contains(address)) {
+                                target.rawQuery("SELECT id FROM conversations WHERE address=?", arrayOf(address))
+                                    .use { q -> if (q.moveToFirst()) q.getLong(0) else -1L }
+                            } else {
+                                existing.add(address)
+                                target.insert(
+                                    "conversations", null,
+                                    ContentValues().apply {
+                                        put("address", address)
+                                        put("name", c.getString(2))
+                                        put("snippet", c.getString(3))
+                                        put("timestamp", c.getLong(4))
+                                        put("unread_count", c.getInt(5))
+                                        put("last_is_me", c.getInt(6))
+                                        put("archived", c.getInt(7))
+                                        put("pinned", c.getInt(8))
+                                        put("draft", c.getString(9))
+                                        put("draft_date", c.getLong(10))
+                                        // 0: lift conversations trashed in the backup
+                                        put("deleted_at", 0)
+                                    }
+                                )
+                            }
+                        if (tId == -1L) continue
+                        convoMap[c.getLong(0)] = tId
+                    }
+                }
+
+                backup.rawQuery(
+                    """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,
+                       reactions,sys_id,locked,sub_id FROM messages ORDER BY timestamp""", null
+                ).use { m ->
+                    while (m.moveToNext()) {
+                        val tId = convoMap[m.getLong(0)] ?: continue
+                        val body = m.getString(1)
+                        val ts = m.getLong(2)
+                        val isMe = m.getInt(3)
+                        // Dedupe: same conversation + same content + same timestamp
+                        val dup = target.rawQuery(
+                            """SELECT 1 FROM messages WHERE conversation_id=? AND timestamp=?
+                               AND is_me=? AND body=? LIMIT 1""",
+                            arrayOf(tId.toString(), ts.toString(), isMe.toString(), body)
+                        ).use { q -> q.moveToFirst() }
+                        if (dup) continue
+                        // sys_id is unique (partial index); a hit means already imported
+                        val sysId = m.getLong(8)
+                        if (sysId > 0) {
+                            val dupSys = target.rawQuery(
+                                "SELECT 1 FROM messages WHERE sys_id=?", arrayOf(sysId.toString())
+                            ).use { q -> q.moveToFirst() }
+                            if (dupSys) continue
+                        }
+                        target.insert(
+                            "messages", null,
+                            ContentValues().apply {
+                                put("conversation_id", tId)
+                                put("body", body)
+                                put("timestamp", ts)
+                                put("is_me", isMe)
+                                put("status", m.getString(4))
+                                put("media_type", m.getString(5))
+                                put("media_uri", m.getString(6))
+                                put("reactions", m.getString(7))
+                                put("sys_id", sysId)
+                                put("locked", m.getInt(9))
+                                put("sub_id", m.getInt(10))
+                            }
+                        )
+                        added++
+                        val snippet = when (m.getString(5)) {
+                            "text" -> body
+                            "image" -> "Photo"
+                            "video" -> "Video"
+                            "audio" -> "Voice message"
+                            else -> "Attachment"
+                        }
+                        val cur = newest[tId]
+                        if (cur == null || ts > cur.first) newest[tId] = Triple(ts, snippet, isMe)
+                    }
+                }
+
+                for ((tId, n) in newest) {
+                    target.execSQL(
+                        "UPDATE conversations SET snippet=?,timestamp=?,last_is_me=? WHERE id=? AND timestamp<?",
+                        arrayOf(n.second, n.first, n.third, tId, n.first)
+                    )
+                }
+
+                backup.rawQuery("SELECT number,timestamp FROM blocked_numbers", null).use { c ->
+                    while (c.moveToNext()) {
+                        target.execSQL(
+                            "INSERT OR IGNORE INTO blocked_numbers(number,timestamp) VALUES(?,?)",
+                            arrayOf(c.getString(0), c.getLong(1))
+                        )
+                    }
+                }
+
+                backup.rawQuery(
+                    "SELECT conversation_id,notifications_enabled FROM conversation_notifications", null
+                ).use { c ->
+                    while (c.moveToNext()) {
+                        val tId = convoMap[c.getLong(0)] ?: continue
+                        target.execSQL(
+                            "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled) VALUES(?,?)",
+                            arrayOf(tId, c.getInt(1))
+                        )
+                    }
+                }
+
+                target.setTransactionSuccessful()
+            } finally {
+                target.endTransaction()
+            }
+        }
+        return added
     }
 
     private fun isValidSqliteFile(file: File): Boolean {

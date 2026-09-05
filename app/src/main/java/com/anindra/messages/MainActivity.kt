@@ -256,11 +256,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun importDatabase(
         uri: Uri,
         pin: String?,
+        mode: com.anindra.messages.data.ImportMode,
         onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit
     ) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
-                repo.importDatabase(getApplication(), uri, pin)
+                repo.importDatabase(getApplication(), uri, pin, mode)
             }
             onResult(result)
         }

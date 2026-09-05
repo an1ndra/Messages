@@ -360,6 +360,16 @@ File: `data/SettingsStore.kt`, `ui/SettingsScreen.kt`, `ui/ChatScreen.kt`, `sms/
 
 File: `ui/ConversationsScreen.kt`, `ui/ChatScreen.kt`, `data/Repository.kt`, `MainActivity.kt` · test: `scripts/test-loading-screen.sh`
 
+## Merge import option (2026-09-06)
+
+- ✅ Import now asks "Merge with existing messages" or "Restore (replace all)" (M3 AlertDialog, radio rows) before applying a backup — REPLACE stays the default and behaves exactly as before; merge is the new fast path for "keep both sets"
+- ✅ `Repository.importDatabase(context, uri, pin, mode)` gained `mode: ImportMode = REPLACE`; `ImportResult.Success` now carries an optional `merged` count (number of messages added), surfaced as "Backup merged (N messages)" toast
+- ✅ `mergeDatabase()` (in-place, no file swap, no restart needed): matches conversations by `address`, lifts trash on backup-imported conversations (`deleted_at=0`), inserts messages deduped by (conversation, timestamp, is_me, body) + unique `sys_id>0` guarded, refreshes the newest-preview only when merged rows are newer, merges `blocked_numbers` (INSERT OR IGNORE) and per-conversation notification toggles for newly added conversations — all atomic in one transaction
+- ✅ Wired `mode` through `AppViewModel.importDatabase` and the SettingsScreen import UI + PIN flow; merge emits `notifyChanged()` so the home list refreshes live (only replace needs the restart)
+- ✅ Merge SQL validated against real SQLite dumps (dedupe, trash-lift, preview guard, blocked/notif merge); JUnit-only project (no Robolectric), full UI drive deferred to emulator — test: `scripts/test-merge-import.sh` (injects NUM_A + NUM_B, imports the newest .enc via Merge, asserts BOTH survive without restart)
+
+File: `data/Repository.kt`, `MainActivity.kt`, `ui/SettingsScreen.kt`, `scripts/test-merge-import.sh`
+
 ## Incoming-SMS notification silently dropped / never posted (2026-09-05)
 
 - ✅ BUG: with the app as default SMS handler, injected inbound SMS stored to the DB but NO system notification ever appeared — on the emulator (API 35) AND the vivo (API 36)
