@@ -115,7 +115,6 @@ jobs:
       - name: Post scan report to release
         env:
           GH_TOKEN: ${{ github.token }}
-          ID: ${{ steps.rel.outputs.id }}
           TAG: ${{ steps.rel.outputs.tag }}
           SHA: ${{ steps.result.outputs.sha256 }}
           MAL: ${{ steps.result.outputs.malicious }}
@@ -125,7 +124,9 @@ jobs:
           TOTAL: ${{ steps.result.outputs.total }}
         run: |
           GUILINK="https://www.virustotal.com/gui/file/$SHA"
-          BODY=$(cat <<EOF
+          # releases have no comments endpoint; append the report to the
+          # release notes instead (matches softprops-generated notes)
+          REPORT=$(cat <<EOF
           ## VirusTotal Scan Report
 
           Results for **\`Messages-$TAG.apk\`** - SHA-256: \`$SHA\`
@@ -141,7 +142,9 @@ jobs:
           [View the full report on VirusTotal]($GUILINK)
           EOF
           )
-          gh api -X POST "repos/${{ github.repository }}/releases/$ID/comments" -f body="$BODY"
+          BODY=$(gh release view "$TAG" --json body --jq .body)
+          printf '%s\n\n%s\n' "$BODY" "$REPORT" > /tmp/vt/notes.md
+          gh release edit "$TAG" --notes-file /tmp/vt/notes.md
           {
             echo "## VirusTotal Scan Report"
             echo ""
