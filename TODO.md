@@ -1,4 +1,15 @@
-# TODO.md — Pending work for Messages app
+# TODO
+
+## P0 · App lock auto-disables when no device credential exists (no dead "Turn off" control)
+
+✅ Follow-up to the no-credential lockout fix. Instead of showing a "Turn off App lock" bypass button anyone could hit on an already-inert lock, the app now auto-disables App lock (`settings.appLockEnabled = false`) and shows an honest info screen: "App lock is off" / "App lock can't be used because this device has no screen lock... to verify it's you. Set one up to turn App lock back on." — buttons: `Set up screen lock` (opens device Settings.ACTION_BIOMETRIC_ENROLL) + `Got it` (dismiss → home). No dead control, no fake lock screen. Works for all `canAuth` outcomes other than SUCCESS (NONE_ENROLLED, NO_HARDWARE, etc.).
+Verified on emulator: cleared device credential → pref auto-flipped false, info screen appeared (no "Turn off" button) → "Got it" → home. Restored PIN+fingerprint → prompt path works again.
+
+## P0 · Deleted messages no longer reappear after restart
+
+✅ USER REPORT: messages deleted from home → Trash → Empty trash → restart → old messages reappeared.
+Root cause: `syncFromSystem()` re-imports every provider message whose `sys_id` is absent from the local DB on app launch/resume, but a local-only delete never touched the system SMS provider — so after Empty trash cleared local rows, the next launch's sync resurrected them from `content://sms`.
+Fix: permanent-delete paths now also delete the matching rows from the system SMS provider (app is the default SMS app, and `WRITE_SMS` added to the manifest as belt-and-suspenders). Applied in `emptyTrashSuspend()`, `purgeOldTrashSuspend()`, `deleteConversationSuspend()` via new `purgeProviderMessages()` (best-effort; skips on SecurityException). Verified on emulator: empty-trash of 15105550199 → provider row gone → cold restart → conversation stays gone (local msgs 0, provider 0 rows).
 
 Hand this file + AGENTS.md (same folder) to any AI agent. Tasks are ordered by
 priority; each has acceptance criteria and file pointers. Verify on
@@ -77,6 +88,24 @@ priority; each has acceptance criteria and file pointers. Verify on
 - ✅ F-Droid prep: conditional release signing (keystore optional, passwords via env), machine-specific JDK pin moved out of repo, GPL-3.0 LICENSE, README, gradle wrapper, fastlane metadata (title/descriptions/changelogs), .gitignore covers keystore/apk/local caches
 - ✅ CI GPG signing (fdroid-release.yml): gpg wrapper as `gpg.program` passing passphrase via `--passphrase` + loopback pinentry — `--passphrase-fd 0` is unusable with git (git feeds commit data on stdin); GNUPGHOME exported in-step AND via GITHUB_ENV; GPG_PASSPHRASE passed to later steps via multi-line `<<EOF` env format. E2E verified locally: signed commit + signed tag through the wrapper. Requires secrets GPG_PRIVATE_KEY + GPG_PASSPHRASE.
 - ✅ Backup restore fix: encrypt/decrypt failed when the DB size made the ciphertext an exact multiple of GCM's 16-byte block — Android's provider returns `null` from `Cipher.doFinal()` when all input was already flushed by `update()`, so `write(null)` raised NPE inside `decrypt()`, the valid backup was misread as "legacy unencrypted", and import reported a misleading error; `update()`/`doFinal()` outputs are now null-guarded before write. Verify — test: `scripts/test-backup-restore.sh`
+- ✅ Import verified against PRE-FIX backups (10:53/11:02/11:10, created by the buggy encrypt): file format is byte-identical pre/post fix (12-byte IV + AES-GCM payload + tag), so an old backup imports cleanly AS LONG AS the same device-bound Android-Keystore key (`messages_backup_key`) still exists — i.e. the app was UPDATE-installed in place, not uninstalled. If the app was uninstalled/reinstalled, the key is gone and the old backup fails decrypt → falls to raw-copy → rejected as "Invalid or corrupted backup file" (correct: data is unrecoverable, by design). Emulator proof: backups made before the 21:17:37 fresh install fail to import, those made after restore fine.
+- ✅ `scripts/test-backup-restore.sh` rewritten for the current UI (avatar tap 975,226 → scroll → Backup/Import rows): creates a fresh backup, then imports the NEWEST .enc by filename (picker's first visible row is the OLDEST file, which may belong to a lost key and correctly fails); asserts the live `messages.db` mtime changes (epoch seconds via `toybox stat -c %Y`) and the home list renders after restart. Wired into `scripts/run-all-tests.sh`. NOTE: SAF-picker auto-scroll is flaky on the emulator (works manually); more swipes added but the rebuild picker occasionally misses rows.
+
+## P0 · Real data only — Demo/F-Droid seeding removed
+
+✅ ALL Demo/Dummy data removed per user request:
+- Deleted `data/DemoData.kt` (seeder) + the 10 `avatar_*.png` demo resources
+- `Repository.init` no longer seeds on empty DB; removed `systemSmsCount()` + `purgeDemoConversations()`
+- `Components.loadContactPhoto` no longer maps demo numbers to avatar resources (real contact photos only)
+- Verified: fresh `pm clear` + initial-sync imports ONLY real SMS from the system provider; home shows real numbers/messages, no Sarah/Mom/demo rows
+
+## P0 · Import un-trashes restored conversations
+
+✅ Blank-home-after-import fixed: `importDatabase()` now runs `UPDATE conversations SET deleted_at=0 WHERE deleted_at>0` after a successful swap, so conversations that were in the Trash when the backup was made are visible on the home screen after restore (user hit a blank home because the imported backup contained trashed conversations). CAVEAT: backups created BEFORE the demo-removal still contain seeded demo rows; make a fresh backup.
+
+## P0 · install.sh fixed
+
+✅ `scripts/install.sh` used a hardcoded `~/tools/gradle-9.2.1/...` path that doesn't exist → rewired to `./gradlew` with a robust JAVA_HOME fallback chain (`~/.local/java/jdk-21.*` → `~/tools/jdk21` → exported `$JAVA_HOME`); verified to build+install even when the shell exports an invalid JDK. Also fixed `env.sh` ADB default (`$HOME/Android/Sdk` → `$HOME/android`).
 
 ## P1 · Scheduled messages UI
 
