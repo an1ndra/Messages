@@ -392,6 +392,11 @@ File: `ui/ConversationsScreen.kt`, `data/SettingsStore.kt`, `ui/ChatScreen.kt`, 
 
 File: `sms/SmsReceiver.kt`, `sms/SmsSupport.kt`, `res/drawable/ic_reply.xml`
 
+## Release v1.0.21 (2026-09-06)
+
+- ✅ Cut v1.0.21 at `7512e5a` (settings-live toggles fix + merge-import polish): versionCode 24, versionName "1.0.21"; tagged `v1.0.21`; pushed to `origin/main` — GitHub `release.yml` handles the release build (keystore from secrets), security gate, GitHub Release publish, and fdroiddata MR sync.
+- ✅ Build green locally (`assembleDebug`) before tagging.
+
 ## Regression guardrails
 
 After any task: run `scripts/run-all-tests.sh`, eyeball screenshots
