@@ -295,6 +295,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         repo.setPinnedSuspend(id, !convo.pinned)
     }
 
+    fun unpinAll() = scope.launch { repo.unpinAll() }
+
     fun archiveConversation(id: Long) = scope.launch { repo.setArchivedSuspend(id, true) }
 
     fun unarchiveConversation(id: Long) = scope.launch { repo.setArchivedSuspend(id, false) }

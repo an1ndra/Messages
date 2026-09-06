@@ -141,7 +141,7 @@ fun SettingsScreen(
     val showImportResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit = { result ->
         val msg = when (result) {
             is com.anindra.messages.data.Repository.ImportResult.Success ->
-                if (result.merged != null) "Backup merged (${result.merged} messages). Existing conversations kept."
+                if (result.merged != null) "Restored ${result.merged} messages. Existing conversations kept."
                 else "Backup restored. Restart app to apply."
             is com.anindra.messages.data.Repository.ImportResult.Error ->
                 "Import failed: ${result.message}"
@@ -274,7 +274,7 @@ fun SettingsScreen(
                     title = "Pinned conversations",
                     subtitle = "Show pinned conversations at top",
                     checked = pinned,
-                    onChecked = { pinned = it; vm.settings.pinnedEnabled = it }
+                    onChecked = { pinned = it; vm.settings.pinnedEnabled = it; if (!it) vm.unpinAll() }
                 )
                 SettingsRow(
                     title = "Swipe actions",
@@ -388,6 +388,7 @@ fun SettingsScreen(
                     title = "Import messages",
                     subtitle = "Import a backup database file",
                     onClick = {
+                        pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
                         importLauncher.launch(arrayOf("application/octet-stream", "application/x-sqlite3"))
                     }
                 )

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Merge-import regression test: import a PIN-protected .enc backup with the
-# new "Merge with existing messages" option and prove that BOTH the merge
-# source and the pre-existing device messages survive (no replace/restart).
+# Merge-import regression test: import a PIN-protected .enc backup via the
+# "Import backup" dialog's "Merge with existing messages" option and prove
+# that BOTH the merge source and the pre-existing device messages survive
+# (no replace/restart).
 # NOTE: conversation presence is asserted by matching the LAST-MESSAGE PREVIEW
 # text, not the phone number — the UI formats numbers per locale
 # (e.g. "+1-555-123-4501") so raw-address greps are unreliable.
@@ -60,18 +61,22 @@ PIN="${PIN:-1234}"
 BACKDIR="storage/emulated/0/Documents/Messages"
 
 echo "== Step 0: seed conversations =="
-adb_ emu sms send "$NUM_A" "$PREVIEW_A" >/dev/null 2>&1 || true
-sleep 2
-adb_ shell am force-stop "$PKG"; sleep 1
-adb_ shell am start -n "$PKG/.MainActivity"
-sleep 4
-dump_ui
-for _ in 1 2 3; do
-  if greps_ui 'Set as default SMS app?'; then
-    adb_ shell input tap 533 1352; sleep 2; dump_ui
-  elif grep -qE 'Allow Messages to (access|send|start)' "$TMP/ui.xml"; then
-    adb_ shell input tap 900 1470; sleep 1; dump_ui
-  else break; fi
+for _ in 1 2 3 4 5 6; do
+  adb_ emu sms send "$NUM_A" "$PREVIEW_A" >/dev/null 2>&1 || true
+  sleep 2
+  adb_ shell am force-stop "$PKG"; sleep 1
+  adb_ shell am start -n "$PKG/.MainActivity"
+  sleep 4
+  dump_ui
+  for _ in 1 2 3; do
+    if greps_ui 'Set as default SMS app?'; then
+      adb_ shell input tap 533 1352; sleep 2; dump_ui
+    elif grep -qE 'Allow Messages to (access|send|start)' "$TMP/ui.xml"; then
+      adb_ shell input tap 900 1470; sleep 1; dump_ui
+    else break; fi
+  done
+  greps_ui "$PREVIEW_A" && break
+  sleep 3
 done
 greps_ui "$PREVIEW_A" || { echo "[fail] $NUM_A (preview '$PREVIEW_A') not on home list"; exit 1; }
 echo "[ok] $NUM_A conversation present"
@@ -120,6 +125,12 @@ greps_ui "$PREVIEW_B" || { echo "[fail] $NUM_B (preview '$PREVIEW_B') not on hom
 echo "[ok] $NUM_B conversation present (would be lost by a replace)"
 
 echo "== Step 3: import the newest .enc via MERGE =="
+# Prune accumulated backups so the SAF picker list stays short + deterministic.
+OLD_ENCS=$(adb_ shell "ls storage/emulated/0/Documents/Messages/messages_backup_*.enc 2>/dev/null" 2>/dev/null \
+  | xargs -n1 basename 2>/dev/null | sort | head -n -1)
+while read -r old; do
+  [ -n "$old" ] && adb_ shell "rm -f storage/emulated/0/Documents/Messages/$old" </dev/null
+done <<< "$OLD_ENCS"
 NEWEST=$(adb_ shell "ls $BACKDIR/messages_backup_*.enc 2>/dev/null" \
   | xargs -n1 basename 2>/dev/null | sort | tail -1)
 echo "[ok] newest backup: $NEWEST"
