@@ -14,7 +14,9 @@ Or run individually:
 
 | Script | What it does |
 |---|---|
-| `install.sh` | Gradle build + install APK |
+| `install.sh` | Gradle build + install debug APK |
+| `install-release.sh [tag]` | Download latest GitHub release APK + install (uninstalls old app on signature mismatch) |
+| `logs.sh [filter]` | Stream logcat for the app, auto-re-attaching across restarts |
 | `grant-permissions.sh` | Silently grant all runtime permissions |
 | `reset-permissions.sh` | Revoke permissions → relaunch → **you see real permission dialogs** |
 | `open-app.sh` | Cold-launch app + home screenshot |
