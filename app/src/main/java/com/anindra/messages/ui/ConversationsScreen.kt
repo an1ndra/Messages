@@ -138,12 +138,16 @@ fun ConversationsScreen(
     val loaded = minSkeletonShown && (syncDone || !readSmsAllowed)
     var sheetConvoId by remember { mutableLongStateOf(-1L) }
     val sheetConvo = conversations.find { it.id == sheetConvoId }
-    val rowSettings = remember(vm.settings) {
+    // Recompute row-level settings whenever any setting changes (SettingsStore is a
+    // singleton, so keying on the object would freeze these at first composition).
+    val settingsRevision by vm.settings.revision.collectAsState()
+    val rowSettings = remember(settingsRevision) {
         RowSettings(
             pinnedEnabled = vm.settings.pinnedEnabled,
             draftsEnabled = vm.settings.draftsEnabled,
             archivingEnabled = vm.settings.archivingEnabled,
-            blockingEnabled = vm.settings.blockingEnabled
+            blockingEnabled = vm.settings.blockingEnabled,
+            swipeEnabled = vm.settings.swipeActionsEnabled
         )
     }
 
@@ -199,8 +203,9 @@ fun ConversationsScreen(
     }
 
     val showArchiving = vm.settings.archivingEnabled
+    val unreadAtTop = vm.settings.unreadAtTopEnabled
 
-    val displayed = remember(conversations, showArchived, query) {
+    val displayed = remember(conversations, showArchived, query, unreadAtTop) {
         conversations.filter { convo ->
             if (showArchived) convo.archived
             else !convo.archived
@@ -209,6 +214,16 @@ fun ConversationsScreen(
             else list.filter {
                 it.name.contains(query, true) || it.address.contains(query) ||
                         it.snippet.contains(query, true)
+            }
+        }.let { list ->
+            // Unread-at-top: stable reorder — pinned stays on top, then unread
+            // conversations above read ones, timestamp order preserved within a tier.
+            if (unreadAtTop && !showArchived) {
+                list.sortedWith(
+                    compareBy({ !it.pinned }, { if (it.unreadCount > 0) 0 else 1 }, { -it.timestamp })
+                )
+            } else {
+                list
             }
         }
     }
@@ -363,7 +378,7 @@ fun ConversationsScreen(
                     items(displayed, key = { it.id }) { convo ->
                         SwipeableConversationItem(
                             settings = rowSettings,
-                            swipeEnabled = vm.settings.swipeActionsEnabled && !showArchived,
+                            swipeEnabled = rowSettings.swipeEnabled && !showArchived,
                             convo = convo,
                             showArchived = showArchived,
                             onClick = { onOpenConversation(convo.id) },
@@ -556,7 +571,8 @@ private data class RowSettings(
     val pinnedEnabled: Boolean,
     val draftsEnabled: Boolean,
     val archivingEnabled: Boolean,
-    val blockingEnabled: Boolean
+    val blockingEnabled: Boolean,
+    val swipeEnabled: Boolean
 )
 
 @OptIn(ExperimentalFoundationApi::class)

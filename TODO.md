@@ -362,8 +362,9 @@ File: `ui/ConversationsScreen.kt`, `ui/ChatScreen.kt`, `data/Repository.kt`, `Ma
 
 ## Merge import option (2026-09-06)
 
-- ✅ Import now asks "Merge with existing messages" or "Restore (replace all)" (M3 AlertDialog, radio rows) before applying a backup — REPLACE stays the default and behaves exactly as before; merge is the new fast path for "keep both sets"
-- ✅ `Repository.importDatabase(context, uri, pin, mode)` gained `mode: ImportMode = REPLACE`; `ImportResult.Success` now carries an optional `merged` count (number of messages added), surfaced as "Backup merged (N messages)" toast
+- ✅ Import is a SINGLE "Import messages" row that opens a dialog with two modes: "Merge with existing messages" (default, keeps current data + adds backup's missing messages/contacts, deduped, trash-lift, live refresh) and "Restore (replace all)" (explicit, destructive — file-swap replace + restart). No separate restore row
+- ✅ Restored messages are marked UNREAD: every incoming (is_me=0) message added by a merge bumps its conversation's `unread_count` (mirrors a live receive), so restored conversations show an unread badge after import
+- ✅ `Repository.importDatabase(context, uri, pin, mode)` has `mode: ImportMode = REPLACE`; `ImportResult.Success` carries an optional `merged` count (number of messages added), surfaced as "Restored N messages" toast
 - ✅ `mergeDatabase()` (in-place, no file swap, no restart needed): matches conversations by `address`, lifts trash on backup-imported conversations (`deleted_at=0`), inserts messages deduped by (conversation, timestamp, is_me, body) + unique `sys_id>0` guarded, refreshes the newest-preview only when merged rows are newer, merges `blocked_numbers` (INSERT OR IGNORE) and per-conversation notification toggles for newly added conversations — all atomic in one transaction
 - ✅ Wired `mode` through `AppViewModel.importDatabase` and the SettingsScreen import UI + PIN flow; merge emits `notifyChanged()` so the home list refreshes live (only replace needs the restart)
 - ✅ Merge SQL validated against real SQLite dumps (dedupe, trash-lift, preview guard, blocked/notif merge); JUnit-only project (no Robolectric), full UI drive deferred to emulator — test: `scripts/test-merge-import.sh` (injects NUM_A + NUM_B, imports the newest .enc via Merge, asserts BOTH survive without restart)
@@ -371,6 +372,14 @@ File: `ui/ConversationsScreen.kt`, `ui/ChatScreen.kt`, `data/Repository.kt`, `Ma
 - ✅ Test-script hardening: merge-import test matches conversations by last-message preview (number formatting is locale-dependent), force-stops for a clean home landing in Step 0, and navigate Back to the list in Step 4 (merge refreshes in place — no restart)
 
 File: `data/Repository.kt`, `MainActivity.kt`, `ui/SettingsScreen.kt`, `scripts/test-merge-import.sh`, `scripts/test-import-loading.sh`
+
+## Settings toggles apply LIVE (no restart) — Drafts / Pinned / Swipe actions (2026-09-06)
+
+- ✅ USER REPORT: toggling Settings switches (Drafts, Pinned conversations, Swipe actions) did nothing until the app was restarted. Root cause: `ConversationsScreen` keyed `rowSettings` on the `vm.settings` singleton (`remember(vm.settings)`), so row-level settings froze at first composition; the swipe-key in `remember(conversations, showArchived, query)` similarly ignored settings changes.
+- ✅ Fix: `val settingsRevision by vm.settings.revision.collectAsState()` (SettingsStore's `_revision` StateFlow; every setter bumps it) drives `remember(settingsRevision)` for `RowSettings`, which now also carries `swipeEnabled`. Items use `rowSettings.swipeEnabled && !showArchived`. Drafts gating in `ChatScreen` and the pinned-unpin revert in `SettingsScreen` already used `remember(settingsRevision)`.
+- ✅ Verified LIVE on emulator (no restart between toggles): Drafts toggle ON/OFF immediately shows/hides `Draft:` previews; Pinned OFF removes the pin-row from the long-press sheet; Swipe actions ON → full 900ms swipe trashes a row with UNDO, OFF → identical gesture does NOT trash (row shows as a long-press instead — emulator injected swipes are read as long-presses). All toggles restored to ON after testing; unit tests + `assembleDebug` pass.
+
+File: `ui/ConversationsScreen.kt`, `data/SettingsStore.kt`, `ui/ChatScreen.kt`, `ui/SettingsScreen.kt` · test: `scripts/test-settings-live.sh`
 
 ## Incoming-SMS notification silently dropped / never posted (2026-09-05)
 

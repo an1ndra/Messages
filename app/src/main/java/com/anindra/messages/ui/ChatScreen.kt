@@ -287,7 +287,9 @@ fun ChatScreen(
     }
 
     fun leaveChat() {
-        vm.saveDraft(conversationId, draft.trim())
+        if (vm.settings.draftsEnabled) {
+            vm.saveDraft(conversationId, draft.trim())
+        }
         onBack()
     }
     BackHandler(onBack = ::leaveChat)
@@ -318,9 +320,11 @@ fun ChatScreen(
     }
     LaunchedEffect(convo) {
         if (convo != null && !draftLoaded) {
-            val savedDraft = convo!!.draft
-            if (savedDraft.isNotBlank()) {
-                draft = savedDraft
+            if (vm.settings.draftsEnabled) {
+                val savedDraft = convo!!.draft
+                if (savedDraft.isNotBlank()) {
+                    draft = savedDraft
+                }
             }
             draftLoaded = true
             numberIsBlocked = vm.isNumberBlocked(convo!!.address)
@@ -339,6 +343,7 @@ fun ChatScreen(
                 numberIsBlocked = numberIsBlocked,
                 blockingEnabled = vm.settings.blockingEnabled,
                 sendCountdown = sendCountdown,
+                draftsEnabled = vm.settings.draftsEnabled,
                 onBack = ::leaveChat,
                 onOpenDetails = onOpenDetails,
                 onMenuToggle = { menuOpen = true },
@@ -686,6 +691,7 @@ private fun ChatTopBar(
     numberIsBlocked: Boolean,
     blockingEnabled: Boolean,
     sendCountdown: Int,
+    draftsEnabled: Boolean,
     onBack: () -> Unit,
     onOpenDetails: () -> Unit,
     onMenuToggle: () -> Unit,
@@ -723,7 +729,7 @@ private fun ChatTopBar(
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1
                     )
-                    if (convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
+                    if (draftsEnabled && convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
                         Text(
                             "Draft",
                             style = MaterialTheme.typography.labelSmall,

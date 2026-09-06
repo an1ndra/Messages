@@ -7,6 +7,7 @@ set -euo pipefail
 #   tap → "Set backup PIN" dialog: enter the test PIN twice → Save →
 #   a new .enc lands in Documents/Messages → record the live DB mtime →
 #   "Import messages" (SAF picker) → pick the newest .enc →
+#   "Import backup" dialog → tap "Restore (replace all)" →
 #   "Enter backup PIN" dialog: enter the PIN → Import →
 #   confirm the live DB file was swapped (mtime changed) → restart →
 #   conversation list renders.
@@ -18,8 +19,10 @@ dump_ui() {
   adb_ shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
   adb_ shell cat /sdcard/ui.xml > "$TMP/ui.xml" 2>/dev/null || true
 }
-bounds_of() { # prints bounds of first node whose text==="$1"
-  grep -oE "<node[^>]*text=\"$1\"[^>]*bounds=\"[^\"]*\"" "$TMP/ui.xml" | head -1 \
+bounds_of() { # prints bounds of first node whose text==="$1" (label is literal)
+  local esc
+  esc=$(sed 's/[][().*+?^$\\|]/\\&/g' <<< "$1")
+  grep -oE "<node[^>]*text=\"$esc\"[^>]*bounds=\"[^\"]*\"" "$TMP/ui.xml" | head -1 \
     | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' || true
 }
 first_enc_bounds() { # prints bounds of first picker row whose text starts with messages_backup_
@@ -45,7 +48,7 @@ edits() { # bounds of every EditText node (screen order), one per line
     "$TMP/ui.xml" | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' || true
 }
 nth_edit() { edits | sed -n "${1}p"; }
-greps_ui() { grep -q "$1" "$TMP/ui.xml"; }
+greps_ui() { grep -F -q "$1" "$TMP/ui.xml"; }
 
 # 1. Open the app, dismiss any first-run dialogs.
 adb_ shell am start -n "$PKG/.MainActivity"
@@ -104,15 +107,27 @@ dbmtime() { adb_ shell "run-as $PKG toybox stat -c %Y databases/messages.db" 2>/
 MT_BEFORE=$(dbmtime)
 echo "[db] pre-import mtime: $MT_BEFORE"
 
-# 6. Import → SAF picker (opens inside Documents/Messages). Target the
+# 6. Prune old backups so the SAF picker list stays short+deterministic
+#    (accumulated .enc files make the picker fling past the newest row).
+OLD_ENCS=$(adb_ shell "ls storage/emulated/0/Documents/Messages/messages_backup_*.enc 2>/dev/null" 2>/dev/null \
+  | xargs -n1 basename 2>/dev/null | sort | head -n -1)
+while read -r old; do
+  [ -n "$old" ] && adb_ shell "rm -f storage/emulated/0/Documents/Messages/$old" </dev/null
+done <<< "$OLD_ENCS"
+echo "[ok] pruned to newest backup only"
+
+# 7. Import → SAF picker (opens inside Documents/Messages). Target the
 #    NEWEST .enc by filename (the one we just wrote in Step 1) — the picker's
 #    "first visible row" is the OLDEST file, which may belong to a different
 #    (lost) keystore key and would legitimately fail to decrypt.
-echo "== Step 2: Restore =="
+echo "== Step 2: Restore (replace all) =="
 NEWEST=$(adb_ shell "ls storage/emulated/0/Documents/Messages/messages_backup_*.enc 2>/dev/null" \
   | xargs -n1 basename 2>/dev/null | sort | tail -1)
 echo "[ok] newest backup: $NEWEST"
-tap_center "$(bounds_of 'Import messages')"
+dump_ui
+IMPORT_BOUNDS=$(bounds_of 'Import messages')
+[ -z "$IMPORT_BOUNDS" ] && { echo "[fail] Import messages row not visible"; exit 1; }
+tap_center "$IMPORT_BOUNDS"
 sleep 3
 b=""
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
@@ -128,7 +143,13 @@ echo "[ok] picking $NEWEST at $b"
 tap_center "$b"
 sleep 3
 
-# 6b. PIN-format backup → "Enter backup PIN" dialog → type PIN → Import.
+# 6b. "Import backup" dialog → choose "Restore (replace all)" mode.
+dump_ui
+greps_ui 'Import backup' || { echo "[fail] Import backup dialog not shown"; exit 1; }
+tap_label 'Restore (replace all)'
+sleep 2
+
+# 6c. PIN-format backup → "Enter backup PIN" dialog → type PIN → Import.
 dump_ui
 greps_ui 'Enter backup PIN' || { echo "[fail] Enter backup PIN dialog not shown"; exit 1; }
 [ -z "$(nth_edit 1)" ] && { echo "[fail] PIN entry field missing"; exit 1; }

@@ -670,6 +670,11 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
+    fun unpinAll() {
+        db.writableDatabase.execSQL("UPDATE conversations SET pinned=0 WHERE pinned=1")
+        notifyChanged()
+    }
+
     fun saveDraft(conversationId: Long, draft: String) {
         val now = System.currentTimeMillis()
         db.writableDatabase.execSQL(
@@ -978,6 +983,8 @@ class Repository(private val context: Context) {
             val convoMap = HashMap<Long, Long>()
             // Newest message per live conversation, refreshed only when merged rows are newer
             val newest = HashMap<Long, Triple<Long, String, Int>>()
+            // Restored incoming messages make the conversation unread (like a fresh receive)
+            val unreadBump = HashMap<Long, Int>()
             target.beginTransaction()
             try {
                 backup.rawQuery(
@@ -1057,6 +1064,9 @@ class Repository(private val context: Context) {
                         )
                         added++
                         onProgress(added)
+                        if (isMe == 0) {
+                            unreadBump[tId] = (unreadBump[tId] ?: 0) + 1
+                        }
                         val snippet = when (m.getString(5)) {
                             "text" -> body
                             "image" -> "Photo"
@@ -1073,6 +1083,13 @@ class Repository(private val context: Context) {
                     target.execSQL(
                         "UPDATE conversations SET snippet=?,timestamp=?,last_is_me=? WHERE id=? AND timestamp<?",
                         arrayOf(n.second, n.first, n.third, tId, n.first)
+                    )
+                }
+
+                for ((tId, n) in unreadBump) {
+                    target.execSQL(
+                        "UPDATE conversations SET unread_count=unread_count+? WHERE id=?",
+                        arrayOf(n, tId)
                     )
                 }
 
