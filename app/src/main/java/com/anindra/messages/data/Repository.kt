@@ -182,6 +182,17 @@ class Db(context: Context) :
         }
     }
 
+    private fun hasColumn(db: SQLiteDatabase, table: String, column: String): Boolean {
+        var exists = false
+        db.rawQuery("PRAGMA table_info($table)", null).use { c ->
+            val nameIdx = c.getColumnIndex("name")
+            while (c.moveToNext()) {
+                if (c.getString(nameIdx) == column) { exists = true; break }
+            }
+        }
+        return exists
+    }
+
     override fun onOpen(db: SQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE IF NOT EXISTS conversation_notifications(
@@ -192,9 +203,11 @@ class Db(context: Context) :
         // it on every DB open rebuilds the unique index over the whole messages
         // table (and re-throws exceptions) on the main thread at app start.
         if (schemaPrefs.getBoolean(PREF_HEAL_APPLIED, false)) return
-        try {
-            db.execSQL("ALTER TABLE messages ADD COLUMN locked INTEGER NOT NULL DEFAULT 0")
-        } catch (_: android.database.sqlite.SQLiteException) {
+        if (!hasColumn(db, "messages", "locked")) {
+            try {
+                db.execSQL("ALTER TABLE messages ADD COLUMN locked INTEGER NOT NULL DEFAULT 0")
+            } catch (_: android.database.sqlite.SQLiteException) {
+            }
         }
         try {
             db.execSQL(
@@ -203,9 +216,11 @@ class Db(context: Context) :
             )
         } catch (_: android.database.sqlite.SQLiteException) {
         }
-        try {
-            db.execSQL("ALTER TABLE messages ADD COLUMN sub_id INTEGER NOT NULL DEFAULT -1")
-        } catch (_: android.database.sqlite.SQLiteException) {
+        if (!hasColumn(db, "messages", "sub_id")) {
+            try {
+                db.execSQL("ALTER TABLE messages ADD COLUMN sub_id INTEGER NOT NULL DEFAULT -1")
+            } catch (_: android.database.sqlite.SQLiteException) {
+            }
         }
         schemaPrefs.edit().putBoolean(PREF_HEAL_APPLIED, true).apply()
     }
