@@ -4,6 +4,25 @@ An offline SMS messaging app for Android that clones the UI of Google Messages.
 
 Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permission — everything is local SMS + local database.
 
+## ⚠️ Keep Android Open — Important
+
+> **Unless you oppose it, Google will lock down Android in 2027** — silencing independent
+> developers, F-Droid, and open-source distribution worldwide, with no opt-out.
+
+Starting in 2027, Google will require every Android app developer to register centrally,
+agree to their terms, pay a fee, and surrender government-issued ID before their apps can
+be installed on any certified Android device — worldwide, with no opt-out. This affects
+**all** apps, not just Play Store apps: it threatens independent developers, F-Droid,
+open-source distribution, and user autonomy.
+
+This app is distributed openly via **GitHub Releases** and **F-Droid** so you always have a
+choice about how you install your software. If you care about keeping Android open, speak
+up and join the effort at **[keepandroidopen.org](https://keepandroidopen.org)**.
+
+<sub>The "advanced flow" Google offers to sideload unverified apps is a nine-step deterrent
+(developer mode, 24-hour wait, repeated scare screens) that runs through Google Play
+Services — not the Android OS — and can be tightened or revoked at any time.</sub>
+
 ## Features
 
 - **Real SMS**: Send/receive SMS messages, multi-SIM support
@@ -12,8 +31,7 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 - **Drafts**: Auto-save drafts, restore on conversation open
 - **Scheduled Messages**: Long-press send to schedule messages with DatePicker + TimePicker
 - **Quick Reply**: Reply directly from notifications
-- **Message Lock**: Protect sensitive messages
-- **Privacy Mode**: Protect messages from screenrecord, screenshots
+- **Message Lock**: Biometric-protect sensitive messages
 - **OTP Highlighting**: One-time passwords automatically highlighted in blue
 - **Contact Photos**: Loads real contact profile pictures
 - **Delayed Sending**: Configurable delay before sending messages
