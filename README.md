@@ -39,7 +39,7 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 Download the latest APK directly from [GitHub Releases](https://github.com/an1ndra/Messages/releases/latest) — no store account needed. Every release is scanned with VirusTotal (report posted on the release page).
 
-### F-Droid (Coming soon)
+### F-Droid
 <a href="https://f-droid.org/en/packages/com.anindra.messages/"><img src="docs/get-it-on-fdroid.png" alt="Get it on F-Droid" height="80"></a>
 
 F-Droid builds the app from source and signs it with the F-Droid project key.
