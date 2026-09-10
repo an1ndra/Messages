@@ -531,7 +531,47 @@ class Repository(private val context: Context) {
             "UPDATE messages SET locked=? WHERE id=?",
             arrayOf(if (locked) 1 else 0, messageId)
         )
+        refreshSnippetForLockToggle(messageId)
         notifyChanged()
+    }
+
+    /** If [messageId] is the newest message in its conversation, rewrite that
+     *  row's snippet so a locked latest message doesn't leak on the home list
+     *  (lock → "@Lock", unlock → the message content). */
+    private fun refreshSnippetForLockToggle(messageId: Long) {
+        var convoId = -1L
+        var body = ""
+        var mediaType = "text"
+        var locked = false
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id,body,media_type,locked FROM messages WHERE id=?",
+            arrayOf(messageId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) {
+                convoId = c.getLong(0)
+                body = c.getString(1)
+                mediaType = c.getString(2)
+                locked = c.getInt(3) == 1
+            }
+        }
+        if (convoId == -1L) return
+        val newestId = db.readableDatabase.rawQuery(
+            "SELECT id FROM messages WHERE conversation_id=? ORDER BY timestamp DESC, id DESC LIMIT 1",
+            arrayOf(convoId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getLong(0) else -1L }
+        if (newestId != messageId) return
+        val snippet = when {
+            locked -> "@Lock"
+            mediaType == "text" -> body
+            mediaType == "image" -> "Photo"
+            mediaType == "video" -> "Video"
+            mediaType == "audio" -> "Voice message"
+            else -> "Attachment"
+        }
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET snippet=? WHERE id=?",
+            arrayOf(snippet, convoId.toString())
+        )
     }
 
     fun setArchivedSuspend(conversationId: Long, archived: Boolean) {
