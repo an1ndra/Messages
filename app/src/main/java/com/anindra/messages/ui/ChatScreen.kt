@@ -476,6 +476,7 @@ fun ChatScreen(
                     deliveryReports = deliveryReports,
                     sims = sims,
                     highlightLinks = vm.settings.highlightLinks,
+                    forwardingEnabled = vm.settings.forwardingEnabled,
                     unlockedIds = unlockedIds,
                     showEntrySkeleton = showEntrySkeleton,
                     pendingEarlier = pendingEarlier,
@@ -825,6 +826,7 @@ private fun ChatMessageList(
     deliveryReports: Boolean,
     sims: List<SubscriptionInfo>,
     highlightLinks: Boolean,
+    forwardingEnabled: Boolean,
     unlockedIds: Set<Long>,
     showEntrySkeleton: Boolean,
     pendingEarlier: Boolean,
@@ -867,6 +869,7 @@ private fun ChatMessageList(
                 showDividerBefore = idx == 0 || !sameDay(messages[idx - 1].timestamp, msg.timestamp),
                 showStatus = idx == messages.lastIndex && msg.isMe,
                 deliveryReports = deliveryReports,
+                forwardingEnabled = forwardingEnabled,
                 onRetry = {
                     if (sims.size > 1) onRetryWithPicker(msg.id) else onRetry(msg.id)
                 },
@@ -1130,6 +1133,7 @@ fun MessageRow(
     showDividerBefore: Boolean,
     showStatus: Boolean,
     deliveryReports: Boolean,
+    forwardingEnabled: Boolean = false,
     onRetry: () -> Unit = {},
     onLongPress: () -> Unit = {},
     highlightLinks: Boolean = false,
@@ -1142,7 +1146,7 @@ fun MessageRow(
     var showContextMenu by remember { mutableStateOf(false) }
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
-    val displayBody = if (isLockedAndHidden) "\uD83D\uDD12 Locked" else msg.body
+    val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
     val bodyText = rememberLinkedText(displayBody, highlightLinks && !isLockedAndHidden) { pendingUrl = it }
 
     // cache derived text/sim so an unlock doesn't recompute row allocations
@@ -1254,13 +1258,15 @@ fun MessageRow(
                             Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text("Forward") },
-                        onClick = {
-                            showContextMenu = false
-                            onLongPress()
-                        }
-                    )
+                    if (forwardingEnabled) {
+                        DropdownMenuItem(
+                            text = { Text("Forward") },
+                            onClick = {
+                                showContextMenu = false
+                                onLongPress()
+                            }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(if (msg.locked) "Unlock" else "Lock") },
                         onClick = {
