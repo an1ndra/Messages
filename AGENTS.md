@@ -128,6 +128,8 @@ scripts/test-links-and-senders.sh  # link highlighting + alphanumeric sender blo
 scripts/test-initial-sync.sh   # first-launch progress bar + OTP duplicate check
 scripts/test-loading-screen.sh # conversations-screen loading UX: cold-import progress
                                # bar/skeleton, load-done list, Allow-access panel
+scripts/test-bugfix-trio.sh    # system-default notification sound + locked-snippet
+                               # hiding ("@Lock") + Forward menu-item visibility
 ```
 
 Coordinate taps assume **1080x2400 @ 420dpi**. `env.sh` provides helpers
