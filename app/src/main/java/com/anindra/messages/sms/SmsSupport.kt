@@ -17,24 +17,32 @@ import com.anindra.messages.R
 object NotificationHelper {
     private const val CHANNEL_ID = "messages"
 
-    private var channelCreated = false
-
+    /**
+     * (Re)creates the notification channel using the system default notification
+     * sound — never a custom tone. When the "Receive sound" setting is off the
+     * channel is silent. createNotificationChannel() upserts in place, so this is
+     * safe to call on every post and reflects live setting changes (the default
+     * sound must be set EXPLICITLY, or an update leaves a legacy custom tone in place).
+     */
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
-        if (channelCreated) return
-        val soundUri = Uri.parse("android.resource://${context.packageName}/${R.raw.notification_sound}")
-        val audioAttr = android.media.AudioAttributes.Builder()
-            .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
-            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-        val channel = NotificationChannel(
-            CHANNEL_ID, "Messages", NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = "New message notifications"
-            setSound(soundUri, audioAttr)
-        }
-        nm.createNotificationChannel(channel)
-        channelCreated = true
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val soundOn = app.repository.settings.receiveSoundEnabled
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID, "Messages", NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "New message notifications"
+                if (soundOn) {
+                    setSound(
+                        android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION),
+                        android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT
+                    )
+                } else {
+                    setSound(null, null)
+                }
+            }
+        )
     }
 
     private fun canPost(context: Context): Boolean {
@@ -62,8 +70,6 @@ object NotificationHelper {
         // dismiss the wrong notification on quick-reply
         val notifId = (convoId ?: from.hashCode().toLong()).toInt()
         val reqCode = notifId and 0x7FFFFFFF
-
-        playReceiveSound(context)
 
         val privacyMode = app.repository.settings.privacyModeEnabled
 
@@ -94,8 +100,12 @@ object NotificationHelper {
         val title = if (privacyMode) "New message" else from
         val text = if (privacyMode) "You have a new message" else body
 
-        val soundUri = Uri.parse("android.resource://${context.packageName}/${R.raw.notification_sound}")
-        val notif = NotificationCompat.Builder(context, CHANNEL_ID)
+        // Use the system default notification sound. Notification channels are
+        // immutable after creation (a legacy install may still carry the old
+        // custom tone), so the sound is applied HERe on each notification —
+        // builder-level sound always wins over the channel unless the user has
+        // locked the channel's sound.
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(text)
@@ -104,9 +114,21 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setContentIntent(tap)
             .addAction(replyAction)
-            .setSound(soundUri)
-            .build()
+        if (app.repository.settings.receiveSoundEnabled) {
+            val defSound =
+                android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+            // NotificationCompat.Builder.setSound() does not stick on the emitted
+            // notification (dumpsys comes back sound=null), so set the field
+            // directly on the platform Notification — it drives actual playback.
+            val n = builder.build()
+            n.sound = defSound
+            notify(context, notifId, n)
+        } else {
+            notify(context, notifId, builder.setSilent(true).build())
+        }
+    }
 
+    private fun notify(context: Context, notifId: Int, notif: android.app.Notification) {
         try {
             NotificationManagerCompat.from(context).notify(notifId, notif)
         } catch (_: SecurityException) {
@@ -152,16 +174,11 @@ object NotificationHelper {
         }
     }
 
-    fun playSentSound(context: Context) = playSound(context, send = true)
+    fun playSentSound(context: Context) = playSound(context)
 
-    private fun playReceiveSound(context: Context) =
-        playSound(context, send = false)
-
-    private fun playSound(context: Context, send: Boolean) {
+    private fun playSound(context: Context) {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        val enabled = if (send) app.repository.settings.sendSoundEnabled
-                      else app.repository.settings.receiveSoundEnabled
-        if (!enabled) return
+        if (!app.repository.settings.sendSoundEnabled) return
         try {
             val uri = Uri.parse("android.resource://${context.packageName}/${R.raw.notification_sound}")
             val mp = android.media.MediaPlayer()
