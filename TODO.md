@@ -11,6 +11,31 @@ Verified on emulator: cleared device credential → pref auto-flipped false, inf
 Root cause: `syncFromSystem()` re-imports every provider message whose `sys_id` is absent from the local DB on app launch/resume, but a local-only delete never touched the system SMS provider — so after Empty trash cleared local rows, the next launch's sync resurrected them from `content://sms`.
 Fix: permanent-delete paths now also delete the matching rows from the system SMS provider (app is the default SMS app, and `WRITE_SMS` added to the manifest as belt-and-suspenders). Applied in `emptyTrashSuspend()`, `purgeOldTrashSuspend()`, `deleteConversationSuspend()` via new `purgeProviderMessages()` (best-effort; skips on SecurityException). Verified on emulator: empty-trash of 15105550199 → provider row gone → cold restart → conversation stays gone (local msgs 0, provider 0 rows).
 
+## P0 · Notification uses system default sound, not the bundled custom MP3
+
+✅ USER REPORT: incoming SMS notifications played the app's bundled custom tone (`R.raw.notification_sound`) instead of the user's system default notification sound.
+Root cause: the "messages" notification channel was created with the custom resource URI. Android notification channels are immutable after creation, so upserting the channel later (`createNotificationChannel` with a different sound) is silently ignored — only the channel name/description are updateable. Verified via `dumpsys notification` (channel `mSound` stayed `android.resource://.../2131623936` across rebuilds) and debugging showed `getDefaultUri(TYPE_NOTIFICATION)` returns a valid `content://settings/system/notification_sound`.
+Fix (both layers):
+- `NotificationHelper.ensureChannel` now creates the channel with `setSound(RingtoneManager.getDefaultUri(TYPE_NOTIFICATION))` when receive-sound is on, `setSound(null,null)` (silent) when off — correct for fresh installs.
+- `NotificationHelper.show()` sets `notification.sound` directly on the platform `Notification` so every post overrides any legacy/stale channel tone. NB: the buffer-level `NotificationCompat.Builder.setSound()` was discovered to be a no-op (emitted notification came back `sound=null` in dumpsys), which is why the field is set post-`build()`.
+- Settings "Receive sound" row now also refreshes the channel on toggle (`NotificationHelper.ensureChannel`); subtitle reads "Use the system notification sound when a message arrives". `playReceiveSound` removed; `playSound()` is send-sound only.
+Verified on emulator (`dumpsys notification --noredact`): fresh-install channel `mId='messages'` → `mSound=content://settings/system/notification_sound`; notification record → `sound=content://settings/system/notification_sound`. Old legacy channel would keep the stale tone but the per-notification sound now wins for playback unless the user has explicitly locked the channel's sound.
+
+## P0 · Locking the latest message still leaked its snippet on the Main screen
+
+✅ USER REPORT: after locking the newest message from the chat screen, the conversation list still showed the raw message text as the row snippet.
+Root cause: `Repository.setLockedSuspend()` only flipped `messages.locked`; the `conversations.snippet` column was never rewritten, so the home list kept showing the plain body of the now-locked message.
+Fix: `setLockedSuspend()` now calls new `refreshSnippetForLockToggle(messageId)` — only rewrites the snippet when the toggled message is that conversation's newest (`ORDER BY timestamp DESC, id DESC LIMIT 1`), setting `"@Lock"` (plain text, no emoji — user rejected the lock emoji as unprofessional) when locked, else the plain body / `Photo` / `Video` / `Voice message` / `Attachment` by media type. Verified on emulator: long-press "final sound check" → Lock → back to list → row shows `@Lock`; menu item gone/restored consistent with Forwarding toggle.
+Files: `data/Repository.kt`. Manual check reuses `scripts/test-message-lock.sh` flow (then check the home-row snippet).
+
+## P0 · "Forward" context-menu item visible even when forwarding is disabled
+
+✅ USER REPORT: the long-press context menu on a message showed "Forward" even though Forwarding was turned off in Settings.
+Root cause: the `Forward` `DropdownMenuItem` was rendered unconditionally; only the long-press handler respected `forwardingEnabled`.
+Fix: `forwardingEnabled: Boolean` threaded from `ChatScreen` → `ChatMessageList` → `MessageRow` (default `false` on the row), and the Forward item is wrapped in `if (forwardingEnabled) { ... }`. Call site passes `vm.settings.forwardingEnabled`.
+Verified on emulator: Forwarding off → long-press shows only Copy/Lock; Forwarding on → Copy/Forward/Lock.
+Files: `ui/ChatScreen.kt`.
+
 Hand this file + AGENTS.md (same folder) to any AI agent. Tasks are ordered by
 priority; each has acceptance criteria and file pointers. Verify on
 `emulator-5554` with `scripts/*.sh` before marking done.
@@ -119,7 +144,7 @@ File: `sms/SmsSupport.kt`, `sms/QuickReplyReceiver.kt`
 
 ## P3 · Message locking
 
-✅ DONE. `locked` column in messages table (DB v10), Lock/Unlock in message context menu, biometric/PIN prompt via `BiometricPrompt`, locked messages show "🔒 Locked" until authenticated, re-lock on chat exit. Test: `scripts/test-message-lock.sh`
+✅ DONE. `locked` column in messages table (DB v10), Lock/Unlock in message context menu, biometric/PIN prompt via `BiometricPrompt`, locked messages show "@Lock" (no emoji — user rejected the lock emoji) until authenticated, re-lock on chat exit. Test: `scripts/test-message-lock.sh`
 
 File: `data/Repository.kt`, `data/Models.kt`, `ui/ChatScreen.kt`
 
