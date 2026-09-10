@@ -65,6 +65,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
+import com.anindra.messages.sms.NotificationHelper
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -197,9 +198,13 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     title = "Receive sound",
-                    subtitle = "Play sound when receiving a message",
+                    subtitle = "Use the system notification sound when a message arrives",
                     checked = receiveSound,
-                    onChecked = { receiveSound = it; vm.settings.receiveSoundEnabled = it }
+                    onChecked = {
+                        receiveSound = it
+                        vm.settings.receiveSoundEnabled = it
+                        NotificationHelper.ensureChannel(context)
+                    }
                 )
                 SettingsRow(
                     title = "Delivery reports",
