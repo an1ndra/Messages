@@ -111,6 +111,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
@@ -987,7 +988,7 @@ fun openUrl(context: android.content.Context, url: String) {
 }
 
 @Composable
-private fun rememberLinkedText(body: String, highlight: Boolean): AnnotatedString {
+private fun rememberLinkedText(body: String, highlight: Boolean, onLinkClick: (String) -> Unit = {}): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     val context = LocalContext.current
     return produceState(AnnotatedString(body), body, highlight, linkColor) {
@@ -1004,7 +1005,15 @@ private fun rememberLinkedText(body: String, highlight: Boolean): AnnotatedStrin
             urlSpans.forEach { span ->
                 val start = spanned.getSpanStart(span)
                 val end = spanned.getSpanEnd(span)
-                builder.addLink(LinkAnnotation.Url(span.url), start, end)
+                builder.addLink(
+                    LinkAnnotation.Url(
+                        url = span.url,
+                        linkInteractionListener = { link ->
+                            onLinkClick((link as LinkAnnotation.Url).url)
+                        }
+                    ),
+                    start, end
+                )
                 builder.addStyle(SpanStyle(color = linkColor), start, end)
                 builder.addStyle(SpanStyle(textDecoration = TextDecoration.Underline), start, end)
             }
@@ -1020,6 +1029,48 @@ private fun rememberLinkedText(body: String, highlight: Boolean): AnnotatedStrin
             builder.toAnnotatedString()
         }
     }.value
+}
+
+@Composable
+private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Rounded.Info, contentDescription = null) },
+        title = { Text("Caution: external link") },
+        text = {
+            Column {
+                Text("Links in messages can lead to fake websites that steal your personal data or install malware.")
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        url,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onOpen) { Text("Open") }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = {
+                    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("link", url))
+                    Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+                    onDismiss()
+                }) { Text("Copy link") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        }
+    )
 }
 
 @Composable
@@ -1089,9 +1140,10 @@ fun MessageRow(
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
     var showContextMenu by remember { mutableStateOf(false) }
+    var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "\uD83D\uDD12 Locked" else msg.body
-    val bodyText = rememberLinkedText(displayBody, highlightLinks && !isLockedAndHidden)
+    val bodyText = rememberLinkedText(displayBody, highlightLinks && !isLockedAndHidden) { pendingUrl = it }
 
     // cache derived text/sim so an unlock doesn't recompute row allocations
     val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp) }
@@ -1113,6 +1165,17 @@ fun MessageRow(
                 color = cs.onSurfaceVariant
             )
         }
+    }
+
+    pendingUrl?.let { url ->
+        LinkWarningDialog(
+            url = url,
+            onDismiss = { pendingUrl = null },
+            onOpen = {
+                pendingUrl = null
+                openUrl(context, url)
+            }
+        )
     }
 
     Column(
