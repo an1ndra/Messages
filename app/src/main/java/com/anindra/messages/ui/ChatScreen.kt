@@ -980,7 +980,9 @@ fun formatPhoneNumber(raw: String): String = try {
 
 /** True for actual phone/short-code numbers; false for alphanumeric sender IDs (DK-AIRCEL, VM-HDFCBK…). */
 fun isPhoneNumber(address: String): Boolean =
-    address.count { it.isDigit() } >= 4 && address.all { it.isDigit() || it == '+' }
+    address.count { it.isDigit() } >= 4 &&
+        address.none { it.isLetter() } &&
+        address.all { it.isDigit() || it in "+()- ." }
 
 fun openUrl(context: android.content.Context, url: String) {
     val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return

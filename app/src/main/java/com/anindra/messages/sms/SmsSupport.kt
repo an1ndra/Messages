@@ -236,11 +236,12 @@ object SmsSender {
         ) else null
 
         val parts = sm.divideMessage(body)
+        val dest = normalizeAddress(address)
         if (parts.size <= 1) {
-            sm.sendTextMessage(address, null, body, sent, delivered)
+            sm.sendTextMessage(dest, null, body, sent, delivered)
         } else {
             sm.sendMultipartTextMessage(
-                address, null, parts,
+                dest, null, parts,
                 ArrayList(listOf(sent)),
                 delivered?.let { ArrayList(listOf(it)) }
             )
@@ -248,6 +249,13 @@ object SmsSender {
         true
     } catch (_: Exception) {
         false
+    }
+
+    /** Strips formatting from stored address; keeps digits and a leading '+'. */
+    private fun normalizeAddress(address: String): String {
+        val digits = address.filter { it.isDigit() }
+        if (digits.isEmpty()) return address
+        return if (address.trimStart().startsWith("+")) "+$digits" else digits
     }
 
     /**
