@@ -1,10 +1,10 @@
 name: Develop Build (manual)
 
-# Manual, develop-only build for testing. Produces a downloadable APK artifact
-# and never publishes a release, tag, or F-Droid update.
+# Manual build for testing. Produces a downloadable APK artifact and never
+# publishes a release, tag, or F-Droid update.
 #
-# Run it from: Actions -> "Develop Build (manual)" -> Run workflow -> pick the
-# Develop branch. The APK appears under the run's "Artifacts" section.
+# Run it from: Actions -> "Develop Build (manual)" -> Run workflow -> pick any
+# branch you want to test. The APK appears under the run's "Artifacts" section.
 #
 # Note: GitHub only lists a workflow_dispatch workflow in the Actions UI once
 # this file exists on the repository's default branch (main).
@@ -21,21 +21,10 @@ concurrency:
 
 jobs:
   build:
-    name: Build develop APK
+    name: Build test APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Verify the branch is Develop
-        run: |
-          branch="${GITHUB_REF_NAME}"
-          case "$branch" in
-            Develop|develop) echo "Building '$branch' at ${{ github.sha }}" ;;
-            *)
-              echo "::error::This workflow builds the Develop branch only (got '$branch')."
-              exit 1
-              ;;
-          esac
-
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -95,13 +84,14 @@ jobs:
             src=$(ls app/build/outputs/apk/debug/*.apk | head -1)
             kind=debug
           fi
-          name="Messages-${{ steps.ver.outputs.version }}-${kind}-${GITHUB_REF_NAME}-${GITHUB_SHA::7}.apk"
+          refsafe=$(echo "${GITHUB_REF_NAME}" | tr '/' '_')
+          name="Messages-${{ steps.ver.outputs.version }}-${kind}-${refsafe}-${GITHUB_SHA::7}.apk"
           cp "$src" "$name"
           sha=$(sha256sum "$name" | cut -d' ' -f1)
           echo "file=$name" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           {
-            echo "### Develop test build"
+            echo "### Test build"
             echo ""
             echo "- Version: \`${{ steps.ver.outputs.version }}\` ($kind)"
             echo "- Branch: \`${GITHUB_REF_NAME}\` @ \`${GITHUB_SHA::7}\`"
