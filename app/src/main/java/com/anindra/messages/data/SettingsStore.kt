@@ -36,6 +36,7 @@ class SettingsStore(context: Context) {
         const val KEY_DELAYED_SENDING_ENABLED = "delayed_sending_enabled"
         const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_HIGHLIGHT_LINKS = "highlight_links"
+        const val KEY_HIDE_LINKS = "hide_links"
         const val KEY_PRIVACY_MODE = "privacy_mode"
         const val KEY_APP_LOCK = "app_lock_enabled"
         const val KEY_FIRST_IMPORT_DONE = "first_import_done"
@@ -113,7 +114,24 @@ class SettingsStore(context: Context) {
 
     var highlightLinks: Boolean
         get() = prefs.getBoolean(KEY_HIGHLIGHT_LINKS, true)
-        set(v) { prefs.edit().putBoolean(KEY_HIGHLIGHT_LINKS, v).apply(); _revision.value++ }
+        set(v) {
+            val editor = prefs.edit().putBoolean(KEY_HIGHLIGHT_LINKS, v)
+            if (!v) editor.putBoolean(KEY_LINK_WARNING, false)
+            editor.apply()
+            _revision.value++
+        }
+
+    var hideLinks: Boolean
+        get() = prefs.getBoolean(KEY_HIDE_LINKS, false)
+        set(v) {
+            val editor = prefs.edit().putBoolean(KEY_HIDE_LINKS, v)
+            if (v) {
+                editor.putBoolean(KEY_HIGHLIGHT_LINKS, false)
+                editor.putBoolean(KEY_LINK_WARNING, false)
+            }
+            editor.apply()
+            _revision.value++
+        }
 
     var privacyModeEnabled: Boolean
         get() = prefs.getBoolean(KEY_PRIVACY_MODE, false)
@@ -149,5 +167,9 @@ class SettingsStore(context: Context) {
 
     var linkOpenWarningEnabled: Boolean
         get() = prefs.getBoolean(KEY_LINK_WARNING, true)
-        set(v) { prefs.edit().putBoolean(KEY_LINK_WARNING, v).apply(); _revision.value++ }
+        set(v) {
+            val enabled = v && highlightLinks && !hideLinks
+            prefs.edit().putBoolean(KEY_LINK_WARNING, enabled).apply()
+            _revision.value++
+        }
 }

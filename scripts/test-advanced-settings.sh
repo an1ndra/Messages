@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Advanced settings regression:
-#   - Settings → Advanced holds the 4 toggles (Permanent delete / Reverse
-#     swipe / Highlight links / Link open warning); "Highlight links" is no
-#     longer in the main Settings list.
+#   - Settings → Advanced holds the 5 toggles in order (Reverse swipe /
+#     Hide links from messages / Highlight links / Link open warning /
+#     Permanent delete, which is last); "Highlight links" is no longer in the
+#     main Settings list.
 #   - Link open warning ON -> tap link shows "Caution: external link" dialog;
 #     OFF -> same tap opens the browser directly (no dialog).
 #   - Permanent delete ON -> chat 3-dot Delete asks "Delete permanently?";
@@ -116,8 +117,32 @@ dump_ui
 check_present "Advanced settings title" "Advanced settings"
 check_present "Permanent delete toggle" "Permanent delete"
 check_present "Reverse swipe toggle" "Reverse swipe actions"
+check_present "Hide links toggle" "Hide links from messages"
 check_present "Highlight links toggle (moved here)" "Highlight links"
 check_present "Link open warning toggle" "Link open warning"
+
+info "Row order: Permanent delete is last"
+order=$(python3 - "$TMP/ui.xml" <<'PY'
+import re, sys
+xml = open(sys.argv[1]).read()
+def y_of(label):
+    ys = []
+    for t in re.findall(r'<node[^>]*>', xml):
+        if f'text="{label}"' in t:
+            b = re.search(r'bounds="\[\d+,(\d+)\]', t)
+            if b:
+                ys.append(int(b.group(1)))
+    return min(ys) if ys else -1
+perm, warn = y_of("Permanent delete"), y_of("Link open warning")
+print("PASS" if perm > warn >= 0 else "FAIL")
+PY
+)
+if [ "$order" = "PASS" ]; then
+    echo "[PASS] 'Permanent delete' is the last row"; PASS=$((PASS + 1))
+else
+    echo "[FAIL] 'Permanent delete' is not below 'Link open warning'"; FAIL=$((FAIL + 1))
+fi
+
 ensure_switch "Link open warning" link_open_warning_enabled on
 
 info "Sending a message with a link into $TARGET conversation"

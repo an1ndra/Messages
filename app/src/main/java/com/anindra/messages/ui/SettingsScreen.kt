@@ -58,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -807,19 +808,21 @@ fun SettingsRow(
     subtitle: String?,
     checked: Boolean? = null,
     onChecked: ((Boolean) -> Unit)? = null,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    enabled: Boolean = true
 ) {
+    val contentAlpha = if (enabled) 1f else 0.38f
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 60.dp)
-            .clickable(enabled = onClick != null || checked != null) {
+            .clickable(enabled = enabled && (onClick != null || checked != null)) {
                 if (checked != null && onChecked != null) onChecked(!checked) else onClick?.invoke()
             }
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f).alpha(contentAlpha)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge
@@ -838,6 +841,7 @@ fun SettingsRow(
             Switch(
                 checked = checked,
                 onCheckedChange = { onChecked(it) },
+                enabled = enabled,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = MaterialTheme.colorScheme.primary,
                     checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,

@@ -91,6 +91,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.anindra.messages.AppViewModel
+import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -157,7 +158,8 @@ fun ConversationsScreen(
             archivingEnabled = vm.settings.archivingEnabled,
             blockingEnabled = vm.settings.blockingEnabled,
             swipeEnabled = vm.settings.swipeActionsEnabled,
-            reverseSwipe = vm.settings.reverseSwipeEnabled
+            reverseSwipe = vm.settings.reverseSwipeEnabled,
+            hideLinks = vm.settings.hideLinks
         )
     }
 
@@ -230,15 +232,16 @@ fun ConversationsScreen(
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
-    val displayed = remember(conversations, showArchived, query, unreadAtTop) {
+    val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks) {
         conversations.filter { convo ->
             if (showArchived) convo.archived
             else !convo.archived
         }.let { list ->
             if (query.isBlank()) list
             else list.filter {
+                val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
                 it.name.contains(query, true) || it.address.contains(query) ||
-                        it.snippet.contains(query, true)
+                        snippet.contains(query, true)
             }
         }.let { list ->
             // Unread-at-top: stable reorder — pinned stays on top, then unread
@@ -649,7 +652,8 @@ private data class RowSettings(
     val archivingEnabled: Boolean,
     val blockingEnabled: Boolean,
     val swipeEnabled: Boolean,
-    val reverseSwipe: Boolean = false
+    val reverseSwipe: Boolean = false,
+    val hideLinks: Boolean = false
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -706,8 +710,9 @@ private fun ConversationRow(
                 Spacer(Modifier.height(2.dp))
                 val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
                 if (hasDraft) {
+                    val draft = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
                     Text(
-                        text = "Draft: ${convo.draft}",
+                        text = "Draft: $draft",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
@@ -715,10 +720,12 @@ private fun ConversationRow(
                     )
                 } else {
                     val snippet =
-                        if (convo.isMe && convo.snippet.isNotEmpty()) "You: ${convo.snippet}"
-                        else convo.snippet
+                        if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
+                    val preview =
+                        if (convo.isMe && snippet.isNotEmpty()) "You: $snippet"
+                        else snippet
                     Text(
-                        text = snippet,
+                        text = preview,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Normal,
                         color = if (convo.unreadCount > 0) MaterialTheme.colorScheme.onSurface

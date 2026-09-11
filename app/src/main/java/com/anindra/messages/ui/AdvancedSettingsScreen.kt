@@ -41,6 +41,7 @@ fun AdvancedSettingsScreen(
     val revision by vm.settings.revision.collectAsState()
     var permanentDelete by remember(revision) { mutableStateOf(vm.settings.permanentDeleteEnabled) }
     var reverseSwipe by remember(revision) { mutableStateOf(vm.settings.reverseSwipeEnabled) }
+    var hideLinks by remember(revision) { mutableStateOf(vm.settings.hideLinks) }
     var highlightLinks by remember(revision) { mutableStateOf(vm.settings.highlightLinks) }
     var linkWarning by remember(revision) { mutableStateOf(vm.settings.linkOpenWarningEnabled) }
 
@@ -67,15 +68,6 @@ fun AdvancedSettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Permanent delete",
-                    subtitle = "Delete messages immediately instead of moving them to trash",
-                    checked = permanentDelete,
-                    onChecked = {
-                        permanentDelete = it
-                        vm.settings.permanentDeleteEnabled = it
-                    }
-                )
-                SettingsRow(
                     title = "Reverse swipe actions",
                     subtitle = "Swipe left to archive and right to delete",
                     checked = reverseSwipe,
@@ -85,21 +77,49 @@ fun AdvancedSettingsScreen(
                     }
                 )
                 SettingsRow(
+                    title = "Hide links from messages",
+                    subtitle = "Never turn links in messages into tappable links",
+                    checked = hideLinks,
+                    onChecked = {
+                        hideLinks = it
+                        vm.settings.hideLinks = it
+                    }
+                )
+                SettingsRow(
                     title = "Highlight links",
-                    subtitle = "Tap links in messages to open the website",
+                    subtitle = if (hideLinks) {
+                        "Turn off \"Hide links from messages\" first"
+                    } else {
+                        "Tap links in messages to open the website"
+                    },
                     checked = highlightLinks,
                     onChecked = {
                         highlightLinks = it
                         vm.settings.highlightLinks = it
-                    }
+                    },
+                    enabled = !hideLinks
                 )
                 SettingsRow(
                     title = "Link open warning",
-                    subtitle = "Confirm before opening external links",
+                    subtitle = when {
+                        hideLinks -> "Turn off \"Hide links from messages\" first"
+                        !highlightLinks -> "Turn on \"Highlight links\" first"
+                        else -> "Confirm before opening external links"
+                    },
                     checked = linkWarning,
                     onChecked = {
                         linkWarning = it
                         vm.settings.linkOpenWarningEnabled = it
+                    },
+                    enabled = !hideLinks && highlightLinks
+                )
+                SettingsRow(
+                    title = "Permanent delete",
+                    subtitle = "Delete messages immediately instead of moving them to trash",
+                    checked = permanentDelete,
+                    onChecked = {
+                        permanentDelete = it
+                        vm.settings.permanentDeleteEnabled = it
                     }
                 )
             }
