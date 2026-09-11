@@ -65,6 +65,7 @@ import com.anindra.messages.ui.ConversationsScreen
 import com.anindra.messages.ui.ContactDetailsScreen
 import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.SettingsScreen
+import com.anindra.messages.ui.AdvancedSettingsScreen
 import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.MessagesTheme
@@ -158,7 +159,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         n
     }
 
-    fun deleteConversation(id: Long) = scope.launch { repo.trashConversationSuspend(id) }
+    fun deleteConversation(id: Long) = scope.launch {
+        if (settings.permanentDeleteEnabled) repo.deleteConversationSuspend(id)
+        else repo.trashConversationSuspend(id)
+    }
 
     fun restoreFromTrash(id: Long) = scope.launch { repo.restoreFromTrashSuspend(id) }
 
@@ -558,11 +562,12 @@ class MainActivity : FragmentActivity() {
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "trash" -> navRoute = "settings"
+                        "advanced" -> navRoute = "settings"
                         else -> navRoute = "list"
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2)
+                val routeDepth = mapOf("list" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2)
                 val isList = navRoute == "list"
                 val isChat = navRoute == "chat"
 
@@ -608,7 +613,12 @@ class MainActivity : FragmentActivity() {
                                     "settings" -> SettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "list" },
-                                        onOpenTrash = { navRoute = "trash" }
+                                        onOpenTrash = { navRoute = "trash" },
+                                        onOpenAdvanced = { navRoute = "advanced" }
+                                    )
+                                    "advanced" -> AdvancedSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" }
                                     )
                                     "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
                                     "details" -> ContactDetailsScreen(

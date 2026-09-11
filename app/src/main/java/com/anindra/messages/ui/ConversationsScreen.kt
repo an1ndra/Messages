@@ -138,6 +138,7 @@ fun ConversationsScreen(
     val loaded = minSkeletonShown && (syncDone || !readSmsAllowed)
     var sheetConvoId by remember { mutableLongStateOf(-1L) }
     val sheetConvo = conversations.find { it.id == sheetConvoId }
+    var permanentDeleteTarget by remember { mutableStateOf<Conversation?>(null) }
     // Recompute row-level settings whenever any setting changes (SettingsStore is a
     // singleton, so keying on the object would freeze these at first composition).
     val settingsRevision by vm.settings.revision.collectAsState()
@@ -147,7 +148,8 @@ fun ConversationsScreen(
             draftsEnabled = vm.settings.draftsEnabled,
             archivingEnabled = vm.settings.archivingEnabled,
             blockingEnabled = vm.settings.blockingEnabled,
-            swipeEnabled = vm.settings.swipeActionsEnabled
+            swipeEnabled = vm.settings.swipeActionsEnabled,
+            reverseSwipe = vm.settings.reverseSwipeEnabled
         )
     }
 
@@ -179,6 +181,10 @@ fun ConversationsScreen(
     }
 
     fun moveToTrash(convo: Conversation) {
+        if (vm.settings.permanentDeleteEnabled) {
+            permanentDeleteTarget = convo
+            return
+        }
         vm.deleteConversation(convo.id)
         scope.launch {
             val result = snackbarHostState.showSnackbar(
@@ -447,6 +453,16 @@ fun ConversationsScreen(
             }
         }
     }
+
+    permanentDeleteTarget?.let { convo ->
+        PermanentDeleteConfirmDialog(
+            onConfirm = {
+                permanentDeleteTarget = null
+                vm.deleteConversation(convo.id)
+            },
+            onDismiss = { permanentDeleteTarget = null }
+        )
+    }
 }
 
 @Composable
@@ -499,11 +515,16 @@ private fun SwipeConversationItem(
         state = dismissState,
         backgroundContent = {
             val direction = dismissState.dismissDirection
+            val endIsDelete = !settings.reverseSwipe
 
             val bgColor by animateColorAsState(
                 targetValue = when (direction) {
-                    SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
-                    SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
+                    SwipeToDismissBoxValue.EndToStart ->
+                        if (endIsDelete) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.secondaryContainer
+                    SwipeToDismissBoxValue.StartToEnd ->
+                        if (endIsDelete) MaterialTheme.colorScheme.secondaryContainer
+                        else MaterialTheme.colorScheme.error
                     else -> Color.Transparent
                 },
                 label = "swipe_bg"
@@ -521,18 +542,34 @@ private fun SwipeConversationItem(
             ) {
                 when (direction) {
                     SwipeToDismissBoxValue.EndToStart -> {
-                        Icon(
-                            Icons.Rounded.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.onError
-                        )
+                        if (endIsDelete) {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.onError
+                            )
+                        } else {
+                            Icon(
+                                Icons.Rounded.Archive,
+                                contentDescription = "Archive",
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
                     }
                     SwipeToDismissBoxValue.StartToEnd -> {
-                        Icon(
-                            Icons.Rounded.Archive,
-                            contentDescription = "Archive",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        if (endIsDelete) {
+                            Icon(
+                                Icons.Rounded.Archive,
+                                contentDescription = "Archive",
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        } else {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.onError
+                            )
+                        }
                     }
                     else -> {}
                 }
@@ -553,13 +590,14 @@ private fun SwipeConversationItem(
     }
 
     LaunchedEffect(dismissState.currentValue) {
+        val endIsDelete = !settings.reverseSwipe
         when (dismissState.currentValue) {
             SwipeToDismissBoxValue.StartToEnd -> {
-                onArchive()
+                if (endIsDelete) onArchive() else onDelete()
                 dismissState.snapTo(SwipeToDismissBoxValue.Settled)
             }
             SwipeToDismissBoxValue.EndToStart -> {
-                onDelete()
+                if (endIsDelete) onDelete() else onArchive()
                 dismissState.snapTo(SwipeToDismissBoxValue.Settled)
             }
             else -> {}
@@ -572,7 +610,8 @@ private data class RowSettings(
     val draftsEnabled: Boolean,
     val archivingEnabled: Boolean,
     val blockingEnabled: Boolean,
-    val swipeEnabled: Boolean
+    val swipeEnabled: Boolean,
+    val reverseSwipe: Boolean = false
 )
 
 @OptIn(ExperimentalFoundationApi::class)

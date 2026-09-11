@@ -77,7 +77,8 @@ private enum class PinDialogMode { SET, ENTER }
 fun SettingsScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
-    onOpenTrash: () -> Unit = {}
+    onOpenTrash: () -> Unit = {},
+    onOpenAdvanced: () -> Unit = {}
 ) {
     BackHandler(onBack = onBack)
 
@@ -102,7 +103,6 @@ fun SettingsScreen(
     var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
     var scheduledMessages by remember(revision) { mutableStateOf(vm.settings.scheduledMessagesEnabled) }
     var delayedSending by remember(revision) { mutableStateOf(vm.settings.delayedSendingEnabled) }
-    var highlightLinks by remember(revision) { mutableStateOf(vm.settings.highlightLinks) }
     var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
     var delaySeconds by remember(revision) { mutableIntStateOf(vm.settings.delaySeconds) }
@@ -305,12 +305,6 @@ fun SettingsScreen(
                     onChecked = { forwarding = it; vm.settings.forwardingEnabled = it }
                 )
                 SettingsRow(
-                    title = "Highlight links",
-                    subtitle = "Tap links in messages to open the website",
-                    checked = highlightLinks,
-                    onChecked = { highlightLinks = it; vm.settings.highlightLinks = it }
-                )
-                SettingsRow(
                     title = "Scheduled messages",
                     subtitle = "Enable scheduling messages",
                     checked = scheduledMessages,
@@ -332,6 +326,16 @@ fun SettingsScreen(
                         onClick = { delayDialog = true }
                     )
                 }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            SettingsGroup {
+                SettingsRow(
+                    title = "Advanced",
+                    subtitle = "Permanent delete, swipe direction, link behaviour",
+                    onClick = onOpenAdvanced
+                )
             }
 
             Spacer(Modifier.height(8.dp))
@@ -752,7 +756,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsGroup(content: @Composable () -> Unit) {
+fun SettingsGroup(content: @Composable () -> Unit) {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
@@ -798,7 +802,7 @@ private fun ImportChoiceRow(
 }
 
 @Composable
-private fun SettingsRow(
+fun SettingsRow(
     title: String,
     subtitle: String?,
     checked: Boolean? = null,
