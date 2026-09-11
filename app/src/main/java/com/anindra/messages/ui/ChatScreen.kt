@@ -1460,7 +1460,8 @@ private fun InputBar(
                 onValueChange = onDraftChange,
                 placeholder = { Text(placeholder) },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Default
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Default,
+                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
                 ),
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
