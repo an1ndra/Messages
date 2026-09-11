@@ -182,6 +182,7 @@ fun ChatScreen(
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
     var showAlphanumericDialog by remember { mutableStateOf(false) }
+    var showPermanentDeleteDialog by remember { mutableStateOf(false) }
 
     var forwardingMessageId by remember { mutableStateOf(-1L) }
     var showForwardPicker by remember { mutableStateOf(false) }
@@ -360,9 +361,13 @@ fun ChatScreen(
                     onBack()
                 },
                 onDelete = {
-                    vm.deleteConversation(conversationId)
-                    Toast.makeText(context, "Conversation moved to trash", Toast.LENGTH_SHORT).show()
-                    onBack()
+                    if (vm.settings.permanentDeleteEnabled) {
+                        showPermanentDeleteDialog = true
+                    } else {
+                        vm.deleteConversation(conversationId)
+                        Toast.makeText(context, "Conversation moved to trash", Toast.LENGTH_SHORT).show()
+                        onBack()
+                    }
                 },
                 onBlock = {
                     convo?.address?.let { addr ->
@@ -476,6 +481,7 @@ fun ChatScreen(
                     deliveryReports = deliveryReports,
                     sims = sims,
                     highlightLinks = vm.settings.highlightLinks,
+                    linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
                     forwardingEnabled = vm.settings.forwardingEnabled,
                     unlockedIds = unlockedIds,
                     showEntrySkeleton = showEntrySkeleton,
@@ -627,6 +633,17 @@ fun ChatScreen(
             confirmButton = {
                 TextButton(onClick = { showAlphanumericDialog = false }) { Text("OK") }
             }
+        )
+    }
+
+    if (showPermanentDeleteDialog) {
+        PermanentDeleteConfirmDialog(
+            onConfirm = {
+                showPermanentDeleteDialog = false
+                vm.deleteConversation(conversationId)
+                onBack()
+            },
+            onDismiss = { showPermanentDeleteDialog = false }
         )
     }
 
@@ -826,6 +843,7 @@ private fun ChatMessageList(
     deliveryReports: Boolean,
     sims: List<SubscriptionInfo>,
     highlightLinks: Boolean,
+    linkWarningEnabled: Boolean,
     forwardingEnabled: Boolean,
     unlockedIds: Set<Long>,
     showEntrySkeleton: Boolean,
@@ -875,6 +893,7 @@ private fun ChatMessageList(
                 },
                 onLongPress = { onLongPress(msg.id) },
                 highlightLinks = highlightLinks,
+                linkWarningEnabled = linkWarningEnabled,
                 onLockUnlock = { wantLock -> onLockUnlock(msg.id, wantLock) },
                 isUnlocked = rowIsUnlocked,
                 showSimIndicator = showSimIndicator
@@ -1139,6 +1158,7 @@ fun MessageRow(
     onRetry: () -> Unit = {},
     onLongPress: () -> Unit = {},
     highlightLinks: Boolean = false,
+    linkWarningEnabled: Boolean = true,
     onLockUnlock: (Boolean) -> Unit = {},
     isUnlocked: Boolean = false,
     showSimIndicator: Boolean = true
@@ -1174,14 +1194,19 @@ fun MessageRow(
     }
 
     pendingUrl?.let { url ->
-        LinkWarningDialog(
-            url = url,
-            onDismiss = { pendingUrl = null },
-            onOpen = {
-                pendingUrl = null
-                openUrl(context, url)
-            }
-        )
+        if (linkWarningEnabled) {
+            LinkWarningDialog(
+                url = url,
+                onDismiss = { pendingUrl = null },
+                onOpen = {
+                    pendingUrl = null
+                    openUrl(context, url)
+                }
+            )
+        } else {
+            pendingUrl = null
+            openUrl(context, url)
+        }
     }
 
     Column(

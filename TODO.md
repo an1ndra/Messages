@@ -36,6 +36,17 @@ Fix: `forwardingEnabled: Boolean` threaded from `ChatScreen` → `ChatMessageLis
 Verified on emulator: Forwarding off → long-press shows only Copy/Lock; Forwarding on → Copy/Forward/Lock.
 Files: `ui/ChatScreen.kt`.
 
+## P1 · Advanced settings: permanent delete + reverse swipe + link behaviour (#177/#178)
+
+✅ NEW Settings → Advanced screen holding 4 toggles — Permanent delete (default off), Reverse swipe actions (default off), Highlight links (moved here from the main Settings list, default on), Link open warning (default on). All backed by SettingsStore prefs (`permanent_delete_enabled`, `reverse_swipe_enabled`, `link_open_warning_enabled`) via the existing `revision` StateFlow so toggles apply LIVE.
+- Permanent delete ON: chat 3-dot Delete and the home swipe/sheet Delete now show `PermanentDeleteConfirmDialog` ("Delete permanently?" warning) before calling `deleteConversation` → `Repository.deleteConversationSuspend()` hard-deletes (local + system-provider purge, no trash). Verified: confirmed delete removed the conversation from home AND trash with zero message rows left.
+- Reverse swipe ON: homepage `SwipeConversationItem` swaps directions — swipe RIGHT trashes, swipe LEFT archives (background color + icon swap with it). Verified in SQL: swipe-right row got `deleted_at`, swipe-left row got `archived=1`; both restored afterwards.
+- Link open warning OFF: tapping a highlighted link opens the browser directly instead of the "Caution: external link" dialog (both states verified — dialog shows when ON, browser foregrounds with no dialog when OFF).
+- Also fixed `scripts/env.sh` `center_of`/`center_of_contains`: the query was embedded raw into an ERE, so `+1-555-…` number lookups (plus/`.`/`(`/`)`) never matched (`+` quantifies the quote). New `re_escape()` escapes ERE metachars before grepping.
+- Regression: `scripts/test-advanced-settings.sh` (22 checks, all passing) — asserts "Highlight links" absent from main Settings, the 4 Advanced toggles, link dialog/direct-open for both warning states, permanent-delete dialog shown + Cancelled non-destructively, reverse-swipe trash/archive + restore, and all prefs returned to defaults.
+
+Files: `ui/AdvancedSettingsScreen.kt` (new), `ui/SettingsScreen.kt`, `data/SettingsStore.kt`, `MainActivity.kt`, `ui/ConversationsScreen.kt`, `ui/ChatScreen.kt`, `scripts/test-advanced-settings.sh`, `scripts/env.sh`, `TODO.md`.
+
 ## P1 · Recognize phone numbers with parenthesized area codes (issue #176)
 
 ✅ USER REPORT: sending to numbers stored as `(555) 555-0123` was blocked with "You can't send messages to alphanumeric senders" — `isPhoneNumber()` only allowed digits and `+`, so parenthesized area codes failed the guard.

@@ -36,12 +36,18 @@ dump_ui() {
 # many nodes onto one line, so line-based greps over ui.xml are unreliable.
 ui_tags() { grep -oE '<node[^>]*>' "$TMP/ui.xml"; }
 
+# Escape ERE metacharacters so queries like "+1-555-333-4444" match literally.
+re_escape() {
+    python3 -c 'import re, sys; sys.stdout.write(re.escape(sys.stdin.read()))' <<< "$1"
+}
+
 # Find node by text/content-desc and print "x y" of its center, or fail.
 # Usage: center_of "Start chat"
 center_of() {
     dump_ui || return 1
-    local b
-    b=$(grep -oE "(text|content-desc)=\"$1\"[^>]*bounds=\"\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]\"" \
+    local q b
+    q=$(re_escape "$1")
+    b=$(grep -oE "(text|content-desc)=\"$q\"[^>]*bounds=\"\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]\"" \
             "$TMP/ui.xml" 2>/dev/null | head -1 | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' | head -1)
     [ -z "$b" ] && return 1
     local x1 y1 x2 y2
@@ -87,9 +93,10 @@ tap_edittext() {
 # Center "X Y" of first node whose text contains $1 (retrying dump 3x)
 center_of_contains() {
     local query="$1" b i x1 y1 x2 y2
+    local q; q=$(re_escape "$query")
     for i in 1 2 3; do
         dump_ui || { sleep 1; continue; }
-        b=$(grep -oE "(text|content-desc)=\"[^\"]*$query[^\"]*\"[^>]*bounds=\"\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]\"" \
+        b=$(grep -oE "(text|content-desc)=\"[^\"]*$q[^\"]*\"[^>]*bounds=\"\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]\"" \
                 "$TMP/ui.xml" 2>/dev/null | head -1 \
             | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' | tail -1)
         if [ -n "$b" ]; then
