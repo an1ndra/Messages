@@ -585,10 +585,10 @@ class MainActivity : FragmentActivity() {
                             val from = routeDepth[initialState] ?: 0
                             val to = routeDepth[targetState] ?: 0
                             when {
-                                to > from -> slideInHorizontally(tween(280)) { it } + fadeIn(tween(180)) togetherWith
-                                    slideOutHorizontally(tween(280)) { -it / 3 } + fadeOut(tween(150))
-                                to < from -> slideInHorizontally(tween(280)) { -it / 3 } + fadeIn(tween(180)) togetherWith
-                                    slideOutHorizontally(tween(280)) { it } + fadeOut(tween(150))
+                                to > from -> slideInHorizontally(tween(300)) { it } togetherWith
+                                    slideOutHorizontally(tween(300)) { -it }
+                                to < from -> slideInHorizontally(tween(300)) { -it } togetherWith
+                                    slideOutHorizontally(tween(300)) { it }
                                 else -> fadeIn(tween(150)) togetherWith fadeOut(tween(150))
                             }
                         },
