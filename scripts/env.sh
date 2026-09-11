@@ -38,7 +38,7 @@ ui_tags() { grep -oE '<node[^>]*>' "$TMP/ui.xml"; }
 
 # Escape ERE metacharacters so queries like "+1-555-333-4444" match literally.
 re_escape() {
-    python3 -c 'import re, sys; sys.stdout.write(re.escape(sys.stdin.read()))' <<< "$1"
+    python3 -c 'import re, sys; sys.stdout.write(re.escape(sys.stdin.read().rstrip("\n")))' <<< "$1"
 }
 
 # Find node by text/content-desc and print "x y" of its center, or fail.

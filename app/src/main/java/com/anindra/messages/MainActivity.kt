@@ -179,6 +179,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setLocked(messageId: Long, locked: Boolean) =
         scope.launch { repo.setLockedSuspend(messageId, locked) }
 
+    fun deleteMessage(messageId: Long) =
+        scope.launch { repo.deleteMessageSuspend(messageId) }
+
+    fun restoreMessage(messageId: Long) =
+        scope.launch { repo.restoreMessageSuspend(messageId) }
+
     fun markAllRead() = scope.launch { repo.markAllReadSuspend() }
 
     /** Applies FLAG_SECURE immediately so privacy mode toggles without restart. */
@@ -308,6 +314,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun saveDraft(conversationId: Long, draft: String) {
         scope.launch(Dispatchers.IO) { repo.saveDraft(conversationId, draft) }
+    }
+
+    /** Leaving a chat: persist the draft first, then trash the conversation if it
+     *  ended up with nothing to show. Sequential so the emptiness check sees the
+     *  draft we just wrote (and keeps a chat that still has one). */
+    fun saveDraftAndMaybeTrash(conversationId: Long, draft: String, draftsEnabled: Boolean) {
+        scope.launch(Dispatchers.IO) {
+            if (draftsEnabled) repo.saveDraft(conversationId, draft)
+            repo.trashConversationIfEmptySuspend(conversationId)
+        }
     }
 
     fun blockNumber(number: String) {
