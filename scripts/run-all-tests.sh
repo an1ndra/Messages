@@ -18,6 +18,8 @@ run bash "$S/theme.sh" light
 run bash "$S/theme.sh" system
 run bash "$S/test-notification-posts.sh"
 run bash "$S/test-backup-restore.sh"
+run bash "$S/test-issue-183-split-threads.sh"
+run bash "$S/test-import-mirrors-provider.sh"
 run bash "$S/test-merge-import.sh"
 run bash "$S/test-import-loading.sh"
 
