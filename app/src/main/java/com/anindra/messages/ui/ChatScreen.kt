@@ -120,6 +120,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
+import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
 import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.incomingBubble
@@ -182,6 +183,7 @@ fun ChatScreen(
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
     var showAlphanumericDialog by remember { mutableStateOf(false) }
+    var showPermanentDeleteDialog by remember { mutableStateOf(false) }
 
     var forwardingMessageId by remember { mutableStateOf(-1L) }
     var showForwardPicker by remember { mutableStateOf(false) }
@@ -295,10 +297,23 @@ fun ChatScreen(
     }
     BackHandler(onBack = ::leaveChat)
 
-    // Auto-scroll only on a NEW message id, not on status transitions
+    // Bottom on load + new messages. Int.MAX_VALUE clamps to the last row, so the newest
+    // message is brought into view even before layout has counted the freshly added row.
+    var hasScrolledToBottom by remember(conversationId) { mutableStateOf(false) }
     val newestId = messages.lastOrNull()?.id
     LaunchedEffect(newestId) {
-        if (newestId != null) listState.scrollToItem(messages.size - 1)
+        if (newestId != null) {
+            listState.scrollToItem(Int.MAX_VALUE)
+            hasScrolledToBottom = true
+        }
+    }
+    // Retry once if the first scroll raced the layout pass.
+    LaunchedEffect(messages.size) {
+        if (!hasScrolledToBottom && messages.isNotEmpty()) {
+            delay(80)
+            listState.scrollToItem(Int.MAX_VALUE)
+            hasScrolledToBottom = true
+        }
     }
     // Load chunks while pinned near the bottom so inserting rows doesn't jump the view
     LaunchedEffect(pageLimit, totalCount) {
@@ -360,9 +375,13 @@ fun ChatScreen(
                     onBack()
                 },
                 onDelete = {
-                    vm.deleteConversation(conversationId)
-                    Toast.makeText(context, "Conversation moved to trash", Toast.LENGTH_SHORT).show()
-                    onBack()
+                    if (vm.settings.permanentDeleteEnabled) {
+                        showPermanentDeleteDialog = true
+                    } else {
+                        vm.deleteConversation(conversationId)
+                        Toast.makeText(context, "Conversation moved to trash", Toast.LENGTH_SHORT).show()
+                        onBack()
+                    }
                 },
                 onBlock = {
                     convo?.address?.let { addr ->
@@ -476,6 +495,9 @@ fun ChatScreen(
                     deliveryReports = deliveryReports,
                     sims = sims,
                     highlightLinks = vm.settings.highlightLinks,
+                    linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
+                    hideLinks = vm.settings.hideLinks,
+                    forwardingEnabled = vm.settings.forwardingEnabled,
                     unlockedIds = unlockedIds,
                     showEntrySkeleton = showEntrySkeleton,
                     pendingEarlier = pendingEarlier,
@@ -626,6 +648,17 @@ fun ChatScreen(
             confirmButton = {
                 TextButton(onClick = { showAlphanumericDialog = false }) { Text("OK") }
             }
+        )
+    }
+
+    if (showPermanentDeleteDialog) {
+        PermanentDeleteConfirmDialog(
+            onConfirm = {
+                showPermanentDeleteDialog = false
+                vm.deleteConversation(conversationId)
+                onBack()
+            },
+            onDismiss = { showPermanentDeleteDialog = false }
         )
     }
 
@@ -825,6 +858,9 @@ private fun ChatMessageList(
     deliveryReports: Boolean,
     sims: List<SubscriptionInfo>,
     highlightLinks: Boolean,
+    linkWarningEnabled: Boolean,
+    hideLinks: Boolean,
+    forwardingEnabled: Boolean,
     unlockedIds: Set<Long>,
     showEntrySkeleton: Boolean,
     pendingEarlier: Boolean,
@@ -867,11 +903,14 @@ private fun ChatMessageList(
                 showDividerBefore = idx == 0 || !sameDay(messages[idx - 1].timestamp, msg.timestamp),
                 showStatus = idx == messages.lastIndex && msg.isMe,
                 deliveryReports = deliveryReports,
+                forwardingEnabled = forwardingEnabled,
                 onRetry = {
                     if (sims.size > 1) onRetryWithPicker(msg.id) else onRetry(msg.id)
                 },
                 onLongPress = { onLongPress(msg.id) },
                 highlightLinks = highlightLinks,
+                linkWarningEnabled = linkWarningEnabled,
+                hideLinks = hideLinks,
                 onLockUnlock = { wantLock -> onLockUnlock(msg.id, wantLock) },
                 isUnlocked = rowIsUnlocked,
                 showSimIndicator = showSimIndicator
@@ -977,7 +1016,9 @@ fun formatPhoneNumber(raw: String): String = try {
 
 /** True for actual phone/short-code numbers; false for alphanumeric sender IDs (DK-AIRCEL, VM-HDFCBK…). */
 fun isPhoneNumber(address: String): Boolean =
-    address.count { it.isDigit() } >= 4 && address.all { it.isDigit() || it == '+' }
+    address.count { it.isDigit() } >= 4 &&
+        address.none { it.isLetter() } &&
+        address.all { it.isDigit() || it in "+()- ." }
 
 fun openUrl(context: android.content.Context, url: String) {
     val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return
@@ -988,10 +1029,19 @@ fun openUrl(context: android.content.Context, url: String) {
 }
 
 @Composable
-private fun rememberLinkedText(body: String, highlight: Boolean, onLinkClick: (String) -> Unit = {}): AnnotatedString {
+private fun rememberLinkedText(
+    body: String,
+    highlight: Boolean,
+    hide: Boolean = false,
+    onLinkClick: (String) -> Unit = {}
+): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     val context = LocalContext.current
-    return produceState(AnnotatedString(body), body, highlight, linkColor) {
+    return produceState(AnnotatedString(body), body, highlight, hide, linkColor) {
+        if (hide) {
+            value = withContext(Dispatchers.Default) { AnnotatedString(hideUrls(body)) }
+            return@produceState
+        }
         if (!highlight) {
             value = AnnotatedString(body)
             return@produceState
@@ -1130,9 +1180,12 @@ fun MessageRow(
     showDividerBefore: Boolean,
     showStatus: Boolean,
     deliveryReports: Boolean,
+    forwardingEnabled: Boolean = false,
     onRetry: () -> Unit = {},
     onLongPress: () -> Unit = {},
     highlightLinks: Boolean = false,
+    linkWarningEnabled: Boolean = true,
+    hideLinks: Boolean = false,
     onLockUnlock: (Boolean) -> Unit = {},
     isUnlocked: Boolean = false,
     showSimIndicator: Boolean = true
@@ -1142,8 +1195,12 @@ fun MessageRow(
     var showContextMenu by remember { mutableStateOf(false) }
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
-    val displayBody = if (isLockedAndHidden) "\uD83D\uDD12 Locked" else msg.body
-    val bodyText = rememberLinkedText(displayBody, highlightLinks && !isLockedAndHidden) { pendingUrl = it }
+    val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
+    val bodyText = rememberLinkedText(
+        displayBody,
+        highlightLinks && !isLockedAndHidden,
+        hideLinks && !isLockedAndHidden
+    ) { pendingUrl = it }
 
     // cache derived text/sim so an unlock doesn't recompute row allocations
     val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp) }
@@ -1168,14 +1225,19 @@ fun MessageRow(
     }
 
     pendingUrl?.let { url ->
-        LinkWarningDialog(
-            url = url,
-            onDismiss = { pendingUrl = null },
-            onOpen = {
-                pendingUrl = null
-                openUrl(context, url)
-            }
-        )
+        if (linkWarningEnabled) {
+            LinkWarningDialog(
+                url = url,
+                onDismiss = { pendingUrl = null },
+                onOpen = {
+                    pendingUrl = null
+                    openUrl(context, url)
+                }
+            )
+        } else {
+            pendingUrl = null
+            openUrl(context, url)
+        }
     }
 
     Column(
@@ -1254,13 +1316,15 @@ fun MessageRow(
                             Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text("Forward") },
-                        onClick = {
-                            showContextMenu = false
-                            onLongPress()
-                        }
-                    )
+                    if (forwardingEnabled) {
+                        DropdownMenuItem(
+                            text = { Text("Forward") },
+                            onClick = {
+                                showContextMenu = false
+                                onLongPress()
+                            }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(if (msg.locked) "Unlock" else "Lock") },
                         onClick = {
@@ -1396,7 +1460,8 @@ private fun InputBar(
                 onValueChange = onDraftChange,
                 placeholder = { Text(placeholder) },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Default
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Default,
+                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
                 ),
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {

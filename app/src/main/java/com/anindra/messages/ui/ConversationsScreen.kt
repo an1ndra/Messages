@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
@@ -72,6 +73,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -89,7 +91,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.anindra.messages.AppViewModel
+import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -101,6 +105,11 @@ fun ConversationsScreen(
     onOpenSettings: () -> Unit
 ) {
     val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
+    // Recreated on empty→loaded so the list opens at the top (no restored offset, no anchor jump).
+    val listState = remember(conversations.isNotEmpty()) { LazyListState(0, 0) }
+    var surfacedUnread by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
+    var userScrolledAway by remember { mutableStateOf(false) }
+    var unreadSeeded by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var showArchived by remember { mutableStateOf(false) }
@@ -138,6 +147,7 @@ fun ConversationsScreen(
     val loaded = minSkeletonShown && (syncDone || !readSmsAllowed)
     var sheetConvoId by remember { mutableLongStateOf(-1L) }
     val sheetConvo = conversations.find { it.id == sheetConvoId }
+    var permanentDeleteTarget by remember { mutableStateOf<Conversation?>(null) }
     // Recompute row-level settings whenever any setting changes (SettingsStore is a
     // singleton, so keying on the object would freeze these at first composition).
     val settingsRevision by vm.settings.revision.collectAsState()
@@ -147,7 +157,9 @@ fun ConversationsScreen(
             draftsEnabled = vm.settings.draftsEnabled,
             archivingEnabled = vm.settings.archivingEnabled,
             blockingEnabled = vm.settings.blockingEnabled,
-            swipeEnabled = vm.settings.swipeActionsEnabled
+            swipeEnabled = vm.settings.swipeActionsEnabled,
+            reverseSwipe = vm.settings.reverseSwipeEnabled,
+            hideLinks = vm.settings.hideLinks
         )
     }
 
@@ -160,7 +172,18 @@ fun ConversationsScreen(
     LaunchedEffect(loaded) {
         if (loaded && !vm.hasLoadedOnce) vm.hasLoadedOnce = true
     }
-
+    // Only a real scroll gesture counts; idle anchor shifts must not flip this.
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            Triple(
+                listState.isScrollInProgress,
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+        }.collect { (scrolling, index, offset) ->
+            if (scrolling) userScrolledAway = !(index == 0 && offset == 0)
+        }
+    }
     BackHandler(enabled = searching) {
         searching = false
         query = ""
@@ -179,6 +202,10 @@ fun ConversationsScreen(
     }
 
     fun moveToTrash(convo: Conversation) {
+        if (vm.settings.permanentDeleteEnabled) {
+            permanentDeleteTarget = convo
+            return
+        }
         vm.deleteConversation(convo.id)
         scope.launch {
             val result = snackbarHostState.showSnackbar(
@@ -205,15 +232,16 @@ fun ConversationsScreen(
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
-    val displayed = remember(conversations, showArchived, query, unreadAtTop) {
+    val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks) {
         conversations.filter { convo ->
             if (showArchived) convo.archived
             else !convo.archived
         }.let { list ->
             if (query.isBlank()) list
             else list.filter {
+                val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
                 it.name.contains(query, true) || it.address.contains(query) ||
-                        it.snippet.contains(query, true)
+                        snippet.contains(query, true)
             }
         }.let { list ->
             // Unread-at-top: stable reorder — pinned stays on top, then unread
@@ -226,6 +254,25 @@ fun ConversationsScreen(
                 list
             }
         }
+    }
+
+    // Reveal a new unread only while the user is still at the top.
+    LaunchedEffect(displayed) {
+        if (showArchived || query.isNotBlank()) {
+            surfacedUnread = displayed.associate { it.id to it.unreadCount }
+            unreadSeeded = true
+            return@LaunchedEffect
+        }
+        // Seed on the first real emission; the empty one is just the initial query.
+        if (displayed.isEmpty()) return@LaunchedEffect
+        val prev = surfacedUnread
+        val increased = displayed.firstOrNull { it.unreadCount > (prev[it.id] ?: 0) }
+        surfacedUnread = displayed.associate { it.id to it.unreadCount }
+        if (unreadSeeded && increased != null && !userScrolledAway) {
+            val idx = displayed.indexOfFirst { it.id == increased.id }
+            if (idx >= 0) listState.scrollToItem(idx)
+        }
+        unreadSeeded = true
     }
 
     Scaffold(
@@ -374,7 +421,7 @@ fun ConversationsScreen(
                     }
                 }
             } else {
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
                     items(displayed, key = { it.id }) { convo ->
                         SwipeableConversationItem(
                             settings = rowSettings,
@@ -447,6 +494,16 @@ fun ConversationsScreen(
             }
         }
     }
+
+    permanentDeleteTarget?.let { convo ->
+        PermanentDeleteConfirmDialog(
+            onConfirm = {
+                permanentDeleteTarget = null
+                vm.deleteConversation(convo.id)
+            },
+            onDismiss = { permanentDeleteTarget = null }
+        )
+    }
 }
 
 @Composable
@@ -499,11 +556,16 @@ private fun SwipeConversationItem(
         state = dismissState,
         backgroundContent = {
             val direction = dismissState.dismissDirection
+            val endIsDelete = !settings.reverseSwipe
 
             val bgColor by animateColorAsState(
                 targetValue = when (direction) {
-                    SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
-                    SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
+                    SwipeToDismissBoxValue.EndToStart ->
+                        if (endIsDelete) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.secondaryContainer
+                    SwipeToDismissBoxValue.StartToEnd ->
+                        if (endIsDelete) MaterialTheme.colorScheme.secondaryContainer
+                        else MaterialTheme.colorScheme.error
                     else -> Color.Transparent
                 },
                 label = "swipe_bg"
@@ -521,18 +583,34 @@ private fun SwipeConversationItem(
             ) {
                 when (direction) {
                     SwipeToDismissBoxValue.EndToStart -> {
-                        Icon(
-                            Icons.Rounded.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.onError
-                        )
+                        if (endIsDelete) {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.onError
+                            )
+                        } else {
+                            Icon(
+                                Icons.Rounded.Archive,
+                                contentDescription = "Archive",
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
                     }
                     SwipeToDismissBoxValue.StartToEnd -> {
-                        Icon(
-                            Icons.Rounded.Archive,
-                            contentDescription = "Archive",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        if (endIsDelete) {
+                            Icon(
+                                Icons.Rounded.Archive,
+                                contentDescription = "Archive",
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        } else {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.onError
+                            )
+                        }
                     }
                     else -> {}
                 }
@@ -553,13 +631,14 @@ private fun SwipeConversationItem(
     }
 
     LaunchedEffect(dismissState.currentValue) {
+        val endIsDelete = !settings.reverseSwipe
         when (dismissState.currentValue) {
             SwipeToDismissBoxValue.StartToEnd -> {
-                onArchive()
+                if (endIsDelete) onArchive() else onDelete()
                 dismissState.snapTo(SwipeToDismissBoxValue.Settled)
             }
             SwipeToDismissBoxValue.EndToStart -> {
-                onDelete()
+                if (endIsDelete) onDelete() else onArchive()
                 dismissState.snapTo(SwipeToDismissBoxValue.Settled)
             }
             else -> {}
@@ -572,7 +651,9 @@ private data class RowSettings(
     val draftsEnabled: Boolean,
     val archivingEnabled: Boolean,
     val blockingEnabled: Boolean,
-    val swipeEnabled: Boolean
+    val swipeEnabled: Boolean,
+    val reverseSwipe: Boolean = false,
+    val hideLinks: Boolean = false
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -629,8 +710,9 @@ private fun ConversationRow(
                 Spacer(Modifier.height(2.dp))
                 val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
                 if (hasDraft) {
+                    val draft = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
                     Text(
-                        text = "Draft: ${convo.draft}",
+                        text = "Draft: $draft",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
@@ -638,10 +720,12 @@ private fun ConversationRow(
                     )
                 } else {
                     val snippet =
-                        if (convo.isMe && convo.snippet.isNotEmpty()) "You: ${convo.snippet}"
-                        else convo.snippet
+                        if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
+                    val preview =
+                        if (convo.isMe && snippet.isNotEmpty()) "You: $snippet"
+                        else snippet
                     Text(
-                        text = snippet,
+                        text = preview,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Normal,
                         color = if (convo.unreadCount > 0) MaterialTheme.colorScheme.onSurface
