@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
@@ -72,6 +73,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -90,6 +92,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.Conversation
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -101,6 +104,11 @@ fun ConversationsScreen(
     onOpenSettings: () -> Unit
 ) {
     val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
+    // Recreated on empty→loaded so the list opens at the top (no restored offset, no anchor jump).
+    val listState = remember(conversations.isNotEmpty()) { LazyListState(0, 0) }
+    var surfacedUnread by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
+    var userScrolledAway by remember { mutableStateOf(false) }
+    var unreadSeeded by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var showArchived by remember { mutableStateOf(false) }
@@ -162,7 +170,18 @@ fun ConversationsScreen(
     LaunchedEffect(loaded) {
         if (loaded && !vm.hasLoadedOnce) vm.hasLoadedOnce = true
     }
-
+    // Only a real scroll gesture counts; idle anchor shifts must not flip this.
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            Triple(
+                listState.isScrollInProgress,
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+        }.collect { (scrolling, index, offset) ->
+            if (scrolling) userScrolledAway = !(index == 0 && offset == 0)
+        }
+    }
     BackHandler(enabled = searching) {
         searching = false
         query = ""
@@ -232,6 +251,25 @@ fun ConversationsScreen(
                 list
             }
         }
+    }
+
+    // Reveal a new unread only while the user is still at the top.
+    LaunchedEffect(displayed) {
+        if (showArchived || query.isNotBlank()) {
+            surfacedUnread = displayed.associate { it.id to it.unreadCount }
+            unreadSeeded = true
+            return@LaunchedEffect
+        }
+        // Seed on the first real emission; the empty one is just the initial query.
+        if (displayed.isEmpty()) return@LaunchedEffect
+        val prev = surfacedUnread
+        val increased = displayed.firstOrNull { it.unreadCount > (prev[it.id] ?: 0) }
+        surfacedUnread = displayed.associate { it.id to it.unreadCount }
+        if (unreadSeeded && increased != null && !userScrolledAway) {
+            val idx = displayed.indexOfFirst { it.id == increased.id }
+            if (idx >= 0) listState.scrollToItem(idx)
+        }
+        unreadSeeded = true
     }
 
     Scaffold(
@@ -380,7 +418,7 @@ fun ConversationsScreen(
                     }
                 }
             } else {
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
                     items(displayed, key = { it.id }) { convo ->
                         SwipeableConversationItem(
                             settings = rowSettings,

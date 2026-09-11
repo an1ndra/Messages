@@ -296,10 +296,28 @@ fun ChatScreen(
     }
     BackHandler(onBack = ::leaveChat)
 
-    // Auto-scroll only on a NEW message id, not on status transitions
+    // Bottom on load + new messages. totalItemsCount includes skeleton/load-earlier rows.
+    var hasScrolledToBottom by remember(conversationId) { mutableStateOf(false) }
     val newestId = messages.lastOrNull()?.id
     LaunchedEffect(newestId) {
-        if (newestId != null) listState.scrollToItem(messages.size - 1)
+        if (newestId != null) {
+            val target = listState.layoutInfo.totalItemsCount
+            if (target > 0) {
+                listState.scrollToItem(target)
+                hasScrolledToBottom = true
+            }
+        }
+    }
+    // Retry once if the first scroll raced the layout pass.
+    LaunchedEffect(messages.size) {
+        if (!hasScrolledToBottom && messages.isNotEmpty()) {
+            delay(80)
+            val target = listState.layoutInfo.totalItemsCount
+            if (target > 0) {
+                listState.scrollToItem(target)
+                hasScrolledToBottom = true
+            }
+        }
     }
     // Load chunks while pinned near the bottom so inserting rows doesn't jump the view
     LaunchedEffect(pageLimit, totalCount) {
