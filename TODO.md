@@ -36,6 +36,14 @@ Fix: `forwardingEnabled: Boolean` threaded from `ChatScreen` → `ChatMessageLis
 Verified on emulator: Forwarding off → long-press shows only Copy/Lock; Forwarding on → Copy/Forward/Lock.
 Files: `ui/ChatScreen.kt`.
 
+## P1 · Recognize phone numbers with parenthesized area codes (issue #176)
+
+✅ USER REPORT: sending to numbers stored as `(555) 555-0123` was blocked with "You can't send messages to alphanumeric senders" — `isPhoneNumber()` only allowed digits and `+`, so parenthesized area codes failed the guard.
+Fix: `isPhoneNumber()` (ui/ChatScreen.kt) now also permits `( ) - . ` and spaces while still rejecting letters (alphanumeric senders like DK-AIRCEL stay blocked); `SmsSender` normalizes the stored address before `sendTextMessage` (strips formatting, keeps digits + optional leading `+`) via new `normalizeAddress()`.
+Verified on emulator-5554: NewChat manual entry `(555) 555-0999` accepted ("Send to" enabled, no error), `VM-HDFCBK` still rejected, chat send hands off cleanly (message 29 status `sent`, convo address stored raw as `(555) 555-0999`). Test: `scripts/test-parentheses-number.sh`.
+
+Files: `ui/ChatScreen.kt`, `sms/SmsSupport.kt`, `scripts/test-parentheses-number.sh`, `TODO.md`.
+
 Hand this file + AGENTS.md (same folder) to any AI agent. Tasks are ordered by
 priority; each has acceptance criteria and file pointers. Verify on
 `emulator-5554` with `scripts/*.sh` before marking done.
