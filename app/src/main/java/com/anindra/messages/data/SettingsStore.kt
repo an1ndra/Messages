@@ -36,12 +36,16 @@ class SettingsStore(context: Context) {
         const val KEY_DELAYED_SENDING_ENABLED = "delayed_sending_enabled"
         const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_HIGHLIGHT_LINKS = "highlight_links"
+        const val KEY_HIDE_LINKS = "hide_links"
         const val KEY_PRIVACY_MODE = "privacy_mode"
         const val KEY_APP_LOCK = "app_lock_enabled"
         const val KEY_FIRST_IMPORT_DONE = "first_import_done"
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
+        const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
+        const val KEY_REVERSE_SWIPE = "reverse_swipe_enabled"
+        const val KEY_LINK_WARNING = "link_open_warning_enabled"
         const val DEFAULTS_NOTIFICATIONS = true
         const val DEFAULTS_SOUNDS = true
         const val DEFAULTS_DELIVERY = false
@@ -110,7 +114,24 @@ class SettingsStore(context: Context) {
 
     var highlightLinks: Boolean
         get() = prefs.getBoolean(KEY_HIGHLIGHT_LINKS, true)
-        set(v) { prefs.edit().putBoolean(KEY_HIGHLIGHT_LINKS, v).apply(); _revision.value++ }
+        set(v) {
+            val editor = prefs.edit().putBoolean(KEY_HIGHLIGHT_LINKS, v)
+            if (!v) editor.putBoolean(KEY_LINK_WARNING, false)
+            editor.apply()
+            _revision.value++
+        }
+
+    var hideLinks: Boolean
+        get() = prefs.getBoolean(KEY_HIDE_LINKS, false)
+        set(v) {
+            val editor = prefs.edit().putBoolean(KEY_HIDE_LINKS, v)
+            if (v) {
+                editor.putBoolean(KEY_HIGHLIGHT_LINKS, false)
+                editor.putBoolean(KEY_LINK_WARNING, false)
+            }
+            editor.apply()
+            _revision.value++
+        }
 
     var privacyModeEnabled: Boolean
         get() = prefs.getBoolean(KEY_PRIVACY_MODE, false)
@@ -135,4 +156,20 @@ class SettingsStore(context: Context) {
     var showSimIndicator: Boolean
         get() = prefs.getBoolean(KEY_SHOW_SIM_INDICATOR, true)
         set(v) { prefs.edit().putBoolean(KEY_SHOW_SIM_INDICATOR, v).apply(); _revision.value++ }
+
+    var permanentDeleteEnabled: Boolean
+        get() = prefs.getBoolean(KEY_PERMANENT_DELETE, false)
+        set(v) { prefs.edit().putBoolean(KEY_PERMANENT_DELETE, v).apply(); _revision.value++ }
+
+    var reverseSwipeEnabled: Boolean
+        get() = prefs.getBoolean(KEY_REVERSE_SWIPE, false)
+        set(v) { prefs.edit().putBoolean(KEY_REVERSE_SWIPE, v).apply(); _revision.value++ }
+
+    var linkOpenWarningEnabled: Boolean
+        get() = prefs.getBoolean(KEY_LINK_WARNING, true)
+        set(v) {
+            val enabled = v && highlightLinks && !hideLinks
+            prefs.edit().putBoolean(KEY_LINK_WARNING, enabled).apply()
+            _revision.value++
+        }
 }

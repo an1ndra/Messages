@@ -20,6 +20,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -65,6 +66,7 @@ import com.anindra.messages.ui.ConversationsScreen
 import com.anindra.messages.ui.ContactDetailsScreen
 import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.SettingsScreen
+import com.anindra.messages.ui.AdvancedSettingsScreen
 import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.MessagesTheme
@@ -158,7 +160,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         n
     }
 
-    fun deleteConversation(id: Long) = scope.launch { repo.trashConversationSuspend(id) }
+    fun deleteConversation(id: Long) = scope.launch {
+        if (settings.permanentDeleteEnabled) repo.deleteConversationSuspend(id)
+        else repo.trashConversationSuspend(id)
+    }
 
     fun restoreFromTrash(id: Long) = scope.launch { repo.restoreFromTrashSuspend(id) }
 
@@ -506,6 +511,9 @@ class MainActivity : FragmentActivity() {
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
                 var defaultSmsChecked by remember { mutableStateOf(false) }
+                // Hoisted so the Settings list keeps its scroll position when
+                // navigating into Advanced and back.
+                val settingsScroll = rememberScrollState()
 
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     if (navRoute != "settings") {
@@ -558,11 +566,12 @@ class MainActivity : FragmentActivity() {
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "trash" -> navRoute = "settings"
+                        "advanced" -> navRoute = "settings"
                         else -> navRoute = "list"
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2)
+                val routeDepth = mapOf("list" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2)
                 val isList = navRoute == "list"
                 val isChat = navRoute == "chat"
 
@@ -580,10 +589,10 @@ class MainActivity : FragmentActivity() {
                             val from = routeDepth[initialState] ?: 0
                             val to = routeDepth[targetState] ?: 0
                             when {
-                                to > from -> slideInHorizontally(tween(280)) { it } + fadeIn(tween(180)) togetherWith
-                                    slideOutHorizontally(tween(280)) { -it / 3 } + fadeOut(tween(150))
-                                to < from -> slideInHorizontally(tween(280)) { -it / 3 } + fadeIn(tween(180)) togetherWith
-                                    slideOutHorizontally(tween(280)) { it } + fadeOut(tween(150))
+                                to > from -> slideInHorizontally(tween(300)) { it } togetherWith
+                                    slideOutHorizontally(tween(300)) { -it }
+                                to < from -> slideInHorizontally(tween(300)) { -it } togetherWith
+                                    slideOutHorizontally(tween(300)) { it }
                                 else -> fadeIn(tween(150)) togetherWith fadeOut(tween(150))
                             }
                         },
@@ -608,7 +617,13 @@ class MainActivity : FragmentActivity() {
                                     "settings" -> SettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "list" },
-                                        onOpenTrash = { navRoute = "trash" }
+                                        onOpenTrash = { navRoute = "trash" },
+                                        onOpenAdvanced = { navRoute = "advanced" },
+                                        scrollState = settingsScroll
+                                    )
+                                    "advanced" -> AdvancedSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" }
                                     )
                                     "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
                                     "details" -> ContactDetailsScreen(

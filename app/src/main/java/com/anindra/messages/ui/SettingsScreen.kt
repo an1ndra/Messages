@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -58,6 +59,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -65,6 +67,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
+import com.anindra.messages.sms.NotificationHelper
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -76,7 +79,9 @@ private enum class PinDialogMode { SET, ENTER }
 fun SettingsScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
-    onOpenTrash: () -> Unit = {}
+    onOpenTrash: () -> Unit = {},
+    onOpenAdvanced: () -> Unit = {},
+    scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
 
@@ -101,7 +106,6 @@ fun SettingsScreen(
     var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
     var scheduledMessages by remember(revision) { mutableStateOf(vm.settings.scheduledMessagesEnabled) }
     var delayedSending by remember(revision) { mutableStateOf(vm.settings.delayedSendingEnabled) }
-    var highlightLinks by remember(revision) { mutableStateOf(vm.settings.highlightLinks) }
     var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
     var delaySeconds by remember(revision) { mutableIntStateOf(vm.settings.delaySeconds) }
@@ -177,7 +181,7 @@ fun SettingsScreen(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 12.dp)
         ) {
             Spacer(Modifier.height(8.dp))
@@ -197,9 +201,13 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     title = "Receive sound",
-                    subtitle = "Play sound when receiving a message",
+                    subtitle = "Use the system notification sound when a message arrives",
                     checked = receiveSound,
-                    onChecked = { receiveSound = it; vm.settings.receiveSoundEnabled = it }
+                    onChecked = {
+                        receiveSound = it
+                        vm.settings.receiveSoundEnabled = it
+                        NotificationHelper.ensureChannel(context)
+                    }
                 )
                 SettingsRow(
                     title = "Delivery reports",
@@ -300,12 +308,6 @@ fun SettingsScreen(
                     onChecked = { forwarding = it; vm.settings.forwardingEnabled = it }
                 )
                 SettingsRow(
-                    title = "Highlight links",
-                    subtitle = "Tap links in messages to open the website",
-                    checked = highlightLinks,
-                    onChecked = { highlightLinks = it; vm.settings.highlightLinks = it }
-                )
-                SettingsRow(
                     title = "Scheduled messages",
                     subtitle = "Enable scheduling messages",
                     checked = scheduledMessages,
@@ -327,6 +329,16 @@ fun SettingsScreen(
                         onClick = { delayDialog = true }
                     )
                 }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            SettingsGroup {
+                SettingsRow(
+                    title = "Advanced",
+                    subtitle = "Permanent delete, swipe direction, link behaviour",
+                    onClick = onOpenAdvanced
+                )
             }
 
             Spacer(Modifier.height(8.dp))
@@ -747,7 +759,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsGroup(content: @Composable () -> Unit) {
+fun SettingsGroup(content: @Composable () -> Unit) {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
@@ -793,24 +805,26 @@ private fun ImportChoiceRow(
 }
 
 @Composable
-private fun SettingsRow(
+fun SettingsRow(
     title: String,
     subtitle: String?,
     checked: Boolean? = null,
     onChecked: ((Boolean) -> Unit)? = null,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    enabled: Boolean = true
 ) {
+    val contentAlpha = if (enabled) 1f else 0.38f
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 60.dp)
-            .clickable(enabled = onClick != null || checked != null) {
+            .clickable(enabled = enabled && (onClick != null || checked != null)) {
                 if (checked != null && onChecked != null) onChecked(!checked) else onClick?.invoke()
             }
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f).alpha(contentAlpha)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge
@@ -829,6 +843,7 @@ private fun SettingsRow(
             Switch(
                 checked = checked,
                 onCheckedChange = { onChecked(it) },
+                enabled = enabled,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = MaterialTheme.colorScheme.primary,
                     checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
