@@ -75,11 +75,13 @@ dump_ui
 check_absent "parenthesized number accepted (no error)" "Only phone numbers can be messaged"
 check_present "manual-send entry shown" "Send to"
 
-info "Switching to alphanumeric sender: VM-HDFCBK"
-clear_field
-type_safe "VM-HDFCBK"; sleep 1
-dump_ui
-check_present "alphanumeric sender still rejected" "Only phone numbers can be messaged"
+for SENDER in "VM-HDFCBK" "AD-KOTAKB-S" "JE-JioPay-S"; do
+    info "Switching to alphanumeric sender: $SENDER"
+    clear_field
+    type_safe "$SENDER"; sleep 1
+    dump_ui
+    check_present "alphanumeric sender '$SENDER' still rejected" "Only phone numbers can be messaged"
+done
 
 info "Re-entering parenthesized number and opening chat"
 clear_field
