@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,7 +80,8 @@ fun SettingsScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
     onOpenTrash: () -> Unit = {},
-    onOpenAdvanced: () -> Unit = {}
+    onOpenAdvanced: () -> Unit = {},
+    scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
 
@@ -179,7 +181,7 @@ fun SettingsScreen(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 12.dp)
         ) {
             Spacer(Modifier.height(8.dp))

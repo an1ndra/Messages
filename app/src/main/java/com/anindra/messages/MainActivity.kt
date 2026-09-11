@@ -20,6 +20,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -510,6 +511,9 @@ class MainActivity : FragmentActivity() {
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
                 var defaultSmsChecked by remember { mutableStateOf(false) }
+                // Hoisted so the Settings list keeps its scroll position when
+                // navigating into Advanced and back.
+                val settingsScroll = rememberScrollState()
 
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     if (navRoute != "settings") {
@@ -614,7 +618,8 @@ class MainActivity : FragmentActivity() {
                                         vm = vm,
                                         onBack = { navRoute = "list" },
                                         onOpenTrash = { navRoute = "trash" },
-                                        onOpenAdvanced = { navRoute = "advanced" }
+                                        onOpenAdvanced = { navRoute = "advanced" },
+                                        scrollState = settingsScroll
                                     )
                                     "advanced" -> AdvancedSettingsScreen(
                                         vm = vm,
