@@ -120,6 +120,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
+import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
 import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.incomingBubble
@@ -495,6 +496,7 @@ fun ChatScreen(
                     sims = sims,
                     highlightLinks = vm.settings.highlightLinks,
                     linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
+                    hideLinks = vm.settings.hideLinks,
                     forwardingEnabled = vm.settings.forwardingEnabled,
                     unlockedIds = unlockedIds,
                     showEntrySkeleton = showEntrySkeleton,
@@ -857,6 +859,7 @@ private fun ChatMessageList(
     sims: List<SubscriptionInfo>,
     highlightLinks: Boolean,
     linkWarningEnabled: Boolean,
+    hideLinks: Boolean,
     forwardingEnabled: Boolean,
     unlockedIds: Set<Long>,
     showEntrySkeleton: Boolean,
@@ -907,6 +910,7 @@ private fun ChatMessageList(
                 onLongPress = { onLongPress(msg.id) },
                 highlightLinks = highlightLinks,
                 linkWarningEnabled = linkWarningEnabled,
+                hideLinks = hideLinks,
                 onLockUnlock = { wantLock -> onLockUnlock(msg.id, wantLock) },
                 isUnlocked = rowIsUnlocked,
                 showSimIndicator = showSimIndicator
@@ -1025,10 +1029,19 @@ fun openUrl(context: android.content.Context, url: String) {
 }
 
 @Composable
-private fun rememberLinkedText(body: String, highlight: Boolean, onLinkClick: (String) -> Unit = {}): AnnotatedString {
+private fun rememberLinkedText(
+    body: String,
+    highlight: Boolean,
+    hide: Boolean = false,
+    onLinkClick: (String) -> Unit = {}
+): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     val context = LocalContext.current
-    return produceState(AnnotatedString(body), body, highlight, linkColor) {
+    return produceState(AnnotatedString(body), body, highlight, hide, linkColor) {
+        if (hide) {
+            value = withContext(Dispatchers.Default) { AnnotatedString(hideUrls(body)) }
+            return@produceState
+        }
         if (!highlight) {
             value = AnnotatedString(body)
             return@produceState
@@ -1172,6 +1185,7 @@ fun MessageRow(
     onLongPress: () -> Unit = {},
     highlightLinks: Boolean = false,
     linkWarningEnabled: Boolean = true,
+    hideLinks: Boolean = false,
     onLockUnlock: (Boolean) -> Unit = {},
     isUnlocked: Boolean = false,
     showSimIndicator: Boolean = true
@@ -1182,7 +1196,11 @@ fun MessageRow(
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
-    val bodyText = rememberLinkedText(displayBody, highlightLinks && !isLockedAndHidden) { pendingUrl = it }
+    val bodyText = rememberLinkedText(
+        displayBody,
+        highlightLinks && !isLockedAndHidden,
+        hideLinks && !isLockedAndHidden
+    ) { pendingUrl = it }
 
     // cache derived text/sim so an unlock doesn't recompute row allocations
     val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp) }

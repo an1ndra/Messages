@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
 import com.anindra.messages.MainActivity
 import com.anindra.messages.R
+import com.anindra.messages.hideUrls
 
 object NotificationHelper {
     private const val CHANNEL_ID = "messages"
@@ -98,7 +99,11 @@ object NotificationHelper {
             .addRemoteInput(remoteInput).build()
 
         val title = if (privacyMode) "New message" else from
-        val text = if (privacyMode) "You have a new message" else body
+        val text = when {
+            privacyMode -> "You have a new message"
+            app.repository.settings.hideLinks -> hideUrls(body)
+            else -> body
+        }
 
         // Use the system default notification sound. Notification channels are
         // immutable after creation (a legacy install may still carry the old
