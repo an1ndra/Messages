@@ -296,27 +296,22 @@ fun ChatScreen(
     }
     BackHandler(onBack = ::leaveChat)
 
-    // Bottom on load + new messages. totalItemsCount includes skeleton/load-earlier rows.
+    // Bottom on load + new messages. Int.MAX_VALUE clamps to the last row, so the newest
+    // message is brought into view even before layout has counted the freshly added row.
     var hasScrolledToBottom by remember(conversationId) { mutableStateOf(false) }
     val newestId = messages.lastOrNull()?.id
     LaunchedEffect(newestId) {
         if (newestId != null) {
-            val target = listState.layoutInfo.totalItemsCount
-            if (target > 0) {
-                listState.scrollToItem(target)
-                hasScrolledToBottom = true
-            }
+            listState.scrollToItem(Int.MAX_VALUE)
+            hasScrolledToBottom = true
         }
     }
     // Retry once if the first scroll raced the layout pass.
     LaunchedEffect(messages.size) {
         if (!hasScrolledToBottom && messages.isNotEmpty()) {
             delay(80)
-            val target = listState.layoutInfo.totalItemsCount
-            if (target > 0) {
-                listState.scrollToItem(target)
-                hasScrolledToBottom = true
-            }
+            listState.scrollToItem(Int.MAX_VALUE)
+            hasScrolledToBottom = true
         }
     }
     // Load chunks while pinned near the bottom so inserting rows doesn't jump the view
