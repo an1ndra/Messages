@@ -537,7 +537,7 @@ class Repository(private val context: Context) {
     private fun touchConversation(conversationId: Long, snippet: String, ts: Long, isMe: Boolean) {
         db.writableDatabase.execSQL(
             "UPDATE conversations SET snippet=?,timestamp=?,unread_count=0,last_is_me=?,deleted_at=0 WHERE id=?",
-            arrayOf(snippet, ts, if (isMe) 1 else 0, conversationId)
+            arrayOf<Any?>(snippet, ts, if (isMe) 1 else 0, conversationId)
         )
         notifyChanged()
     }
@@ -552,12 +552,12 @@ class Repository(private val context: Context) {
         db.writableDatabase.execSQL(
             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,sub_id)
                VALUES(?,?,?,?,?,?,?)""",
-            arrayOf(convoId, body, now, 0, "received", sysId, subId)
+            arrayOf<Any?>(convoId, body, now, 0, "received", sysId, subId)
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
                unread_count=unread_count+1 WHERE id=?""",
-            arrayOf(body, now, convoId)
+            arrayOf<Any?>(body, now, convoId)
         )
         notifyChanged()
         return convoId
@@ -615,7 +615,7 @@ class Repository(private val context: Context) {
         }
         db.writableDatabase.execSQL(
             "UPDATE conversations SET snippet=?, timestamp=?, last_is_me=? WHERE id=?",
-            arrayOf(snippet, if (found) ts else 0L, if (isMe) 1 else 0, conversationId.toString())
+            arrayOf<Any?>(snippet, if (found) ts else 0L, if (isMe) 1 else 0, conversationId.toString())
         )
     }
 
@@ -789,14 +789,14 @@ class Repository(private val context: Context) {
     fun setReactionsSuspend(messageId: Long, reactions: Map<String, Int>) {
         db.writableDatabase.execSQL(
             "UPDATE messages SET reactions=? WHERE id=?",
-            arrayOf(serializeReactions(reactions), messageId)
+            arrayOf<Any?>(serializeReactions(reactions), messageId)
         )
         notifyChanged()
     }
 
     fun markMessageStatusSuspend(messageId: Long, status: String) {
         db.writableDatabase.execSQL(
-            "UPDATE messages SET status=? WHERE id=?", arrayOf(status, messageId)
+            "UPDATE messages SET status=? WHERE id=?", arrayOf<Any?>(status, messageId)
         )
         notifyChanged()
     }
@@ -846,7 +846,7 @@ class Repository(private val context: Context) {
         val now = System.currentTimeMillis()
         db.writableDatabase.execSQL(
             "UPDATE conversations SET draft=?,draft_date=? WHERE id=?",
-            arrayOf(draft, now, conversationId)
+            arrayOf<Any?>(draft, now, conversationId)
         )
         notifyChanged()
     }
@@ -1260,14 +1260,14 @@ class Repository(private val context: Context) {
                 for ((tId, n) in newest) {
                     target.execSQL(
                         "UPDATE conversations SET snippet=?,timestamp=?,last_is_me=? WHERE id=? AND timestamp<?",
-                        arrayOf(n.second, n.first, n.third, tId, n.first)
+                        arrayOf<Any?>(n.second, n.first, n.third, tId, n.first)
                     )
                 }
 
                 for ((tId, n) in unreadBump) {
                     target.execSQL(
                         "UPDATE conversations SET unread_count=unread_count+? WHERE id=?",
-                        arrayOf(n, tId)
+                        arrayOf<Any?>(n, tId)
                     )
                 }
 
@@ -1287,7 +1287,7 @@ class Repository(private val context: Context) {
                         val tId = convoMap[c.getLong(0)] ?: continue
                         target.execSQL(
                             "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled) VALUES(?,?)",
-                            arrayOf(tId, c.getInt(1))
+                            arrayOf<Any?>(tId, c.getInt(1))
                         )
                     }
                 }
@@ -1494,7 +1494,7 @@ class Repository(private val context: Context) {
                                     db.writableDatabase.execSQL(
                                         """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,sub_id)
                                            VALUES(?,?,?,?,?,?,?)""",
-                                        arrayOf(cid, m.body, m.date, if (isMe) 1 else 0,
+                                        arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
                                             when (m.type) {
                                                 android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
                                                 android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
@@ -1609,7 +1609,7 @@ class Repository(private val context: Context) {
                 }
                 db.writableDatabase.execSQL(
                     "UPDATE conversations SET draft=?, archived=? WHERE id=?",
-                    arrayOf(if (pDraft.isEmpty()) sDraft else pDraft, if (pArchived == 1 || sArchived == 1) 1 else 0, p.toString())
+                    arrayOf<Any?>(if (pDraft.isEmpty()) sDraft else pDraft, if (pArchived == 1 || sArchived == 1) 1 else 0, p.toString())
                 )
                 db.writableDatabase.execSQL(
                     "UPDATE messages SET conversation_id=? WHERE conversation_id=?",

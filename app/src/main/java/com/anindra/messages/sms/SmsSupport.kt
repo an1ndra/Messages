@@ -200,12 +200,7 @@ object NotificationHelper {
             .setContentIntent(tap)
             .addAction(replyAction)
         if (app.repository.settings.receiveSoundEnabled) {
-            // Mirror the channel tone onto the platform notification field so
-            // status dumps agree with what the channel actually plays.
-            val n = builder.build()
-            n.sound = selectedSoundUri(context)
-                ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
-            notify(context, notifId, n)
+            notify(context, notifId, builder.build())
         } else {
             notify(context, notifId, builder.setSilent(true).build())
         }
@@ -282,11 +277,10 @@ object NotificationHelper {
 
 object SmsSender {
 
-    private fun manager(subscriptionId: Int): android.telephony.SmsManager =
-        if (subscriptionId != -1)
-            android.telephony.SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
-        else
-            android.telephony.SmsManager.getDefault()
+    private fun manager(context: Context, subscriptionId: Int): android.telephony.SmsManager {
+        val sm = context.getSystemService(android.telephony.SmsManager::class.java)
+        return if (subscriptionId != -1) sm.createForSubscriptionId(subscriptionId) else sm
+    }
 
     /**
      * Sends via the framework with sent/delivery callbacks; SmsStatusReceiver
@@ -300,7 +294,7 @@ object SmsSender {
         subscriptionId: Int = -1,
         wantDeliveryReport: Boolean = false
     ): Boolean = try {
-        val sm = manager(subscriptionId)
+        val sm = manager(context, subscriptionId)
         val sent = PendingIntent.getBroadcast(
             context, (messageId % Int.MAX_VALUE).toInt(),
             Intent(SmsStatusReceiver.ACTION_SMS_SENT)
@@ -360,7 +354,7 @@ object SmsSender {
                 .putExtra(SmsStatusReceiver.EXTRA_MESSAGE_ID, messageId),
             PendingIntent.FLAG_IMMUTABLE
         )
-        manager(subscriptionId).sendMultimediaMessage(context, media, null, null, sent)
+        manager(context, subscriptionId).sendMultimediaMessage(context, media, null, null, sent)
         true
     } catch (_: Exception) {
         false
