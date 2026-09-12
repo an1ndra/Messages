@@ -109,6 +109,8 @@ val ColorScheme.outgoingBubble: Color get() = primaryContainer          // GM bl
 val ColorScheme.incomingBubble: Color get() = surfaceContainerHighest   // GM grey bubble
 val ColorScheme.chatBar: Color get() = surfaceContainerLow              // input / top bars
 val ColorScheme.inputPill: Color get() = surfaceContainerHigh           // text field pill
+val ColorScheme.selectedBubble: Color get() = Color(0xFF1A46A0)         // GM selection navy
+val ColorScheme.onSelectedBubble: Color get() = Color.White             // text on a selected bubble
 
 // Chat date separators and message times use the platform default typeface
 // at a slightly lighter weight than surrounding text.

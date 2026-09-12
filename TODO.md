@@ -1,5 +1,25 @@
 # TODO
 
+## Bug · Copy/Forward must hide URLs when "Hide links from messages" is ON (2026-09-12)
+
+✅ USER REQUEST: with "Hide links" enabled the chat strips the URL, but the
+Copy menu pasted the RAW body with the URL, and Forwarding sent it the same way.
+What you see must be what you copy/send.
+Implementation:
+- `ui/ChatScreen.kt` (both bubble composables, `ChatBubble` + `MessageRow`): the
+  Copy menu item now derives the text from the same rules as the display —
+  `isLockedAndHidden -> "@Lock"`, `hideLinks -> hideUrls(msg.body)`, else raw.
+- `MainActivity.kt` `forwardMessage`: forwards the URL-redacted body when
+  hide-links is ON.
+- Audited the remaining raw-body paths: notification snippet and home-list
+  preview/draft already redact; "Copy link" is only reachable on a visibly
+  highlighted link (impossible while hiding); `sendText`/`retryMessage` are the
+  real SMS send path and must stay raw.
+Test: `scripts/test-hide-links.sh` now long-presses a bubble, taps Copy, pastes
+into the compose input (`KEYCODE_PASTE`), and reads the EditText back — asserts
+the clipboard has no URL while hide is ON and includes the URL again once OFF
+(31/31).
+
 ## Feature · Notification sound picker + preview on selection (2026-09-12)
 
 ✅ USER REQUEST: let the user pick the incoming-message notification sound in Settings (Default + bundled tones instead of only the system default), hear a preview when picking an option, and tighten the gap between the picker options.

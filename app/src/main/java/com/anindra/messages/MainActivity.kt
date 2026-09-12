@@ -348,7 +348,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun forwardMessage(messageId: Long, targetConversationId: Long) {
         scope.launch {
             val msg = repo.messageByIdSuspend(messageId) ?: return@launch
-            repo.sendText(targetConversationId, msg.body, settings.simSubscriptionId)
+            val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
+            repo.sendText(targetConversationId, text, settings.simSubscriptionId)
         }
     }
 

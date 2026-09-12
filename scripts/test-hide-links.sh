@@ -64,6 +64,63 @@ open_advanced() {
     sleep 1.5
 }
 
+# Long-press the bubble whose displayed text contains $1, tap Copy, then paste
+# into the compose input and leave the resulting EditText text in $PASTED_TEXT.
+# Reads it back through the app (the clipboard can't be dumped reliably from
+# adb here), so the caller can assert what the user actually copied.
+PASTED_TEXT=
+copy_bubble_into_input() {
+    local q b x1 y1 y2 lx ly i
+    PASTED_TEXT=
+    q=$(re_escape "$1")
+    for i in 1 2 3; do
+        dump_ui && break
+        sleep 1
+    done
+    b=$(grep -oE "(text|content-desc)=\"[^\"]*$q[^\"]*\"[^>]*bounds=\"\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]\"" \
+        "$TMP/ui.xml" 2>/dev/null | head -1 | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' | head -1)
+    [ -z "$b" ] && { echo "[copy] bubble '$1' not found"; return 1; }
+    x1=$(sed -E 's/\[([0-9]+),([0-9]+)\].*/\1/' <<< "$b")
+    y1=$(sed -E 's/\[[0-9]+,([0-9]+)\].*/\1/' <<< "$b")
+    y2=$(sed -E 's/.*\]\[[0-9]+,([0-9]+)\]/\1/' <<< "$b")
+    # Long-press the bubble's left padding rather than the text itself: a
+    # highlighted URL takes the gesture at its own coordinates and pops the
+    # link warning instead of the message menu.
+    lx=$((x1 - 25)); [ $lx -lt 32 ] && lx=32
+    ly=$(( (y1 + y2) / 2 ))
+    adb_ shell input motionevent DOWN $lx $ly
+    sleep 1.2
+    adb_ shell input motionevent UP $lx $ly
+    sleep 1.5
+    if ! tap_text "Copy" >/dev/null 2>&1; then
+        # fallback: retry with the swipe-style long press once.
+        adb_ shell input swipe $lx $ly $lx $ly 900
+        sleep 1.5
+        tap_text "Copy" >/dev/null 2>&1 || return 1
+    fi
+    sleep 0.8
+    tap_edittext >/dev/null 2>&1 || return 1
+    sleep 1
+    adb_ shell input keyevent 279   # KEYCODE_PASTE
+    sleep 1.5
+    for i in 1 2 3; do
+        dump_ui && break
+        sleep 1
+    done
+    PASTED_TEXT=$(python3 -c '
+import re, sys
+best = ""
+for m in re.finditer(r"<node [^>]*>", open(sys.argv[1], errors="replace").read()):
+    tag = m.group(0)
+    if "class=\"android.widget.EditText\"" in tag:
+        t = re.search(r"text=\"([^\"]*)\"", tag)
+        best = t.group(1) if t else ""
+        break
+sys.stdout.write(best)
+' "$TMP/ui.xml")
+    [ -n "$PASTED_TEXT" ]
+}
+
 info "Opening Settings → Advanced"
 launch_settings
 open_advanced
@@ -175,6 +232,17 @@ else
     fail "only $seen/6 redacted link messages visible"
 fi
 
+info "Copy steps in the message body really hide the URL from the clipboard"
+copy_bubble_into_input "Msg $MANY_TAG-1 see"
+case "$PASTED_TEXT" in
+    *"Msg $MANY_TAG-1 see"*) pass "copied text matches the redacted bubble" ;;
+    *) fail "copied text missing '$MANY_TAG-1 see' (got: '$PASTED_TEXT')" ;;
+esac
+case "$PASTED_TEXT" in
+    *example.com*|*https:*|*\.com*) fail "copied text leaks the URL (got: '$PASTED_TEXT')" ;;
+    *) pass "copied text has no URL" ;;
+esac
+
 info "Turning 'Hide links from messages' OFF"
 launch_settings
 open_advanced
@@ -208,6 +276,19 @@ if grep -qF "[Link hidden]" "$TMP/ui.xml"; then
 else
     pass "no placeholder with hide OFF"
 fi
+info "Copy includes the URL again once hide is OFF"
+RESTORE_NUM=15551230666
+RESTORE_TAG="COPYURL$(date +%s)$$"
+adb_ emu sms send "$RESTORE_NUM" "See $RESTORE_TAG at https://www.example.com/deals now" >/dev/null
+sleep 2.5
+adb_ shell am force-stop "$PKG"; sleep 1
+adb_ shell am start -n "$ACT" --es open_conversation_address "$RESTORE_NUM" >/dev/null
+sleep 3.5
+copy_bubble_into_input "$RESTORE_TAG"
+case "$PASTED_TEXT" in
+    *"https://www.example.com/deals"*) pass "copied text includes the URL with hide OFF" ;;
+    *) fail "copied text missing the URL with hide OFF (got: '$PASTED_TEXT')" ;;
+esac
 
 info "Restoring defaults"
 launch_settings
