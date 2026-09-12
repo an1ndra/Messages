@@ -383,7 +383,7 @@ class Repository(private val context: Context) {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
             """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id FROM messages
-               WHERE conversation_id=? ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
+               WHERE conversation_id=? AND deleted_at=0 ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
             arrayOf(conversationId.toString(), limit.toString(), offset.toString())
         ).use { c ->
             while (c.moveToNext()) {
@@ -410,7 +410,7 @@ class Repository(private val context: Context) {
     fun messageCount(conversationId: Long): Int = runOnIo {
         var count = 0
         db.readableDatabase.rawQuery(
-            "SELECT COUNT(*) FROM messages WHERE conversation_id=?",
+            "SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0",
             arrayOf(conversationId.toString())
         ).use { if (it.moveToFirst()) count = it.getInt(0) }
         count
@@ -419,23 +419,36 @@ class Repository(private val context: Context) {
     fun messageCountFlow(conversationId: Long): Flow<Int> = observe {
         var count = 0
         db.readableDatabase.rawQuery(
-            "SELECT COUNT(*) FROM messages WHERE conversation_id=?",
+            "SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0",
             arrayOf(conversationId.toString())
         ).use { if (it.moveToFirst()) count = it.getInt(0) }
         count
     }
 
-    /** True when two stored addresses identify the same person despite spelling
-     *  differences (e.g. "+15551234567" vs "15551234567", the issue #183 case). */
+    /** True when two stored addresses identify the same person despite formatting
+     *  differences (e.g. "+15551234567" vs "15551234567", the issue #183 case).
+     *  Two pure-digit checks, in order: identical digit runs; and one side being
+     *  the international (E.164) spelling while the other is the same number with
+     *  the leading country/trunk code dropped — exactly 1–3 digits — e.g.
+     *  India "+919876543210"/"9876543210", China "8613812345678"/"13812345678",
+     *  Bangladesh "+8801712345678"/"01712345678", Indonesia "+628123456789"/
+     *  "08123456789", NANP "+15551234567"/"5551234567", UK "+447911234567"/
+     *  "07911234567". Deliberately no libphonenumber and no country-code table:
+     *  the shorter spelling must equal the longer one after dropping exactly
+     *  1–3 leading digits, so two genuinely different numbers can never fuse
+     *  (that would require them to be the same digit run). Runs once per
+     *  address on every lookup and _O(C²)_ inside [mergeSplitConversations] on
+     *  big phones, so it stays near-zero cost — no SIM/region/IP dependency. */
     private fun samePerson(a: String, b: String): Boolean {
         if (a == b) return true
         val da = a.filter { it.isDigit() }
         val db_ = b.filter { it.isDigit() }
         if (da.isEmpty() || db_.isEmpty()) return false
         if (da == db_) return true
-        if (android.telephony.PhoneNumberUtils.compare(context, a, b)) return true
-        return (da.length == 11 && da.startsWith("1") && da.drop(1) == db_) ||
-            (db_.length == 11 && db_.startsWith("1") && db_.drop(1) == da)
+        val diff = da.length - db_.length
+        if (diff in 1..3 && da.drop(diff) == db_) return true
+        val rev = db_.length - da.length
+        return rev in 1..3 && db_.drop(rev) == da
     }
 
     private fun matchConversationId(database: SQLiteDatabase, address: String): Long? {
@@ -566,32 +579,33 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
-    /** If [messageId] is the newest message in its conversation, rewrite that
-     *  row's snippet so a locked latest message doesn't leak on the home list
-     *  (lock → "@Lock", unlock → the message content). */
-    private fun refreshSnippetForLockToggle(messageId: Long) {
-        var convoId = -1L
+    /** Recomputes a conversation's snippet/timestamp/last_is_me from its newest
+     *  non-deleted message, honouring the "@Lock" masking for a locked latest
+     *  message. Falls back to an empty snippet when nothing is left. */
+    private fun refreshConversationSnippetFor(conversationId: Long) {
         var body = ""
         var mediaType = "text"
         var locked = false
+        var isMe = false
+        var ts = 0L
+        var found = false
         db.readableDatabase.rawQuery(
-            "SELECT conversation_id,body,media_type,locked FROM messages WHERE id=?",
-            arrayOf(messageId.toString())
+            """SELECT body,media_type,locked,is_me,timestamp FROM messages
+               WHERE conversation_id=? AND deleted_at=0
+               ORDER BY timestamp DESC, id DESC LIMIT 1""",
+            arrayOf(conversationId.toString())
         ).use { c ->
             if (c.moveToFirst()) {
-                convoId = c.getLong(0)
-                body = c.getString(1)
-                mediaType = c.getString(2)
-                locked = c.getInt(3) == 1
+                body = c.getString(0)
+                mediaType = c.getString(1)
+                locked = c.getInt(2) == 1
+                isMe = c.getInt(3) == 1
+                ts = c.getLong(4)
+                found = true
             }
         }
-        if (convoId == -1L) return
-        val newestId = db.readableDatabase.rawQuery(
-            "SELECT id FROM messages WHERE conversation_id=? ORDER BY timestamp DESC, id DESC LIMIT 1",
-            arrayOf(convoId.toString())
-        ).use { c -> if (c.moveToFirst()) c.getLong(0) else -1L }
-        if (newestId != messageId) return
         val snippet = when {
+            !found -> ""
             locked -> "@Lock"
             mediaType == "text" -> body
             mediaType == "image" -> "Photo"
@@ -600,9 +614,50 @@ class Repository(private val context: Context) {
             else -> "Attachment"
         }
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET snippet=? WHERE id=?",
-            arrayOf(snippet, convoId.toString())
+            "UPDATE conversations SET snippet=?, timestamp=?, last_is_me=? WHERE id=?",
+            arrayOf(snippet, if (found) ts else 0L, if (isMe) 1 else 0, conversationId.toString())
         )
+    }
+
+    /** Hides ([deleted]=true) or restores a single message. Soft delete keeps the
+     *  row so the home-list preview can be recomputed and so a later system sync
+     *  does not re-import it (sync dedupes on sys_id, which stays present). */
+    private fun setMessageDeleted(messageId: Long, deleted: Boolean) {
+        var convoId = -1L
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id FROM messages WHERE id=?",
+            arrayOf(messageId.toString())
+        ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
+        if (convoId == -1L) return
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET deleted_at=? WHERE id=?",
+            arrayOf(if (deleted) System.currentTimeMillis() else 0L, messageId)
+        )
+        refreshConversationSnippetFor(convoId)
+        notifyChanged()
+    }
+
+    fun deleteMessageSuspend(messageId: Long) = runOnIo { setMessageDeleted(messageId, true) }
+
+    fun restoreMessageSuspend(messageId: Long) = runOnIo { setMessageDeleted(messageId, false) }
+
+    /** If [messageId] is the newest message in its conversation, rewrite that
+     *  row's snippet so a locked latest message doesn't leak on the home list
+     *  (lock → "@Lock", unlock → the message content). */
+    private fun refreshSnippetForLockToggle(messageId: Long) {
+        var convoId = -1L
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id FROM messages WHERE id=?",
+            arrayOf(messageId.toString())
+        ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
+        if (convoId == -1L) return
+        val newestId = db.readableDatabase.rawQuery(
+            """SELECT id FROM messages WHERE conversation_id=? AND deleted_at=0
+               ORDER BY timestamp DESC, id DESC LIMIT 1""",
+            arrayOf(convoId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getLong(0) else -1L }
+        if (newestId != messageId) return
+        refreshConversationSnippetFor(convoId)
     }
 
     fun setArchivedSuspend(conversationId: Long, archived: Boolean) {
@@ -620,6 +675,32 @@ class Repository(private val context: Context) {
 
     /** Moves a conversation to trash (soft delete); messages are kept for restore. */
     fun trashConversationSuspend(conversationId: Long) {
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET deleted_at=? WHERE id=?",
+            arrayOf(System.currentTimeMillis().toString(), conversationId.toString())
+        )
+        notifyChanged()
+    }
+
+    /** Moves a conversation to trash once it has nothing left to show: no
+     *  non-deleted messages and no draft worth keeping. Otherwise a no-op, so it
+     *  is safe to call on every exit from a chat. */
+    fun trashConversationIfEmptySuspend(conversationId: Long) {
+        var remaining = 0
+        var draft = ""
+        db.readableDatabase.rawQuery(
+            """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0), draft
+               FROM conversations WHERE id=? AND deleted_at=0""",
+            arrayOf(conversationId.toString(), conversationId.toString())
+        ).use { c ->
+            if (!c.moveToFirst()) return
+            remaining = c.getInt(0)
+            draft = c.getString(1) ?: ""
+        }
+        // A draft only keeps the chat around while drafts are actually surfaced;
+        // a leftover column value from when the feature was on must not.
+        val draftKeepsIt = settings.draftsEnabled && draft.isNotBlank()
+        if (remaining > 0 || draftKeepsIt) return
         db.writableDatabase.execSQL(
             "UPDATE conversations SET deleted_at=? WHERE id=?",
             arrayOf(System.currentTimeMillis().toString(), conversationId.toString())
@@ -1028,6 +1109,7 @@ class Repository(private val context: Context) {
                 // A restored backup should be fully visible: lift any
                 // conversations that were in the trash when the backup was made.
                 db.writableDatabase.execSQL("UPDATE conversations SET deleted_at=0 WHERE deleted_at>0")
+                db.writableDatabase.execSQL("UPDATE messages SET deleted_at=0")
                 // Mirror the restored history into the system SMS store.
                 pushLocalMessagesToProvider()
                 // Clean up
@@ -1119,7 +1201,8 @@ class Repository(private val context: Context) {
 
                 backup.rawQuery(
                     """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,
-                       reactions,sys_id,locked,sub_id FROM messages ORDER BY timestamp""", null
+                       reactions,sys_id,locked,sub_id FROM messages
+                       WHERE deleted_at=0 ORDER BY timestamp""", null
                 ).use { m ->
                     while (m.moveToNext()) {
                         val tId = convoMap[m.getLong(0)] ?: continue
@@ -1444,7 +1527,11 @@ class Repository(private val context: Context) {
                     refreshConversationSnippets()
                     notifyChanged()
                 }
-                runOnIo { mergeSplitConversations() }
+                // Fold split threads off the sync thread: runOnIo would block the
+                // single sync executor (future.get()) until the O(C²) heal finishes,
+                // which on a phone with hundreds of threads delays the "Loading" UI.
+                // Queued on the same executor so it stays serialized with imports.
+                syncExecutor.execute { mergeSplitConversations() }
                 settings.firstImportDone = true
             } catch (e: SecurityException) {
                 // no SMS access yet — keep firstImportDone=false so grant re-imports
@@ -1471,10 +1558,10 @@ class Repository(private val context: Context) {
     private fun refreshConversationSnippets() {
         db.writableDatabase.execSQL(
             """UPDATE conversations SET
-                 snippet=COALESCE((SELECT body FROM messages WHERE conversation_id=conversations.id ORDER BY timestamp DESC LIMIT 1),''),
-                 timestamp=COALESCE((SELECT MAX(timestamp) FROM messages WHERE conversation_id=conversations.id),0),
-                 last_is_me=COALESCE((SELECT is_me FROM messages WHERE conversation_id=conversations.id ORDER BY timestamp DESC LIMIT 1),0)
-               WHERE id IN (SELECT DISTINCT conversation_id FROM messages)"""
+                 snippet=COALESCE((SELECT body FROM messages WHERE conversation_id=conversations.id AND deleted_at=0 ORDER BY timestamp DESC LIMIT 1),''),
+                 timestamp=COALESCE((SELECT MAX(timestamp) FROM messages WHERE conversation_id=conversations.id AND deleted_at=0),0),
+                 last_is_me=COALESCE((SELECT is_me FROM messages WHERE conversation_id=conversations.id AND deleted_at=0 ORDER BY timestamp DESC LIMIT 1),0)
+               WHERE id IN (SELECT DISTINCT conversation_id FROM messages WHERE deleted_at=0)"""
         )
     }
 
