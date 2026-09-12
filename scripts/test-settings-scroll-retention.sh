@@ -45,9 +45,9 @@ adb_ shell am force-stop "$PKG"; sleep 1
 adb_ shell am start -n "$ACT" --ez open_settings true; sleep 3
 for _ in 1 2 3; do adb_ shell input swipe 500 1900 500 500 350; sleep 0.5; done
 dump_ui
-top_before=$(y_of "Notification sounds")
+top_before=$(y_of "Notifications")
 adv_before=$(y_of "Advanced")
-echo "before: 'Notification sounds' y=$top_before, 'Advanced' y=$adv_before"
+echo "before: 'Notifications' y=$top_before, 'Advanced' y=$adv_before"
 if [ "$adv_before" -gt 0 ]; then
     pass "Advanced row is visible after scrolling"
 else
@@ -65,9 +65,9 @@ else
 fi
 adb_ shell input keyevent 4; sleep 1.8
 dump_ui
-top_after=$(y_of "Notification sounds")
+top_after=$(y_of "Notifications")
 adv_after=$(y_of "Advanced")
-echo "after:  'Notification sounds' y=$top_after, 'Advanced' y=$adv_after"
+echo "after:  'Notifications' y=$top_after, 'Advanced' y=$adv_after"
 
 if [ "$adv_before" = "$adv_after" ]; then
     pass "'Advanced' row kept the same position ($adv_before -> $adv_after)"
