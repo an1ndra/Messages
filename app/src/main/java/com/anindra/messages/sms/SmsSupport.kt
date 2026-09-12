@@ -96,10 +96,12 @@ object NotificationHelper {
     /**
      * (Re)creates the notification channel using the system default notification
      * sound unless the user picked a bundled tone. When the "Receive sound"
-     * setting is off the channel is silent. createNotificationChannel() upserts
-     * in place, so this is safe to call on every post and reflects live setting
-     * changes (the sound must be set EXPLICITLY, or an update leaves a legacy
-     * custom tone in place).
+     * setting is off the channel plays a bundled silent clip instead of null:
+     * Android demotes sound-less channels to low importance and never heads-up
+     * them, while a silent tone keeps IMPORTANCE_HIGH so the popup still appears.
+     * createNotificationChannel() upserts in place, so this is safe to call on
+     * every post and reflects live setting changes (the sound must be set
+     * EXPLICITLY, or an update leaves a legacy custom tone in place).
      */
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
@@ -118,7 +120,7 @@ object NotificationHelper {
                         android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT
                     )
                 } else {
-                    setSound(null, null)
+                    setSound(resourceUri(context, R.raw.silent), android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT)
                 }
             }
         )
@@ -189,7 +191,10 @@ object NotificationHelper {
 
         // The channel carries the selected tone; the platform plays the channel
         // sound. The per-notification sound is kept in sync so status dumps and
-        // any channel-less fallback agree.
+        // any channel-less fallback agree. Note: never setSilent(true) here —
+        // it groups the notification under "silent", which suppresses the
+        // heads-up popup; the receive-sound-off case is handled by the channel
+        // playing the bundled silent clip instead.
         val builder = NotificationCompat.Builder(context, channelId(context))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
@@ -199,11 +204,7 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setContentIntent(tap)
             .addAction(replyAction)
-        if (app.repository.settings.receiveSoundEnabled) {
-            notify(context, notifId, builder.build())
-        } else {
-            notify(context, notifId, builder.setSilent(true).build())
-        }
+        notify(context, notifId, builder.build())
     }
 
     private fun notify(context: Context, notifId: Int, notif: android.app.Notification) {
