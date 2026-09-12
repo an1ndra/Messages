@@ -203,7 +203,11 @@ fun ConversationsScreen(
 
     fun moveToTrash(convo: Conversation) {
         if (vm.settings.permanentDeleteEnabled) {
-            permanentDeleteTarget = convo
+            if (vm.settings.permanentDeleteWarn) {
+                permanentDeleteTarget = convo
+            } else {
+                vm.deleteConversation(convo.id)
+            }
             return
         }
         vm.deleteConversation(convo.id)
@@ -497,7 +501,8 @@ fun ConversationsScreen(
 
     permanentDeleteTarget?.let { convo ->
         PermanentDeleteConfirmDialog(
-            onConfirm = {
+            onConfirm = { dontShowAgain ->
+                if (dontShowAgain) vm.settings.permanentDeleteWarn = false
                 permanentDeleteTarget = null
                 vm.deleteConversation(convo.id)
             },
