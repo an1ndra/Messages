@@ -1,5 +1,13 @@
 # TODO
 
+## Issue #184 · Incoming SMS notification shows phone number instead of contact name
+
+✅ USER REPORT: notifications from saved contacts showed the raw phone number as the notification title instead of the contact name (tested on Android 12).
+Root cause: `NotificationHelper.show()` set the content title directly to `from` — the raw sender address — and never consulted the address book.
+Fix: `SmsSupport.kt` resolves the title through `Repository.contactNameFor(from)` (reuses the existing contact cache/lookup) and falls back to the number only when the contact is not saved. Privacy mode keeps the generic "New message" title unchanged. The lookup runs on the background thread SmsReceiver already posts from.
+Verified on emulator (`dumpsys notification --noredact`): SMS from +15551230010 (demo contact "Sarah") → title `Sarah Sarah`, raw number absent.
+Test: `scripts/test-issue-184-notification-name.sh`
+
 ## Issue #179 · Open app to view recent messages first (2026-09-11)
 
 ✅ Two parts:
