@@ -94,8 +94,11 @@ fun SettingsScreen(
     var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
+    var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
     var showSim by remember(revision) { mutableStateOf(vm.settings.showSimIndicator) }
     val themeMode = vm.themeMode
+
+    var soundDialog by remember { mutableStateOf(false) }
 
     var pinned by remember(revision) { mutableStateOf(vm.settings.pinnedEnabled) }
     var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
@@ -201,12 +204,20 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     title = "Receive sound",
-                    subtitle = "Use the system notification sound when a message arrives",
+                    subtitle = "Play a sound when a message arrives",
                     checked = receiveSound,
                     onChecked = {
                         receiveSound = it
                         vm.settings.receiveSoundEnabled = it
                         NotificationHelper.ensureChannel(context)
+                    }
+                )
+                SettingsRow(
+                    title = "Notification sound",
+                    subtitle = notificationSoundLabel(notificationSound),
+                    onClick = {
+                        notificationSound = vm.settings.notificationSound
+                        soundDialog = true
                     }
                 )
                 SettingsRow(
@@ -494,6 +505,55 @@ fun SettingsScreen(
         )
     }
 
+    if (soundDialog) {
+        AlertDialog(
+            onDismissRequest = { soundDialog = false },
+            title = { Text("Notification sound") },
+            text = {
+                Column {
+                    Text(
+                        "Sound played when a message arrives",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    notificationSoundOptions.forEach { (value, label) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    notificationSound = value
+                                    NotificationHelper.previewNotificationSound(context, value)
+                                }
+                                .padding(vertical = 2.dp)
+                        ) {
+                            RadioButton(
+                                selected = notificationSound == value,
+                                onClick = {
+                                    notificationSound = value
+                                    NotificationHelper.previewNotificationSound(context, value)
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.settings.notificationSound = notificationSound
+                    NotificationHelper.ensureChannel(context)
+                    soundDialog = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { soundDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     if (simDialog) {
         var selected by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
         val options = mutableListOf(-1 to "Default (System)")
@@ -776,6 +836,17 @@ private fun themeLabel(mode: String) = when (mode) {
     "dark" -> "Dark"
     else -> "System default"
 }
+
+private val notificationSoundOptions = listOf(
+    SettingsStore.NOTIFY_SOUND_DEFAULT to "Default (system)",
+    SettingsStore.NOTIFY_SOUND_APP to "Classic",
+    SettingsStore.NOTIFY_SOUND_DRAGON to "Dragon Studio",
+    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to "Chime",
+    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to "Bubble"
+)
+
+private fun notificationSoundLabel(value: String) =
+    notificationSoundOptions.firstOrNull { it.first == value }?.second ?: "Default (system)"
 
 @Composable
 private fun ImportChoiceRow(
