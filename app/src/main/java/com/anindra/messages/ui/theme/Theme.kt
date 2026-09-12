@@ -9,6 +9,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 
@@ -109,8 +110,10 @@ val ColorScheme.outgoingBubble: Color get() = primaryContainer          // GM bl
 val ColorScheme.incomingBubble: Color get() = surfaceContainerHighest   // GM grey bubble
 val ColorScheme.chatBar: Color get() = surfaceContainerLow              // input / top bars
 val ColorScheme.inputPill: Color get() = surfaceContainerHigh           // text field pill
-val ColorScheme.selectedBubble: Color get() = Color(0xFF1A46A0)         // GM selection navy
-val ColorScheme.onSelectedBubble: Color get() = Color.White             // text on a selected bubble
+val ColorScheme.selectedBubble: Color
+    get() = if (background.luminance() < 0.5f) Color(0xFF9CC0FF) else Color(0xFF1A46A0)
+val ColorScheme.onSelectedBubble: Color
+    get() = if (background.luminance() < 0.5f) Color(0xFF062E6F) else Color(0xFFFFFFFF)
 
 // Chat date separators and message times use the platform default typeface
 // at a slightly lighter weight than surrounding text.
