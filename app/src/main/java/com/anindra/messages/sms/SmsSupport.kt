@@ -98,8 +98,6 @@ object NotificationHelper {
         ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
             .addRemoteInput(remoteInput).build()
 
-        // Resolve the stored contact name from the address book so notifications
-        // show the person, not the raw number (issue #184).
         val senderName = app.repository.contactNameFor(from) ?: from
         val title = if (privacyMode) "New message" else senderName
         val text = when {
