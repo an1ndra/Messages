@@ -1,5 +1,17 @@
 # TODO
 
+## Feature · Notification sound picker + preview on selection (2026-09-12)
+
+✅ USER REQUEST: let the user pick the incoming-message notification sound in Settings (Default + bundled tones instead of only the system default), hear a preview when picking an option, and tighten the gap between the picker options.
+Implementation:
+- `SettingsStore.kt`: new `notification_sound` pref (string) with constants `default` / `app_sound` / `dragon_studio` / `universfield_09` / `universfield_062`.
+- `sms/SmsSupport.kt` `NotificationHelper`: `soundUriFor(context, selection)` + `selectedSoundUri()` resolve the tone (channel upsert and per-notification `n.sound` use it, `null` = system default); new `previewNotificationSound(context, selection)` plays a bundled tone via MediaPlayer (USAGE_NOTIFICATION) or the system default via RingtoneManager, releasing any previous preview first.
+- `ui/SettingsScreen.kt`: "Notification sound" row under "Receive sound" showing the current label; radio picker dialog (Default (system) / Classic / Dragon Studio / Chime / Bubble) with `padding(vertical = 2.dp)` rows (was 4.dp); tapping an option plays its preview; OK persists the pref and re-creates the channel.
+- New tones in `app/src/main/res/raw/`: `dragon_studio.mp3`, `universfield_09.mp3`, `universfield_062.mp3` (`notification_sound.mp3` already existed).
+Follow-up fix (changing the sound had no effect): Android `NotificationChannel` sound is **immutable** after creation, and playback uses the CHANNEL's tone — the single `messages` channel stayed frozen on whatever tone was set first, while only the per-notification `n.sound` field followed the setting (so `dumpsys` looked right but the wrong tone played). `NotificationHelper` now maps each selection to its own channel id (`messages_default` / `messages_app` / `messages_dragon` / `messages_uf09` / `messages_uf062` / `messages_silent`), creates the one matching the current setting, and soft-deletes the stale variants so only one "Messages" entry shows. `channelId(context)` is used by `ensureChannel()`, incoming notifications, and send-failure notifications.
+Verified on emulator: picker shows 5 options; tapping each plays an active MediaPlayer player (`dumpsys audio` → `state:started … usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION`); switching the setting swaps the active channel — `messages_dragon` (`mSound=android.resource://com.anindra.messages/2131623936`), `messages_default` (`content://settings/system/notification_sound`), `messages_silent` (`null`), prior variants `mDeleted=true`.
+Test: `scripts/test-notification-sound.sh` (20/20) — now also asserts the active channel's `mSound`, the field Android actually plays.
+
 ## Issue #184 · Incoming SMS notification shows phone number instead of contact name
 
 ✅ USER REPORT: notifications from saved contacts showed the raw phone number as the notification title instead of the contact name (tested on Android 12).

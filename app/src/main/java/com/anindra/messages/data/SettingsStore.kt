@@ -42,6 +42,12 @@ class SettingsStore(context: Context) {
         const val KEY_FIRST_IMPORT_DONE = "first_import_done"
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
+        const val KEY_NOTIFICATION_SOUND = "notification_sound"
+        const val NOTIFY_SOUND_DEFAULT = "default"
+        const val NOTIFY_SOUND_APP = "app_sound"
+        const val NOTIFY_SOUND_DRAGON = "dragon_studio"
+        const val NOTIFY_SOUND_UNIVERSFIELD_09 = "universfield_09"
+        const val NOTIFY_SOUND_UNIVERSFIELD_062 = "universfield_062"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
         const val KEY_REVERSE_SWIPE = "reverse_swipe_enabled"
@@ -152,6 +158,10 @@ class SettingsStore(context: Context) {
     var receiveSoundEnabled: Boolean
         get() = prefs.getBoolean(KEY_RECEIVE_SOUND, DEFAULTS_SOUNDS)
         set(v) { prefs.edit().putBoolean(KEY_RECEIVE_SOUND, v).apply(); _revision.value++ }
+
+    var notificationSound: String
+        get() = prefs.getString(KEY_NOTIFICATION_SOUND, NOTIFY_SOUND_DEFAULT) ?: NOTIFY_SOUND_DEFAULT
+        set(v) { prefs.edit().putString(KEY_NOTIFICATION_SOUND, v).apply(); _revision.value++ }
 
     var showSimIndicator: Boolean
         get() = prefs.getBoolean(KEY_SHOW_SIM_INDICATOR, true)
