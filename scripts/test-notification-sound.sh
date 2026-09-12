@@ -9,7 +9,13 @@
 #     (i.e. the bundled custom tone, NOT the system default URI).
 #   - Picking "Default (system)" reverts to the system default sound URI
 #     content://settings/system/notification_sound.
-#   - "Receive sound" OFF posts a silent notification (sound=null).
+#   - "Receive sound" OFF still heads-up (popup) but is silent: the channel
+#     carries a bundled silent clip instead of a null sound (a null sound makes
+#     Android treat the channel as low-importance and never show the popup),
+#     and the posted notification avoids setSilent() (which groups it under
+#     "silent" and suppresses the heads-up). Popup display is asserted via the
+#     record's airtimeCount instead of a UI dump (uiautomator misses the
+#     SystemUI heads-up overlay).
 #   - Defaults are restored at the end.
 #
 # Precondition: emulator booted, app installed. Uses uiautomator dumps (no
@@ -193,9 +199,43 @@ echo "  notification channel: $s"
     fail "notification posted on the wrong channel ($s)"
 cs=$(channel_sound)
 echo "  active channel: $cs"
-[ "$cs" = "null" ] &&
-    pass "active channel is silent" ||
-    fail "active channel is not silent ($cs)"
+case "$cs" in
+    android.resource://*)
+        pass "silent channel carries the bundled silent clip (keeps heads-up popup)" ;;
+    *)
+        fail "silent channel does not use the silent clip ($cs)" ;;
+esac
+# The popup must still appear while the channel is silent. Assert via the
+# posted record's NMS stats rather than a UI dump: uiautomator misses the
+# SystemUI heads-up overlay, but SingleNotificationStats counts every display.
+# Two regressions are covered by name: setSilent() groups the notification
+# under "silent" (suppresses heads-up) and is detected by `groupKey=silent`;
+# a demoted channel would show non-HIGH importance. `airtimeCount>=1` proves
+# the popup was actually displayed.
+POPUP_SENDER="+1555$(( 1000 + RANDOM % 9000 ))$RANDOM"
+adb_ emu sms send "$POPUP_SENDER" "popup check" >/dev/null 2>&1; sleep 1.5
+rec=$(adb_ shell dumpsys notification --noredact 2>/dev/null | awk '
+    /NotificationRecord\(/ { r=$0 }
+    /popup check/ { print r; exit }')
+stats=$(adb_ shell dumpsys notification --noredact 2>/dev/null | awk '
+    /NotificationRecord\(/ { r=$0; hit=0 }
+    /popup check/ { hit=1 }
+    hit && /stats=/ { split($0,a,"airtimeCount="); split(a[2],b,","); print b[1]; exit }')
+echo "  record: $rec"
+echo "  airtimeCount=$stats"
+case "$rec" in
+    *channel=messages_silent*) pass "silent-channel record found" ;;
+    *) fail "record not on the silent channel ($rec)" ;;
+esac
+case "$rec" in
+    *groupKey=silent*) fail "setSilent() grouped the popup (\`groupKey=silent\`) — heads-up suppressed" ;;
+    *) pass "no silent group key (heads-up not suppressed)" ;;
+esac
+if [ -n "$stats" ] && [ "$stats" -ge 1 ]; then
+    pass "heads-up popup displayed (airtimeCount=$stats)"
+else
+    fail "heads-up popup was NOT displayed (airtimeCount=$stats)"
+fi
 
 info "Restoring defaults (through the UI, like a user would)"
 launch_settings
