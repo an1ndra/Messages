@@ -14,8 +14,8 @@ No internet permission — everything is local SMS + local database.
 
 | Tool | Path / command |
 |---|---|
-| JDK 21 (LTS) | `/home/anindra/tools/jdk21` (pinned via `gradle.properties` → `org.gradle.java.home`) |
-| Gradle | `$HOME/tools/gradle-9.2.1/bin/gradle` (do NOT rely on system gradle) |
+| JDK 21 (LTS) | `$HOME/.local/java/jdk-21.0.12.1+1` (resolved by `scripts/install.sh` fallback chain; not pinned in `gradle.properties`) |
+| Gradle | wrapper `./gradlew` (pins Gradle 9.6.0; do NOT rely on system gradle or `~/tools/gradle-9.2.1`, which no longer exists) |
 | Android SDK | `$HOME/android` (see `local.properties`) |
 | adb | `$HOME/android/platform-tools/adb` |
 | Emulator serial | `emulator-5554` |
@@ -24,7 +24,7 @@ No internet permission — everything is local SMS + local database.
 
 ```bash
 cd ~/Develop/Messages
-~/tools/gradle-9.2.1/bin/gradle assembleDebug --no-daemon
+./gradlew assembleDebug
 ~/android/platform-tools/adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -46,7 +46,7 @@ app/src/main/java/com/anindra/messages/
 ├── data/
 │   ├── Models.kt              # Conversation(pinned/draft/archived), Message(locked), BlockedNumber, ScheduledMessage
 │   ├── SettingsStore.kt       # SharedPreferences: theme, notifications, sounds, delivery, SIM, feature toggles, privacyMode
-│   ├── Repository.kt          # SQLiteOpenHelper (DB v10), Flow-based observers, backup/import, self-healing onOpen
+│   ├── Repository.kt          # SQLiteOpenHelper (DB v14), Flow-based observers, backup/import, self-healing onOpen
 │   └── DemoData.kt            # Seeds 10 conversations + avatars on fresh install for F-Droid screenshots
 ├── sms/
 │   ├── SmsReceiver.kt         # SMS_RECEIVED broadcast → DB + notification
@@ -128,6 +128,7 @@ scripts/test-trash.sh          # trash system (delete/restore/purge)
                                 # tone, silent when Receive sound is off
 scripts/test-splash.sh         # splash screen dark/light mode
 scripts/test-links-and-senders.sh  # link highlighting + alphanumeric sender block
+scripts/test-otp-link-independence.sh  # OTP highlight survives link/hide-toggle states
 scripts/test-initial-sync.sh   # first-launch progress bar + OTP duplicate check
 scripts/test-loading-screen.sh # conversations-screen loading UX: cold-import progress
                                # bar/skeleton, load-done list, Allow-access panel
@@ -158,7 +159,8 @@ Note: `pm clear` wipes grants → dialogs reappear (this is how you see them).
   -avd Pixel_7_API_35 -no-snapshot-load -no-boot-anim -gpu swiftshader_indirect
   -feature -Vulkan`. Ignore a "boot_completed" false-alarm on the first poll before
   qemu exec; loop `adb shell getprop sys.boot_completed` until `1`.
-- DB v10 recreates tables on upgrade (dev-mode). Seed data auto-inserts on
+- DB is at v14; `onUpgrade` applies incremental per-version migrations
+  (ALTER/CREATE/INDEX, v4→v14). Seed data auto-inserts on
   first run only if table empty. Self-healing onOpen handles corrupted states.
 
 ## Reference screenshots of target UI

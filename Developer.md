@@ -18,7 +18,7 @@ This guide explains how to set up and develop the Messages app locally **without
 | JDK | 21 LTS | Build system (Gradle) |
 | Android SDK | API 35 | Compile app |
 | Android Emulator | Latest | Test app |
-| Gradle | 9.2.1 | Build automation (included via wrapper) |
+| Gradle | 9.6.0 | Build automation (included via wrapper) |
 
 ## Step-by-Step Setup
 
@@ -110,7 +110,7 @@ export PATH=$PATH:$ANDROID_HOME/emulator
 export JAVA_HOME=$HOME/.sdkman/candidates/java/current
 
 # Gradle (project-specific)
-export PATH=$PATH:$HOME/tools/gradle-9.2.1/bin
+export PATH=$PATH:$HOME/tools/gradle-9.6.0/bin
 ```
 
 Reload your shell:
@@ -142,14 +142,14 @@ sdkmanager --list_installed
 The project includes a Gradle wrapper, but for faster builds you can install Gradle globally:
 
 ```bash
-# Download Gradle 9.2.1
+# Download Gradle 9.6.0
 mkdir -p ~/tools
-wget https://services.gradle.org/distributions/gradle-9.2.1-bin.zip -O /tmp/gradle.zip
+wget https://services.gradle.org/distributions/gradle-9.6.0-bin.zip -O /tmp/gradle.zip
 unzip /tmp/gradle.zip -d ~/tools
 rm /tmp/gradle.zip
 
 # Verify
-~/tools/gradle-9.2.1/bin/gradle --version
+~/tools/gradle-9.6.0/bin/gradle --version
 ```
 
 ### 4. Set Up Android Emulator
@@ -223,7 +223,7 @@ chmod +x scripts/*.sh
 ./gradlew assembleDebug
 
 # Or using project's Gradle
-~/tools/gradle-9.2.1/bin/gradle assembleDebug --no-daemon
+~/tools/gradle-9.6.0/bin/gradle assembleDebug --no-daemon
 ```
 
 ### 6. Install and Run
@@ -285,8 +285,8 @@ if ! avdmanager list avd | grep -q "Pixel_7_API_35"; then
 fi
 
 # Install Gradle
-if [ ! -d "$HOME/tools/gradle-9.2.1" ]; then
-    wget -q https://services.gradle.org/distributions/gradle-9.2.1-bin.zip -O /tmp/gradle.zip
+if [ ! -d "$HOME/tools/gradle-9.6.0" ]; then
+    wget -q https://services.gradle.org/distributions/gradle-9.6.0-bin.zip -O /tmp/gradle.zip
     unzip -q /tmp/gradle.zip -d ~/tools
     rm /tmp/gradle.zip
 fi
@@ -323,23 +323,37 @@ Messages/
 ├── app/
 │   ├── src/main/
 │   │   ├── java/com/anindra/messages/
-│   │   │   ├── MessagesApplication.kt     # App entry point
-│   │   │   ├── MainActivity.kt            # Single activity + navigation
-│   │   │   ├── AppViewModel.kt            # Main ViewModel
+│   │   │   ├── MessagesApplication.kt     # App entry point (owns Repository singleton)
+│   │   │   ├── MainActivity.kt            # Single activity + navigation (+ AppViewModel)
+│   │   │   ├── LinkText.kt                # Linkified/OTP text rendering
 │   │   │   ├── data/                      # Database + models
-│   │   │   │   ├── Repository.kt          # SQLite + Flow queries
+│   │   │   │   ├── Repository.kt          # SQLite + Flow queries + seed data
 │   │   │   │   ├── Models.kt              # Data classes
 │   │   │   │   ├── SettingsStore.kt       # SharedPreferences
-│   │   │   │   └── DemoData.kt            # Demo conversations
+│   │   │   │   ├── DemoData.kt            # Demo conversations
+│   │   │   │   └── BackupCrypto.kt        # Backup/import encryption
 │   │   │   ├── sms/                       # SMS handling
 │   │   │   │   ├── SmsReceiver.kt         # Incoming SMS
-│   │   │   │   ├── SmsSupport.kt          # Send + notifications
-│   │   │   │   └── ScheduledMessageSender.kt
+│   │   │   │   ├── SmsSupport.kt          # Send + notifications + tones
+│   │   │   │   ├── MmsReceiver.kt         # WAP_PUSH_DELIVER (SMS-app eligibility)
+│   │   │   │   ├── ScheduledMessageSender.kt
+│   │   │   │   ├── SmsStatusReceiver.kt   # Sent/delivery status
+│   │   │   │   ├── QuickReplyReceiver.kt  # Notification inline reply
+│   │   │   │   ├── NoConfirmationSmsSendService.kt
+│   │   │   │   ├── ForegroundTracker.kt   # Foreground state for notifications
+│   │   │   │   └── ReceiverWakeLock.kt    # BroadcastReceiver wakelock helper
 │   │   │   └── ui/                        # Compose screens
-│   │   │       ├── ConversationsScreen.kt # Home list
-│   │   │       ├── ChatScreen.kt          # Message view
+│   │   │       ├── ConversationsScreen.kt # Home list + search + archive
+│   │   │       ├── ChatScreen.kt          # Message bubbles + menu + scheduling
+│   │   │       ├── NewChatScreen.kt       # Contact picker / manual entry
+│   │   │       ├── ContactDetailsScreen.kt# Contact profile
 │   │   │       ├── SettingsScreen.kt      # App settings
-│   │   │       └── Components.kt          # Shared composables
+│   │   │       ├── AdvancedSettingsScreen.kt
+│   │   │       ├── TrashScreen.kt         # Trash restore/purge
+│   │   │       ├── OtpDetector.kt         # Keyword-gated OTP matcher
+│   │   │       ├── MessageGrouping.kt     # Message list grouping rules
+│   │   │       ├── Components.kt          # Shared composables
+│   │   │       └── theme/Theme.kt         # Material 3 color system
 │   │   └── res/                           # Resources
 │   └── build.gradle.kts                   # App dependencies
 ├── scripts/                               # Test automation
@@ -463,8 +477,8 @@ Without the keystore/env vars, `assembleRelease` produces an unsigned APK
 
 When modifying the database:
 
-1. Increment version in `Db` class (currently v10)
-2. Add migration in `onUpgrade()`
+1. Increment version in `Repository.kt` (currently v14)
+2. Add migration in `onUpgrade()` (incremental per-version ALTER/CREATE/INDEX)
 3. Test with existing data (don't clear app data)
 4. Update `TODO.md` with migration notes
 
