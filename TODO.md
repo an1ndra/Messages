@@ -1,11 +1,83 @@
 # TODO
 
+## Bug · Copy/Forward must hide URLs when "Hide links from messages" is ON (2026-09-12)
+
+✅ USER REQUEST: with "Hide links" enabled the chat strips the URL, but the
+Copy menu pasted the RAW body with the URL, and Forwarding sent it the same way.
+What you see must be what you copy/send.
+Implementation:
+- `ui/ChatScreen.kt` (both bubble composables, `ChatBubble` + `MessageRow`): the
+  Copy menu item now derives the text from the same rules as the display —
+  `isLockedAndHidden -> "@Lock"`, `hideLinks -> hideUrls(msg.body)`, else raw.
+- `MainActivity.kt` `forwardMessage`: forwards the URL-redacted body when
+  hide-links is ON.
+- Audited the remaining raw-body paths: notification snippet and home-list
+  preview/draft already redact; "Copy link" is only reachable on a visibly
+  highlighted link (impossible while hiding); `sendText`/`retryMessage` are the
+  real SMS send path and must stay raw.
+Test: `scripts/test-hide-links.sh` now long-presses a bubble, taps Copy, pastes
+into the compose input (`KEYCODE_PASTE`), and reads the EditText back — asserts
+the clipboard has no URL while hide is ON and includes the URL again once OFF
+(31/31).
+
+## Feature · Notification sound picker + preview on selection (2026-09-12)
+
+✅ USER REQUEST: let the user pick the incoming-message notification sound in Settings (Default + bundled tones instead of only the system default), hear a preview when picking an option, and tighten the gap between the picker options.
+Implementation:
+- `SettingsStore.kt`: new `notification_sound` pref (string) with constants `default` / `app_sound` / `dragon_studio` / `universfield_09` / `universfield_062`.
+- `sms/SmsSupport.kt` `NotificationHelper`: `soundUriFor(context, selection)` + `selectedSoundUri()` resolve the tone (channel upsert and per-notification `n.sound` use it, `null` = system default); new `previewNotificationSound(context, selection)` plays a bundled tone via MediaPlayer (USAGE_NOTIFICATION) or the system default via RingtoneManager, releasing any previous preview first.
+- `ui/SettingsScreen.kt`: "Notification sound" row under "Receive sound" showing the current label; radio picker dialog (Default (system) / Classic / Dragon Studio / Chime / Bubble) with `padding(vertical = 2.dp)` rows (was 4.dp); tapping an option plays its preview; OK persists the pref and re-creates the channel.
+- New tones in `app/src/main/res/raw/`: `dragon_studio.mp3`, `universfield_09.mp3`, `universfield_062.mp3` (`notification_sound.mp3` already existed).
+Follow-up fix (changing the sound had no effect): Android `NotificationChannel` sound is **immutable** after creation, and playback uses the CHANNEL's tone — the single `messages` channel stayed frozen on whatever tone was set first, while only the per-notification `n.sound` field followed the setting (so `dumpsys` looked right but the wrong tone played). `NotificationHelper` now maps each selection to its own channel id (`messages_default` / `messages_app` / `messages_dragon` / `messages_uf09` / `messages_uf062` / `messages_silent`), creates the one matching the current setting, and soft-deletes the stale variants so only one "Messages" entry shows. `channelId(context)` is used by `ensureChannel()`, incoming notifications, and send-failure notifications.
+Verified on emulator: picker shows 5 options; tapping each plays an active MediaPlayer player (`dumpsys audio` → `state:started … usage=USAGE_NOTIFICATION content=CONTENT_TYPE_SONIFICATION`); switching the setting swaps the active channel — `messages_dragon` (`mSound=android.resource://com.anindra.messages/2131623936`), `messages_default` (`content://settings/system/notification_sound`), `messages_silent` (`mSound=android.resource://…/silent.wav`, importance HIGH), prior variants `mDeleted=true`.
+Test: `scripts/test-notification-sound.sh` (20/20) — now also asserts the active channel's `mSound`, the field Android actually plays.
+Follow-up fix ("Receive sound" OFF killed the popup — two layers): (1) a channel with `setSound(null,null)` is treated by Android as low-importance and never heads-up, so the silent `messages_silent` channel could not pop — the channel now plays a bundled 50ms silent clip (`app/src/main/res/raw/silent.wav`) instead, keeping `IMPORTANCE_HIGH`. (2) `show()` no longer calls `setSilent(true)` for the sound-off case: that groups the notification under the `"silent"` group key (androidx convention, confirmed in core 1.18.0 `isSilent()`), and grouped notifications without a summary are suppressed from heads-up. Verified on emulator: `messages_silent` → `mImportance=4`, `mSound=android.resource://…/2131623938`, the posted record has no `groupKey=silent`, and `SingleNotificationStats.airtimeCount=1` proves the popup was actually displayed (uiautomator can't see the SystemUI overlay; the record is the ground truth). Regression: `scripts/test-notification-sound.sh` now asserts the silent channel carries the silent clip AND the popup's `airtimeCount`.
+
+## Issue #184 · Incoming SMS notification shows phone number instead of contact name
+
+✅ USER REPORT: notifications from saved contacts showed the raw phone number as the notification title instead of the contact name (tested on Android 12).
+Root cause: `NotificationHelper.show()` set the content title directly to `from` — the raw sender address — and never consulted the address book.
+Fix: `SmsSupport.kt` resolves the title through `Repository.contactNameFor(from)` (reuses the existing contact cache/lookup) and falls back to the number only when the contact is not saved. Privacy mode keeps the generic "New message" title unchanged. The lookup runs on the background thread SmsReceiver already posts from.
+Verified on emulator (`dumpsys notification --noredact`): SMS from +15551230010 (demo contact "Sarah") → title `Sarah Sarah`, raw number absent.
+Test: `scripts/test-issue-184-notification-name.sh`
+
+## ui/chat-design-update · App stuck / crashes / chats won't load on a real phone (2026-09-12)
+
+✅ USER REPORT: built the `ui/chat-design-update` branch with the Develop Build workflow and installed on a physical phone — the app gets stuck, crashes, and sometimes never loads any chats.
+Root cause (real-phone scale): with a provider full of SMS history (Google Messages mirrors everything), every sync ended with `mergeSplitConversations()` that had to complete **inside** the sync task: `runOnIo { … }` blocks via `CompletableFuture.get()` until the O(C²) heal finishes, and each pair comparison ran `PhoneNumberUtils.compare()` + libphonenumber `parse()` — seconds-to-minutes on a phone with hundreds of threads. The home-list and chat flows share the same SQLite connection, so they wait behind it: the list shows nothing and the app looks frozen ("stuck / chats not loading"); force-stop + relaunch just lands back on the same slow path.
+Fix (all in `data/Repository.kt` unless noted):
+- `samePerson()` is now pure digit comparison (`filter{isDigit}` equality + `+1` drop). Still merges the #183 cases (`+15551234567` vs `15551234567`) at ~zero cost, drops the expensive `PhoneNumberUtils.compare` and libphonenumber `canonicalPhoneNumber` from the per-lookup and per-pair hot paths.
+- `mergeSplitConversations()` is queued on the sync executor (`syncExecutor.execute { … }`) instead of blocking via `runOnIo` — the "Loading" UI clears as soon as the import passes its data; the heal runs in the background, still serialized with imports (same single thread).
+- Removed the now-unused `com.googlecode.libphonenumber` dependency (`libs.versions.toml` + `app/build.gradle.kts`).
+- Removed the duplicated "Sending in N seconds…" banner that rendered twice on the chat screen (`ui/ChatScreen.kt`).
+Verified on a rooted emulator seeded with 15,000 provider SMS: first-launch import 6s, home list renders, a chat opens, no crash, warm relaunch provider pass 2s. New regression: `scripts/test-large-provider-startup.sh` (seed provider → fresh install → import/land/chat/relaunch + crash watch). Existing suites re-run clean: issue-183 split-threads 5/5, message-delete-undo 11/11, empty-chat-removal 11/11, initial-sync 2/2, import-mirrors 5/6 (step 6 is the third-party SMS-IE UI, flaky on the AVD).
+
 ## Issue #179 · Open app to view recent messages first (2026-09-11)
 
 ✅ Two parts:
 - Chat screen opened ~3 rows above the newest message: `scrollToItem(messages.size - 1)` ignored the 3 loading-skeleton rows (and optional "Load earlier" button) the LazyColumn renders ABOVE the message rows. Now scrolls to `listState.layoutInfo.totalItemsCount` with a fallback retry (`LaunchedEffect(messages.size)` + 80ms). File: `ui/ChatScreen.kt` · test: `scripts/test-issue-179-scroll.sh`
 - Home list scroll behaviour (final, after three user corrections). Auto-scrolling on every new message was rejected — it yanks the list while the user is reading; and the app must not first show the old position then visibly jump to the top on open. Rules: (a) app just opened at the top + message arrives → reveal the new conversation; (b) user has scrolled down + message arrives → leave their position untouched; (c) open/reopen → the newest (unread) rows are shown at the top directly, no jump. Implementation: the `LazyListState` is deliberately non-saveable and recreated on the empty→loaded transition (`remember(conversations.isNotEmpty()) { LazyListState(0,0) }`) — a saveable state restored the old offset (then jumped), and a single state reused across the empty first composition anchored to the last row once the list arrived (LazyColumn keeps the previously visible item), which is what showed old messages on open; `snapshotFlow` tracks `isScrollInProgress` to know if the user manually scrolled away (key-anchoring shifts while idle are ignored); a `LaunchedEffect(displayed)` reveals a conversation whose unread count increased only when the user has NOT scrolled away, and skips seeding on the empty first emission so the initial load never looks like a live arrival. File: `ui/ConversationsScreen.kt` · test: `scripts/test-issue-179-home-scroll.sh`
 Verified on emulator: open lands on the true newest row with `firstVisibleItemIndex=0` (no jump); opened-at-top + receive reveals the new row; scrolled-down + receive leaves the top row unchanged; force-stop → reopen lands on the top row.
+
+## Issue #183 · Some imported conversations split into sent and received messages
+
+✅ USER REPORT: after restoring an SMS Import/Export backup, the same contact appeared as two threads — one holding only sent messages, one only received.
+Root cause: every address→conversation path used exact string equality on the stored provider `ADDRESS`, but the same person is stored under two formats: received SMS carry the sender number as delivered by the network (E.164, `+15551234567`) while sent SMS store the dialed form (bare `15551234567`). Same SIM, same number, two spellings → two buckets → two threads. (Reporter confirmed all messages were "SIM 1" and the number never changed.)
+Fix (all in `data/Repository.kt`):
+- New `samePerson(a,b)`: matches `PhoneNumberUtils.compare(context,…)` plus a digits/`+1` NANP fallback; never merges zero-digit alphanumeric senders.
+- `getOrCreateConversationBlocking` + `conversationIdForAddress`: exact `address=?` first, then `samePerson` scan → reuse the existing thread instead of creating a duplicate (send/receive/quick-reply/scheduled/new-chat paths all benefit).
+- `mergeSplitConversations()`: one-time/ongoing heal that folds already-split threads (fold messages, draft, archived flag, notification settings into the earliest row) — runs after every system sync and also covers backup `mergeDatabase` (restore no longer re-splits).
+- No schema change → no migration; blocked-numbers, trash, archive, drafts, reactions, lock, search are all keyed by conversation_id/separate tables and are untouched.
+Verified on emulator: regression script `scripts/test-issue-183-split-threads.sh` went from `4 passed, 1 failed` to `5 passed, 0 failed` (Mom = ONE conversation, 2 in + 2 out; control merged); a manufactured pre-fix split in the local DB was healed to a single thread on relaunch and the home list shows one `+1-555-123-4567` row.
+
+## Issue · Backup import no longer repopulates the system SMS provider (2026-09-12)
+
+✅ USER REPORT: backed up in-app, deleted every message from the app, re-imported the backup — messages showed in our app but the default Messaging app showed nothing, and SMS Import/Export exported `0 SMS`.
+Root cause: `importDatabase`/`mergeDatabase` only swapped/merged the private `messages.db`; nothing ever wrote back to `content://sms`, so sibling apps (which read only the system provider) saw an empty history.
+Fix (in `data/Repository.kt`):
+- New `pushLocalMessagesToProvider()`: best-effort mirror of non-deleted local messages into `Telephony.Sms.CONTENT_URI`. Address is joined from `conversations` (the `messages` table carries no address in the v14 schema), provider `sys_id`s already present are skipped (no re-import duplicates), and new provider `_id`s are written back to the local rows. Maps app status → provider status (`failed`→STATUS_FAILED, sent/delivered→STATUS_COMPLETE), preserves `date`/`sub_id`, and degrades silently when the app isn't the default handler or the provider rejects a row. Called on both the REPLACE and MERGE import paths.
+- First build failed the query with `no such column: address` (mirror SQL referenced `messages.address` which doesn't exist in v14) — fixed with a `JOIN conversations c ON c.id = m.conversation_id`.
+Verified on emulator: backup 2 messages → wipe provider + `pm clear` app → in-app restore → provider back to 2 rows (`RepoMirror: push: attempted=2 linked=2`), default Messaging shows the restored thread, SMS Import/Export exports `2 SMS(s) and 0 MMS(s) exported`. Regression: `scripts/test-import-mirrors-provider.sh` (new) covers the full chain.
 
 ## P0 · App lock auto-disables when no device credential exists (no dead "Turn off" control)
 
@@ -217,6 +289,7 @@ File: `data/Repository.kt`, `data/Models.kt`, `ui/ChatScreen.kt`
 - ✅ Avatar palette expanded: 16 colors, 10 demo avatar PNGs (256x256) seeded via DemoData
 - ✅ `FragmentActivity` base class (required for BiometricPrompt)
 - ✅ Smart OTP detection: keyword-gated tiered matcher in new `ui/OtpDetector.kt` (adjacent keyword, grouped "482 913"/"4433-2211", bare 6-digit with strong keyword), currency + year-shaped guards; bold primary highlight; JUnit coverage in `OtpDetectorTest` — test: `scripts/test-otp.sh`
+- ✅ OTP highlight decoupled from "Highlight links": turning the link toggle OFF no longer drops OTP highlighting — `rememberLinkedText` (ui/ChatScreen.kt) previously skipped the whole annotated builder when `highlight` was false (killing OTP styling too) and applied OTP + URL styling together when true; it now always applies the OTP style and gates only URL spans/link annotations behind the toggle. OTP stays bold-highlighted; the link toggle affects only links. Follow-up: the "Hide links from messages" redaction path also ran through a plain `AnnotatedString` (dropping OTP styling whenever hide was ON) — it now styles stripped text with the same OTP matcher, so OTP stays highlighted in every combination of the three link toggles. Test: `scripts/test-otp-link-independence.sh` (19 checks: link tap shows Caution dialog with highlight ON, nothing when OFF, OTP rendered with hide ON and URL stripped, hide→highlight dependency chain, defaults restored)
 - ✅ Crash fix: back from chat killed the process (`ConcurrentModificationException` in `Repository.notifyChanged` when draft-save raced Flow listener churn); listeners now a `CopyOnWriteArrayList` — reported via real-device logcat
 - ✅ Screen transitions: all routes animate via a single direction-aware `AnimatedContent` (forward = slide-in-from-right, back = slide-out-to-right, same-depth = fade); replaces instant `when(navRoute)` swaps and the chat↔details-only animation
 

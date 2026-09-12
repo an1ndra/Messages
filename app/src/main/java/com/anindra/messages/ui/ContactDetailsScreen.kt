@@ -75,7 +75,7 @@ fun ContactDetailsScreen(
     }
     val address = convo!!.address
     val name = convo!!.name
-    val isKnownContact = name != null && name != address
+    val isKnownContact = name != address
 
     // flows (not sync SELECTs) for notify/block state; VM retains last value
     val notificationsEnabled by vm.conversationNotificationsEnabledFlow(conversationId)

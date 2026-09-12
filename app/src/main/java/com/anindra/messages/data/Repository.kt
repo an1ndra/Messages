@@ -25,7 +25,7 @@ private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
 enum class ImportMode { REPLACE, MERGE }
 
-private const val DB_VERSION = 13
+private const val DB_VERSION = 14
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -63,7 +63,8 @@ class Db(context: Context) :
                 reactions TEXT NOT NULL DEFAULT '',
                 sys_id INTEGER NOT NULL DEFAULT 0,
                 locked INTEGER NOT NULL DEFAULT 0,
-                sub_id INTEGER NOT NULL DEFAULT -1)"""
+                sub_id INTEGER NOT NULL DEFAULT -1,
+                deleted_at INTEGER NOT NULL DEFAULT 0)"""
         )
         db.execSQL("CREATE INDEX idx_messages_conversation ON messages(conversation_id)")
         db.execSQL("CREATE INDEX idx_messages_conv_ts ON messages(conversation_id, timestamp)")
@@ -155,6 +156,9 @@ class Db(context: Context) :
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_scheduled_timestamp ON scheduled_messages(timestamp)")
+        }
+        if (oldVersion < 14) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN deleted_at INTEGER NOT NULL DEFAULT 0")
         }
     }
 
@@ -379,7 +383,7 @@ class Repository(private val context: Context) {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
             """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id FROM messages
-               WHERE conversation_id=? ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
+               WHERE conversation_id=? AND deleted_at=0 ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
             arrayOf(conversationId.toString(), limit.toString(), offset.toString())
         ).use { c ->
             while (c.moveToNext()) {
@@ -406,7 +410,7 @@ class Repository(private val context: Context) {
     fun messageCount(conversationId: Long): Int = runOnIo {
         var count = 0
         db.readableDatabase.rawQuery(
-            "SELECT COUNT(*) FROM messages WHERE conversation_id=?",
+            "SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0",
             arrayOf(conversationId.toString())
         ).use { if (it.moveToFirst()) count = it.getInt(0) }
         count
@@ -415,11 +419,50 @@ class Repository(private val context: Context) {
     fun messageCountFlow(conversationId: Long): Flow<Int> = observe {
         var count = 0
         db.readableDatabase.rawQuery(
-            "SELECT COUNT(*) FROM messages WHERE conversation_id=?",
+            "SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0",
             arrayOf(conversationId.toString())
         ).use { if (it.moveToFirst()) count = it.getInt(0) }
         count
     }
+
+    /** True when two stored addresses identify the same person despite formatting
+     *  differences (e.g. "+15551234567" vs "15551234567", the issue #183 case).
+     *  Two pure-digit checks, in order: identical digit runs; and one side being
+     *  the international (E.164) spelling while the other is the same number with
+     *  the leading country/trunk code dropped — exactly 1–3 digits — e.g.
+     *  India "+919876543210"/"9876543210", China "8613812345678"/"13812345678",
+     *  Bangladesh "+8801712345678"/"01712345678", Indonesia "+628123456789"/
+     *  "08123456789", NANP "+15551234567"/"5551234567", UK "+447911234567"/
+     *  "07911234567". Deliberately no libphonenumber and no country-code table:
+     *  the shorter spelling must equal the longer one after dropping exactly
+     *  1–3 leading digits, so two genuinely different numbers can never fuse
+     *  (that would require them to be the same digit run). Runs once per
+     *  address on every lookup and _O(C²)_ inside [mergeSplitConversations] on
+     *  big phones, so it stays near-zero cost — no SIM/region/IP dependency. */
+    private fun samePerson(a: String, b: String): Boolean {
+        if (a == b) return true
+        val da = a.filter { it.isDigit() }
+        val db_ = b.filter { it.isDigit() }
+        if (da.isEmpty() || db_.isEmpty()) return false
+        if (da == db_) return true
+        val diff = da.length - db_.length
+        if (diff in 1..3 && da.drop(diff) == db_) return true
+        val rev = db_.length - da.length
+        return rev in 1..3 && db_.drop(rev) == da
+    }
+
+    private fun matchConversationId(database: SQLiteDatabase, address: String): Long? {
+        if (address.isBlank()) return null
+        database.rawQuery("SELECT id, address FROM conversations", null).use { c ->
+            while (c.moveToNext()) {
+                if (samePerson(c.getString(1), address)) return c.getLong(0)
+            }
+        }
+        return null
+    }
+
+    private fun findConversationForAddress(address: String): Long? =
+        matchConversationId(db.readableDatabase, address)
 
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =
         getOrCreateConversationBlocking(address, displayName)
@@ -430,6 +473,7 @@ class Repository(private val context: Context) {
             "SELECT id FROM conversations WHERE address=?",
             arrayOf(address)
         ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
+        if (convoId == -1L) convoId = findConversationForAddress(address) ?: -1L
 
         if (convoId == -1L) {
             val cv = ContentValues().apply {
@@ -493,7 +537,7 @@ class Repository(private val context: Context) {
     private fun touchConversation(conversationId: Long, snippet: String, ts: Long, isMe: Boolean) {
         db.writableDatabase.execSQL(
             "UPDATE conversations SET snippet=?,timestamp=?,unread_count=0,last_is_me=?,deleted_at=0 WHERE id=?",
-            arrayOf(snippet, ts, if (isMe) 1 else 0, conversationId)
+            arrayOf<Any?>(snippet, ts, if (isMe) 1 else 0, conversationId)
         )
         notifyChanged()
     }
@@ -508,12 +552,12 @@ class Repository(private val context: Context) {
         db.writableDatabase.execSQL(
             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,sub_id)
                VALUES(?,?,?,?,?,?,?)""",
-            arrayOf(convoId, body, now, 0, "received", sysId, subId)
+            arrayOf<Any?>(convoId, body, now, 0, "received", sysId, subId)
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
                unread_count=unread_count+1 WHERE id=?""",
-            arrayOf(body, now, convoId)
+            arrayOf<Any?>(body, now, convoId)
         )
         notifyChanged()
         return convoId
@@ -535,32 +579,33 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
-    /** If [messageId] is the newest message in its conversation, rewrite that
-     *  row's snippet so a locked latest message doesn't leak on the home list
-     *  (lock → "@Lock", unlock → the message content). */
-    private fun refreshSnippetForLockToggle(messageId: Long) {
-        var convoId = -1L
+    /** Recomputes a conversation's snippet/timestamp/last_is_me from its newest
+     *  non-deleted message, honouring the "@Lock" masking for a locked latest
+     *  message. Falls back to an empty snippet when nothing is left. */
+    private fun refreshConversationSnippetFor(conversationId: Long) {
         var body = ""
         var mediaType = "text"
         var locked = false
+        var isMe = false
+        var ts = 0L
+        var found = false
         db.readableDatabase.rawQuery(
-            "SELECT conversation_id,body,media_type,locked FROM messages WHERE id=?",
-            arrayOf(messageId.toString())
+            """SELECT body,media_type,locked,is_me,timestamp FROM messages
+               WHERE conversation_id=? AND deleted_at=0
+               ORDER BY timestamp DESC, id DESC LIMIT 1""",
+            arrayOf(conversationId.toString())
         ).use { c ->
             if (c.moveToFirst()) {
-                convoId = c.getLong(0)
-                body = c.getString(1)
-                mediaType = c.getString(2)
-                locked = c.getInt(3) == 1
+                body = c.getString(0)
+                mediaType = c.getString(1)
+                locked = c.getInt(2) == 1
+                isMe = c.getInt(3) == 1
+                ts = c.getLong(4)
+                found = true
             }
         }
-        if (convoId == -1L) return
-        val newestId = db.readableDatabase.rawQuery(
-            "SELECT id FROM messages WHERE conversation_id=? ORDER BY timestamp DESC, id DESC LIMIT 1",
-            arrayOf(convoId.toString())
-        ).use { c -> if (c.moveToFirst()) c.getLong(0) else -1L }
-        if (newestId != messageId) return
         val snippet = when {
+            !found -> ""
             locked -> "@Lock"
             mediaType == "text" -> body
             mediaType == "image" -> "Photo"
@@ -569,9 +614,50 @@ class Repository(private val context: Context) {
             else -> "Attachment"
         }
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET snippet=? WHERE id=?",
-            arrayOf(snippet, convoId.toString())
+            "UPDATE conversations SET snippet=?, timestamp=?, last_is_me=? WHERE id=?",
+            arrayOf<Any?>(snippet, if (found) ts else 0L, if (isMe) 1 else 0, conversationId.toString())
         )
+    }
+
+    /** Hides ([deleted]=true) or restores a single message. Soft delete keeps the
+     *  row so the home-list preview can be recomputed and so a later system sync
+     *  does not re-import it (sync dedupes on sys_id, which stays present). */
+    private fun setMessageDeleted(messageId: Long, deleted: Boolean) {
+        var convoId = -1L
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id FROM messages WHERE id=?",
+            arrayOf(messageId.toString())
+        ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
+        if (convoId == -1L) return
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET deleted_at=? WHERE id=?",
+            arrayOf(if (deleted) System.currentTimeMillis() else 0L, messageId)
+        )
+        refreshConversationSnippetFor(convoId)
+        notifyChanged()
+    }
+
+    fun deleteMessageSuspend(messageId: Long) = runOnIo { setMessageDeleted(messageId, true) }
+
+    fun restoreMessageSuspend(messageId: Long) = runOnIo { setMessageDeleted(messageId, false) }
+
+    /** If [messageId] is the newest message in its conversation, rewrite that
+     *  row's snippet so a locked latest message doesn't leak on the home list
+     *  (lock → "@Lock", unlock → the message content). */
+    private fun refreshSnippetForLockToggle(messageId: Long) {
+        var convoId = -1L
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id FROM messages WHERE id=?",
+            arrayOf(messageId.toString())
+        ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
+        if (convoId == -1L) return
+        val newestId = db.readableDatabase.rawQuery(
+            """SELECT id FROM messages WHERE conversation_id=? AND deleted_at=0
+               ORDER BY timestamp DESC, id DESC LIMIT 1""",
+            arrayOf(convoId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getLong(0) else -1L }
+        if (newestId != messageId) return
+        refreshConversationSnippetFor(convoId)
     }
 
     fun setArchivedSuspend(conversationId: Long, archived: Boolean) {
@@ -589,6 +675,32 @@ class Repository(private val context: Context) {
 
     /** Moves a conversation to trash (soft delete); messages are kept for restore. */
     fun trashConversationSuspend(conversationId: Long) {
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET deleted_at=? WHERE id=?",
+            arrayOf(System.currentTimeMillis().toString(), conversationId.toString())
+        )
+        notifyChanged()
+    }
+
+    /** Moves a conversation to trash once it has nothing left to show: no
+     *  non-deleted messages and no draft worth keeping. Otherwise a no-op, so it
+     *  is safe to call on every exit from a chat. */
+    fun trashConversationIfEmptySuspend(conversationId: Long) {
+        var remaining = 0
+        var draft = ""
+        db.readableDatabase.rawQuery(
+            """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0), draft
+               FROM conversations WHERE id=? AND deleted_at=0""",
+            arrayOf(conversationId.toString(), conversationId.toString())
+        ).use { c ->
+            if (!c.moveToFirst()) return
+            remaining = c.getInt(0)
+            draft = c.getString(1) ?: ""
+        }
+        // A draft only keeps the chat around while drafts are actually surfaced;
+        // a leftover column value from when the feature was on must not.
+        val draftKeepsIt = settings.draftsEnabled && draft.isNotBlank()
+        if (remaining > 0 || draftKeepsIt) return
         db.writableDatabase.execSQL(
             "UPDATE conversations SET deleted_at=? WHERE id=?",
             arrayOf(System.currentTimeMillis().toString(), conversationId.toString())
@@ -677,14 +789,14 @@ class Repository(private val context: Context) {
     fun setReactionsSuspend(messageId: Long, reactions: Map<String, Int>) {
         db.writableDatabase.execSQL(
             "UPDATE messages SET reactions=? WHERE id=?",
-            arrayOf(serializeReactions(reactions), messageId)
+            arrayOf<Any?>(serializeReactions(reactions), messageId)
         )
         notifyChanged()
     }
 
     fun markMessageStatusSuspend(messageId: Long, status: String) {
         db.writableDatabase.execSQL(
-            "UPDATE messages SET status=? WHERE id=?", arrayOf(status, messageId)
+            "UPDATE messages SET status=? WHERE id=?", arrayOf<Any?>(status, messageId)
         )
         notifyChanged()
     }
@@ -734,7 +846,7 @@ class Repository(private val context: Context) {
         val now = System.currentTimeMillis()
         db.writableDatabase.execSQL(
             "UPDATE conversations SET draft=?,draft_date=? WHERE id=?",
-            arrayOf(draft, now, conversationId)
+            arrayOf<Any?>(draft, now, conversationId)
         )
         notifyChanged()
     }
@@ -765,7 +877,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             "SELECT id FROM conversations WHERE address=?", arrayOf(address)
         ).use { c -> if (c.moveToFirst()) id = c.getLong(0) }
-        id
+        id ?: findConversationForAddress(address)
     }
 
     suspend fun getConversationNotificationsEnabled(conversationId: Long): Boolean = runOnIoAsync {
@@ -974,6 +1086,7 @@ class Repository(private val context: Context) {
             if (mode == ImportMode.MERGE) {
                 val merged = mergeDatabase(tempFile, onProgress)
                 tempFile.delete()
+                pushLocalMessagesToProvider()
                 notifyChanged()
                 return ImportResult.Success(merged)
             }
@@ -996,6 +1109,9 @@ class Repository(private val context: Context) {
                 // A restored backup should be fully visible: lift any
                 // conversations that were in the trash when the backup was made.
                 db.writableDatabase.execSQL("UPDATE conversations SET deleted_at=0 WHERE deleted_at>0")
+                db.writableDatabase.execSQL("UPDATE messages SET deleted_at=0")
+                // Mirror the restored history into the system SMS store.
+                pushLocalMessagesToProvider()
                 // Clean up
                 tempFile.delete()
                 backupFile.delete()
@@ -1053,24 +1169,30 @@ class Repository(private val context: Context) {
                                 target.rawQuery("SELECT id FROM conversations WHERE address=?", arrayOf(address))
                                     .use { q -> if (q.moveToFirst()) q.getLong(0) else -1L }
                             } else {
-                                existing.add(address)
-                                target.insert(
-                                    "conversations", null,
-                                    ContentValues().apply {
-                                        put("address", address)
-                                        put("name", c.getString(2))
-                                        put("snippet", c.getString(3))
-                                        put("timestamp", c.getLong(4))
-                                        put("unread_count", c.getInt(5))
-                                        put("last_is_me", c.getInt(6))
-                                        put("archived", c.getInt(7))
-                                        put("pinned", c.getInt(8))
-                                        put("draft", c.getString(9))
-                                        put("draft_date", c.getLong(10))
-                                        // 0: lift conversations trashed in the backup
-                                        put("deleted_at", 0)
-                                    }
-                                )
+                                val mergedId = matchConversationId(target, address)
+                                if (mergedId != null) {
+                                    existing.add(address)
+                                    mergedId
+                                } else {
+                                    existing.add(address)
+                                    target.insert(
+                                        "conversations", null,
+                                        ContentValues().apply {
+                                            put("address", address)
+                                            put("name", c.getString(2))
+                                            put("snippet", c.getString(3))
+                                            put("timestamp", c.getLong(4))
+                                            put("unread_count", c.getInt(5))
+                                            put("last_is_me", c.getInt(6))
+                                            put("archived", c.getInt(7))
+                                            put("pinned", c.getInt(8))
+                                            put("draft", c.getString(9))
+                                            put("draft_date", c.getLong(10))
+                                            // 0: lift conversations trashed in the backup
+                                            put("deleted_at", 0)
+                                        }
+                                    )
+                                }
                             }
                         if (tId == -1L) continue
                         convoMap[c.getLong(0)] = tId
@@ -1079,7 +1201,8 @@ class Repository(private val context: Context) {
 
                 backup.rawQuery(
                     """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,
-                       reactions,sys_id,locked,sub_id FROM messages ORDER BY timestamp""", null
+                       reactions,sys_id,locked,sub_id FROM messages
+                       WHERE deleted_at=0 ORDER BY timestamp""", null
                 ).use { m ->
                     while (m.moveToNext()) {
                         val tId = convoMap[m.getLong(0)] ?: continue
@@ -1137,14 +1260,14 @@ class Repository(private val context: Context) {
                 for ((tId, n) in newest) {
                     target.execSQL(
                         "UPDATE conversations SET snippet=?,timestamp=?,last_is_me=? WHERE id=? AND timestamp<?",
-                        arrayOf(n.second, n.first, n.third, tId, n.first)
+                        arrayOf<Any?>(n.second, n.first, n.third, tId, n.first)
                     )
                 }
 
                 for ((tId, n) in unreadBump) {
                     target.execSQL(
                         "UPDATE conversations SET unread_count=unread_count+? WHERE id=?",
-                        arrayOf(n, tId)
+                        arrayOf<Any?>(n, tId)
                     )
                 }
 
@@ -1164,7 +1287,7 @@ class Repository(private val context: Context) {
                         val tId = convoMap[c.getLong(0)] ?: continue
                         target.execSQL(
                             "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled) VALUES(?,?)",
-                            arrayOf(tId, c.getInt(1))
+                            arrayOf<Any?>(tId, c.getInt(1))
                         )
                     }
                 }
@@ -1371,7 +1494,7 @@ class Repository(private val context: Context) {
                                     db.writableDatabase.execSQL(
                                         """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,sub_id)
                                            VALUES(?,?,?,?,?,?,?)""",
-                                        arrayOf(cid, m.body, m.date, if (isMe) 1 else 0,
+                                        arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
                                             when (m.type) {
                                                 android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
                                                 android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
@@ -1404,6 +1527,11 @@ class Repository(private val context: Context) {
                     refreshConversationSnippets()
                     notifyChanged()
                 }
+                // Fold split threads off the sync thread: runOnIo would block the
+                // single sync executor (future.get()) until the O(C²) heal finishes,
+                // which on a phone with hundreds of threads delays the "Loading" UI.
+                // Queued on the same executor so it stays serialized with imports.
+                syncExecutor.execute { mergeSplitConversations() }
                 settings.firstImportDone = true
             } catch (e: SecurityException) {
                 // no SMS access yet — keep firstImportDone=false so grant re-imports
@@ -1430,11 +1558,79 @@ class Repository(private val context: Context) {
     private fun refreshConversationSnippets() {
         db.writableDatabase.execSQL(
             """UPDATE conversations SET
-                 snippet=COALESCE((SELECT body FROM messages WHERE conversation_id=conversations.id ORDER BY timestamp DESC LIMIT 1),''),
-                 timestamp=COALESCE((SELECT MAX(timestamp) FROM messages WHERE conversation_id=conversations.id),0),
-                 last_is_me=COALESCE((SELECT is_me FROM messages WHERE conversation_id=conversations.id ORDER BY timestamp DESC LIMIT 1),0)
-               WHERE id IN (SELECT DISTINCT conversation_id FROM messages)"""
+                 snippet=COALESCE((SELECT body FROM messages WHERE conversation_id=conversations.id AND deleted_at=0 ORDER BY timestamp DESC LIMIT 1),''),
+                 timestamp=COALESCE((SELECT MAX(timestamp) FROM messages WHERE conversation_id=conversations.id AND deleted_at=0),0),
+                 last_is_me=COALESCE((SELECT is_me FROM messages WHERE conversation_id=conversations.id AND deleted_at=0 ORDER BY timestamp DESC LIMIT 1),0)
+               WHERE id IN (SELECT DISTINCT conversation_id FROM messages WHERE deleted_at=0)"""
         )
+    }
+
+    /** Folds conversations that [samePerson] considers the same contact into the
+     *  earliest one. Heals threads that were already split before the lookup fix
+     *  (issue #183). Idempotent; ignores trashed conversations. */
+    private fun mergeSplitConversations() {
+        val convos = ArrayList<Triple<Long, String, Int>>()
+        db.readableDatabase.rawQuery(
+            "SELECT id, address, deleted_at FROM conversations ORDER BY id", null
+        ).use { c -> while (c.moveToNext()) convos.add(Triple(c.getLong(0), c.getString(1), c.getInt(2))) }
+        val primary = HashMap<Long, Long>()
+        for (i in convos.indices) {
+            val a = convos[i]
+            if (a.third != 0) { primary[a.first] = a.first; continue }
+            var base = a.first
+            for (j in 0 until i) {
+                val b = convos[j]
+                if (b.third != 0 || primary[b.first] != b.first) continue
+                if (samePerson(b.second, a.second)) { base = primary.getValue(b.first); break }
+            }
+            primary[a.first] = base
+        }
+        val toMerge = primary.mapNotNull { (id, p) -> if (id == p) null else id to p }
+        if (toMerge.isEmpty()) return
+
+        db.writableDatabase.beginTransaction()
+        try {
+            for ((id, p) in toMerge) {
+                val pDraft: String
+                val pArchived: Int
+                db.readableDatabase.rawQuery(
+                    "SELECT draft, archived FROM conversations WHERE id=?", arrayOf(p.toString())
+                ).use { c ->
+                    if (c.moveToFirst()) { pDraft = c.getString(0) ?: ""; pArchived = c.getInt(1) }
+                    else continue
+                }
+                val sDraft: String
+                val sArchived: Int
+                db.readableDatabase.rawQuery(
+                    "SELECT draft, archived FROM conversations WHERE id=?", arrayOf(id.toString())
+                ).use { c ->
+                    if (c.moveToFirst()) { sDraft = c.getString(0) ?: ""; sArchived = c.getInt(1) }
+                    else continue
+                }
+                db.writableDatabase.execSQL(
+                    "UPDATE conversations SET draft=?, archived=? WHERE id=?",
+                    arrayOf<Any?>(if (pDraft.isEmpty()) sDraft else pDraft, if (pArchived == 1 || sArchived == 1) 1 else 0, p.toString())
+                )
+                db.writableDatabase.execSQL(
+                    "UPDATE messages SET conversation_id=? WHERE conversation_id=?",
+                    arrayOf(p.toString(), id.toString())
+                )
+                db.writableDatabase.execSQL(
+                    """UPDATE conversation_notifications SET conversation_id=?
+                       WHERE conversation_id=? AND NOT EXISTS(
+                         SELECT 1 FROM conversation_notifications WHERE conversation_id=?)""",
+                    arrayOf(p.toString(), id.toString(), p.toString())
+                )
+                db.writableDatabase.execSQL(
+                    "DELETE FROM conversations WHERE id=?", arrayOf(id.toString())
+                )
+            }
+            db.writableDatabase.setTransactionSuccessful()
+        } finally {
+            db.writableDatabase.endTransaction()
+        }
+        refreshConversationSnippets()
+        notifyChanged()
     }
 
     /** Writes an outgoing SMS into the system Sent box (required when default app)
@@ -1470,6 +1666,79 @@ class Repository(private val context: Context) {
                 )
             }
         } catch (_: Exception) {
+        }
+    }
+
+    /** After a local backup import, re-populates the system SMS provider so the
+     *  rest of the phone (default Messaging app, other SMS tools) mirrors the
+     *  restored history. Best-effort: only possible while the app is the default
+     *  handler; rows whose sys_id still exists in the provider are skipped, and
+     *  freshly inserted rows get their new provider id written back locally so
+     *  the next system sync does not duplicate them. */
+    fun pushLocalMessagesToProvider() {
+        try {
+            val resolver = context.contentResolver
+            val providerUri = android.provider.Telephony.Sms.CONTENT_URI
+            val linked = ArrayList<Pair<Long, Long>>()
+            var attempted = 0
+            db.readableDatabase.rawQuery(
+                "SELECT m.id, c.address, m.body, m.timestamp, m.is_me, m.status, m.sub_id, m.sys_id " +
+                    "FROM messages m JOIN conversations c ON c.id = m.conversation_id " +
+                    "WHERE m.deleted_at=0",
+                null
+            ).use { c ->
+                while (c.moveToNext()) {
+                    val localId = c.getLong(0)
+                    val existingSysId = c.getLong(7)
+                    if (existingSysId > 0) {
+                        val stillThere = resolver.query(
+                            providerUri, arrayOf(android.provider.Telephony.Sms._ID),
+                            android.provider.Telephony.Sms._ID + "=?",
+                            arrayOf(existingSysId.toString()), null
+                        )?.use { it.moveToFirst() } ?: false
+                        if (stillThere) continue
+                    }
+                    val address = c.getString(1) ?: continue
+                    val body = c.getString(2) ?: continue
+                    val isMe = c.getInt(4) == 1
+                    attempted++
+                    val cv = ContentValues().apply {
+                        put(android.provider.Telephony.Sms.ADDRESS, address)
+                        put(android.provider.Telephony.Sms.BODY, body)
+                        put(android.provider.Telephony.Sms.DATE, c.getLong(3))
+                        put(android.provider.Telephony.Sms.READ, 1)
+                        put(android.provider.Telephony.Sms.SEEN, 1)
+                        put(
+                            android.provider.Telephony.Sms.TYPE,
+                            if (isMe) android.provider.Telephony.Sms.MESSAGE_TYPE_SENT
+                            else android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX
+                        )
+                        val pStatus = when (c.getString(5)) {
+                            "failed" -> android.provider.Telephony.Sms.STATUS_FAILED
+                            "sent", "delivered" -> android.provider.Telephony.Sms.STATUS_COMPLETE
+                            else -> 0
+                        }
+                        put(android.provider.Telephony.Sms.STATUS, pStatus)
+                        val subId = c.getInt(6)
+                        if (subId > 0) put(android.provider.Telephony.Sms.SUBSCRIPTION_ID, subId)
+                    }
+                    val sysId = resolver.insert(providerUri, cv)?.lastPathSegment?.toLongOrNull() ?: -1L
+                    if (sysId > 0) linked.add(localId to sysId)
+                }
+            }
+            android.util.Log.w("RepoMirror", "push: attempted=$attempted linked=${linked.size}")
+            if (linked.isNotEmpty()) {
+                for ((localId, sysId) in linked) {
+                    db.writableDatabase.execSQL(
+                        "UPDATE messages SET sys_id=? WHERE id=?",
+                        arrayOf(sysId.toString(), localId.toString())
+                    )
+                }
+            }
+        } catch (e: SecurityException) {
+            android.util.Log.e("RepoMirror", "mirror skipped (not default?): ${e.message}")
+        } catch (e: Exception) {
+            android.util.Log.e("RepoMirror", "mirror failed: ${e.message}", e)
         }
     }
 

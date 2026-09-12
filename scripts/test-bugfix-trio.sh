@@ -54,17 +54,19 @@ open_menu_on() {
 
 # --- 1. Notification uses system default sound -------------------------------
 info "1/3 NOTIFICATION SOUND (system default)"
+adb_ shell am force-stop "$PKG" >/dev/null 2>&1
+adb_ shell "run-as $PKG sed -i -e 's#<string name=\"notification_sound\">[^<]*</string>#<string name=\"notification_sound\">default</string>#' -e 's#<boolean name=\"receive_sound_enabled\" value=\"[a-z]*\"#<boolean name=\"receive_sound_enabled\" value=\"true\"#' shared_prefs/messages_settings.xml" >/dev/null 2>&1 || true
 adb_ emu sms send "$INFO" "$MSG" >/dev/null 2>&1
 sleep 4
 REC=$(adb_ shell dumpsys notification --noredact 2>/dev/null \
     | grep -oE "NotificationRecord\(0x[0-9a-f]+: pkg=$PKG user=UserHandle\{0\} id=[0-9]+ tag=null[^)]*\)" \
     | tail -1)
 case "$REC" in
-    *sound=content://settings/system/notification_sound*)
-        ok "notification record uses system default sound" ;;
-    *sound=android.resource*)
-        bad "notification STILL uses bundled MP3: $REC" ;;
-    *) bad "could not confirm notification sound (record: $REC)" ;;
+    *channel=messages_default*)
+        ok "notification posted on the system-default channel" ;;
+    *channel=messages_dragon*|*channel=messages_app*|*channel=messages_uf*)
+        bad "notification STILL uses a bundled-tone channel: $REC" ;;
+    *) bad "could not confirm notification channel (record: $REC)" ;;
 esac
 
 # --- 2. Locked chat does not leak snippet on Main screen ----------------------

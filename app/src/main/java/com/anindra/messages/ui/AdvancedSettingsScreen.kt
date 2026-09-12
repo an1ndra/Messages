@@ -1,17 +1,23 @@
 package com.anindra.messages.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
@@ -120,6 +127,7 @@ fun AdvancedSettingsScreen(
                     onChecked = {
                         permanentDelete = it
                         vm.settings.permanentDeleteEnabled = it
+                        if (!it) vm.settings.permanentDeleteWarn = true
                     }
                 )
             }
@@ -131,21 +139,34 @@ fun AdvancedSettingsScreen(
 
 @Composable
 fun PermanentDeleteConfirmDialog(
-    onConfirm: () -> Unit,
+    onConfirm: (dontShowAgain: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var dontShowAgain by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
         title = { Text("Delete permanently?") },
         text = {
-            Text(
-                "Permanent delete is on. This conversation and its messages will be " +
-                    "removed from your device right away — not moved to trash — and cannot be restored."
-            )
+            Column(Modifier.fillMaxWidth()) {
+                Text(
+                    "Permanent delete is on. This conversation and its messages will be " +
+                        "removed from your device right away — not moved to trash — and cannot be restored."
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start,
+                    modifier = Modifier.fillMaxWidth().clickable { dontShowAgain = !dontShowAgain }
+                ) {
+                    Checkbox(checked = dontShowAgain, onCheckedChange = { dontShowAgain = it })
+                    Spacer(Modifier.width(4.dp))
+                    Text("Don't show this warning again")
+                }
+            }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = { onConfirm(dontShowAgain) }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
