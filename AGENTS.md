@@ -130,6 +130,10 @@ scripts/test-loading-screen.sh # conversations-screen loading UX: cold-import pr
                                # bar/skeleton, load-done list, Allow-access panel
 scripts/test-bugfix-trio.sh    # system-default notification sound + locked-snippet
                                # hiding ("@Lock") + Forward menu-item visibility
+scripts/test-large-provider-startup.sh  # real-phone scale: seeds the SMS provider
+                               # with N threads, fresh-installs, verifies the
+                               # first-launch import lands the list + opens a chat
+                               # without crashing (stuck/not-loading regression)
 ```
 
 Coordinate taps assume **1080x2400 @ 420dpi**. `env.sh` provides helpers

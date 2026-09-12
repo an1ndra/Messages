@@ -1,5 +1,16 @@
 # TODO
 
+## ui/chat-design-update · App stuck / crashes / chats won't load on a real phone (2026-09-12)
+
+✅ USER REPORT: built the `ui/chat-design-update` branch with the Develop Build workflow and installed on a physical phone — the app gets stuck, crashes, and sometimes never loads any chats.
+Root cause (real-phone scale): with a provider full of SMS history (Google Messages mirrors everything), every sync ended with `mergeSplitConversations()` that had to complete **inside** the sync task: `runOnIo { … }` blocks via `CompletableFuture.get()` until the O(C²) heal finishes, and each pair comparison ran `PhoneNumberUtils.compare()` + libphonenumber `parse()` — seconds-to-minutes on a phone with hundreds of threads. The home-list and chat flows share the same SQLite connection, so they wait behind it: the list shows nothing and the app looks frozen ("stuck / chats not loading"); force-stop + relaunch just lands back on the same slow path.
+Fix (all in `data/Repository.kt` unless noted):
+- `samePerson()` is now pure digit comparison (`filter{isDigit}` equality + `+1` drop). Still merges the #183 cases (`+15551234567` vs `15551234567`) at ~zero cost, drops the expensive `PhoneNumberUtils.compare` and libphonenumber `canonicalPhoneNumber` from the per-lookup and per-pair hot paths.
+- `mergeSplitConversations()` is queued on the sync executor (`syncExecutor.execute { … }`) instead of blocking via `runOnIo` — the "Loading" UI clears as soon as the import passes its data; the heal runs in the background, still serialized with imports (same single thread).
+- Removed the now-unused `com.googlecode.libphonenumber` dependency (`libs.versions.toml` + `app/build.gradle.kts`).
+- Removed the duplicated "Sending in N seconds…" banner that rendered twice on the chat screen (`ui/ChatScreen.kt`).
+Verified on a rooted emulator seeded with 15,000 provider SMS: first-launch import 6s, home list renders, a chat opens, no crash, warm relaunch provider pass 2s. New regression: `scripts/test-large-provider-startup.sh` (seed provider → fresh install → import/land/chat/relaunch + crash watch). Existing suites re-run clean: issue-183 split-threads 5/5, message-delete-undo 11/11, empty-chat-removal 11/11, initial-sync 2/2, import-mirrors 5/6 (step 6 is the third-party SMS-IE UI, flaky on the AVD).
+
 ## Issue #179 · Open app to view recent messages first (2026-09-11)
 
 ✅ Two parts:
