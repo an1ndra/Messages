@@ -1257,7 +1257,7 @@ private fun ChatSchedulePicker(
 }
 
 fun formatPhoneNumber(raw: String): String = try {
-    android.telephony.PhoneNumberUtils.formatNumber(raw) ?: raw
+    android.telephony.PhoneNumberUtils.formatNumber(raw, java.util.Locale.getDefault().country) ?: raw
 } catch (_: Exception) {
     raw
 }

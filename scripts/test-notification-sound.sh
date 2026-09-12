@@ -88,14 +88,14 @@ open_sound_picker() {
     sleep 1.2
 }
 
-# Sound URI carried by this app's incoming-message notification record.
-notif_sound() {
+# Channel the incoming-message notification for [body] was posted on.
+notif_channel() {
     local body="$1"
     adb_ shell dumpsys notification --noredact 2>/dev/null | awk -v b="$body" '
         /NotificationRecord\(/ { line = $0 }
         index($0, b) {
             m = line
-            sub(/^.*sound=/, "sound=", m)
+            sub(/^.*channel=/, "", m)
             sub(/ .*$/, "", m)
             print m
             exit
@@ -148,12 +148,11 @@ pref=$(pref_get notification_sound)
     pass "pref notification_sound=dragon_studio" ||
     fail "pref notification_sound is '$pref'"
 adb_ emu sms send +15559990099 "dragon check" >/dev/null 2>&1; sleep 2
-s=$(notif_sound "dragon check")
-echo "  observed: $s"
-case "$s" in
-    sound=android.resource://*) pass "notification carries the bundled custom tone" ;;
-    *) fail "notification does NOT carry a custom tone ($s)" ;;
-esac
+s=$(notif_channel "dragon check")
+echo "  notification channel: $s"
+[ "$s" = "messages_dragon" ] &&
+    pass "notification posted on the dragon channel" ||
+    fail "notification posted on the wrong channel ($s)"
 cs=$(channel_sound)
 echo "  active channel: $cs"
 case "$cs" in
@@ -171,12 +170,11 @@ pref=$(pref_get notification_sound)
     pass "pref notification_sound=default" ||
     fail "pref notification_sound is '$pref'"
 adb_ emu sms send +15559990099 "default check" >/dev/null 2>&1; sleep 2
-s=$(notif_sound "default check")
-echo "  observed: $s"
-case "$s" in
-    sound=content://settings/system/notification_sound) pass "notification uses the system default tone" ;;
-    *) fail "notification does NOT use the system default tone ($s)" ;;
-esac
+s=$(notif_channel "default check")
+echo "  notification channel: $s"
+[ "$s" = "messages_default" ] &&
+    pass "notification posted on the default channel" ||
+    fail "notification posted on the wrong channel ($s)"
 cs=$(channel_sound)
 echo "  active channel: $cs"
 [ "$cs" = "content://settings/system/notification_sound" ] &&
@@ -188,12 +186,11 @@ launch_settings
 tap_switch_near "Receive sound" || fail "could not toggle Receive sound"
 wait_pref receive_sound_enabled false && pass "receive sound turned off" || fail "receive sound not turned off"
 adb_ emu sms send +15559990099 "silent check" >/dev/null 2>&1; sleep 2
-s=$(notif_sound "silent check")
-echo "  observed: $s"
-case "$s" in
-    sound=null) pass "notification posted silently" ;;
-    *) fail "notification is not silent ($s)" ;;
-esac
+s=$(notif_channel "silent check")
+echo "  notification channel: $s"
+[ "$s" = "messages_silent" ] &&
+    pass "notification posted on the silent channel" ||
+    fail "notification posted on the wrong channel ($s)"
 cs=$(channel_sound)
 echo "  active channel: $cs"
 [ "$cs" = "null" ] &&
