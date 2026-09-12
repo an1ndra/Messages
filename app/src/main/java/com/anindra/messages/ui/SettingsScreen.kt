@@ -191,7 +191,7 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Notification sounds",
+                    title = "Notifications",
                     subtitle = "Show message notifications",
                     checked = notifications,
                     onChecked = { notifications = it; vm.settings.notificationsEnabled = it }
