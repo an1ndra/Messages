@@ -123,6 +123,7 @@ import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
 import com.anindra.messages.ui.theme.chatBar
+import com.anindra.messages.ui.theme.ChatMetaWeight
 import com.anindra.messages.ui.theme.incomingBubble
 import com.anindra.messages.ui.theme.inputPill
 import com.anindra.messages.ui.theme.outgoingBubble
@@ -137,12 +138,225 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.mutableStateListOf
+
+
 private val EMOJIS = listOf("👍", "😂", "❤️", "🔥", "😢", "😮", "🙏", "🎉")
 
 private const val INITIAL_CHUNK = 40
 private const val AUTO_CHUNK = 40
 private const val AUTO_CAP = 400
 private const val LOAD_EARLIER_STEP = 200
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ChatBubble(
+    msg: Message,
+    showTime: Boolean,
+    onTap: () -> Unit,
+    deliveryReports: Boolean,
+    forwardingEnabled: Boolean,
+    highlightLinks: Boolean,
+    linkWarningEnabled: Boolean,
+    hideLinks: Boolean,
+    isUnlocked: Boolean,
+    showSimIndicator: Boolean,
+    onRetry: () -> Unit = {},
+    onForward: () -> Unit = {},
+    onLockUnlock: (Boolean) -> Unit = {},
+    onDelete: () -> Unit = {}
+) {
+    val cs = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    var showContextMenu by remember { mutableStateOf(false) }
+    var pendingUrl by remember { mutableStateOf<String?>(null) }
+    val isLockedAndHidden = msg.locked && !isUnlocked
+    val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
+    val bodyText = rememberLinkedText(
+        displayBody,
+        highlightLinks && !isLockedAndHidden,
+        hideLinks && !isLockedAndHidden
+    ) { pendingUrl = it }
+
+    pendingUrl?.let { url ->
+        if (linkWarningEnabled) {
+            LinkWarningDialog(
+                url = url,
+                onDismiss = { pendingUrl = null },
+                onOpen = { pendingUrl = null; openUrl(context, url) }
+            )
+        } else {
+            pendingUrl = null
+            openUrl(context, url)
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (msg.isMe) Arrangement.End else Arrangement.Start
+    ) {
+        Column(horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start) {
+            Box {
+                if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
+                    Column(
+                        horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start,
+                        modifier = Modifier.combinedClickable(
+                            onClick = { onTap() },
+                            onLongClick = { showContextMenu = true }
+                        )
+                    ) {
+                        ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
+                        if (msg.body.isNotBlank()) {
+                            Surface(
+                                color = if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.widthIn(max = 260.dp).padding(top = 2.dp)
+                                    .combinedClickable(
+                                        onClick = { onTap() },
+                                        onLongClick = { showContextMenu = true }
+                                    )
+                            ) {
+                                Text(
+                                    text = bodyText,
+                                    style = MaterialTheme.typography.bodyLarge.merge(
+                                        TextStyle(color = if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Surface(
+                        color = if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
+                        shape = RoundedCornerShape(
+                            topStart = 18.dp, topEnd = 18.dp,
+                            bottomStart = if (msg.isMe) 18.dp else 4.dp,
+                            bottomEnd = if (msg.isMe) 4.dp else 18.dp
+                        ),
+                        modifier = Modifier.widthIn(max = 300.dp).combinedClickable(
+                            onClick = { onTap() },
+                            onLongClick = { showContextMenu = true }
+                        )
+                    ) {
+                        Text(
+                            text = bodyText,
+                            style = MaterialTheme.typography.bodyLarge.merge(
+                                TextStyle(color = if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
+                            ),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+
+                DropdownMenu(
+                    expanded = showContextMenu,
+                    onDismissRequest = { showContextMenu = false }
+                ) {
+                    if (showContextMenu) {
+                        DropdownMenuItem(
+                            text = { Text("Copy") },
+                            onClick = {
+                                showContextMenu = false
+                                val clipboard = android.content.Context.CLIPBOARD_SERVICE
+                                val clip = android.content.ClipData.newPlainText("message", msg.body)
+                                val cm = context.getSystemService(clipboard) as android.content.ClipboardManager
+                                cm.setPrimaryClip(clip)
+                                android.os.Handler(context.mainLooper).postDelayed({
+                                    try { cm.setPrimaryClip(android.content.ClipData.newPlainText("", "")) } catch (_: Exception) {}
+                                }, 60_000)
+                                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                        if (forwardingEnabled) {
+                            DropdownMenuItem(
+                                text = { Text("Forward") },
+                                onClick = {
+                                    showContextMenu = false
+                                    onForward()
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text(if (msg.locked) "Unlock" else "Lock") },
+                            onClick = {
+                                showContextMenu = false
+                                onLockUnlock(!msg.locked)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            onClick = {
+                                showContextMenu = false
+                                onDelete()
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (msg.status == "failed" && msg.isMe) {
+                Row(
+                    modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Not sent",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = ChatMetaWeight),
+                        color = cs.error
+                    )
+                    Text(
+                        " · ",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = ChatMetaWeight),
+                        color = cs.error
+                    )
+                    Text(
+                        "Tap to retry",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = ChatMetaWeight),
+                        color = cs.error,
+                        modifier = Modifier.clickable { onRetry() }
+                    )
+                }
+            } else if (showTime) {
+                // Google shows the type only on your own messages.
+                val statusText = if (msg.isMe) {
+                    when {
+                        deliveryReports && msg.status == "delivered" -> "Delivered"
+                        msg.status == "sending" -> "Sending…"
+                        else -> "SMS"
+                    }
+                } else ""
+                val simLabel = if (showSimIndicator && msg.subId > 0) {
+                    try {
+                        val slotIndex = SubscriptionManager.getSlotIndex(msg.subId)
+                        if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
+                    } catch (_: Exception) { "" }
+                } else ""
+                val time = formatTimeOnly(msg.timestamp)
+                val label = if (msg.isMe) {
+                    "$time \u2022 $statusText$simLabel"
+                } else {
+                    time
+                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = ChatMetaWeight
+                    ),
+                    color = cs.onSurfaceVariant,
+                    modifier = Modifier.padding(
+                        top = 6.dp,
+                        bottom = 2.dp,
+                        start = if (msg.isMe) 0.dp else 4.dp,
+                        end = if (msg.isMe) 4.dp else 0.dp
+                    )
+                )
+            }
+        }
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -290,9 +504,7 @@ fun ChatScreen(
     }
 
     fun leaveChat() {
-        if (vm.settings.draftsEnabled) {
-            vm.saveDraft(conversationId, draft.trim())
-        }
+        vm.saveDraftAndMaybeTrash(conversationId, draft.trim(), vm.settings.draftsEnabled)
         onBack()
     }
     BackHandler(onBack = ::leaveChat)
@@ -488,69 +700,103 @@ fun ChatScreen(
         }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            val messageList = @Composable {
-                ChatMessageList(
-                    messages = messages,
-                    listState = listState,
-                    deliveryReports = deliveryReports,
-                    sims = sims,
-                    highlightLinks = vm.settings.highlightLinks,
-                    linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
-                    hideLinks = vm.settings.hideLinks,
-                    forwardingEnabled = vm.settings.forwardingEnabled,
-                    unlockedIds = unlockedIds,
-                    showEntrySkeleton = showEntrySkeleton,
-                    pendingEarlier = pendingEarlier,
-                    hasEarlierButton = hasEarlierButton,
-                    onLoadEarlier = { pageLimit += LOAD_EARLIER_STEP },
-                    onRetry = { vm.retryMessage(it) },
-                    onRetryWithPicker = { retryingMessageId = it; showRetrySimPicker = true },
-                    onLongPress = { msgId ->
-                        if (vm.settings.forwardingEnabled) {
-                            forwardingMessageId = msgId
-                            showForwardPicker = true
-                        }
-                    },
-                    onLockUnlock = { msgId, wantLock ->
-                        if (wantLock) {
-                            vm.setLocked(msgId, true)
-                        } else if (activity != null) {
-                            val biometricManager = BiometricManager.from(activity)
-                            val canAuth = biometricManager.canAuthenticate(
-                                BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                            )
-                            if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
-                                val prompt = BiometricPrompt(activity, biometricExecutor,
-                                    object : BiometricPrompt.AuthenticationCallback() {
-                                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                            result.cryptoObject
-                                            activity.runOnUiThread {
-                                                vm.setLocked(msgId, false)
-                                                unlockedIds = unlockedIds + msgId
-                                            }
-                                        }
-                                    })
-                                prompt.authenticate(
-                                    BiometricPrompt.PromptInfo.Builder()
-                                        .setTitle("Unlock Message")
-                                        .setSubtitle("Authenticate to reveal this message")
-                                        .setAllowedAuthenticators(
-                                            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                                        )
-                                        .build()
+            val revealed = remember { mutableStateListOf<Long>() }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                itemsIndexed(messages, key = { _, m -> m.id }) { idx, msg ->
+                    val prev = messages.getOrNull(idx - 1)
+                    val groupStart = prev == null || startsNewGroup(prev, msg)
+                    val isLastMessage = idx == messages.lastIndex
+                    val isRevealed = msg.id in revealed
+
+                    Column(Modifier.fillMaxWidth()) {
+                        if (groupStart) {
+                            Box(
+                                Modifier.fillMaxWidth().padding(top = 30.dp, bottom = 18.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    formatGroupLabel(msg.timestamp),
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = ChatMetaWeight
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            } else {
-                                vm.setLocked(msgId, false)
-                                unlockedIds = unlockedIds + msgId
                             }
                         }
-                    },
-                    showSimIndicator = vm.settings.showSimIndicator
-                )
+                        ChatBubble(
+                            msg = msg,
+                            showTime = isLastMessage || isRevealed,
+                            onTap = {
+                                if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
+                            },
+                            deliveryReports = deliveryReports,
+                            forwardingEnabled = vm.settings.forwardingEnabled,
+                            highlightLinks = vm.settings.highlightLinks,
+                            linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
+                            hideLinks = vm.settings.hideLinks,
+                            isUnlocked = unlockedIds.contains(msg.id),
+                            showSimIndicator = vm.settings.showSimIndicator,
+                            onRetry = { vm.retryMessage(msg.id) },
+                            onForward = {
+                                if (vm.settings.forwardingEnabled) {
+                                    forwardingMessageId = msg.id
+                                    showForwardPicker = true
+                                }
+                            },
+                            onLockUnlock = { wantLock ->
+                                if (wantLock) {
+                                    vm.setLocked(msg.id, true)
+                                } else if (activity != null) {
+                                    val biometricManager = BiometricManager.from(activity)
+                                    val canAuth = biometricManager.canAuthenticate(
+                                        BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                                    )
+                                    if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                                        val prompt = BiometricPrompt(activity, biometricExecutor,
+                                            object : BiometricPrompt.AuthenticationCallback() {
+                                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                                    result.cryptoObject
+                                                    activity.runOnUiThread {
+                                                        vm.setLocked(msg.id, false)
+                                                        unlockedIds = unlockedIds + msg.id
+                                                    }
+                                                }
+                                            })
+                                        prompt.authenticate(
+                                            BiometricPrompt.PromptInfo.Builder()
+                                                .setTitle("Unlock Message")
+                                                .setSubtitle("Authenticate to reveal this message")
+                                                .setAllowedAuthenticators(
+                                                    BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                                                )
+                                                .build()
+                                        )
+                                    } else {
+                                        vm.setLocked(msg.id, false)
+                                        unlockedIds = unlockedIds + msg.id
+                                    }
+                                }
+                            },
+                            onDelete = {
+                                vm.deleteMessage(msg.id)
+                                scope.launch {
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = "Message deleted",
+                                        actionLabel = "Undo",
+                                        duration = SnackbarDuration.Long
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) vm.restoreMessage(msg.id)
+                                }
+                            }
+                        )
+                    }
+                }
             }
-            // animate shimmer only while a skeleton is visible
-            if (showEntrySkeleton || pendingEarlier) ProvideShimmer { messageList() } else messageList()
-
             if (sendCountdown > 0) {
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -870,6 +1116,7 @@ private fun ChatMessageList(
     onRetryWithPicker: (msgId: Long) -> Unit,
     onLongPress: (msgId: Long) -> Unit,
     onLockUnlock: (msgId: Long, wantLock: Boolean) -> Unit,
+    onDeleteMessage: (msgId: Long) -> Unit,
     showSimIndicator: Boolean = true
 ) {
     LazyColumn(
@@ -912,6 +1159,7 @@ private fun ChatMessageList(
                 linkWarningEnabled = linkWarningEnabled,
                 hideLinks = hideLinks,
                 onLockUnlock = { wantLock -> onLockUnlock(msg.id, wantLock) },
+                onDelete = { onDeleteMessage(msg.id) },
                 isUnlocked = rowIsUnlocked,
                 showSimIndicator = showSimIndicator
             )
@@ -1037,11 +1285,13 @@ private fun rememberLinkedText(
 ): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     val context = LocalContext.current
-    return produceState(AnnotatedString(body), body, highlight, hide, linkColor) {
-        if (hide) {
-            value = withContext(Dispatchers.Default) { AnnotatedString(hideUrls(body)) }
-            return@produceState
-        }
+    // produceState remembers its value WITHOUT keys, so an async redaction would
+    // keep painting the previous (unredacted) text and only swap it once the
+    // coroutine lands — every link bubble flashes its URL when the option is
+    // turned on. Hiding removes content, so resolve it before the first paint;
+    // hideUrls memoizes, so this is a cache hit on recomposition.
+    if (hide) return remember(body) { AnnotatedString(hideUrls(body)) }
+    return produceState(AnnotatedString(body), body, highlight, linkColor) {
         if (!highlight) {
             value = AnnotatedString(body)
             return@produceState
@@ -1187,6 +1437,7 @@ fun MessageRow(
     linkWarningEnabled: Boolean = true,
     hideLinks: Boolean = false,
     onLockUnlock: (Boolean) -> Unit = {},
+    onDelete: () -> Unit = {},
     isUnlocked: Boolean = false,
     showSimIndicator: Boolean = true
 ) {
@@ -1330,6 +1581,13 @@ fun MessageRow(
                         onClick = {
                             showContextMenu = false
                             onLockUnlock(!msg.locked)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = {
+                            showContextMenu = false
+                            onDelete()
                         }
                     )
                 }
