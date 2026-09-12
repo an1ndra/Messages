@@ -280,7 +280,13 @@ object SmsSender {
 
     private fun manager(context: Context, subscriptionId: Int): android.telephony.SmsManager {
         val sm = context.getSystemService(android.telephony.SmsManager::class.java)
-        return if (subscriptionId != -1) sm.createForSubscriptionId(subscriptionId) else sm
+        if (subscriptionId == -1) return sm
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            sm.createForSubscriptionId(subscriptionId)
+        } else {
+            @Suppress("DEPRECATION")
+            android.telephony.SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
+        }
     }
 
     /**
