@@ -10,7 +10,7 @@ For environment setup see [Developer.md](Developer.md); for agent rules see
 
 | Action | Command |
 |---|---|
-| Build | `~/tools/gradle-9.2.1/bin/gradle assembleDebug --no-daemon` |
+| Build | `./gradlew assembleDebug` |
 | Install | `~/android/platform-tools/adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk` |
 | Launch | `scripts/open-app.sh` |
 | Full test sweep | `scripts/run-all-tests.sh` |
@@ -101,8 +101,9 @@ Gotchas learned the hard way:
 
 ## 4. Data layer snapshot
 
-- `Repository.kt` — SQLiteOpenHelper, currently **DB v10** (dev-mode: upgrades
-  recreate tables). Self-healing `onOpen` repairs missing columns/tables.
+- `Repository.kt` — SQLiteOpenHelper, currently **DB v14**; `onUpgrade`
+  applies incremental per-version migrations (ALTER/CREATE/INDEX, v4→v14).
+  Self-healing `onOpen` repairs missing columns/tables.
 - Flows observed via `AppViewModel` (AndroidViewModel), collected with
   `collectAsState`.
 - `SettingsStore.kt` — SharedPreferences (theme, SIM, toggles, privacy).
