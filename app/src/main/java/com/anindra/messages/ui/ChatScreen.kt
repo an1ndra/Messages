@@ -1296,45 +1296,60 @@ private fun rememberLinkedText(
     // coroutine lands — every link bubble flashes its URL when the option is
     // turned on. Hiding removes content, so resolve it before the first paint;
     // hideUrls memoizes, so this is a cache hit on recomposition.
-    if (hide) return remember(body) { AnnotatedString(hideUrls(body)) }
-    return produceState(AnnotatedString(body), body, highlight, linkColor) {
-        if (!highlight) {
-            value = AnnotatedString(body)
-            return@produceState
+    if (hide) {
+        return remember(body) {
+            val stripped = hideUrls(body)
+            val builder = AnnotatedString.Builder(stripped)
+            applyOtpStyles(builder, stripped, linkColor)
+            builder.toAnnotatedString()
         }
+    }
+    return produceState(AnnotatedString(body), body, highlight, linkColor) {
         value = withContext(Dispatchers.Default) {
-            val spanned = SpannableStringBuilder(body)
-            Linkify.addLinks(spanned, Linkify.WEB_URLS)
             val builder = AnnotatedString.Builder(body)
-            val urlSpans = spanned.getSpans(0, spanned.length, URLSpan::class.java)
-            val urlRanges = urlSpans.map { spanned.getSpanStart(it) to spanned.getSpanEnd(it) }
-            urlSpans.forEach { span ->
-                val start = spanned.getSpanStart(span)
-                val end = spanned.getSpanEnd(span)
-                builder.addLink(
-                    LinkAnnotation.Url(
-                        url = span.url,
-                        linkInteractionListener = { link ->
-                            onLinkClick((link as LinkAnnotation.Url).url)
-                        }
-                    ),
-                    start, end
-                )
-                builder.addStyle(SpanStyle(color = linkColor), start, end)
-                builder.addStyle(SpanStyle(textDecoration = TextDecoration.Underline), start, end)
-            }
-            OtpDetector.findRanges(body)
-                .filter { r -> urlRanges.none { s -> r.first >= s.first && r.last + 1 <= s.second } }
-                .forEach { r ->
-                    builder.addStyle(
-                        SpanStyle(color = linkColor, fontWeight = FontWeight.Bold),
-                        r.first,
-                        r.last + 1
+            val urlRanges = if (highlight) {
+                val spanned = SpannableStringBuilder(body)
+                Linkify.addLinks(spanned, Linkify.WEB_URLS)
+                val urlSpans = spanned.getSpans(0, spanned.length, URLSpan::class.java)
+                val ranges = urlSpans.map { spanned.getSpanStart(it) to spanned.getSpanEnd(it) }
+                urlSpans.forEach { span ->
+                    val start = spanned.getSpanStart(span)
+                    val end = spanned.getSpanEnd(span)
+                    builder.addLink(
+                        LinkAnnotation.Url(
+                            url = span.url,
+                            linkInteractionListener = { link ->
+                                onLinkClick((link as LinkAnnotation.Url).url)
+                            }
+                        ),
+                        start, end
                     )
+                    builder.addStyle(SpanStyle(color = linkColor), start, end)
+                    builder.addStyle(SpanStyle(textDecoration = TextDecoration.Underline), start, end)
                 }
+                ranges
+            } else emptyList()
+            applyOtpStyles(builder, body, linkColor, urlRanges)
             builder.toAnnotatedString()
         }
     }.value
+}
+
+private fun applyOtpStyles(
+    builder: AnnotatedString.Builder,
+    body: String,
+    linkColor: Color,
+    exclude: List<Pair<Int, Int>> = emptyList()
+) {
+    OtpDetector.findRanges(body)
+        .filter { r -> exclude.none { s -> r.first >= s.first && r.last + 1 <= s.second } }
+        .forEach { r ->
+            builder.addStyle(
+                SpanStyle(color = linkColor, fontWeight = FontWeight.Bold),
+                r.first,
+                r.last + 1
+            )
+        }
 }
 
 @Composable
