@@ -8,8 +8,6 @@ import android.os.Environment
 import android.os.Handler
 import android.os.HandlerThread
 import android.provider.MediaStore
-import android.telephony.TelephonyManager
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -427,33 +425,30 @@ class Repository(private val context: Context) {
         count
     }
 
-    /** True when two stored addresses identify the same person despite spelling
-     *  differences (e.g. "+15551234567" vs "15551234567", the issue #183 case). */
+    /** True when two stored addresses identify the same person despite formatting
+     *  differences (e.g. "+15551234567" vs "15551234567", the issue #183 case).
+     *  Two pure-digit checks, in order: identical digit runs; and one side being
+     *  the international (E.164) spelling while the other is the same number with
+     *  the leading country/trunk code dropped — exactly 1–3 digits — e.g.
+     *  India "+919876543210"/"9876543210", China "8613812345678"/"13812345678",
+     *  Bangladesh "+8801712345678"/"01712345678", Indonesia "+628123456789"/
+     *  "08123456789", NANP "+15551234567"/"5551234567", UK "+447911234567"/
+     *  "07911234567". Deliberately no libphonenumber and no country-code table:
+     *  the shorter spelling must equal the longer one after dropping exactly
+     *  1–3 leading digits, so two genuinely different numbers can never fuse
+     *  (that would require them to be the same digit run). Runs once per
+     *  address on every lookup and _O(C²)_ inside [mergeSplitConversations] on
+     *  big phones, so it stays near-zero cost — no SIM/region/IP dependency. */
     private fun samePerson(a: String, b: String): Boolean {
         if (a == b) return true
-        val ca = canonicalPhoneNumber(a)
-        val cb = canonicalPhoneNumber(b)
-        if (ca != null && cb != null && ca == cb) return true
         val da = a.filter { it.isDigit() }
         val db_ = b.filter { it.isDigit() }
         if (da.isEmpty() || db_.isEmpty()) return false
         if (da == db_) return true
-        if (android.telephony.PhoneNumberUtils.compare(context, a, b)) return true
-        return (da.length == 11 && da.startsWith("1") && da.drop(1) == db_) ||
-            (db_.length == 11 && db_.startsWith("1") && db_.drop(1) == da)
-    }
-
-    private fun canonicalPhoneNumber(number: String): String? {
-        if (number.isBlank()) return null
-        return try {
-            val util = com.google.i18n.phonenumbers.PhoneNumberUtil.getInstance()
-            val trimmed = number.trim()
-            if (!trimmed.startsWith("+")) return null
-            val parsed = util.parse(trimmed, null)
-            if (util.isValidNumber(parsed) || util.isPossibleNumber(parsed)) {
-                util.format(parsed, com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat.E164)
-            } else null
-        } catch (_: Exception) { null }
+        val diff = da.length - db_.length
+        if (diff in 1..3 && da.drop(diff) == db_) return true
+        val rev = db_.length - da.length
+        return rev in 1..3 && db_.drop(rev) == da
     }
 
     private fun matchConversationId(database: SQLiteDatabase, address: String): Long? {
@@ -1532,7 +1527,11 @@ class Repository(private val context: Context) {
                     refreshConversationSnippets()
                     notifyChanged()
                 }
-                runOnIo { mergeSplitConversations() }
+                // Fold split threads off the sync thread: runOnIo would block the
+                // single sync executor (future.get()) until the O(C²) heal finishes,
+                // which on a phone with hundreds of threads delays the "Loading" UI.
+                // Queued on the same executor so it stays serialized with imports.
+                syncExecutor.execute { mergeSplitConversations() }
                 settings.firstImportDone = true
             } catch (e: SecurityException) {
                 // no SMS access yet — keep firstImportDone=false so grant re-imports

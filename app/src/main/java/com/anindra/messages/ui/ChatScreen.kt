@@ -825,34 +825,6 @@ fun ChatScreen(
                 }
             }
 
-            if (sendCountdown > 0) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Row(
-                        Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Sending in $sendCountdown seconds...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        TextButton(onClick = {
-                            sendAttempt++          // cancels the ticking effect
-                            sendCountdown = 0
-                            pendingSendText = ""
-                        }) {
-                            Text("Cancel")
-                        }
-                    }
-                }
-            }
-
         }
     }
 
