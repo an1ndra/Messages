@@ -98,7 +98,8 @@ object NotificationHelper {
         ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
             .addRemoteInput(remoteInput).build()
 
-        val title = if (privacyMode) "New message" else from
+        val senderName = app.repository.contactNameFor(from) ?: from
+        val title = if (privacyMode) "New message" else senderName
         val text = when {
             privacyMode -> "You have a new message"
             app.repository.settings.hideLinks -> hideUrls(body)
