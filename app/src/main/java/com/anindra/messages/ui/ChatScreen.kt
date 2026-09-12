@@ -18,7 +18,13 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -49,18 +55,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.ui.res.painterResource
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -126,7 +134,9 @@ import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.ChatMetaWeight
 import com.anindra.messages.ui.theme.incomingBubble
 import com.anindra.messages.ui.theme.inputPill
+import com.anindra.messages.ui.theme.onSelectedBubble
 import com.anindra.messages.ui.theme.outgoingBubble
+import com.anindra.messages.ui.theme.selectedBubble
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -156,20 +166,17 @@ private fun ChatBubble(
     showTime: Boolean,
     onTap: () -> Unit,
     deliveryReports: Boolean,
-    forwardingEnabled: Boolean,
     highlightLinks: Boolean,
     linkWarningEnabled: Boolean,
     hideLinks: Boolean,
     isUnlocked: Boolean,
     showSimIndicator: Boolean,
-    onRetry: () -> Unit = {},
-    onForward: () -> Unit = {},
-    onLockUnlock: (Boolean) -> Unit = {},
-    onDelete: () -> Unit = {}
+    isSelected: Boolean = false,
+    onLongPress: () -> Unit = {},
+    onRetry: () -> Unit = {}
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
-    var showContextMenu by remember { mutableStateOf(false) }
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
@@ -203,24 +210,24 @@ private fun ChatBubble(
                         horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start,
                         modifier = Modifier.combinedClickable(
                             onClick = { onTap() },
-                            onLongClick = { showContextMenu = true }
+                            onLongClick = { onLongPress() }
                         )
                     ) {
                         ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
                         if (msg.body.isNotBlank()) {
                             Surface(
-                                color = if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
+                                color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier.widthIn(max = 260.dp).padding(top = 2.dp)
                                     .combinedClickable(
                                         onClick = { onTap() },
-                                        onLongClick = { showContextMenu = true }
+                                        onLongClick = { onLongPress() }
                                     )
                             ) {
                                 Text(
                                     text = bodyText,
                                     style = MaterialTheme.typography.bodyLarge.merge(
-                                        TextStyle(color = if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
+                                        TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
                                     ),
                                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                                 )
@@ -229,7 +236,7 @@ private fun ChatBubble(
                     }
                 } else {
                     Surface(
-                        color = if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
+                        color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
                         shape = RoundedCornerShape(
                             topStart = 18.dp, topEnd = 18.dp,
                             bottomStart = if (msg.isMe) 18.dp else 4.dp,
@@ -237,60 +244,15 @@ private fun ChatBubble(
                         ),
                         modifier = Modifier.widthIn(max = 300.dp).combinedClickable(
                             onClick = { onTap() },
-                            onLongClick = { showContextMenu = true }
+                            onLongClick = { onLongPress() }
                         )
                     ) {
                         Text(
                             text = bodyText,
                             style = MaterialTheme.typography.bodyLarge.merge(
-                                TextStyle(color = if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
+                                TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
                             ),
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        )
-                    }
-                }
-
-                DropdownMenu(
-                    expanded = showContextMenu,
-                    onDismissRequest = { showContextMenu = false }
-                ) {
-                    if (showContextMenu) {
-                        DropdownMenuItem(
-                            text = { Text("Copy") },
-                            onClick = {
-                                showContextMenu = false
-                                val clipboard = android.content.Context.CLIPBOARD_SERVICE
-                                val clip = android.content.ClipData.newPlainText("message", msg.body)
-                                val cm = context.getSystemService(clipboard) as android.content.ClipboardManager
-                                cm.setPrimaryClip(clip)
-                                android.os.Handler(context.mainLooper).postDelayed({
-                                    try { cm.setPrimaryClip(android.content.ClipData.newPlainText("", "")) } catch (_: Exception) {}
-                                }, 60_000)
-                                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                        if (forwardingEnabled) {
-                            DropdownMenuItem(
-                                text = { Text("Forward") },
-                                onClick = {
-                                    showContextMenu = false
-                                    onForward()
-                                }
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text(if (msg.locked) "Unlock" else "Lock") },
-                            onClick = {
-                                showContextMenu = false
-                                onLockUnlock(!msg.locked)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Delete") },
-                            onClick = {
-                                showContextMenu = false
-                                onDelete()
-                            }
                         )
                     }
                 }
@@ -388,6 +350,9 @@ fun ChatScreen(
     var showEmoji by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var attachSheet by remember { mutableStateOf(false) }
+
+    val selectedMessageIds = remember { mutableStateListOf<Long>() }
+    val selectionActive = selectedMessageIds.isNotEmpty()
 
     var cameraFileUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -507,7 +472,115 @@ fun ChatScreen(
         vm.saveDraftAndMaybeTrash(conversationId, draft.trim(), vm.settings.draftsEnabled)
         onBack()
     }
+
+    fun toggleSelection(id: Long) {
+        if (id in selectedMessageIds) selectedMessageIds.remove(id) else selectedMessageIds.add(id)
+    }
+
+    fun clearSelection() = selectedMessageIds.clear()
+
+    fun selectedText(): String {
+        val byId = messages.associateBy { it.id }
+        return selectedMessageIds
+            .mapNotNull { byId[it] }
+            .joinToString("\n") { m ->
+                val hidden = m.locked && !unlockedIds.contains(m.id)
+                when {
+                    hidden -> "@Lock"
+                    vm.settings.hideLinks -> hideUrls(m.body)
+                    else -> m.body
+                }
+            }
+    }
+
+    fun copySelection() {
+        val text = selectedText()
+        if (text.isNotBlank()) {
+            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("messages", text))
+            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+        }
+        clearSelection()
+    }
+
+    fun forwardSelection() {
+        val first = messages.firstOrNull { it.id in selectedMessageIds }
+        if (first != null && vm.settings.forwardingEnabled) {
+            forwardingMessageId = first.id
+            showForwardPicker = true
+        }
+        clearSelection()
+    }
+
+    fun shareSelection() {
+        val text = selectedText()
+        if (text.isNotBlank()) {
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+            context.startActivity(Intent.createChooser(send, "Share"))
+        }
+        clearSelection()
+    }
+
+    fun deleteSelection() {
+        val ids = selectedMessageIds.toList()
+        ids.forEach { vm.deleteMessage(it) }
+        clearSelection()
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = if (ids.size == 1) "Message deleted" else "${ids.size} messages deleted",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Long
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                ids.forEach { vm.restoreMessage(it) }
+            }
+        }
+    }
+
+    fun lockUnlockSelection() {
+        val targets = messages.filter { it.id in selectedMessageIds }
+        if (targets.isEmpty()) return
+        if (targets.any { !it.locked }) {
+            targets.forEach { vm.setLocked(it.id, true) }
+            Toast.makeText(context, "Locked", Toast.LENGTH_SHORT).show()
+            clearSelection()
+        } else if (activity != null) {
+            val biometricManager = BiometricManager.from(activity)
+            val canAuth = biometricManager.canAuthenticate(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            )
+            if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                val prompt = BiometricPrompt(activity, biometricExecutor,
+                    object : BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                            activity.runOnUiThread {
+                                targets.forEach { vm.setLocked(it.id, false) }
+                                unlockedIds = unlockedIds + targets.map { it.id }
+                            }
+                        }
+                    })
+                prompt.authenticate(
+                    BiometricPrompt.PromptInfo.Builder()
+                        .setTitle("Unlock Messages")
+                        .setSubtitle("Authenticate to reveal these messages")
+                        .setAllowedAuthenticators(
+                            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                        )
+                        .build()
+                )
+            } else {
+                targets.forEach { vm.setLocked(it.id, false) }
+                unlockedIds = unlockedIds + targets.map { it.id }
+            }
+            clearSelection()
+        }
+    }
+
     BackHandler(onBack = ::leaveChat)
+    BackHandler(enabled = selectionActive) { clearSelection() }
 
     // Bottom on load + new messages. Int.MAX_VALUE clamps to the last row, so the newest
     // message is brought into view even before layout has counted the freshly added row.
@@ -563,6 +636,27 @@ fun ChatScreen(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
+            AnimatedContent(
+                targetState = selectionActive,
+                transitionSpec = {
+                    (fadeIn() + slideInVertically { -it / 4 }) togetherWith
+                        (fadeOut() + slideOutVertically { -it / 4 })
+                },
+                label = "chatTopBar"
+            ) { selecting ->
+            if (selecting) {
+                MessageSelectionToolbar(
+                    count = selectedMessageIds.size,
+                    allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
+                    onClose = { clearSelection() },
+                    onCopy = { copySelection() },
+                    onForward = { forwardSelection() },
+                    onShare = { shareSelection() },
+                    onViewDetails = onOpenDetails,
+                    onDelete = { deleteSelection() },
+                    onLockUnlock = { lockUnlockSelection() }
+                )
+            } else {
             ChatTopBar(
                 convo = convo,
                 sims = sims,
@@ -624,6 +718,8 @@ fun ChatScreen(
                     }
                 }
             )
+            }
+            }
         },
         bottomBar = {
             Column(
@@ -631,7 +727,7 @@ fun ChatScreen(
                     .background(MaterialTheme.colorScheme.chatBar)
                     .navigationBarsPadding()
             ) {
-                AnimatedVisibility(showEmoji) {
+                AnimatedVisibility(showEmoji && !selectionActive) {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly
@@ -737,67 +833,18 @@ fun ChatScreen(
                             msg = msg,
                             showTime = isLastMessage || isRevealed,
                             onTap = {
-                                if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
+                                if (selectionActive) toggleSelection(msg.id)
+                                else if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
                             },
                             deliveryReports = deliveryReports,
-                            forwardingEnabled = vm.settings.forwardingEnabled,
                             highlightLinks = vm.settings.highlightLinks,
                             linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
                             hideLinks = vm.settings.hideLinks,
                             isUnlocked = unlockedIds.contains(msg.id),
                             showSimIndicator = vm.settings.showSimIndicator,
-                            onRetry = { vm.retryMessage(msg.id) },
-                            onForward = {
-                                if (vm.settings.forwardingEnabled) {
-                                    forwardingMessageId = msg.id
-                                    showForwardPicker = true
-                                }
-                            },
-                            onLockUnlock = { wantLock ->
-                                if (wantLock) {
-                                    vm.setLocked(msg.id, true)
-                                } else if (activity != null) {
-                                    val biometricManager = BiometricManager.from(activity)
-                                    val canAuth = biometricManager.canAuthenticate(
-                                        BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                                    )
-                                    if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
-                                        val prompt = BiometricPrompt(activity, biometricExecutor,
-                                            object : BiometricPrompt.AuthenticationCallback() {
-                                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                                    result.cryptoObject
-                                                    activity.runOnUiThread {
-                                                        vm.setLocked(msg.id, false)
-                                                        unlockedIds = unlockedIds + msg.id
-                                                    }
-                                                }
-                                            })
-                                        prompt.authenticate(
-                                            BiometricPrompt.PromptInfo.Builder()
-                                                .setTitle("Unlock Message")
-                                                .setSubtitle("Authenticate to reveal this message")
-                                                .setAllowedAuthenticators(
-                                                    BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                                                )
-                                                .build()
-                                        )
-                                    } else {
-                                        vm.setLocked(msg.id, false)
-                                        unlockedIds = unlockedIds + msg.id
-                                    }
-                                }
-                            },
-                            onDelete = {
-                                vm.deleteMessage(msg.id)
-                                scope.launch {
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = "Message deleted",
-                                        actionLabel = "Undo",
-                                        duration = SnackbarDuration.Long
-                                    )
-                                    if (result == SnackbarResult.ActionPerformed) vm.restoreMessage(msg.id)
-                                }
-                            }
+                            isSelected = msg.id in selectedMessageIds,
+                            onLongPress = { toggleSelection(msg.id) },
+                            onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
                 }
@@ -965,6 +1012,79 @@ fun ChatScreen(
             onDismiss = { showSchedulePicker = false }
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MessageSelectionToolbar(
+    count: Int,
+    allLocked: Boolean,
+    onClose: () -> Unit,
+    onCopy: () -> Unit,
+    onForward: () -> Unit,
+    onShare: () -> Unit,
+    onViewDetails: () -> Unit,
+    onDelete: () -> Unit,
+    onLockUnlock: () -> Unit
+) {
+    var overflow by remember { mutableStateOf(false) }
+    TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.chatBar,
+            navigationIconContentColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = MaterialTheme.colorScheme.primary,
+            actionIconContentColor = MaterialTheme.colorScheme.primary
+        ),
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Outlined.Close, "Cancel selection", tint = MaterialTheme.colorScheme.primary)
+            }
+        },
+        title = {
+            Text(count.toString(), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+        },
+        actions = {
+            if (count == 1) {
+                IconButton(onClick = onCopy) {
+                    Icon(Icons.Default.ContentCopy, "Copy", tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.primary)
+                }
+                Box {
+                    IconButton(onClick = { overflow = true }) {
+                        Icon(Icons.Outlined.MoreVert, "More options", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    DropdownMenu(
+                        expanded = overflow,
+                        onDismissRequest = { overflow = false },
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Share") },
+                            onClick = { overflow = false; onShare() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Forward") },
+                            onClick = { overflow = false; onForward() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("View details") },
+                            onClick = { overflow = false; onViewDetails() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (allLocked) "Unlock" else "Lock") },
+                            onClick = { overflow = false; onLockUnlock() }
+                        )
+                    }
+                }
+            } else {
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1460,11 +1580,11 @@ fun MessageRow(
     onLockUnlock: (Boolean) -> Unit = {},
     onDelete: () -> Unit = {},
     isUnlocked: Boolean = false,
-    showSimIndicator: Boolean = true
+    showSimIndicator: Boolean = true,
+    isSelected: Boolean = false
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
-    var showContextMenu by remember { mutableStateOf(false) }
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
@@ -1522,24 +1642,24 @@ fun MessageRow(
                     horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start,
                     modifier = Modifier.combinedClickable(
                         onClick = {},
-                        onLongClick = { showContextMenu = true }
+                        onLongClick = { onLongPress() }
                     )
                 ) {
                     ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
                     if (msg.body.isNotBlank()) {
                         Surface(
-                            color = if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
+                            color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.widthIn(max = 260.dp).padding(top = 2.dp)
                                 .combinedClickable(
                                     onClick = {},
-                                    onLongClick = { showContextMenu = true }
+                                    onLongClick = { onLongPress() }
                                 )
                         ) {
                             Text(
                                 text = bodyText,
                                 style = MaterialTheme.typography.bodyLarge.merge(
-                                    TextStyle(color = if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
+                                    TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
                                 ),
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                             )
@@ -1548,7 +1668,7 @@ fun MessageRow(
                 }
             } else {
                 Surface(
-                    color = if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
+                    color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
                     shape = RoundedCornerShape(
                         topStart = 18.dp, topEnd = 18.dp,
                         bottomStart = if (msg.isMe) 18.dp else 4.dp,
@@ -1556,60 +1676,15 @@ fun MessageRow(
                     ),
                     modifier = Modifier.widthIn(max = 300.dp).combinedClickable(
                         onClick = {},
-                        onLongClick = { showContextMenu = true }
+                        onLongClick = { onLongPress() }
                     )
                 ) {
                     Text(
                         text = bodyText,
                         style = MaterialTheme.typography.bodyLarge.merge(
-                            TextStyle(color = if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
+                            TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
                         ),
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                    )
-                }
-            }
-
-            DropdownMenu(
-                expanded = showContextMenu,
-                onDismissRequest = { showContextMenu = false }
-            ) {
-                if (showContextMenu) {
-                    DropdownMenuItem(
-                        text = { Text("Copy") },
-                        onClick = {
-                            showContextMenu = false
-                            val clipboard = android.content.Context.CLIPBOARD_SERVICE
-                            val clip = android.content.ClipData.newPlainText("message", msg.body)
-                            val cm = context.getSystemService(clipboard) as android.content.ClipboardManager
-                            cm.setPrimaryClip(clip)
-                            android.os.Handler(context.mainLooper).postDelayed({
-                                try { cm.setPrimaryClip(android.content.ClipData.newPlainText("", "")) } catch (_: Exception) {}
-                            }, 60_000)
-                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                    if (forwardingEnabled) {
-                        DropdownMenuItem(
-                            text = { Text("Forward") },
-                            onClick = {
-                                showContextMenu = false
-                                onLongPress()
-                            }
-                        )
-                    }
-                    DropdownMenuItem(
-                        text = { Text(if (msg.locked) "Unlock" else "Lock") },
-                        onClick = {
-                            showContextMenu = false
-                            onLockUnlock(!msg.locked)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        onClick = {
-                            showContextMenu = false
-                            onDelete()
-                        }
                     )
                 }
             }
