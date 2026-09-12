@@ -588,7 +588,12 @@ fun ChatScreen(
                 },
                 onDelete = {
                     if (vm.settings.permanentDeleteEnabled) {
-                        showPermanentDeleteDialog = true
+                        if (vm.settings.permanentDeleteWarn) {
+                            showPermanentDeleteDialog = true
+                        } else {
+                            vm.deleteConversation(conversationId)
+                            onBack()
+                        }
                     } else {
                         vm.deleteConversation(conversationId)
                         Toast.makeText(context, "Conversation moved to trash", Toast.LENGTH_SHORT).show()
@@ -899,7 +904,8 @@ fun ChatScreen(
 
     if (showPermanentDeleteDialog) {
         PermanentDeleteConfirmDialog(
-            onConfirm = {
+            onConfirm = { dontShowAgain ->
+                if (dontShowAgain) vm.settings.permanentDeleteWarn = false
                 showPermanentDeleteDialog = false
                 vm.deleteConversation(conversationId)
                 onBack()

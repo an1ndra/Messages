@@ -50,6 +50,7 @@ class SettingsStore(context: Context) {
         const val NOTIFY_SOUND_UNIVERSFIELD_062 = "universfield_062"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
+        const val KEY_PERMANENT_DELETE_WARN = "permanent_delete_warn"
         const val KEY_REVERSE_SWIPE = "reverse_swipe_enabled"
         const val KEY_LINK_WARNING = "link_open_warning_enabled"
         const val DEFAULTS_NOTIFICATIONS = true
@@ -170,6 +171,10 @@ class SettingsStore(context: Context) {
     var permanentDeleteEnabled: Boolean
         get() = prefs.getBoolean(KEY_PERMANENT_DELETE, false)
         set(v) { prefs.edit().putBoolean(KEY_PERMANENT_DELETE, v).apply(); _revision.value++ }
+
+    var permanentDeleteWarn: Boolean
+        get() = prefs.getBoolean(KEY_PERMANENT_DELETE_WARN, true)
+        set(v) { prefs.edit().putBoolean(KEY_PERMANENT_DELETE_WARN, v).apply(); _revision.value++ }
 
     var reverseSwipeEnabled: Boolean
         get() = prefs.getBoolean(KEY_REVERSE_SWIPE, false)
