@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.provider.Telephony
 import android.app.role.RoleManager
+import android.app.NotificationManager
 import kotlinx.coroutines.withContext
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedContent
+import androidx.core.app.NotificationManagerCompat
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -599,11 +601,16 @@ class MainActivity : FragmentActivity() {
 
                 // Single back dispatcher for all routes; child screen BackHandlers win.
                 androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
+                    val wasChat = navRoute == "chat"
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "trash" -> navRoute = "settings"
                         "advanced" -> navRoute = "settings"
                         else -> navRoute = "list"
+                    }
+                    // Clear ForegroundTracker when leaving chat
+                    if (wasChat) {
+                        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(null)
                     }
                 }
 
@@ -614,7 +621,12 @@ class MainActivity : FragmentActivity() {
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     ConversationsScreen(
                         vm = vm,
-                        onOpenConversation = { id -> chatId = id; navRoute = "chat" },
+                        onOpenConversation = { id ->
+                            // Cancel notifications immediately when opening chat
+                            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+                            chatId = id
+                            navRoute = "chat"
+                        },
                         onNewChat = { navRoute = "new" },
                         onOpenSettings = { navRoute = "settings" }
                     )

@@ -621,13 +621,7 @@ fun ChatScreen(
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)
-        // Dismiss notification for this conversation when user opens the chat
-        val nm = context.getSystemService(android.app.NotificationManager::class.java)
-        nm.cancelAll()
         draftLoaded = false
-    }
-    LaunchedEffect(convo?.address) {
-        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(convo?.address)
     }
     LaunchedEffect(convo) {
         if (convo != null && !draftLoaded) {
