@@ -140,6 +140,8 @@ object NotificationHelper {
     }
 
     fun show(context: Context, from: String, body: String) {
+        // Skip notification if user is already reading this conversation
+        if (com.anindra.messages.sms.ForegroundTracker.isAppInForeground && com.anindra.messages.sms.ForegroundTracker.isConversationOpen(from)) return
         // create the channel before any early-return: notify() with an unknown
         // channel id is a silent no-op, so the first-ever post must have it ready
         ensureChannel(context)
