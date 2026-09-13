@@ -167,10 +167,20 @@ object NotificationHelper {
             PendingIntent.FLAG_IMMUTABLE
         )
 
+        // The reply action must be backed by a MUTABLE PendingIntent (RemoteInput
+        // is silently dropped otherwise on Android 15+), so the wrapped Intent
+        // carries an explicit component + package to stay safe; it is built inline
+        // so CodeQL's explicit-intent sanitizer applies (cross-method flow does not).
+        val replyData = Intent(context, QuickReplyReceiver::class.java).apply {
+            action = QuickReplyReceiver.ACTION_REPLY
+            setPackage(context.packageName)
+            putExtra(QuickReplyReceiver.EXTRA_ADDRESS, from)
+            putExtra(QuickReplyReceiver.EXTRA_FROM, from)
+            putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId)
+        }
         val replyIntent = PendingIntent.getBroadcast(
             context, reqCode,
-            QuickReplyReceiver.createReplyIntent(context, from, from)
-                .putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId),
+            replyData,
             PendingIntent.FLAG_MUTABLE
         )
 
