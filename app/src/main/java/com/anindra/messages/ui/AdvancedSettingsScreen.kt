@@ -35,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.anindra.messages.R
 import com.anindra.messages.AppViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +57,7 @@ fun AdvancedSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Advanced settings") },
+                title = { Text(stringResource(R.string.settings_advanced)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
@@ -146,7 +148,7 @@ fun PermanentDeleteConfirmDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
-        title = { Text("Delete permanently?") },
+        title = { Text(stringResource(R.string.settings_advanced_delete_permanently)) },
         text = {
             Column(Modifier.fillMaxWidth()) {
                 Text(
@@ -161,15 +163,15 @@ fun PermanentDeleteConfirmDialog(
                 ) {
                     Checkbox(checked = dontShowAgain, onCheckedChange = { dontShowAgain = it })
                     Spacer(Modifier.width(4.dp))
-                    Text("Don't show this warning again")
+                    Text(stringResource(R.string.settings_advanced_warning))
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(dontShowAgain) }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = { onConfirm(dontShowAgain) }) { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

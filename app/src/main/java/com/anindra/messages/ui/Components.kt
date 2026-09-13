@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BusinessCenter
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -172,7 +173,7 @@ private fun loadContactPhoto(context: Context, number: String): Bitmap? {
 fun WorkProfileBadge(modifier: Modifier = Modifier) {
     Icon(
         Icons.Rounded.BusinessCenter,
-        contentDescription = "Work profile contact",
+        contentDescription = stringResource(R.string.contact_work_profile),
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.size(14.dp)
     )

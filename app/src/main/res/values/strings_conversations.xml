@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">Search conversations</string>
+    <string name="conversations_retry_loading">Retry loading</string>
+    <string name="conversations_allow_access">Allow access</string>
+    <string name="conversations_open_settings">Open app settings</string>
+    <string name="conversations_press_back_exit">Press back again to exit</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">New conversation</string>
+    <string name="new_chat_hint">Enter name or phone number</string>
+    <string name="new_chat_only_phone">Only phone numbers can be messaged</string>
+    <string name="new_chat_send_to">Send to \u201C%s\u201D</string>
+</resources>

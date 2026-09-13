@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Messages</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">Authenticate to access your messages</string>
+    <string name="lock_got_it">Got it</string>
+    <string name="lock_not_now">Not now</string>
+    <string name="lock_off">App lock is off</string>
+    <string name="lock_setup_needed">Set up a screen lock (fingerprint, face, or PIN) on your device first</string>
+    <string name="lock_turn_on">Set up screen lock</string>
+    <string name="lock_turn_on_hint">Set one up to turn App lock back on.</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">Set as default SMS app?</string>
+    <string name="default_sms_message">To send and receive messages, Messages needs to be your default SMS app.</string>
+    <string name="default_sms_set">Set default</string>
+    <string name="default_sms_not_now">Not now</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">Notifications disabled — you won\'t be alerted for new messages</string>
+</resources>

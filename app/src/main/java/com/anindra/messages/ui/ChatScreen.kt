@@ -130,6 +130,7 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
+import androidx.compose.ui.res.stringResource
 import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.ChatMetaWeight
 import com.anindra.messages.ui.theme.incomingBubble
@@ -433,7 +434,7 @@ fun ChatScreen(
         vm.settings.simSubscriptionId = next.subscriptionId
         val carrier = next.carrierName?.toString()?.ifBlank { null }
         val label = if (carrier != null) "$carrier · SIM ${next.simSlotIndex + 1}" else "SIM ${next.simSlotIndex + 1}"
-        Toast.makeText(context, "Sending via $label", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.chat_sending_via, label), Toast.LENGTH_SHORT).show()
     }
 
     LaunchedEffect(Unit) {
@@ -501,8 +502,8 @@ fun ChatScreen(
         val text = selectedText()
         if (text.isNotBlank()) {
             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            cm.setPrimaryClip(android.content.ClipData.newPlainText("messages", text))
-            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+            cm.setPrimaryClip(android.content.ClipData.newPlainText(context.getString(R.string.chat_messages_label), text))
+            Toast.makeText(context, context.getString(R.string.chat_copied), Toast.LENGTH_SHORT).show()
         }
         clearSelection()
     }
@@ -523,7 +524,7 @@ fun ChatScreen(
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, text)
             }
-            context.startActivity(Intent.createChooser(send, "Share"))
+            context.startActivity(Intent.createChooser(send, context.getString(R.string.chat_share)))
         }
         clearSelection()
     }
@@ -549,7 +550,7 @@ fun ChatScreen(
         if (targets.isEmpty()) return
         if (targets.any { !it.locked }) {
             targets.forEach { vm.setLocked(it.id, true) }
-            Toast.makeText(context, "Locked", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.chat_locked), Toast.LENGTH_SHORT).show()
             clearSelection()
         } else if (activity != null) {
             val biometricManager = BiometricManager.from(activity)
@@ -680,11 +681,11 @@ fun ChatScreen(
                 onSimSelect = { simId, label ->
                     currentSimId = simId
                     vm.settings.simSubscriptionId = simId
-                    Toast.makeText(context, "Sending via $label", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.chat_sending_via, label), Toast.LENGTH_SHORT).show()
                 },
                 onArchive = {
                     vm.setArchived(conversationId, true)
-                    Toast.makeText(context, "Conversation archived", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.chat_archived), Toast.LENGTH_SHORT).show()
                     onBack()
                 },
                 onDelete = {
@@ -697,7 +698,7 @@ fun ChatScreen(
                         }
                     } else {
                         vm.deleteConversation(conversationId)
-                        Toast.makeText(context, "Conversation moved to trash", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.chat_moved_to_trash), Toast.LENGTH_SHORT).show()
                         onBack()
                     }
                 },
@@ -705,14 +706,14 @@ fun ChatScreen(
                     convo?.address?.let { addr ->
                         vm.blockNumber(addr)
                         numberIsBlocked = true
-                        Toast.makeText(context, "Number blocked", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.chat_number_blocked), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onUnblock = {
                     convo?.address?.let { addr ->
                         vm.unblockNumber(addr)
                         numberIsBlocked = false
-                        Toast.makeText(context, "Number unblocked", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.chat_number_unblocked), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onAddPeople = { /* no-op: MMS group chat, stub */ }
@@ -870,7 +871,7 @@ fun ChatScreen(
                             sendCountdown = 0
                             pendingSendText = ""
                         }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.chat_cancel))
                         }
                     }
                 }
@@ -915,8 +916,8 @@ fun ChatScreen(
     if (showBlockedDialog) {
         AlertDialog(
             onDismissRequest = { showBlockedDialog = false },
-            title = { Text("Number blocked") },
-            text = { Text("This number is blocked. Unblock to send?") },
+            title = { Text(stringResource(R.string.chat_number_blocked)) },
+            text = { Text(stringResource(R.string.chat_blocked_send)) },
             confirmButton = {
                 TextButton(onClick = {
                     showBlockedDialog = false
@@ -924,10 +925,10 @@ fun ChatScreen(
                         vm.unblockNumber(addr)
                         numberIsBlocked = false
                     }
-                }) { Text("Unblock") }
+                }) { Text(stringResource(R.string.chat_unblock)) }
             },
             dismissButton = {
-                TextButton(onClick = { showBlockedDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showBlockedDialog = false }) { Text(stringResource(R.string.chat_cancel)) }
             }
         )
     }
@@ -935,7 +936,7 @@ fun ChatScreen(
     if (showAlphanumericDialog) {
         AlertDialog(
             onDismissRequest = { showAlphanumericDialog = false },
-            title = { Text("Can't send message") },
+            title = { Text(stringResource(R.string.chat_cant_send)) },
             text = {
                 Text(
                     "You can't send messages to alphanumeric senders like " +
@@ -943,7 +944,7 @@ fun ChatScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showAlphanumericDialog = false }) { Text("OK") }
+                TextButton(onClick = { showAlphanumericDialog = false }) { Text(stringResource(R.string.chat_ok)) }
             }
         )
     }
@@ -969,7 +970,7 @@ fun ChatScreen(
                 vm.openOrCreate(address, name) { targetId ->
                     vm.forwardMessage(forwardingMessageId, targetId)
                     forwardingMessageId = -1
-                    Toast.makeText(context, "Message forwarded", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.chat_forwarded), Toast.LENGTH_SHORT).show()
                 }
             },
             onDismiss = {
@@ -1002,7 +1003,7 @@ fun ChatScreen(
                 val addr = convo?.address ?: return@ChatSchedulePicker
                 vm.scheduleMessage(addr, text, ts, conversationId)
                 val fmt = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
-                Toast.makeText(context, "Scheduled for ${fmt.format(Date(ts))}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.chat_scheduled_for, fmt.format(Date(ts))), Toast.LENGTH_SHORT).show()
                 vm.saveDraft(conversationId, "")
                 draft = ""
                 showEmoji = false
@@ -1060,15 +1061,15 @@ private fun MessageSelectionToolbar(
                         containerColor = MaterialTheme.colorScheme.surface
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Share") },
+                            text = { Text(stringResource(R.string.chat_share)) },
                             onClick = { overflow = false; onShare() }
                         )
                         DropdownMenuItem(
-                            text = { Text("Forward") },
+                            text = { Text(stringResource(R.string.chat_forward)) },
                             onClick = { overflow = false; onForward() }
                         )
                         DropdownMenuItem(
-                            text = { Text("View details") },
+                            text = { Text(stringResource(R.string.chat_view_details)) },
                             onClick = { overflow = false; onViewDetails() }
                         )
                         DropdownMenuItem(
@@ -1168,11 +1169,11 @@ private fun ChatTopBar(
                     containerColor = MaterialTheme.colorScheme.chatBar
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Add people") },
+                        text = { Text(stringResource(R.string.chat_add_people)) },
                         onClick = { onMenuDismiss(); onAddPeople() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Details") },
+                        text = { Text(stringResource(R.string.chat_details)) },
                         onClick = { onMenuDismiss(); onOpenDetails() }
                     )
                     if (sims.size > 1) {
@@ -1203,22 +1204,22 @@ private fun ChatTopBar(
                         }
                     }
                     DropdownMenuItem(
-                        text = { Text("Archive") },
+                        text = { Text(stringResource(R.string.chat_archive)) },
                         onClick = { onMenuDismiss(); onArchive() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete") },
+                        text = { Text(stringResource(R.string.chat_delete)) },
                         onClick = { onMenuDismiss(); onDelete() }
                     )
                     if (blockingEnabled) {
                         if (numberIsBlocked) {
                             DropdownMenuItem(
-                                text = { Text("Unblock number") },
+                                text = { Text(stringResource(R.string.chat_unblock_number)) },
                                 onClick = { onMenuDismiss(); onUnblock() }
                             )
                         } else {
                             DropdownMenuItem(
-                                text = { Text("Block number") },
+                                text = { Text(stringResource(R.string.chat_block_number)) },
                                 onClick = { onMenuDismiss(); onBlock() }
                             )
                         }
@@ -1269,7 +1270,7 @@ private fun ChatMessageList(
                         onClick = onLoadEarlier,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                     ) {
-                        Text("Load earlier messages")
+                        Text(stringResource(R.string.chat_loading_earlier))
                     }
                 }
             }
@@ -1350,11 +1351,11 @@ private fun ChatSchedulePicker(
             onDismissRequest = onDismiss,
             confirmButton = {
                 TextButton(onClick = { onDateSelected(datePickerState.selectedDateMillis ?: System.currentTimeMillis()) }) {
-                    Text("Next")
+                    Text(stringResource(R.string.chat_next))
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -1366,7 +1367,7 @@ private fun ChatSchedulePicker(
         )
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Select time") },
+            title = { Text(stringResource(R.string.chat_select_time)) },
             text = { TimePicker(state = timePickerState) },
             confirmButton = {
                 TextButton(onClick = {
@@ -1379,10 +1380,10 @@ private fun ChatSchedulePicker(
                         set(Calendar.MILLISECOND, 0)
                     }
                     onSchedule(cal.timeInMillis)
-                }) { Text("Schedule") }
+                }) { Text(stringResource(R.string.chat_schedule)) }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
             }
         )
     }
@@ -1484,10 +1485,10 @@ private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> 
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.Info, contentDescription = null) },
-        title = { Text("Caution: external link") },
+        title = { Text(stringResource(R.string.chat_link_caution)) },
         text = {
             Column {
-                Text("Links in messages can lead to fake websites that steal your personal data or install malware.")
+                Text(stringResource(R.string.chat_link_warning))
                 Spacer(Modifier.height(12.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -1503,18 +1504,18 @@ private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> 
             }
         },
         confirmButton = {
-            TextButton(onClick = onOpen) { Text("Open") }
+            TextButton(onClick = onOpen) { Text(stringResource(R.string.chat_open)) }
         },
         dismissButton = {
             Row {
                 TextButton(onClick = {
                     val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                             as android.content.ClipboardManager
-                    cm.setPrimaryClip(android.content.ClipData.newPlainText("link", url))
-                    Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText(context.getString(R.string.chat_link_label), url))
+                    Toast.makeText(context, context.getString(R.string.chat_link_copied), Toast.LENGTH_SHORT).show()
                     onDismiss()
-                }) { Text("Copy link") }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                }) { Text(stringResource(R.string.chat_copy_link)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
             }
         }
     )
@@ -1529,7 +1530,7 @@ private fun ConversationDetailsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Conversation details") },
+        title = { Text(stringResource(R.string.chat_details_title)) },
         text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1554,7 +1555,7 @@ private fun ConversationDetailsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_close)) }
         }
     )
 }
@@ -1884,7 +1885,7 @@ private fun AttachSheet(
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(
-                "Share",
+                stringResource(R.string.chat_share),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -1895,7 +1896,7 @@ private fun AttachSheet(
             ) {
                 Icon(Icons.Rounded.Image, null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(16.dp))
-                Text("Gallery", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.chat_media_gallery), style = MaterialTheme.typography.bodyLarge)
             }
             Row(
                 Modifier.fillMaxWidth().clickable { onCamera() }.padding(vertical = 14.dp),
@@ -1903,7 +1904,7 @@ private fun AttachSheet(
             ) {
                 Icon(Icons.Rounded.CameraAlt, null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(16.dp))
-                Text("Camera", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.chat_media_camera), style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
@@ -1919,7 +1920,7 @@ private fun SimPickerDialog(
     var selected by remember { mutableIntStateOf(currentSimId) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Retry with SIM") },
+        title = { Text(stringResource(R.string.chat_retry_sim)) },
         text = {
             Column {
                 sims.forEach { sub ->
@@ -1940,10 +1941,10 @@ private fun SimPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSelect(selected) }) { Text("Retry") }
+            TextButton(onClick = { onSelect(selected) }) { Text(stringResource(R.string.chat_retry)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
         }
     )
 }
@@ -1960,13 +1961,13 @@ private fun ForwardPicker(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Forward to") },
+        title = { Text(stringResource(R.string.chat_forward_to)) },
         text = {
             Column {
                 TextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Search contacts") },
+                    placeholder = { Text(stringResource(R.string.chat_search_contacts)) },
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -2009,7 +2010,7 @@ private fun ForwardPicker(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
         }
     )
 }

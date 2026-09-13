@@ -38,11 +38,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
+import com.anindra.messages.R
 import com.anindra.messages.data.Conversation
 import java.text.DateFormat
 import java.util.Date
@@ -65,7 +67,7 @@ fun TrashScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Trash") },
+                title = { Text(stringResource(R.string.trash_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
@@ -74,7 +76,7 @@ fun TrashScreen(
                 actions = {
                     if (trashed.isNotEmpty()) {
                         TextButton(onClick = { showEmptyTrashDialog = true }) {
-                            Text("Empty trash", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.trash_empty), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -133,7 +135,7 @@ fun TrashScreen(
         if (showEmptyTrashDialog) {
             AlertDialog(
                 onDismissRequest = { showEmptyTrashDialog = false },
-                title = { Text("Empty trash") },
+                title = { Text(stringResource(R.string.trash_empty)) },
                 text = {
                     Text(
                         "Delete all ${trashed.size} conversations from trash? This can't be undone."
@@ -143,14 +145,14 @@ fun TrashScreen(
                     TextButton(onClick = {
                         vm.emptyTrash()
                         showEmptyTrashDialog = false
-                        Toast.makeText(context, "Trash emptied", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.trash_emptied), Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Empty trash", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.trash_empty), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showEmptyTrashDialog = false }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.common_cancel))
                     }
                 }
             )
@@ -163,7 +165,7 @@ fun TrashScreen(
                     showDeleteForeverDialog = false
                     deleteTarget = null
                 },
-                title = { Text("Delete conversation") },
+                title = { Text(stringResource(R.string.trash_delete_conversation)) },
                 text = {
                     val name = targetConvo?.name?.ifBlank { targetConvo?.address ?: "conversation" }
                     Text(
@@ -175,9 +177,9 @@ fun TrashScreen(
                         deleteTarget?.let { vm.deleteForever(it) }
                         showDeleteForeverDialog = false
                         deleteTarget = null
-                        Toast.makeText(context, "Conversation deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.toast_trash_deleted), Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
@@ -185,7 +187,7 @@ fun TrashScreen(
                         showDeleteForeverDialog = false
                         deleteTarget = null
                     }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.common_cancel))
                     }
                 }
             )

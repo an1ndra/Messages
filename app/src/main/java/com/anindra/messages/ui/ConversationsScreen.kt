@@ -98,10 +98,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.repeatOnLifecycle
 import com.anindra.messages.AppViewModel
+import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
 import kotlinx.coroutines.flow.collect
@@ -231,7 +233,7 @@ fun ConversationsScreen(
             (context as? Activity)?.finish()
         } else {
             lastBackExitAt = now
-            Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.conversations_press_back_exit), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -339,7 +341,7 @@ fun ConversationsScreen(
                     TextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text("Search conversations") },
+                        placeholder = { Text(stringResource(R.string.conversations_search)) },
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -432,11 +434,11 @@ fun ConversationsScreen(
                     )
                     Spacer(Modifier.height(24.dp))
                     Button(onClick = { readSmsPermissionLauncher.launch(Manifest.permission.READ_SMS) }) {
-                        Text("Allow access")
+                        Text(stringResource(R.string.conversations_allow_access))
                     }
                     Spacer(Modifier.height(8.dp))
                     TextButton(onClick = { vm.requeryFromSystem() }) {
-                        Text("Retry loading")
+                        Text(stringResource(R.string.conversations_retry_loading))
                     }
                     TextButton(onClick = {
                         context.startActivity(
@@ -446,7 +448,7 @@ fun ConversationsScreen(
                             )
                         )
                     }) {
-                        Text("Open app settings")
+                        Text(stringResource(R.string.conversations_open_settings))
                     }
                 }
             } else {

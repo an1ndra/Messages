@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared action labels -->
+    <string name="common_cancel">Cancel</string>
+    <string name="common_ok">OK</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_open">Open</string>
+    <string name="common_close">Close</string>
+    <string name="common_next">Next</string>
+
+    <!-- Time formatting -->
+    <string name="time_now">Now</string>
+    <string name="time_yesterday">Yesterday</string>
+    <string name="time_today">Today</string>
+    <string name="time_minutes">%s min</string>
+    <string name="time_format_hour">h:mm a</string>
+    <string name="time_format_date">MMM d</string>
+    <string name="time_format_divider">EEE, MMM d</string>
+
+    <!-- Contacts -->
+    <string name="contact_work_profile">Work profile contact</string>
+</resources>
