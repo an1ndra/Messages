@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">Reverse swipe actions</string>
+    <string name="settings_advanced_reverse_swipe_desc">Swipe left to archive and right to delete</string>
+    <string name="settings_advanced_hide_links">Hide links from messages</string>
+    <string name="settings_advanced_hide_links_desc">Never turn links in messages into tappable links</string>
+    <string name="settings_advanced_highlight_links">Highlight links</string>
+    <string name="settings_advanced_link_warning">Link open warning</string>
+    <string name="settings_advanced_permanent_delete">Permanent delete</string>
+    <string name="settings_advanced_permanent_delete_desc">Delete messages immediately instead of moving them to trash</string>
+</resources>

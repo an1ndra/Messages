@@ -57,7 +57,7 @@ fun AdvancedSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_advanced)) },
+                title = { Text(stringResource(R.string.settings_advanced_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
@@ -77,8 +77,8 @@ fun AdvancedSettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Reverse swipe actions",
-                    subtitle = "Swipe left to archive and right to delete",
+                    title = stringResource(R.string.settings_advanced_reverse_swipe),
+                    subtitle = stringResource(R.string.settings_advanced_reverse_swipe_desc),
                     checked = reverseSwipe,
                     onChecked = {
                         reverseSwipe = it
@@ -86,8 +86,8 @@ fun AdvancedSettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Hide links from messages",
-                    subtitle = "Never turn links in messages into tappable links",
+                    title = stringResource(R.string.settings_advanced_hide_links),
+                    subtitle = stringResource(R.string.settings_advanced_hide_links_desc),
                     checked = hideLinks,
                     onChecked = {
                         hideLinks = it
@@ -95,7 +95,7 @@ fun AdvancedSettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Highlight links",
+                    title = stringResource(R.string.settings_advanced_highlight_links),
                     subtitle = if (hideLinks) {
                         "Turn off \"Hide links from messages\" first"
                     } else {
@@ -109,7 +109,7 @@ fun AdvancedSettingsScreen(
                     enabled = !hideLinks
                 )
                 SettingsRow(
-                    title = "Link open warning",
+                    title = stringResource(R.string.settings_advanced_link_warning),
                     subtitle = when {
                         hideLinks -> "Turn off \"Hide links from messages\" first"
                         !highlightLinks -> "Turn on \"Highlight links\" first"
@@ -123,8 +123,8 @@ fun AdvancedSettingsScreen(
                     enabled = !hideLinks && highlightLinks
                 )
                 SettingsRow(
-                    title = "Permanent delete",
-                    subtitle = "Delete messages immediately instead of moving them to trash",
+                    title = stringResource(R.string.settings_advanced_permanent_delete),
+                    subtitle = stringResource(R.string.settings_advanced_permanent_delete_desc),
                     checked = permanentDelete,
                     onChecked = {
                         permanentDelete = it

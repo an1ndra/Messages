@@ -193,20 +193,20 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Notifications",
-                    subtitle = "Show message notifications",
+                    title = stringResource(R.string.settings_notif_title),
+                    subtitle = stringResource(R.string.settings_notif_subtitle),
                     checked = notifications,
                     onChecked = { notifications = it; vm.settings.notificationsEnabled = it }
                 )
                 SettingsRow(
-                    title = "Send sound",
-                    subtitle = "Play sound when sending a message",
+                    title = stringResource(R.string.settings_send_sound_title),
+                    subtitle = stringResource(R.string.settings_send_sound_subtitle),
                     checked = sendSound,
                     onChecked = { sendSound = it; vm.settings.sendSoundEnabled = it }
                 )
                 SettingsRow(
-                    title = "Receive sound",
-                    subtitle = "Play a sound when a message arrives",
+                    title = stringResource(R.string.settings_receive_sound_title),
+                    subtitle = stringResource(R.string.settings_receive_sound_subtitle),
                     checked = receiveSound,
                     onChecked = {
                         receiveSound = it
@@ -223,14 +223,14 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Delivery reports",
-                    subtitle = "Find out when an SMS message is delivered",
+                    title = stringResource(R.string.settings_delivery_reports_title),
+                    subtitle = stringResource(R.string.settings_delivery_reports_subtitle),
                     checked = delivery,
                     onChecked = { delivery = it; vm.settings.deliveryReportsEnabled = it }
                 )
                 SettingsRow(
-                    title = "Mark all as read",
-                    subtitle = "Clear unread badges for every conversation",
+                    title = stringResource(R.string.settings_mark_read_title),
+                    subtitle = stringResource(R.string.settings_mark_read_subtitle),
                     onClick = {
                         vm.markAllRead()
                         Toast.makeText(context, context.getString(R.string.settings_mark_read), Toast.LENGTH_SHORT).show()
@@ -242,7 +242,7 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Theme",
+                    title = stringResource(R.string.settings_theme_title),
                     subtitle = themeLabel(themeMode),
                     onClick = { themeDialog = true }
                 )
@@ -280,32 +280,32 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Drafts",
-                    subtitle = "Auto-save unsent text as drafts",
+                    title = stringResource(R.string.settings_drafts_title),
+                    subtitle = stringResource(R.string.settings_drafts_subtitle),
                     checked = drafts,
                     onChecked = { drafts = it; vm.settings.draftsEnabled = it }
                 )
                 SettingsRow(
-                    title = "Archiving",
-                    subtitle = "Allow archiving conversations",
+                    title = stringResource(R.string.settings_archiving_title),
+                    subtitle = stringResource(R.string.settings_archiving_subtitle),
                     checked = archiving,
                     onChecked = { archiving = it; vm.settings.archivingEnabled = it }
                 )
                 SettingsRow(
-                    title = "Pinned conversations",
-                    subtitle = "Show pinned conversations at top",
+                    title = stringResource(R.string.settings_pinned_title),
+                    subtitle = stringResource(R.string.settings_pinned_subtitle),
                     checked = pinned,
                     onChecked = { pinned = it; vm.settings.pinnedEnabled = it; if (!it) vm.unpinAll() }
                 )
                 SettingsRow(
-                    title = "Swipe actions",
-                    subtitle = "Enable swipe to archive/delete",
+                    title = stringResource(R.string.settings_swipe_actions_title),
+                    subtitle = stringResource(R.string.settings_swipe_actions_subtitle),
                     checked = swipeActions,
                     onChecked = { swipeActions = it; vm.settings.swipeActionsEnabled = it }
                 )
                 SettingsRow(
-                    title = "Unread at top",
-                    subtitle = "Sort unread messages at top",
+                    title = stringResource(R.string.settings_unread_top_title),
+                    subtitle = stringResource(R.string.settings_unread_top_subtitle),
                     checked = unreadAtTop,
                     onChecked = { unreadAtTop = it; vm.settings.unreadAtTopEnabled = it }
                 )
@@ -315,20 +315,20 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Forwarding",
-                    subtitle = "Enable message forwarding",
+                    title = stringResource(R.string.settings_forwarding_title),
+                    subtitle = stringResource(R.string.settings_forwarding_subtitle),
                     checked = forwarding,
                     onChecked = { forwarding = it; vm.settings.forwardingEnabled = it }
                 )
                 SettingsRow(
-                    title = "Scheduled messages",
-                    subtitle = "Enable scheduling messages",
+                    title = stringResource(R.string.settings_scheduled_title),
+                    subtitle = stringResource(R.string.settings_scheduled_subtitle),
                     checked = scheduledMessages,
                     onChecked = { scheduledMessages = it; vm.settings.scheduledMessagesEnabled = it }
                 )
                 SettingsRow(
-                    title = "Delayed sending",
-                    subtitle = "Wait before sending a message",
+                    title = stringResource(R.string.settings_delayed_title),
+                    subtitle = stringResource(R.string.settings_delayed_subtitle),
                     checked = delayedSending,
                     onChecked = {
                         delayedSending = it; vm.settings.delayedSendingEnabled = it
@@ -337,8 +337,8 @@ fun SettingsScreen(
                 )
                 if (delayedSending) {
                     SettingsRow(
-                        title = "Delay seconds",
-                        subtitle = "${delaySeconds}s before sending",
+                        title = stringResource(R.string.settings_delay_secs_title),
+                        subtitle = String.format(context.getString(R.string.settings_delay_with_value), delaySeconds),
                         onClick = { delayDialog = true }
                     )
                 }
@@ -348,8 +348,8 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Advanced",
-                    subtitle = "Permanent delete, swipe direction, link behaviour",
+                    title = stringResource(R.string.settings_advanced_title),
+                    subtitle = stringResource(R.string.settings_advanced_subtitle),
                     onClick = onOpenAdvanced
                 )
             }
@@ -358,14 +358,14 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Number blocking",
-                    subtitle = "Block numbers from messaging you",
+                    title = stringResource(R.string.settings_blocking_title),
+                    subtitle = stringResource(R.string.settings_blocking_subtitle),
                     checked = blocking,
                     onChecked = { blocking = it; vm.settings.blockingEnabled = it }
                 )
                 SettingsRow(
-                    title = "Privacy mode",
-                    subtitle = "Hide content from screenshots and screen recording",
+                    title = stringResource(R.string.settings_privacy_title),
+                    subtitle = stringResource(R.string.settings_privacy_subtitle),
                     checked = privacyMode,
                     onChecked = {
                         privacyMode = it
@@ -373,8 +373,8 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "App lock",
-                    subtitle = "Require fingerprint or PIN to open app",
+                    title = stringResource(R.string.settings_applock_title),
+                    subtitle = stringResource(R.string.settings_applock_subtitle),
                     checked = appLock,
                     onChecked = { enable ->
                         val canAuth = androidx.biometric.BiometricManager.from(context)
@@ -395,12 +395,12 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Trash",
-                    subtitle = "Deleted conversations · purged after 30 days",
+                    title = stringResource(R.string.settings_trash_title),
+                    subtitle = stringResource(R.string.settings_trash_subtitle),
                     onClick = onOpenTrash
                 )
                 SettingsRow(
-                    title = "Backup messages",
+                    title = stringResource(R.string.settings_backup_title),
                     subtitle = if (backingUp) "Saving..." else "PIN-protected save to Documents/Messages",
                     onClick = {
                         pinMode = PinDialogMode.SET
@@ -410,8 +410,8 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Import messages",
-                    subtitle = "Import a backup database file",
+                    title = stringResource(R.string.settings_import_title),
+                    subtitle = stringResource(R.string.settings_import_subtitle),
                     onClick = {
                         pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
                         importLauncher.launch(arrayOf("application/octet-stream", "application/x-sqlite3"))
@@ -660,8 +660,8 @@ fun SettingsScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     ImportChoiceRow(
-                        title = "Merge with existing messages",
-                        subtitle = "Keep current messages and add the backup's",
+                        title = stringResource(R.string.settings_merge_title),
+                        subtitle = stringResource(R.string.settings_merge_subtitle),
                         onClick = {
                             importModeDialog = false
                             pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
@@ -675,8 +675,8 @@ fun SettingsScreen(
                         }
                     )
                     ImportChoiceRow(
-                        title = "Restore (replace all)",
-                        subtitle = "Remove current messages and restore the backup",
+                        title = stringResource(R.string.settings_restore_title),
+                        subtitle = stringResource(R.string.settings_restore_subtitle),
                         onClick = {
                             importModeDialog = false
                             pendingImportMode = com.anindra.messages.data.ImportMode.REPLACE
