@@ -187,7 +187,7 @@ fun ContactDetailsScreen(
                 Column {
                     DetailCardRow(
                         icon = Icons.Rounded.Notifications,
-                        title = "Notifications",
+                        title = stringResource(R.string.contact_notifications),
                         trailing = {
                             Switch(
                                 checked = notifState,
