@@ -50,6 +50,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -69,6 +71,10 @@ fun ContactDetailsScreen(
 ) {
     val context = LocalContext.current
     val convo by vm.conversationById(conversationId).collectAsState(initial = null)
+    val vmContacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
+    val workNums = remember(vmContacts) {
+        vmContacts.filter { it.workProfile }.map { it.number.filter { c -> c.isDigit() } }.toSet()
+    }
     if (convo == null) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
         return
@@ -76,6 +82,7 @@ fun ContactDetailsScreen(
     val address = convo!!.address
     val name = convo!!.name
     val isKnownContact = name != address
+    val workProfile = address.filter { it.isDigit() } in workNums
 
     // flows (not sync SELECTs) for notify/block state; VM retains last value
     val notificationsEnabled by vm.conversationNotificationsEnabledFlow(conversationId)
@@ -119,8 +126,15 @@ fun ContactDetailsScreen(
                     text = if (isKnownContact) name else formatPhoneNumber(address),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(Alignment.CenterVertically)
                 )
+                if (workProfile) {
+                    Spacer(Modifier.height(4.dp))
+                    WorkProfileBadge()
+                }
 
                 if (!isKnownContact) {
                     Spacer(Modifier.height(4.dp))
@@ -262,11 +276,17 @@ fun ContactDetailsScreen(
                     ) {
                         PersonAvatar(address, size = 40.dp)
                         Spacer(Modifier.width(16.dp))
-                        Text(
-                            if (isKnownContact) name else formatPhoneNumber(address),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (isKnownContact) name else formatPhoneNumber(address),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (workProfile) {
+                                Spacer(Modifier.width(6.dp))
+                                WorkProfileBadge()
+                            }
+                        }
                     }
                 }
             }
