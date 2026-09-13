@@ -57,17 +57,30 @@ class ScheduledMessageSender : BroadcastReceiver() {
 
         fun schedule(context: Context, id: Long, address: String, body: String, subId: Int, triggerAtMillis: Long) {
             val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
-            val pendingIntent = buildPendingIntent(context, id, address, body, subId)
+            // The wrapped Intent is built inline (same method as the AlarmManager
+            // call) so CodeQL's intra-procedural explicit-intent sanitizer applies:
+            // the system hands this PendingIntent to the alarm service un-controlled.
+            val intent = Intent(context, ScheduledMessageSender::class.java).apply {
+                action = ACTION_SEND
+                if (address.isNotEmpty()) putExtra(EXTRA_ADDRESS, address)
+                if (body.isNotEmpty()) putExtra(EXTRA_BODY, body)
+                if (subId != -1) putExtra(EXTRA_SUB_ID, subId)
+                putExtra(EXTRA_ID, id)
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, id.toInt(), intent,
+                PendingIntent.FLAG_IMMUTABLE
+            )
             // Prefer setAlarmClock — it does NOT require SCHEDULE_EXACT_ALARM,
             // and Android will not silently downgrade it like it does
             // setExactAndAllowWhileIdle on API 31+ without that permission.
             // The user-visible alarm clock affordance is acceptable for a
             // scheduled message use case.
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                val showIntent = android.app.PendingIntent.getActivity(
+                val showIntent = PendingIntent.getActivity(
                     context, id.toInt(),
-                    android.content.Intent(context, com.anindra.messages.MainActivity::class.java),
-                    android.app.PendingIntent.FLAG_IMMUTABLE
+                    Intent(context, com.anindra.messages.MainActivity::class.java),
+                    PendingIntent.FLAG_IMMUTABLE
                 )
                 val info = AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent)
                 alarmManager.setAlarmClock(info, pendingIntent)
