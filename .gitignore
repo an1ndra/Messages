@@ -16,3 +16,4 @@ release.keystore
 *.apk
 .commandcode/
 .cache/
+.opencode/
