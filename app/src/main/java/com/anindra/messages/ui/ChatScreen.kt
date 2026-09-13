@@ -184,8 +184,10 @@ private fun ChatBubble(
     val bodyText = rememberLinkedText(
         displayBody,
         highlightLinks && !isLockedAndHidden,
-        hideLinks && !isLockedAndHidden
-    ) { pendingUrl = it }
+        hideLinks && !isLockedAndHidden,
+        onLinkClick = { pendingUrl = it },
+        textColor = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface
+    )
 
     pendingUrl?.let { url ->
         if (linkWarningEnabled) {
@@ -1414,9 +1416,10 @@ private fun rememberLinkedText(
     body: String,
     highlight: Boolean,
     hide: Boolean = false,
-    onLinkClick: (String) -> Unit = {}
+    onLinkClick: (String) -> Unit = {},
+    textColor: Color = MaterialTheme.colorScheme.onSurface
 ): AnnotatedString {
-    val linkColor = MaterialTheme.colorScheme.primary
+    val linkColor = if (highlight) textColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
     val context = LocalContext.current
     // produceState remembers its value WITHOUT keys, so an async redaction would
     // keep painting the previous (unredacted) text and only swap it once the
@@ -1427,11 +1430,11 @@ private fun rememberLinkedText(
         return remember(body) {
             val stripped = hideUrls(body)
             val builder = AnnotatedString.Builder(stripped)
-            applyOtpStyles(builder, stripped, linkColor)
+            applyOtpStyles(builder, stripped, textColor)
             builder.toAnnotatedString()
         }
     }
-    return produceState(AnnotatedString(body), body, highlight, linkColor) {
+    return produceState(AnnotatedString(body), body, highlight, textColor, linkColor) {
         value = withContext(Dispatchers.Default) {
             val builder = AnnotatedString.Builder(body)
             val urlRanges = if (highlight) {
@@ -1456,7 +1459,7 @@ private fun rememberLinkedText(
                 }
                 ranges
             } else emptyList()
-            applyOtpStyles(builder, body, linkColor, urlRanges)
+            applyOtpStyles(builder, body, textColor, urlRanges)
             builder.toAnnotatedString()
         }
     }.value
@@ -1598,8 +1601,10 @@ fun MessageRow(
     val bodyText = rememberLinkedText(
         displayBody,
         highlightLinks && !isLockedAndHidden,
-        hideLinks && !isLockedAndHidden
-    ) { pendingUrl = it }
+        hideLinks && !isLockedAndHidden,
+        onLinkClick = { pendingUrl = it },
+        textColor = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface
+    )
 
     // cache derived text/sim so an unlock doesn't recompute row allocations
     val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp, context) }
