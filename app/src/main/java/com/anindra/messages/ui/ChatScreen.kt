@@ -293,7 +293,7 @@ private fun ChatBubble(
                 val simLabel = if (showSimIndicator && msg.subId > 0) {
                     try {
                         val slotIndex = SubscriptionManager.getSlotIndex(msg.subId)
-                        if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
+                        if (slotIndex >= 0) String.format(context.getString(R.string.sim_slot_suffix), slotIndex + 1) else ""
                     } catch (_: Exception) { "" }
                 } else ""
                 val time = formatTimeOnly(msg.timestamp)
@@ -433,7 +433,7 @@ fun ChatScreen(
         currentSimId = next.subscriptionId
         vm.settings.simSubscriptionId = next.subscriptionId
         val carrier = next.carrierName?.toString()?.ifBlank { null }
-        val label = if (carrier != null) "$carrier · SIM ${next.simSlotIndex + 1}" else "SIM ${next.simSlotIndex + 1}"
+        val label = if (carrier != null) String.format("%s · SIM %s", carrier, next.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), next.simSlotIndex + 1)
         Toast.makeText(context, context.getString(R.string.chat_sending_via, label), Toast.LENGTH_SHORT).show()
     }
 
@@ -569,8 +569,8 @@ fun ChatScreen(
                     })
                 prompt.authenticate(
                     BiometricPrompt.PromptInfo.Builder()
-                        .setTitle("Unlock Messages")
-                        .setSubtitle("Authenticate to reveal these messages")
+                        .setTitle(context.getString(R.string.lock_unlock_title))
+                        .setSubtitle(context.getString(R.string.lock_auth_subtitle))
                         .setAllowedAuthenticators(
                             BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
                         )
@@ -745,7 +745,7 @@ fun ChatScreen(
                 }
                 InputBar(
                     draft = draft,
-                    placeholder = "Text message",
+                    placeholder = stringResource(R.string.text_placeholder),
                     onDraftChange = { draft = it },
                     onSend = {
                         val text = draft.trim()
@@ -1180,8 +1180,8 @@ private fun ChatTopBar(
                         sims.sortedBy { it.simSlotIndex }.forEach { sub ->
                             val carrier = sub.carrierName?.toString()?.ifBlank { null }
                             val simLabel = buildString {
-                                append("SIM ${sub.simSlotIndex + 1}")
-                                if (carrier != null) append(" · $carrier")
+                                append(String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1))
+                                if (carrier != null) append(String.format(" · %s", carrier))
                             }
                             DropdownMenuItem(
                                 text = {
@@ -1608,7 +1608,7 @@ fun MessageRow(
         if (showSimIndicator && msg.subId > 0) {
             try {
                 val slotIndex = SubscriptionManager.getSlotIndex(msg.subId)
-                if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
+                if (slotIndex >= 0) String.format(context.getString(R.string.sim_slot_suffix), slotIndex + 1) else ""
             } catch (_: Exception) { "" }
         } else ""
     }
@@ -1778,7 +1778,7 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
     if (bmp != null) {
         Image(
             bitmap = bmp.asImageBitmap(),
-            contentDescription = "Photo",
+            contentDescription = stringResource(R.string.access_photo),
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .widthIn(max = 260.dp)
@@ -1918,6 +1918,7 @@ private fun SimPickerDialog(
     onDismiss: () -> Unit
 ) {
     var selected by remember { mutableIntStateOf(currentSimId) }
+    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.chat_retry_sim)) },
@@ -1926,7 +1927,7 @@ private fun SimPickerDialog(
                 sims.forEach { sub ->
                     val carrier = sub.carrierName?.toString()?.ifBlank { null }
                     val label =
-                        if (carrier != null) "$carrier · SIM ${sub.simSlotIndex + 1}" else "SIM ${sub.simSlotIndex + 1}"
+                        if (carrier != null) String.format("%s · SIM %s", carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { selected = sub.subscriptionId }

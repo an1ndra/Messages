@@ -391,7 +391,7 @@ fun ConversationsScreen(
                     progress = { progress },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "Loading messages" },
+                        .semantics { contentDescription = context.getString(R.string.access_loading_messages) },
                     trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                 )
             }
@@ -624,13 +624,13 @@ private fun SwipeConversationItem(
                         if (endIsDelete) {
                             Icon(
                                 Icons.Rounded.Delete,
-                                contentDescription = "Delete",
+                                contentDescription = stringResource(R.string.access_delete),
                                 tint = MaterialTheme.colorScheme.onError
                             )
                         } else {
                             Icon(
                                 Icons.Rounded.Archive,
-                                contentDescription = "Archive",
+                                contentDescription = stringResource(R.string.access_archive),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
@@ -639,13 +639,13 @@ private fun SwipeConversationItem(
                         if (endIsDelete) {
                             Icon(
                                 Icons.Rounded.Archive,
-                                contentDescription = "Archive",
+                                contentDescription = stringResource(R.string.access_archive),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         } else {
                             Icon(
                                 Icons.Rounded.Delete,
-                                contentDescription = "Delete",
+                                contentDescription = stringResource(R.string.access_delete),
                                 tint = MaterialTheme.colorScheme.onError
                             )
                         }
@@ -742,7 +742,7 @@ private fun ConversationRow(
                         Spacer(Modifier.width(4.dp))
                         Icon(
                             Icons.Rounded.PushPin,
-                            contentDescription = "Pinned",
+                            contentDescription = stringResource(R.string.access_pinned),
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -829,6 +829,7 @@ private fun StartChatFab(
     expanded: Boolean,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
     val collapsedSize = 56.dp
     // Natural expanded-pill width, captured from the first layout pass (px).
@@ -856,7 +857,7 @@ private fun StartChatFab(
             .clip(RoundedCornerShape(16.dp))
             .background(cs.secondaryContainer)
             .clickable(onClick = onClick)
-            .semantics { contentDescription = "Start chat" },
+            .semantics { contentDescription = context.getString(R.string.access_start_chat) },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Spacer(Modifier.width(16.dp))

@@ -269,8 +269,8 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "SIM indicator",
-                    subtitle = "Show which SIM was used for each message",
+                    title = stringResource(R.string.settings_sim_indicator),
+                    subtitle = stringResource(R.string.settings_sim_indicator_desc),
                     checked = showSim,
                     onChecked = { showSim = it; vm.settings.showSimIndicator = it }
                 )
@@ -561,7 +561,7 @@ fun SettingsScreen(
         val options = mutableListOf(-1 to "Default (System)")
         sims.forEach { sub ->
             val carrier = sub.carrierName?.toString()?.ifBlank { null }
-            val label = if (carrier != null) "$carrier (SIM ${sub.simSlotIndex + 1})" else "SIM ${sub.simSlotIndex + 1}"
+            val label = if (carrier != null) String.format("%s (SIM %s)", carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
             options += sub.subscriptionId to label
         }
         AlertDialog(

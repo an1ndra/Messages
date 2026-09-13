@@ -472,7 +472,7 @@ class MainActivity : FragmentActivity() {
                             })
                         prompt.authenticate(
                             BiometricPrompt.PromptInfo.Builder()
-                                .setTitle("Unlock Messages")
+                                .setTitle(getString(R.string.lock_unlock_title))
                                 .setSubtitle(getString(R.string.lock_title))
                                 .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                                 .build()

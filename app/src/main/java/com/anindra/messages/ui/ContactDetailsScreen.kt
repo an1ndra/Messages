@@ -150,7 +150,7 @@ fun ContactDetailsScreen(
                 ) {
                     DetailActionButton(
                         icon = Icons.Rounded.Call,
-                        label = "Call",
+                        label = stringResource(R.string.action_call),
                         onClick = {
                             context.startActivity(
                                 Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$address"))
@@ -160,7 +160,7 @@ fun ContactDetailsScreen(
                     Spacer(Modifier.width(32.dp))
                     DetailActionButton(
                         icon = Icons.Rounded.PersonAdd,
-                        label = "Add",
+                        label = stringResource(R.string.action_add),
                         onClick = {
                             context.startActivity(
                                 Intent(ContactsContract.Intents.Insert.ACTION).apply {
