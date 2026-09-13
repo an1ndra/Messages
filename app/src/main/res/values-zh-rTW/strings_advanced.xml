@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">反轉滑動方向</string>
+    <string name="settings_advanced_reverse_swipe_desc">向左滑動封存，向右滑動刪除</string>
+    <string name="settings_advanced_hide_links">隱藏訊息中的連結</string>
+    <string name="settings_advanced_hide_links_desc">不要將連結轉換為可點擊的文字</string>
+    <string name="settings_advanced_highlight_links">突顯連結</string>
+    <string name="settings_advanced_link_warning">開啟連結警告</string>
+    <string name="settings_advanced_permanent_delete">永久刪除</string>
+    <string name="settings_advanced_permanent_delete_desc">直接刪除訊息，不放入垃圾桶</string>
+</resources>

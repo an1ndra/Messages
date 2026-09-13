@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lock_title">驗證以存取您的訊息</string>
+    <string name="lock_unlock_title">解鎖訊息</string>
+    <string name="lock_auth_subtitle">驗證以顯示這些訊息</string>
+    <string name="lock_got_it">知道了</string>
+    <string name="lock_not_now">現在不要</string>
+    <string name="lock_off">應用程式鎖定已關閉</string>
+    <string name="lock_setup_needed">請先在裝置上設定螢幕鎖定（指紋、人臉或密碼）</string>
+    <string name="lock_turn_on">設定螢幕鎖定</string>
+    <string name="lock_turn_on_hint">設定後即可重新開啟應用程式鎖定。</string>
+    <string name="default_sms_title">設為預設訊息應用程式？</string>
+    <string name="default_sms_message">若要傳送和接收訊息，「訊息」需要設為您的預設 SMS 應用程式。</string>
+    <string name="default_sms_set">設為預設</string>
+    <string name="default_sms_not_now">現在不要</string>
+    <string name="notifications_disabled">已停用通知 — 您將不會收到新訊息通知</string>
+</resources>

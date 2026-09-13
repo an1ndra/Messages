@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="contact_work_profile">工作檔案聯絡人</string>
+    <string name="time_now">現在</string>
+    <string name="time_yesterday">昨天</string>
+    <string name="time_today">今天</string>
+    <string name="time_minutes">%s 分鐘</string>
+    <string name="time_format_hour">h:mm a</string>
+    <string name="time_format_date">MM 月 d 日</string>
+    <string name="time_format_divider">EEE, MMM d</string>
+    <string name="access_archive">封存</string>
+    <string name="access_delete">刪除</string>
+    <string name="access_loading_messages">正在載入訊息</string>
+    <string name="access_photo">照片</string>
+    <string name="access_pinned">已置頂</string>
+    <string name="access_start_chat">開始對話</string>
+</resources>
