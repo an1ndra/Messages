@@ -1,6 +1,5 @@
 package com.anindra.messages.sms
 
-import android.content.Context
 import android.content.SharedPreferences
 import java.util.concurrent.atomic.AtomicReference
 
@@ -12,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference
  */
 internal object ForegroundTracker {
     private val openAddress = AtomicReference<String?>(null)
+    private var prefs: SharedPreferences? = null
     private const val PREFS_NAME = "foreground_tracker"
     private const val KEY_OPEN_ADDRESS = "open_address"
 
@@ -21,7 +21,7 @@ internal object ForegroundTracker {
     fun isConversationOpen(address: String?): Boolean {
         val addr = address?.replace(Regex("\\D"), "") ?: return false
         if (openAddress.get() == addr) return true
-        return false
+        return prefs?.getString(KEY_OPEN_ADDRESS, null) == addr
     }
 
     fun getOpenAddress(): String? = openAddress.get()
@@ -30,12 +30,11 @@ internal object ForegroundTracker {
     fun setOpenConversation(address: String?) {
         val normalized = address?.replace(Regex("\\D"), "")
         openAddress.set(normalized)
+        prefs?.edit()?.putString(KEY_OPEN_ADDRESS, normalized)?.apply()
     }
 
-    /** Check if conversation is open using shared preferences (survives process death). */
-    fun isConversationOpenFromPrefs(context: android.content.Context, address: String?): Boolean {
-        val addr = address?.replace(Regex("\\D"), "") ?: return false
-        val prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
-        return prefs.getString(KEY_OPEN_ADDRESS, null) == addr
+    /** Initialize SharedPreferences. Must be called once from MessagesApplication. */
+    fun init(context: android.content.Context) {
+        prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
     }
 }

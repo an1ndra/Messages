@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
 import com.anindra.messages.data.Repository
+import com.anindra.messages.sms.ForegroundTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,6 +16,7 @@ class MessagesApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        ForegroundTracker.init(this)
         repository = Repository(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             repository.purgeOldTrashSuspend()
