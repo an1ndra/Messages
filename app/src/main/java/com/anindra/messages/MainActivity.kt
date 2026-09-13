@@ -445,7 +445,14 @@ class MainActivity : FragmentActivity() {
             "dark", "light", "system" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
-        intent.getStringExtra("open_conversation_address")?.let { pendingOpenAddress = it }
+        val openAddress = intent.getStringExtra("open_conversation_address")
+        if (openAddress != null) {
+            pendingOpenAddress = openAddress
+            // Set navRoute to "chat" immediately so ChatScreen shows directly
+            navRoute = "chat"
+            // Cancel all notifications when opening chat from notification
+            NotificationManagerCompat.from(this).cancelAll()
+        }
 
         val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -739,6 +746,13 @@ class MainActivity : FragmentActivity() {
             "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
-        intent.getStringExtra("open_conversation_address")?.let { pendingOpenAddress = it }
+        val openAddress = intent.getStringExtra("open_conversation_address")
+        if (openAddress != null) {
+            pendingOpenAddress = openAddress
+            // Set navRoute to "chat" immediately so ChatScreen shows directly
+            navRoute = "chat"
+            // Cancel all notifications when opening chat from notification
+            NotificationManagerCompat.from(this).cancelAll()
+        }
     }
 }

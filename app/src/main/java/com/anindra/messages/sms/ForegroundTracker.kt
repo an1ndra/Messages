@@ -1,5 +1,7 @@
 package com.anindra.messages.sms
 
+import android.content.Context
+import android.content.SharedPreferences
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -10,14 +12,30 @@ import java.util.concurrent.atomic.AtomicReference
  */
 internal object ForegroundTracker {
     private val openAddress = AtomicReference<String?>(null)
+    private const val PREFS_NAME = "foreground_tracker"
+    private const val KEY_OPEN_ADDRESS = "open_address"
+
     @Volatile private var foreground: Boolean = false
 
     val isAppInForeground: Boolean get() = foreground
-    fun isConversationOpen(address: String?): Boolean =
-        address != null && address == openAddress.get()
+    fun isConversationOpen(address: String?): Boolean {
+        val addr = address?.replace("+", "") ?: return false
+        if (openAddress.get() == addr) return true
+        return false
+    }
 
     fun getOpenAddress(): String? = openAddress.get()
 
     fun setAppForeground(value: Boolean) { foreground = value }
-    fun setOpenConversation(address: String?) { openAddress.set(address) }
+    fun setOpenConversation(address: String?) {
+        val normalized = address?.replace("+", "")
+        openAddress.set(normalized)
+    }
+
+    /** Check if conversation is open using shared preferences (survives process death). */
+    fun isConversationOpenFromPrefs(context: android.content.Context, address: String?): Boolean {
+        val addr = address?.replace("+", "") ?: return false
+        val prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        return prefs.getString(KEY_OPEN_ADDRESS, null) == addr
+    }
 }

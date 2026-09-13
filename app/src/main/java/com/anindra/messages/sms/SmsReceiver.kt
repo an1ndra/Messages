@@ -83,8 +83,7 @@ class SmsReceiver : BroadcastReceiver() {
 
             repo.receiveMessage(address, body, sysId, subId)
             // Skip notification when user is actively reading this exact thread
-            val normalizedAddress = address.replace("+", "")
-            if (isAppVisible && normalizedAddress == openAddress) continue
+            if (ForegroundTracker.isConversationOpenFromPrefs(context, address)) continue
             NotificationHelper.show(context, address, body)
         }
     }
