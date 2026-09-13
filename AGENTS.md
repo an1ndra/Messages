@@ -143,6 +143,31 @@ scripts/test-large-provider-startup.sh  # real-phone scale: seeds the SMS provid
 Coordinate taps assume **1080x2400 @ 420dpi**. `env.sh` provides helpers
 (`tap_text`, `center_of`, `shot`, `type_text`).
 
+### Scripts are a git submodule
+
+`scripts/` is a **git submodule** pointing at `git@github.com:an1ndra/Messages-scripts.git`.
+The app repo stores only a commit pointer; the files are NOT in the tree until
+pulled at local setup:
+
+```bash
+git submodule update --init scripts      # after cloning the app repo
+```
+
+Remember this when workspaceing: if `scripts/` is empty, run the command above.
+
+To bump the submodule to upstream's latest:
+
+```bash
+git -C scripts pull --ff-only && git add scripts && git commit
+```
+
+After adding/changing a test script, publish upstream AND bump the pointer:
+
+```bash
+git -C scripts add -A && git -C scripts commit -m "..." && git -C scripts push
+git add scripts && git commit -m "chore: bump scripts submodule"
+```
+
 ## Permissions (declared + runtime-requested at launch)
 
 SEND_SMS, RECEIVE_SMS, READ_CONTACTS, POST_NOTIFICATIONS (API 33+).

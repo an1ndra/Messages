@@ -20,6 +20,12 @@ Test scripts source `scripts/env.sh` (tap/type/dump helpers). They verify state
 via **uiautomator dumps**, not screenshots (screenshot+AI review is slow; only
 take screenshots when explicitly asked).
 
+`scripts/` is a **git submodule** (`git@github.com:an1ndra/Messages-scripts.git`).
+Files are only pulled at local setup:
+`git submodule update --init scripts`. If `scripts/` is empty after a fresh
+clone, run that. New/changed scripts must be committed+pushed in the submodule
+first, then the pointer bumped here: `git add scripts && git commit`.
+
 ---
 
 ## 2. Navigation & the back stack

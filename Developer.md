@@ -356,7 +356,9 @@ Messages/
 │   │   │       └── theme/Theme.kt         # Material 3 color system
 │   │   └── res/                           # Resources
 │   └── build.gradle.kts                   # App dependencies
-├── scripts/                               # Test automation
+├── scripts/                               # Test automation (git submodule
+│                                          #   git@github.com:an1ndra/Messages-scripts.git;
+│                                          #   git submodule update --init scripts)
 ├── screenshots/                           # App screenshots
 ├── AGENTS.md                             # AI agent instructions
 ├── TODO.md                               # Task tracking
