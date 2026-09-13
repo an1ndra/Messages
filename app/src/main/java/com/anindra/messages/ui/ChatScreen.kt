@@ -332,6 +332,10 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val convo by remember(conversationId) { vm.conversationById(conversationId) }.collectAsState(initial = null)
+    val vmContacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
+    val workNums = remember(vmContacts) {
+        vmContacts.filter { it.workProfile }.map { it.number.filter { c -> c.isDigit() } }.toSet()
+    }
     val listState = rememberLazyListState()
     // Progressive loading: latest chunk first, shimmer while older messages queue
     var pageLimit by remember(conversationId) { mutableIntStateOf(INITIAL_CHUNK) }
@@ -657,8 +661,11 @@ fun ChatScreen(
                     onLockUnlock = { lockUnlockSelection() }
                 )
             } else {
+    val workProfile = convo?.address?.filter { it.isDigit() }?.let { it in workNums } ?: false
+
             ChatTopBar(
                 convo = convo,
+                workProfile = workProfile,
                 sims = sims,
                 currentSimId = currentSimId,
                 menuOpen = menuOpen,
@@ -708,15 +715,7 @@ fun ChatScreen(
                         Toast.makeText(context, "Number unblocked", Toast.LENGTH_SHORT).show()
                     }
                 },
-                onAddPeople = {
-                    convo?.address?.let {
-                        context.startActivity(
-                            Intent(ContactsContract.Intents.Insert.ACTION).apply {
-                                type = ContactsContract.RawContacts.CONTENT_TYPE
-                                putExtra(ContactsContract.Intents.Insert.PHONE, it)
-                            })
-                    }
-                }
+                onAddPeople = { /* no-op: MMS group chat, stub */ }
             )
             }
             }
@@ -1091,6 +1090,7 @@ private fun MessageSelectionToolbar(
 @Composable
 private fun ChatTopBar(
     convo: com.anindra.messages.data.Conversation?,
+    workProfile: Boolean,
     sims: List<SubscriptionInfo>,
     currentSimId: Int,
     menuOpen: Boolean,
@@ -1127,14 +1127,20 @@ private fun ChatTopBar(
                 PersonAvatar(convo?.address ?: "?", size = 36.dp)
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(
-                        convo?.let {
-                            if (it.name != it.address) it.name
-                            else formatPhoneNumber(it.address)
-                        } ?: "",
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            convo?.let {
+                                if (it.name != it.address) it.name
+                                else formatPhoneNumber(it.address)
+                            } ?: "",
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1
+                        )
+                        if (workProfile) {
+                            Spacer(Modifier.width(6.dp))
+                            WorkProfileBadge()
+                        }
+                    }
                     if (draftsEnabled && convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
                         Text(
                             "Draft",
@@ -1983,7 +1989,13 @@ private fun ForwardPicker(
                             PersonAvatar(contact.number, size = 36.dp)
                             Spacer(Modifier.width(12.dp))
                             Column {
-                                Text(contact.name, fontWeight = FontWeight.Medium)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(contact.name, fontWeight = FontWeight.Medium)
+                                    if (contact.workProfile) {
+                                        Spacer(Modifier.width(6.dp))
+                                        WorkProfileBadge()
+                                    }
+                                }
                                 Text(
                                     contact.number,
                                     style = MaterialTheme.typography.bodySmall,

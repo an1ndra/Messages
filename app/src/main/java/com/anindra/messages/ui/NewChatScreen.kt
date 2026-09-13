@@ -35,7 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-data class Contact(val name: String, val number: String)
+data class Contact(val name: String, val number: String, val workProfile: Boolean = false)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,7 +107,13 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
                         PersonAvatar(contact.number, size = 40.dp)
                         Spacer(Modifier.width(16.dp))
                         Column {
-                            Text(contact.name, fontWeight = FontWeight.Medium)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(contact.name, fontWeight = FontWeight.Medium)
+                                if (contact.workProfile) {
+                                    Spacer(Modifier.width(6.dp))
+                                    WorkProfileBadge()
+                                }
+                            }
                             Text(contact.number,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -1349,17 +1349,42 @@ class Repository(private val context: Context) {
 
     private fun lookupContactName(address: String): String? {
         if (address.isBlank()) return null
+        queryPhoneLookup(android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI, address, null)
+            ?.let { return it }
         return try {
-            val lookupUri = android.net.Uri.withAppendedPath(
-                android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                android.net.Uri.encode(address)
-            )
+            val dirs = context.contentResolver.query(
+                android.provider.ContactsContract.Directory.ENTERPRISE_CONTENT_URI,
+                arrayOf(android.provider.ContactsContract.Directory._ID),
+                null, null, null
+            )?.use { c ->
+                val ids = mutableListOf<Long>()
+                while (c.moveToNext()) ids.add(c.getLong(0))
+                ids
+            } ?: emptyList()
+            dirs.filter { it != android.provider.ContactsContract.Directory.DEFAULT }
+                .firstNotNullOfOrNull { dir ->
+                    queryPhoneLookup(
+                        android.provider.ContactsContract.PhoneLookup.ENTERPRISE_CONTENT_FILTER_URI,
+                        address, dir
+                    )
+                }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun queryPhoneLookup(base: android.net.Uri, address: String, directoryId: Long?): String? {
+        return try {
+            var uri = android.net.Uri.withAppendedPath(base, android.net.Uri.encode(address))
+            if (directoryId != null) {
+                uri = uri.buildUpon().appendQueryParameter("directory", directoryId.toString()).build()
+            }
             context.contentResolver.query(
-                lookupUri,
+                uri,
                 arrayOf(android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME),
                 null, null, null
             )?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
-        } catch (_: SecurityException) {
+        } catch (_: Exception) {
             null
         }
     }

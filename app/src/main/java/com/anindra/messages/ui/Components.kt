@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BusinessCenter
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import com.anindra.messages.R
@@ -162,6 +164,17 @@ private fun loadContactPhoto(context: Context, number: String): Bitmap? {
     } catch (_: Exception) {
         null
     }
+}
+
+/** Small briefcase glyph marking a contact that comes from the work profile. */
+@Composable
+fun WorkProfileBadge(modifier: Modifier = Modifier) {
+    Icon(
+        Icons.Rounded.BusinessCenter,
+        contentDescription = "Work profile contact",
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.size(14.dp)
+    )
 }
 
 private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
