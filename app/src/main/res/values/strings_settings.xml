@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_general">General settings</string>
+    <string name="settings_advanced">Advanced settings</string>
+    <string name="settings_choose_theme">Choose theme</string>
+    <string name="settings_pin_enter">4-16 digit PIN</string>
+    <string name="settings_pin_repeat">Repeat PIN</string>
+    <string name="settings_pin_delete_permanently">Delete permanently?</string>
+    <string name="settings_pin_delay">Delay before sending</string>
+    <string name="settings_pin_notification_sound">Notification sound</string>
+    <string name="settings_pin_sim_card">SIM card</string>
+    <string name="settings_import_backup">Import backup</string>
+    <string name="settings_loading">Loading messages</string>
+    <string name="settings_loading_progress">Loading messages loaded %s</string>
+    <string name="settings_mark_read">All conversations marked as read</string>
+    <string name="settings_countdown_placeholder">%ss</string>
+
+    <!-- Advanced settings -->
+    <string name="settings_advanced_delete_permanently">Delete permanently?</string>
+    <string name="settings_advanced_warning">Don\'t show this warning again</string>
+</resources>

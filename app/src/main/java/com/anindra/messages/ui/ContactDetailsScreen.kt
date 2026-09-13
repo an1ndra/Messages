@@ -58,9 +58,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.anindra.messages.R
 import androidx.compose.ui.res.painterResource
 import com.anindra.messages.AppViewModel
-import com.anindra.messages.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -207,7 +208,7 @@ fun ContactDetailsScreen(
                     )
                     DetailCardRow(
                         icon = Icons.Rounded.Block,
-                        title = "Block & report spam",
+                        title = stringResource(R.string.contact_block_report),
                         titleColor = MaterialTheme.colorScheme.error,
                         iconColor = MaterialTheme.colorScheme.error,
                         onClick = { showBlockDialog = true }
@@ -298,17 +299,17 @@ fun ContactDetailsScreen(
     if (showBlockDialog) {
         AlertDialog(
             onDismissRequest = { showBlockDialog = false },
-            title = { Text("Block & report spam") },
-            text = { Text("Block ${formatPhoneNumber(address)}? You won't receive calls or messages from this number.") },
+            title = { Text(stringResource(R.string.contact_block_report)) },
+            text = { Text(context.getString(R.string.contact_block_confirm, formatPhoneNumber(address))) },
             confirmButton = {
                 TextButton(onClick = {
                     showBlockDialog = false
                     vm.blockNumber(address)
                     numberIsBlocked = true
-                }) { Text("Block") }
+                }) { Text(stringResource(R.string.contact_block)) }
             },
             dismissButton = {
-                TextButton(onClick = { showBlockDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showBlockDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }

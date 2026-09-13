@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Chat actions & labels -->
+    <string name="chat_archive">Archive</string>
+    <string name="chat_block">Block</string>
+    <string name="chat_block_report">Block &amp; report spam</string>
+    <string name="chat_unblock">Unblock</string>
+    <string name="chat_block_number">Block number</string>
+    <string name="chat_unblock_number">Unblock number</string>
+    <string name="chat_forward">Forward</string>
+    <string name="chat_forward_to">Forward to</string>
+    <string name="chat_share">Share</string>
+    <string name="chat_details">Details</string>
+    <string name="chat_view_details">View details</string>
+    <string name="chat_schedule">Schedule</string>
+    <string name="chat_select_time">Select time</string>
+    <string name="chat_media_camera">Camera</string>
+    <string name="chat_media_gallery">Gallery</string>
+
+    <!-- Status messages -->
+    <string name="chat_cant_send">Can\'t send message</string>
+    <string name="chat_archived">Conversation archived</string>
+    <string name="chat_deleted">Conversation deleted</string>
+    <string name="chat_moved_to_trash">Conversation moved to trash</string>
+    <string name="chat_forwarded">Message forwarded</string>
+    <string name="chat_blocked_send">This number is blocked. Unblock to send?</string>
+    <string name="chat_number_blocked">Number blocked</string>
+    <string name="chat_number_unblocked">Number unblocked</string>
+    <string name="chat_loading_earlier">Load earlier messages</string>
+    <string name="chat_retry">Retry</string>
+    <string name="chat_retry_sim">Retry with SIM</string>
+    <string name="chat_sending_via">Sending via %s</string>
+    <string name="chat_scheduled_for">Scheduled for %s</string>
+    <string name="chat_search_contacts">Search contacts</string>
+    <string name="chat_add_people">Add people</string>
+    <string name="chat_locked">Locked</string>
+
+    <!-- Copy & links -->
+    <string name="chat_copied">Copied</string>
+    <string name="chat_link_copied">Link copied</string>
+    <string name="chat_copy_link">Copy link</string>
+    <string name="chat_link_caution">Caution: external link</string>
+    <string name="chat_link_warning">Links in messages can lead to fake websites that steal your personal data or install malware.</string>
+    <string name="chat_link_no_dont_show">Don\'t show this warning again</string>
+    <string name="chat_link_label">link</string>
+    <string name="chat_messages_label">messages</string>
+
+    <!-- General -->
+    <string name="chat_close">Close</string>
+    <string name="chat_open">Open</string>
+    <string name="chat_next">Next</string>
+    <string name="chat_ok">OK</string>
+    <string name="chat_cancel">Cancel</string>
+    <string name="chat_delete">Delete</string>
+    <string name="chat_details_title">Conversation details</string>
+</resources>

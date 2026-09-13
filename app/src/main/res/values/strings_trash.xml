@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">Trash</string>
+    <string name="trash_empty">Empty trash</string>
+    <string name="trash_emptied">Trash emptied</string>
+    <string name="toast_trash_deleted">Conversation deleted</string>
+    <string name="trash_delete_conversation">Delete conversation</string>
+    <string name="trash_conversation_deleted">Conversation deleted</string>
+</resources>

@@ -67,6 +67,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
+import androidx.compose.ui.res.stringResource
+import com.anindra.messages.R
 import com.anindra.messages.sms.NotificationHelper
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -171,7 +173,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("General settings") },
+                title = { Text(stringResource(R.string.settings_general)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
@@ -213,7 +215,7 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Notification sound",
+                    title = stringResource(R.string.settings_pin_notification_sound),
                     subtitle = notificationSoundLabel(notificationSound),
                     onClick = {
                         notificationSound = vm.settings.notificationSound
@@ -231,7 +233,7 @@ fun SettingsScreen(
                     subtitle = "Clear unread badges for every conversation",
                     onClick = {
                         vm.markAllRead()
-                        Toast.makeText(context, "All conversations marked as read", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.settings_mark_read), Toast.LENGTH_SHORT).show()
                     }
                 )
             }
@@ -248,7 +250,7 @@ fun SettingsScreen(
                 else sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }?.displayName?.toString()
                     ?: "SIM ${vm.settings.simSubscriptionId}"
                 SettingsRow(
-                    title = "SIM card",
+                    title = stringResource(R.string.settings_pin_sim_card),
                     subtitle = currentSimLabel,
                     onClick = {
                         val hasPerm = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
@@ -383,7 +385,7 @@ fun SettingsScreen(
                         if (enable && canAuth != androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS) {
                             Toast.makeText(
                                 context,
-                                "Set up a screen lock (fingerprint, face, or PIN) on your device first",
+                                context.getString(R.string.lock_setup_needed),
                                 Toast.LENGTH_LONG
                             ).show()
                         } else {
@@ -471,7 +473,7 @@ fun SettingsScreen(
     if (themeDialog) {
         AlertDialog(
             onDismissRequest = { themeDialog = false },
-            title = { Text("Choose theme") },
+            title = { Text(stringResource(R.string.settings_choose_theme)) },
             text = {
                 Column {
                     listOf(
@@ -497,10 +499,10 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { themeDialog = false }) { Text("OK") }
+                TextButton(onClick = { themeDialog = false }) { Text(stringResource(R.string.common_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { themeDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { themeDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -508,7 +510,7 @@ fun SettingsScreen(
     if (soundDialog) {
         AlertDialog(
             onDismissRequest = { soundDialog = false },
-            title = { Text("Notification sound") },
+            title = { Text(stringResource(R.string.settings_pin_notification_sound)) },
             text = {
                 Column {
                     Text(
@@ -546,10 +548,10 @@ fun SettingsScreen(
                     vm.settings.notificationSound = notificationSound
                     NotificationHelper.ensureChannel(context)
                     soundDialog = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.common_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { soundDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { soundDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -564,7 +566,7 @@ fun SettingsScreen(
         }
         AlertDialog(
             onDismissRequest = { simDialog = false },
-            title = { Text("SIM card") },
+            title = { Text(stringResource(R.string.settings_pin_sim_card)) },
             text = {
                 Column {
                     options.forEach { (id, label) ->
@@ -589,10 +591,10 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     vm.settings.simSubscriptionId = selected
                     simDialog = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.common_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { simDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { simDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -601,7 +603,7 @@ fun SettingsScreen(
         val options = listOf(1, 3, 5, 10, 30)
         AlertDialog(
             onDismissRequest = { delayDialog = false },
-            title = { Text("Delay before sending") },
+            title = { Text(stringResource(R.string.settings_pin_delay)) },
             text = {
                 Column {
                     Text(
@@ -630,13 +632,13 @@ fun SettingsScreen(
                                 }
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("${secs}s")
+                            Text(context.getString(R.string.settings_countdown_placeholder, secs))
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { delayDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { delayDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -648,7 +650,7 @@ fun SettingsScreen(
                 importModeDialog = false
                 pendingImportUri = null
             },
-            title = { Text("Import backup") },
+            title = { Text(stringResource(R.string.settings_import_backup)) },
             text = {
                 Column {
                     Text(
@@ -694,7 +696,7 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     importModeDialog = false
                     pendingImportUri = null
-                }) { Text("Cancel") }
+                }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -726,7 +728,7 @@ fun SettingsScreen(
                         onValueChange = { new ->
                             if (new.length <= 16 && new.all { it.isDigit() }) pinInput = new
                         },
-                        label = { Text("4-16 digit PIN") },
+                        label = { Text(stringResource(R.string.settings_pin_enter)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         visualTransformation = PasswordVisualTransformation(),
@@ -739,7 +741,7 @@ fun SettingsScreen(
                             onValueChange = { new ->
                                 if (new.length <= 16 && new.all { it.isDigit() }) pinConfirm = new
                             },
-                            label = { Text("Repeat PIN") },
+                            label = { Text(stringResource(R.string.settings_pin_repeat)) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                             visualTransformation = PasswordVisualTransformation(),
@@ -792,7 +794,7 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     pinMode = null
                     pendingImportUri = null
-                }) { Text("Cancel") }
+                }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -801,7 +803,7 @@ fun SettingsScreen(
     if (importLoading != null) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Loading messages") },
+            title = { Text(stringResource(R.string.settings_loading)) },
             text = {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -809,7 +811,7 @@ fun SettingsScreen(
                 ) {
                     CircularProgressIndicator()
                     Spacer(Modifier.height(12.dp))
-                    Text("$importLoading messages loaded", style = MaterialTheme.typography.bodyMedium)
+                    Text(context.getString(R.string.settings_loading_progress, importLoading), style = MaterialTheme.typography.bodyMedium)
                 }
             },
             confirmButton = {},

@@ -56,6 +56,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.R
+import androidx.compose.ui.res.stringResource
 import com.anindra.messages.data.BlockedNumber
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.Repository
@@ -405,7 +407,7 @@ class MainActivity : FragmentActivity() {
             ) {
                 android.widget.Toast.makeText(
                     this,
-                    "Notifications disabled — you won't be alerted for new messages",
+                    getString(R.string.notifications_disabled),
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             }
@@ -471,7 +473,7 @@ class MainActivity : FragmentActivity() {
                         prompt.authenticate(
                             BiometricPrompt.PromptInfo.Builder()
                                 .setTitle("Unlock Messages")
-                                .setSubtitle("Authenticate to access your messages")
+                                .setSubtitle(getString(R.string.lock_title))
                                 .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                                 .build()
                         )
@@ -507,7 +509,7 @@ class MainActivity : FragmentActivity() {
                                 )
                                 Spacer(Modifier.height(24.dp))
                                 Text(
-                                    "App lock is off",
+                                    stringResource(R.string.lock_off),
                                     style = MaterialTheme.typography.headlineSmall,
                                     textAlign = TextAlign.Center
                                 )
@@ -515,7 +517,7 @@ class MainActivity : FragmentActivity() {
                                 Text(
                                     "App lock can't be used because this device has no " +
                                         "screen lock (fingerprint, face, or PIN) to verify it's you. " +
-                                        "Set one up to turn App lock back on.",
+                                        stringResource(R.string.lock_turn_on_hint),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
@@ -532,9 +534,9 @@ class MainActivity : FragmentActivity() {
                                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         )
                                     }
-                                }) { Text("Set up screen lock") }
+                                }) { Text(stringResource(R.string.lock_turn_on)) }
                                 Spacer(Modifier.height(8.dp))
-                                TextButton(onClick = { appUnlocked = true }) { Text("Got it") }
+                                TextButton(onClick = { appUnlocked = true }) { Text(stringResource(R.string.lock_got_it)) }
                             }
                         }
                     }
@@ -578,8 +580,8 @@ class MainActivity : FragmentActivity() {
                 if (showDefaultSmsDialog) {
                     androidx.compose.material3.AlertDialog(
                         onDismissRequest = { showDefaultSmsDialog = false },
-                        title = { androidx.compose.material3.Text("Set as default SMS app?") },
-                        text = { androidx.compose.material3.Text("To send and receive messages, Messages needs to be your default SMS app.") },
+                        title = { androidx.compose.material3.Text(stringResource(R.string.default_sms_title)) },
+                        text = { androidx.compose.material3.Text(stringResource(R.string.default_sms_message)) },
                         confirmButton = {
                             androidx.compose.material3.TextButton(onClick = {
                                 showDefaultSmsDialog = false
@@ -587,11 +589,11 @@ class MainActivity : FragmentActivity() {
                                 if (roleManager.isRoleAvailable(RoleManager.ROLE_SMS)) {
                                     defaultSmsLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS))
                                 }
-                            }) { androidx.compose.material3.Text("Set default") }
+                            }) { androidx.compose.material3.Text(stringResource(R.string.default_sms_set)) }
                         },
                         dismissButton = {
                             androidx.compose.material3.TextButton(onClick = { showDefaultSmsDialog = false }) {
-                                androidx.compose.material3.Text("Not now")
+                                androidx.compose.material3.Text(stringResource(R.string.lock_not_now))
                             }
                         }
                     )

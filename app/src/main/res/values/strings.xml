@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Messages</string>
+    <!-- App strings split into separate feature files for easier translation:
+         - strings_main.xml: app name, lock, permissions
+         - strings_conversations.xml: conversation list, new chat
+         - strings_chat.xml: chat screen actions and messages
+         - strings_settings.xml: settings screens, PIN, themes
+         - strings_trash.xml: trash screen
+         - strings_contact.xml: contact details, block dialogs
+         - strings_components.xml: shared components, time formats
+         Translators: add new files like values-es/, values-fr/, etc. -->
 </resources>
