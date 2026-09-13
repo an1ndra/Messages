@@ -40,6 +40,11 @@ class SmsReceiver : BroadcastReceiver() {
         val isDefaultHandler = Telephony.Sms.getDefaultSmsPackage(context) == context.packageName ||
             roleManager?.isRoleHeld(android.app.role.RoleManager.ROLE_SMS) == true
 
+        // Check if the app's activity is actually visible using ActivityManager
+        // (ForegroundTracker is unreliable since the process may be killed/restarted)
+        val isAppVisible = isForegroundActivity(context)
+        val openAddress = ForegroundTracker.getOpenAddress()
+
         // A long SMS arrives as one broadcast holding every multipart PDU;
         // segments of the same sender must be joined or each shows up as its
         // own message + notification.
@@ -56,7 +61,6 @@ class SmsReceiver : BroadcastReceiver() {
             if (fromSim > 0) return@run fromSim
             -1
         }
-        val appInForeground = ForegroundTracker.isAppInForeground
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
             val body = parts.joinToString("") { it.messageBody!! }
 
@@ -78,11 +82,23 @@ class SmsReceiver : BroadcastReceiver() {
             }
 
             repo.receiveMessage(address, body, sysId, subId)
-            // Skip the sound + system notification pipeline only when the user
-            // is actively reading this exact thread — the chat screen will
-            // render the new bubble and a notification would be noise.
-            if (appInForeground && ForegroundTracker.isConversationOpen(address)) continue
+            // Skip notification when user is actively reading this exact thread
+            val normalizedAddress = address.replace("+", "")
+            if (isAppVisible && normalizedAddress == openAddress) continue
             NotificationHelper.show(context, address, body)
         }
+    }
+
+    /** Check if our app's MainActivity is the visible/resumed activity. */
+    private fun isForegroundActivity(context: Context): Boolean {
+        val am = context.getSystemService(android.app.ActivityManager::class.java)
+        val running = am.runningAppProcesses ?: return false
+        val myPid = android.os.Process.myPid()
+        for (proc in running) {
+            if (proc.pid == myPid && proc.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+                return true
+            }
+        }
+        return false
     }
 }

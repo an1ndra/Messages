@@ -624,15 +624,19 @@ fun ChatScreen(
         draftLoaded = false
     }
     LaunchedEffect(convo) {
-        if (convo != null && !draftLoaded) {
-            if (vm.settings.draftsEnabled) {
-                val savedDraft = convo!!.draft
+        if (convo != null) {
+            val c = convo!!
+            // Tell the SMS receiver which conversation is open so it can suppress notifications
+            // Normalize address to remove + prefix for consistent comparison
+            com.anindra.messages.sms.ForegroundTracker.setOpenConversation(c.address.replace("+", ""))
+            if (!draftLoaded && vm.settings.draftsEnabled) {
+                val savedDraft = c.draft
                 if (savedDraft.isNotBlank()) {
                     draft = savedDraft
                 }
+                draftLoaded = true
             }
-            draftLoaded = true
-            numberIsBlocked = vm.isNumberBlocked(convo!!.address)
+            numberIsBlocked = vm.isNumberBlocked(c.address)
         }
     }
 

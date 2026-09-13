@@ -16,6 +16,8 @@ internal object ForegroundTracker {
     fun isConversationOpen(address: String?): Boolean =
         address != null && address == openAddress.get()
 
+    fun getOpenAddress(): String? = openAddress.get()
+
     fun setAppForeground(value: Boolean) { foreground = value }
     fun setOpenConversation(address: String?) { openAddress.set(address) }
 }
