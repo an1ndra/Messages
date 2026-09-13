@@ -21,6 +21,7 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 - **OTP Highlighting**: One-time passwords automatically highlighted in blue
 - **Contact Photos**: Loads real contact profile pictures
 - **Delayed Sending**: Configurable delay before sending messages
+- **Work Profile Contacts**: Search contacts in both the personal and work (managed) profile; work contacts are shown with a briefcase badge in the picker, home list, and chat header
 
 ## Screenshots
 

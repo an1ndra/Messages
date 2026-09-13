@@ -10,6 +10,9 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListState
@@ -40,7 +44,6 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,10 +66,13 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,18 +84,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.repeatOnLifecycle
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
@@ -105,8 +116,19 @@ fun ConversationsScreen(
     onOpenSettings: () -> Unit
 ) {
     val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
+    val contacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
+    val workNums = remember(contacts) {
+        contacts.filter { it.workProfile }.map { it.number.filter { c -> c.isDigit() } }.toSet()
+    }
     // Recreated on empty→loaded so the list opens at the top (no restored offset, no anchor jump).
     val listState = remember(conversations.isNotEmpty()) { LazyListState(0, 0) }
+    // GM behavior: the "Start chat" pill collapses to an icon-only FAB as soon as
+    // the list scrolls away from the top, and re-expands when it returns.
+    val fabExpanded = remember(listState) {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+        }
+    }.value
     var surfacedUnread by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
     var userScrolledAway by remember { mutableStateOf(false) }
     var unreadSeeded by remember { mutableStateOf(false) }
@@ -133,6 +155,18 @@ fun ConversationsScreen(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // Relative list timestamps ("Now", "5 min") must age while the screen is
+    // visible; tick every 30s (and immediately on resume) to recompose them.
+    var nowTick by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            nowTick = System.currentTimeMillis()
+            while (true) {
+                kotlinx.coroutines.delay(30_000L)
+                nowTick = System.currentTimeMillis()
+            }
+        }
     }
     val readSmsPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -284,16 +318,7 @@ fun ConversationsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (!showArchived) {
-                ExtendedFloatingActionButton(
-                    onClick = onNewChat,
-                    icon = {
-                        Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null)
-                    },
-                    text = { Text("Start chat") },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(16.dp)
-                )
+                StartChatFab(expanded = fabExpanded, onClick = onNewChat)
             }
         }
     ) { padding ->
@@ -425,20 +450,23 @@ fun ConversationsScreen(
                     }
                 }
             } else {
-                LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
-                    items(displayed, key = { it.id }) { convo ->
-                        SwipeableConversationItem(
-                            settings = rowSettings,
-                            swipeEnabled = rowSettings.swipeEnabled && !showArchived,
-                            convo = convo,
-                            showArchived = showArchived,
-                            onClick = { onOpenConversation(convo.id) },
-                            onDelete = { moveToTrash(convo) },
-                            onArchive = { archiveWithUndo(convo) },
-                            onLongClick = { sheetConvoId = convo.id }
-                        )
+                CompositionLocalProvider(LocalNowTick provides nowTick) {
+                    LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+                        items(displayed, key = { it.id }) { convo ->
+                            SwipeableConversationItem(
+                                settings = rowSettings,
+                                swipeEnabled = rowSettings.swipeEnabled && !showArchived,
+                                convo = convo,
+                                workProfile = workNums.contains(convo.address.filter { it.isDigit() }),
+                                showArchived = showArchived,
+                                onClick = { onOpenConversation(convo.id) },
+                                onDelete = { moveToTrash(convo) },
+                                onArchive = { archiveWithUndo(convo) },
+                                onLongClick = { sheetConvoId = convo.id }
+                            )
+                        }
+                        item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
                     }
-                    item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
                 }
             }
         }
@@ -516,6 +544,7 @@ private fun SwipeableConversationItem(
     settings: RowSettings,
     swipeEnabled: Boolean,
     convo: Conversation,
+    workProfile: Boolean,
     showArchived: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit,
@@ -523,11 +552,12 @@ private fun SwipeableConversationItem(
     onLongClick: () -> Unit = {}
 ) {
     if (swipeEnabled) {
-        SwipeConversationItem(settings, convo, onClick, onDelete, onArchive, onLongClick)
+        SwipeConversationItem(settings, convo, workProfile, onClick, onDelete, onArchive, onLongClick)
     } else {
         ConversationRow(
             settings = settings,
             convo = convo,
+            workProfile = workProfile,
             showArchived = showArchived,
             onClick = onClick,
             onDelete = onDelete,
@@ -542,6 +572,7 @@ private fun SwipeableConversationItem(
 private fun SwipeConversationItem(
     settings: RowSettings,
     convo: Conversation,
+    workProfile: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onArchive: () -> Unit,
@@ -627,6 +658,7 @@ private fun SwipeConversationItem(
         ConversationRow(
             settings = settings,
             convo = convo,
+            workProfile = workProfile,
             showArchived = false,
             onClick = onClick,
             onDelete = onDelete,
@@ -666,12 +698,14 @@ private data class RowSettings(
 private fun ConversationRow(
     settings: RowSettings,
     convo: Conversation,
+    workProfile: Boolean,
     showArchived: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit = {},
     onArchive: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
+    val now = LocalNowTick.current
     Box(modifier = Modifier.fillMaxWidth()) {
         val pinnedTint = if (convo.pinned && settings.pinnedEnabled) {
             MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
@@ -711,6 +745,10 @@ private fun ConversationRow(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (workProfile) {
+                        Spacer(Modifier.width(4.dp))
+                        WorkProfileBadge()
+                    }
                 }
                 Spacer(Modifier.height(2.dp))
                 val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
@@ -742,7 +780,7 @@ private fun ConversationRow(
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = formatListTime(convo.timestamp),
+                    text = formatListTime(convo.timestamp, now),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (convo.unreadCount > 0) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -775,6 +813,63 @@ private fun SheetActionRow(
         Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(20.dp))
         Text(label, style = MaterialTheme.typography.bodyLarge, color = tint)
+    }
+}
+
+/**
+ * GM-style "Start chat" button: an extended pill while the list is at the top,
+ * morphing to an icon-only rounded square as soon as the list scrolls away.
+ * The label never wraps: it is clipped by the shrinking width, so "chat"
+ * disappears first and "Start" last.
+ */
+@Composable
+private fun StartChatFab(
+    expanded: Boolean,
+    onClick: () -> Unit
+) {
+    val cs = MaterialTheme.colorScheme
+    val collapsedSize = 56.dp
+    // Natural expanded-pill width, captured from the first layout pass (px).
+    var naturalWidthPx by remember { mutableIntStateOf(0) }
+    val progress = remember { Animatable(if (expanded) 1f else 0f) }
+    LaunchedEffect(expanded) {
+        progress.animateTo(
+            if (expanded) 1f else 0f,
+            spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+        )
+    }
+    val p = progress.value
+    val naturalWidthDp = with(LocalDensity.current) { naturalWidthPx.toDp() }
+    Row(
+        modifier = Modifier
+            .height(collapsedSize)
+            .then(
+                if (naturalWidthPx <= 0) Modifier.widthIn(min = collapsedSize)
+                else Modifier.width(lerp(collapsedSize, naturalWidthDp, p))
+            )
+            .onSizeChanged { if (naturalWidthPx <= 0) naturalWidthPx = it.width }
+            .clip(RoundedCornerShape(16.dp))
+            .background(cs.secondaryContainer)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "Start chat" },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Spacer(Modifier.width(16.dp))
+        Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null, tint = cs.primary)
+        if (p > 0.01f) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Start chat",
+                style = MaterialTheme.typography.labelLarge,
+                color = cs.primary,
+                maxLines = 1,
+                softWrap = false
+            )
+            Spacer(Modifier.width(16.dp))
+        }
     }
 }
 

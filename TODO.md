@@ -1,5 +1,39 @@
 # TODO
 
+## Issue #180 · Search contacts in both the personal and work profile (2026-09-13)
+
+✅ USER REQUEST: contacts from the work (managed) profile must appear in the
+contact picker (badged) and resolve by name in conversations, not just the
+personal address book.
+Mechanism (reverse-engineered from the Google Messages APK + verified on the
+google_apis API 35 emulator): the public ENTERPRISE content URIs expose work
+contacts cross-profile once the app holds READ_CONTACTS in the work profile:
+- `Directory.ENTERPRISE_CONTENT_URI` (directories_enterprise) enumerates
+  directories; the work profile is id 1000000000 (`Directory.ENTERPRISE_DEFAULT`).
+- `Phone.ENTERPRISE_CONTENT_URI` (data_enterprise/phones) returns personal +
+  work contacts merged in one query; work rows carry
+  `contact_id >= ENTERPRISE_DEFAULT` (1000000000 + local id).
+- `PhoneLookup.ENTERPRISE_CONTENT_FILTER_URI` needs a `?directory=<id>` param.
+Implementation:
+- `MainActivity.kt` `AppViewModel.contacts`: loads `ENTERPRISE_CONTENT_URI`,
+  flags `workProfile` from `contact_id >= ENTERPRISE_DEFAULT`; any failure
+  falls back to the plain `CONTENT_URI` (byte-identical for personal-only
+  devices — verified: no work profile → PLAIN == ENTERPRISE, same 1 row).
+- `ui/NewChatScreen.kt` + `ui/ChatScreen.kt` ForwardPicker: briefcase badge
+  (`WorkProfileBadge` in `ui/Components.kt`) next to work contacts.
+- `ui/ConversationsScreen.kt` — `vm.contacts` collected, `workNums` set built,
+  `workProfile` threaded through `SwipeableConversationItem` →
+  `SwipeConversationItem` → `ConversationRow`, badge rendered next to names.
+- `ui/ChatScreen.kt` `ChatTopBar` — `vm.contacts` collected at top,
+  `workProfile` computed from `convo.address`, badge rendered in header.
+- `data/Repository.kt` `lookupContactName`: plain PhoneLookup first, then the
+  enterprise filter per non-default directory → work numbers resolve to names
+  (home list, chat header, notifications).
+Test: `scripts/test-work-profile-search.sh` (6/6) — sets up the work profile
+via `test-work-profile-contacts.sh`, asserts the picker badge (work contact
+badged), home list row resolves work number by name + shows badge, and
+chat header shows name + badge.
+
 ## Bug · Copy/Forward must hide URLs when "Hide links from messages" is ON (2026-09-12)
 
 ✅ USER REQUEST: with "Hide links" enabled the chat strips the URL, but the

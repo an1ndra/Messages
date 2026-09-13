@@ -94,13 +94,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val ctx = app.applicationContext
             val out = mutableListOf<com.anindra.messages.ui.Contact>()
-            try {
+            val enterpriseBase = android.provider.ContactsContract.Directory.ENTERPRISE_DEFAULT
+
+            fun load(uri: android.net.Uri, withContactId: Boolean) {
+                val projection = if (withContactId) arrayOf(
+                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER,
+                    "contact_id"
+                ) else arrayOf(
+                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+                )
                 ctx.contentResolver.query(
-                    android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                    arrayOf(
-                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                        android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
-                    ),
+                    uri,
+                    projection,
                     null, null,
                     android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
                 )?.use { c ->
@@ -108,10 +115,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     while (c.moveToNext()) {
                         val name = c.getString(0) ?: continue
                         val num = c.getString(1) ?: continue
-                        if (seen.add(num.filter { it.isDigit() })) out.add(com.anindra.messages.ui.Contact(name, num))
+                        val work = withContactId && c.getLong(2) >= enterpriseBase
+                        if (seen.add(num.filter { it.isDigit() })) {
+                            out.add(com.anindra.messages.ui.Contact(name, num, work))
+                        }
                     }
                 }
-            } catch (_: SecurityException) {
+            }
+
+            try {
+                load(android.provider.ContactsContract.CommonDataKinds.Phone.ENTERPRISE_CONTENT_URI, true)
+            } catch (_: Exception) {
+                out.clear()
+                try {
+                    load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
+                } catch (_: SecurityException) {
+                }
             }
             contacts.value = out
         }
