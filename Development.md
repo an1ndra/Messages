@@ -1,8 +1,9 @@
 # Development.md — Development Reference
 
 How the app is built, how navigation works, and how to verify changes.
-For environment setup see [Developer.md](Developer.md); for agent rules see
-[AGENTS.md](AGENTS.md); for task status see [TODO.md](TODO.md).
+For environment setup see [Developer.md](Developer.md). Agent rules and the
+project task tracker live in the **scripts submodule** (`scripts/AGENTS.md`,
+`scripts/TODO.md`); the test scripts in `scripts/` verify everything below.
 
 ---
 
@@ -123,10 +124,10 @@ Gotchas learned the hard way:
 2. No dead controls — every visible icon must do something real.
 3. No comments unless genuinely non-obvious.
 4. After any change: build → install → run relevant `scripts/test-*.sh` →
-   update TODO.md checkboxes.
+   track completion in `scripts/TODO.md` (scripts submodule).
 
 ## 6. Regression guardrails
 
 After any task: run the affected test scripts plus `test-back-nav.sh` and
 `test-back-stack.sh` when navigation or screens changed; ensure the build is
-green; confirm no new permissions beyond those listed in AGENTS.md.
+green; confirm no new permissions beyond those declared in the app manifest.
