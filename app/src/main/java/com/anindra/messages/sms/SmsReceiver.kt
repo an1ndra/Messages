@@ -83,7 +83,7 @@ class SmsReceiver : BroadcastReceiver() {
 
             repo.receiveMessage(address, body, sysId, subId)
             // Skip notification when user is actively reading this exact thread
-            if (ForegroundTracker.isConversationOpenFromPrefs(context, address)) continue
+            if (ForegroundTracker.isConversationOpenFromPrefs(context, address.replace(Regex("\\D"), ""))) continue
             NotificationHelper.show(context, address, body)
         }
     }

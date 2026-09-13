@@ -627,7 +627,7 @@ fun ChatScreen(
         if (convo != null) {
             val c = convo!!
             // Tell the SMS receiver which conversation is open so it can suppress notifications
-            com.anindra.messages.sms.ForegroundTracker.setOpenConversation(c.address.replace("+", ""))
+            com.anindra.messages.sms.ForegroundTracker.setOpenConversation(c.address.replace(Regex("\\D"), ""))
             if (!draftLoaded && vm.settings.draftsEnabled) {
                 val savedDraft = c.draft
                 if (savedDraft.isNotBlank()) {

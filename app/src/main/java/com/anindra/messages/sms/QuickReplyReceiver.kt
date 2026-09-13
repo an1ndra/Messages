@@ -28,6 +28,7 @@ class QuickReplyReceiver : BroadcastReceiver() {
                 val repo = app.repository
 
                 val convoId = repo.getOrCreateConversationBlocking(address)
+                repo.markReadSuspend(convoId)
                 val subId = repo.settings.simSubscriptionId
                 val message = repo.sendText(convoId, replyText, subId)
 

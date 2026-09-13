@@ -19,7 +19,7 @@ internal object ForegroundTracker {
 
     val isAppInForeground: Boolean get() = foreground
     fun isConversationOpen(address: String?): Boolean {
-        val addr = address?.replace("+", "") ?: return false
+        val addr = address?.replace(Regex("\\D"), "") ?: return false
         if (openAddress.get() == addr) return true
         return false
     }
@@ -28,13 +28,13 @@ internal object ForegroundTracker {
 
     fun setAppForeground(value: Boolean) { foreground = value }
     fun setOpenConversation(address: String?) {
-        val normalized = address?.replace("+", "")
+        val normalized = address?.replace(Regex("\\D"), "")
         openAddress.set(normalized)
     }
 
     /** Check if conversation is open using shared preferences (survives process death). */
     fun isConversationOpenFromPrefs(context: android.content.Context, address: String?): Boolean {
-        val addr = address?.replace("+", "") ?: return false
+        val addr = address?.replace(Regex("\\D"), "") ?: return false
         val prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
         return prefs.getString(KEY_OPEN_ADDRESS, null) == addr
     }
