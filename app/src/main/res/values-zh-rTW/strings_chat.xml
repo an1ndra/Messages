@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="chat_archive">封存</string>
+    <string name="chat_block">封鎖</string>
+    <string name="chat_block_report">封鎖並檢舉垃圾訊息</string>
+    <string name="chat_unblock">解除封鎖</string>
+    <string name="chat_block_number">封鎖號碼</string>
+    <string name="chat_unblock_number">解除封鎖號碼</string>
+    <string name="chat_forward">轉寄</string>
+    <string name="chat_forward_to">轉寄給</string>
+    <string name="chat_share">分享</string>
+    <string name="chat_details">詳情</string>
+    <string name="chat_view_details">檢視詳情</string>
+    <string name="chat_schedule">排定</string>
+    <string name="chat_select_time">選擇時間</string>
+    <string name="chat_media_camera">相機</string>
+    <string name="chat_media_gallery">相簿</string>
+    <string name="chat_cant_send">無法傳送訊息</string>
+    <string name="chat_archived">對話已封存</string>
+    <string name="chat_deleted">對話已刪除</string>
+    <string name="chat_moved_to_trash">對話已移至垃圾桶</string>
+    <string name="chat_forwarded">訊息已轉寄</string>
+    <string name="chat_blocked_send">此號碼已封鎖。解除封鎖即可傳送？</string>
+    <string name="chat_number_blocked">號碼已封鎖</string>
+    <string name="chat_number_unblocked">號碼已解除封鎖</string>
+    <string name="chat_loading_earlier">載入较早的訊息</string>
+    <string name="chat_retry">重試</string>
+    <string name="chat_retry_sim">重試使用 SIM 卡</string>
+    <string name="chat_sending_via">透過 %s 傳送</string>
+    <string name="chat_scheduled_for">已排定於 %s 傳送</string>
+    <string name="chat_search_contacts">搜尋通訊錄</string>
+    <string name="chat_add_people">加入人員</string>
+    <string name="chat_locked">已鎖定</string>
+    <string name="chat_copied">已複製</string>
+    <string name="chat_link_copied">連結已複製</string>
+    <string name="chat_copy_link">複製連結</string>
+    <string name="chat_link_caution">警告：外部連結</string>
+    <string name="chat_link_warning">訊息中的連結可能導向盜取個人資料或安裝惡意軟體的假網站。</string>
+    <string name="chat_link_no_dont_show">不再顯示此警告</string>
+    <string name="chat_close">關閉</string>
+    <string name="chat_open">開啟</string>
+    <string name="chat_next">下一步</string>
+    <string name="chat_ok">確定</string>
+    <string name="chat_cancel">取消</string>
+    <string name="chat_delete">刪除</string>
+    <string name="chat_details_title">對話詳情</string>
+</resources>
