@@ -18,6 +18,27 @@ Offline SMS messaging app for Android (Google Messages clone).
   `scripts/Development.md`, `scripts/TODO.md`. If `scripts/` is empty:
   `git submodule update --init scripts`.
 
+### Submodule branch tracking
+
+`scripts/` tracks the **same-named branch** of Messages-scripts as the app repo
+is on (Develop ↔ Develop, main ↔ main), set via `branch = Develop` in
+`.gitmodules`. After creating/merging branches, point the submodule at the
+matching branch:
+
+```bash
+git -C scripts fetch origin
+git -C scripts checkout -B <branch> origin/<branch>   # same name as app branch
+git -C scripts submodule update --remote scripts       # or: pull tip of that branch
+git add scripts && git commit -m "chore: bump scripts submodule"
+```
+
+Publish script changes (run from app root or inside `scripts/`):
+
+```bash
+git -C scripts add -A && git -C scripts commit -m "..." && git -C scripts push
+git add scripts && git commit -m "chore: bump scripts submodule"
+```
+
 ## Hard rules
 
 1. M3 color roles only — no hex colors outside `Theme.kt` seeds + GM avatar palette.
