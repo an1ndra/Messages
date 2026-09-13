@@ -27,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import com.anindra.messages.R
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -185,9 +186,12 @@ private val zone: ZoneId get() = ZoneId.systemDefault()
 
 private fun zoned(ts: Long): ZonedDateTime = Instant.ofEpochMilli(ts).atZone(zone)
 
-fun formatListTime(ts: Long): String {
+/** Ambient "now" (epoch millis) that advances while a screen is visible, so
+ *  relative labels ("Now", "5 min") age instead of freezing at composition. */
+val LocalNowTick = compositionLocalOf { System.currentTimeMillis() }
+
+fun formatListTime(ts: Long, now: Long = System.currentTimeMillis()): String {
     if (ts <= 0) return ""
-    val now = System.currentTimeMillis()
     return when {
         now - ts < 60_000L -> "Now"
         now - ts < 3_600_000L -> "${(now - ts) / 60_000} min"
