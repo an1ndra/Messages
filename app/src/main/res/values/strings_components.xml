@@ -10,7 +10,6 @@
 
     <!-- Time formatting -->
     <string name="time_now">Now</string>
-    <string name="time_yesterday">Yesterday</string>
     <string name="time_today">Today</string>
     <string name="time_minutes">%s min</string>
     <string name="time_format_hour">h:mm a</string>
@@ -31,4 +30,35 @@
     <string name="access_photo">Photo</string>
     <string name="action_call">Call</string>
     <string name="action_add">Add</string>
+    <string name="access_chat_top_bar">Chat top bar</string>
+    <string name="access_swipe_background">Swipe background</string>
+    <string name="access_nav">Navigation drawer</string>
+    <!-- Icon content descriptions -->
+    <string name="icon_back">Back</string>
+    <string name="icon_cancel_selection">Cancel selection</string>
+    <string name="icon_copy">Copy</string>
+    <string name="icon_delete">Delete</string>
+    <string name="icon_more_options">More options</string>
+    <string name="icon_call">Call</string>
+    <string name="icon_attach">Attach</string>
+    <string name="icon_emoji">Emoji</string>
+    <string name="icon_send">Send</string>
+    <string name="icon_close_search">Close search</string>
+    <string name="icon_back_to_inbox">Back to inbox</string>
+    <string name="icon_search">Search</string>
+    <string name="icon_cancel">Cancel</string>
+    <!-- Message statuses -->
+    <string name="status_delivered">Delivered</string>
+    <string name="status_sending">Sending…</string>
+    <string name="status_sms">SMS</string>
+    <!-- Sheet actions -->
+    <string name="sheet_unarchive">Unarchive</string>
+    <string name="sheet_unpin">Unpin</string>
+    <string name="sheet_pin">Pin</string>
+    <string name="sheet_archive">Archive</string>
+    <string name="sheet_delete">Delete</string>
+    <string name="sheet_block">Block</string>
+    <!-- Detail row labels -->
+    <string name="detail_phone_number">Phone number</string>
+    <string name="detail_messages">Messages</string>
 </resources>

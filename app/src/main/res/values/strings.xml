@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name_placeholder">placeholder</string>
     <!-- App strings split into separate feature files for easier translation:
          - strings_main.xml: app name, lock, permissions
          - strings_conversations.xml: conversation list, new chat

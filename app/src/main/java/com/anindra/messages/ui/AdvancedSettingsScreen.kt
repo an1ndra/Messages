@@ -60,7 +60,7 @@ fun AdvancedSettingsScreen(
                 title = { Text(stringResource(R.string.settings_advanced_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
                     }
                 }
             )
@@ -97,9 +97,9 @@ fun AdvancedSettingsScreen(
                 SettingsRow(
                     title = stringResource(R.string.settings_advanced_highlight_links),
                     subtitle = if (hideLinks) {
-                        "Turn off \"Hide links from messages\" first"
+                        stringResource(R.string.settings_advanced_turn_off) + stringResource(R.string.settings_advanced_hide_links) + stringResource(R.string.settings_advanced_turn_off_suffix)
                     } else {
-                        "Tap links in messages to open the website"
+                        stringResource(R.string.settings_link_tap_info)
                     },
                     checked = highlightLinks,
                     onChecked = {
@@ -111,9 +111,9 @@ fun AdvancedSettingsScreen(
                 SettingsRow(
                     title = stringResource(R.string.settings_advanced_link_warning),
                     subtitle = when {
-                        hideLinks -> "Turn off \"Hide links from messages\" first"
+                        hideLinks -> stringResource(R.string.settings_advanced_turn_off) + stringResource(R.string.settings_advanced_hide_links) + stringResource(R.string.settings_advanced_turn_off_suffix)
                         !highlightLinks -> "Turn on \"Highlight links\" first"
-                        else -> "Confirm before opening external links"
+                        else -> stringResource(R.string.link_warning_confirm)
                     },
                     checked = linkWarning,
                     onChecked = {
@@ -152,8 +152,7 @@ fun PermanentDeleteConfirmDialog(
         text = {
             Column(Modifier.fillMaxWidth()) {
                 Text(
-                    "Permanent delete is on. This conversation and its messages will be " +
-                        "removed from your device right away — not moved to trash — and cannot be restored."
+                    stringResource(R.string.settings_advanced_permanent_delete_on)
                 )
                 Spacer(Modifier.height(4.dp))
                 Row(

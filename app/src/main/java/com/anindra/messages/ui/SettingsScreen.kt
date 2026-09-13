@@ -97,6 +97,13 @@ fun SettingsScreen(
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
     var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
+    val notificationSoundOptions = listOf(
+        SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
+        SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
+        SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
+        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
+        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
+    )
     var showSim by remember(revision) { mutableStateOf(vm.settings.showSimIndicator) }
     val themeMode = vm.themeMode
 
@@ -150,10 +157,10 @@ fun SettingsScreen(
     val showImportResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit = { result ->
         val msg = when (result) {
             is com.anindra.messages.data.Repository.ImportResult.Success ->
-                if (result.merged != null) "Restored ${result.merged} messages. Existing conversations kept."
-                else "Backup restored. Restart app to apply."
+                if (result.merged != null) String.format(context.getString(R.string.settings_restored_msg), result.merged)
+                else context.getString(R.string.settings_backup_restored)
             is com.anindra.messages.data.Repository.ImportResult.Error ->
-                "Import failed: ${result.message}"
+                String.format(context.getString(R.string.settings_import_failed), result.message)
         }
         Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
     }
@@ -176,7 +183,7 @@ fun SettingsScreen(
                 title = { Text(stringResource(R.string.settings_general)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
                     }
                 }
             )
@@ -216,7 +223,7 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_pin_notification_sound),
-                    subtitle = notificationSoundLabel(notificationSound),
+                    subtitle = notificationSoundLabel(notificationSound, notificationSoundOptions, context),
                     onClick = {
                         notificationSound = vm.settings.notificationSound
                         soundDialog = true
@@ -243,12 +250,12 @@ fun SettingsScreen(
             SettingsGroup {
                 SettingsRow(
                     title = stringResource(R.string.settings_theme_title),
-                    subtitle = themeLabel(themeMode),
+                    subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
                 )
-                val currentSimLabel = if (vm.settings.simSubscriptionId == -1) "Default"
+                val currentSimLabel = if (vm.settings.simSubscriptionId == -1) context.getString(R.string.sim_default)
                 else sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }?.displayName?.toString()
-                    ?: "SIM ${vm.settings.simSubscriptionId}"
+                    ?: context.getString(R.string.settings_sim_label, vm.settings.simSubscriptionId)
                 SettingsRow(
                     title = stringResource(R.string.settings_pin_sim_card),
                     subtitle = currentSimLabel,
@@ -401,7 +408,7 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_backup_title),
-                    subtitle = if (backingUp) "Saving..." else "PIN-protected save to Documents/Messages",
+                    subtitle = if (backingUp) stringResource(R.string.settings_saving) else stringResource(R.string.settings_backup_saving),
                     onClick = {
                         pinMode = PinDialogMode.SET
                         pinInput = ""
@@ -449,7 +456,7 @@ fun SettingsScreen(
                                 onClick = { vm.cancelScheduledMessage(sm.id) },
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Rounded.Cancel, "Cancel", modifier = Modifier.size(20.dp))
+                                Icon(Icons.Rounded.Cancel, stringResource(R.string.icon_cancel), modifier = Modifier.size(20.dp))
                             }
                         }
                     }
@@ -459,7 +466,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                "Messages 1.0 — offline SMS",
+                stringResource(R.string.messages_footer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -477,9 +484,9 @@ fun SettingsScreen(
             text = {
                 Column {
                     listOf(
-                        "light" to "Light",
-                        "dark" to "Dark",
-                        "system" to "System default"
+                        "light" to stringResource(R.string.settings_theme_light),
+                        "dark" to stringResource(R.string.settings_theme_dark),
+                        "system" to stringResource(R.string.settings_theme_system)
                     ).forEach { (value, label) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -514,7 +521,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     Text(
-                        "Sound played when a message arrives",
+                        stringResource(R.string.settings_sound_arrival),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -558,10 +565,10 @@ fun SettingsScreen(
 
     if (simDialog) {
         var selected by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
-        val options = mutableListOf(-1 to "Default (System)")
+        val options = mutableListOf(-1 to context.getString(R.string.settings_sim_default))
         sims.forEach { sub ->
             val carrier = sub.carrierName?.toString()?.ifBlank { null }
-            val label = if (carrier != null) String.format("%s (SIM %s)", carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
+            val label = if (carrier != null) String.format(context.getString(R.string.settings_sim_label_format), carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
             options += sub.subscriptionId to label
         }
         AlertDialog(
@@ -607,7 +614,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     Text(
-                        "Choose how long to wait before sending:",
+                        stringResource(R.string.settings_choose_delay),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -654,7 +661,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     Text(
-                        "How should this backup be applied to your current messages?",
+                        stringResource(R.string.settings_backup_apply),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -709,15 +716,15 @@ fun SettingsScreen(
             },
             title = {
                 Text(
-                    if (mode == PinDialogMode.SET) "Set backup PIN"
-                    else "Enter backup PIN"
+                    if (mode == PinDialogMode.SET) stringResource(R.string.settings_pin_dialog_set)
+                    else stringResource(R.string.settings_pin_dialog_enter)
                 )
             },
             text = {
                 Column {
                     if (mode == PinDialogMode.SET) {
                         Text(
-                            "Your backup is protected by this PIN. You'll need it to " +
+                            stringResource(R.string.settings_backup_pin_protection) +
                                 "restore — even after reinstalling the app or on a new phone.",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -762,9 +769,9 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     val pin = pinInput.trim()
                     when {
-                        pin.length < 4 -> pinError = "PIN must be at least 4 digits"
+                        pin.length < 4 -> pinError = context.getString(R.string.settings_pin_error_too_short)
                         mode == PinDialogMode.SET && pin != pinConfirm ->
-                            pinError = "PINs do not match"
+                            pinError = context.getString(R.string.settings_pin_error_mismatch)
                         else -> {
                             if (mode == PinDialogMode.SET) {
                                 pinMode = null
@@ -773,8 +780,8 @@ fun SettingsScreen(
                                     backingUp = false
                                     Toast.makeText(
                                         context,
-                                        if (ok) "Backup saved with PIN to Documents/Messages"
-                                        else "Backup failed",
+                                        if (ok) context.getString(R.string.settings_backup_saved)
+                                        else context.getString(R.string.settings_backup_failed),
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }
@@ -788,7 +795,7 @@ fun SettingsScreen(
                             }
                         }
                     }
-                }) { Text(if (mode == PinDialogMode.SET) "Save" else "Import") }
+                }) { Text(if (mode == PinDialogMode.SET) stringResource(R.string.settings_save) else stringResource(R.string.settings_import)) }
             },
             dismissButton = {
                 TextButton(onClick = {
@@ -833,22 +840,16 @@ fun SettingsGroup(content: @Composable () -> Unit) {
     }
 }
 
-private fun themeLabel(mode: String) = when (mode) {
-    "light" -> "Light"
-    "dark" -> "Dark"
-    else -> "System default"
+private fun themeLabel(mode: String, context: android.content.Context) = when (mode) {
+    "light" -> context.getString(R.string.settings_theme_light)
+    "dark" -> context.getString(R.string.settings_theme_dark)
+    else -> context.getString(R.string.settings_theme_system)
 }
 
-private val notificationSoundOptions = listOf(
-    SettingsStore.NOTIFY_SOUND_DEFAULT to "Default (system)",
-    SettingsStore.NOTIFY_SOUND_APP to "Classic",
-    SettingsStore.NOTIFY_SOUND_DRAGON to "Dragon Studio",
-    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to "Chime",
-    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to "Bubble"
-)
 
-private fun notificationSoundLabel(value: String) =
-    notificationSoundOptions.firstOrNull { it.first == value }?.second ?: "Default (system)"
+
+private fun notificationSoundLabel(value: String, options: List<Pair<String, String>>, context: android.content.Context) =
+    options.firstOrNull { it.first == value }?.second ?: context.getString(R.string.settings_sound_default)
 
 @Composable
 private fun ImportChoiceRow(

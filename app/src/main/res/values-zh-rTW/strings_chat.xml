@@ -44,4 +44,16 @@
     <string name="chat_cancel">取消</string>
     <string name="chat_delete">刪除</string>
     <string name="chat_details_title">對話詳情</string>
+    <string name="chat_status_not_sent">未傳送</string>
+    <string name="chat_status_retry">輕觸以重試</string>
+    <string name="chat_draft_prefix">草稿：</string>
+    <string name="chat_sending_countdown">正在傳送 %d 秒後…</string>
+    <string name="chat_alphanumeric_error">您無法向 %s 這類字母數字寄件者傳送訊息。僅支援電話號碼。</string>
+    <string name="chat_unlock_dialog">解鎖</string>
+    <string name="chat_lock_dialog">鎖定</string>
+    <string name="chat_link_label">連結</string>
+    <string name="chat_message_deleted">訊息已刪除</string>
+    <string name="chat_messages_deleted">%d 則訊息已刪除</string>
+    <string name="chat_messages_label">訊息</string>
+    <string name="status_not_sent">未发送</string>
 </resources>

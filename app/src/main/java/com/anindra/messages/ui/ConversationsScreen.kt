@@ -124,7 +124,7 @@ fun ConversationsScreen(
     }
     // Recreated on empty→loaded so the list opens at the top (no restored offset, no anchor jump).
     val listState = remember(conversations.isNotEmpty()) { LazyListState(0, 0) }
-    // GM behavior: the "Start chat" pill collapses to an icon-only FAB as soon as
+    // GM behavior: the stringResource(R.string.access_start_chat) pill collapses to an icon-only FAB as soon as
     // the list scrolls away from the top, and re-expands when it returns.
     val fabExpanded = remember(listState) {
         derivedStateOf {
@@ -249,8 +249,8 @@ fun ConversationsScreen(
         vm.deleteConversation(convo.id)
         scope.launch {
             val result = snackbarHostState.showSnackbar(
-                message = "Conversation moved to trash",
-                actionLabel = "Undo",
+                message = context.getString(R.string.convo_moved_to_trash),
+                actionLabel = context.getString(R.string.action_undo),
                 duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) vm.restoreFromTrash(convo.id)
@@ -261,8 +261,8 @@ fun ConversationsScreen(
         vm.archiveConversation(convo.id)
         scope.launch {
             val result = snackbarHostState.showSnackbar(
-                message = "Conversation archived",
-                actionLabel = "Undo",
+                message = context.getString(R.string.convo_archived),
+                actionLabel = context.getString(R.string.action_undo),
                 duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) vm.unarchiveConversation(convo.id)
@@ -334,7 +334,7 @@ fun ConversationsScreen(
             ) {
                 if (searching) {
                     IconButton(onClick = { searching = false; query = "" }) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Close search")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_close_search))
                     }
                     val focusRequester = remember { FocusRequester() }
                     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -354,30 +354,30 @@ fun ConversationsScreen(
                 } else {
                     if (showArchived) {
                         IconButton(onClick = { showArchived = false }) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back to inbox")
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back_to_inbox))
                         }
                         Text(
-                            "Archived",
+                            stringResource(R.string.conversations_archived),
                             style = MaterialTheme.typography.headlineSmall,
                             modifier = Modifier.weight(1f)
                         )
                     } else {
                         Text(
-                            "Messages",
+                            stringResource(R.string.conversations_messages),
                             style = MaterialTheme.typography.headlineSmall,
                             modifier = Modifier.weight(1f)
                         )
                         if (showArchiving) {
                             IconButton(onClick = { showArchived = true }) {
-                                Icon(Icons.Rounded.Archive, "Archived")
+                                Icon(Icons.Rounded.Archive, stringResource(R.string.conversations_archived))
                             }
                         }
                         IconButton(onClick = { searching = true }) {
-                            Icon(Icons.Outlined.Search, "Search")
+                            Icon(Icons.Outlined.Search, stringResource(R.string.icon_search))
                         }
                         IconButton(onClick = onOpenSettings) {
                             PersonAvatar(
-                                "me", size = 32.dp,
+                                stringResource(R.string.conversations_me), size = 32.dp,
                                 backgroundColor = MaterialTheme.colorScheme.primary,
                                 tint = MaterialTheme.colorScheme.onPrimary
                             )
@@ -420,14 +420,14 @@ fun ConversationsScreen(
                     )
                     Spacer(Modifier.height(20.dp))
                     Text(
-                        "Allow SMS access",
+                        stringResource(R.string.conversations_allow_sms_access),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Messages needs permission to read your SMS so your conversations appear here.",
+                        stringResource(R.string.conversations_sms_permission),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -456,6 +456,7 @@ fun ConversationsScreen(
                     LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
                         items(displayed, key = { it.id }) { convo ->
                             SwipeableConversationItem(
+                                context,
                                 settings = rowSettings,
                                 swipeEnabled = rowSettings.swipeEnabled && !showArchived,
                                 convo = convo,
@@ -500,27 +501,27 @@ fun ConversationsScreen(
                     color = MaterialTheme.colorScheme.outlineVariant
                 )
                 if (showArchived) {
-                    SheetActionRow(Icons.Rounded.Archive, "Unarchive", MaterialTheme.colorScheme.primary) {
+                    SheetActionRow(Icons.Rounded.Archive, stringResource(R.string.sheet_unarchive), MaterialTheme.colorScheme.primary) {
                         sheetConvoId = -1L; vm.unarchiveConversation(sheetConvo.id)
                     }
                 } else {
                     if (rowSettings.pinnedEnabled) {
                         SheetActionRow(
                             Icons.Rounded.PushPin,
-                            if (sheetConvo.pinned) "Unpin" else "Pin",
+                            if (sheetConvo.pinned) stringResource(R.string.sheet_unpin) else stringResource(R.string.sheet_pin),
                             MaterialTheme.colorScheme.primary
                         ) { sheetConvoId = -1L; vm.togglePin(sheetConvo.id) }
                     }
                     if (rowSettings.archivingEnabled) {
-                        SheetActionRow(Icons.Rounded.Archive, "Archive", MaterialTheme.colorScheme.primary) {
+                        SheetActionRow(Icons.Rounded.Archive, stringResource(R.string.sheet_archive), MaterialTheme.colorScheme.primary) {
                             sheetConvoId = -1L; archiveWithUndo(sheetConvo)
                         }
                     }
-                    SheetActionRow(Icons.Rounded.Delete, "Delete", MaterialTheme.colorScheme.error) {
+                    SheetActionRow(Icons.Rounded.Delete, stringResource(R.string.sheet_delete), MaterialTheme.colorScheme.error) {
                         sheetConvoId = -1L; moveToTrash(sheetConvo)
                     }
                     if (rowSettings.blockingEnabled) {
-                        SheetActionRow(Icons.Rounded.Block, "Block", MaterialTheme.colorScheme.error) {
+                        SheetActionRow(Icons.Rounded.Block, stringResource(R.string.sheet_block), MaterialTheme.colorScheme.error) {
                             sheetConvoId = -1L; vm.blockNumber(sheetConvo.address)
                         }
                     }
@@ -543,6 +544,7 @@ fun ConversationsScreen(
 
 @Composable
 private fun SwipeableConversationItem(
+    context: android.content.Context,
     settings: RowSettings,
     swipeEnabled: Boolean,
     convo: Conversation,
@@ -554,9 +556,10 @@ private fun SwipeableConversationItem(
     onLongClick: () -> Unit = {}
 ) {
     if (swipeEnabled) {
-        SwipeConversationItem(settings, convo, workProfile, onClick, onDelete, onArchive, onLongClick)
+        SwipeConversationItem(context, settings, convo, workProfile, onClick, onDelete, onArchive, onLongClick)
     } else {
         ConversationRow(
+            context = context,
             settings = settings,
             convo = convo,
             workProfile = workProfile,
@@ -572,6 +575,7 @@ private fun SwipeableConversationItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeConversationItem(
+    context: android.content.Context,
     settings: RowSettings,
     convo: Conversation,
     workProfile: Boolean,
@@ -606,7 +610,7 @@ private fun SwipeConversationItem(
                         else MaterialTheme.colorScheme.error
                     else -> Color.Transparent
                 },
-                label = "swipe_bg"
+                label = stringResource(R.string.access_swipe_background)
             )
 
             Box(
@@ -658,6 +662,7 @@ private fun SwipeConversationItem(
         enableDismissFromEndToStart = true
     ) {
         ConversationRow(
+            context = context,
             settings = settings,
             convo = convo,
             workProfile = workProfile,
@@ -698,6 +703,7 @@ private data class RowSettings(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConversationRow(
+    context: android.content.Context,
     settings: RowSettings,
     convo: Conversation,
     workProfile: Boolean,
@@ -757,7 +763,7 @@ private fun ConversationRow(
                 if (hasDraft) {
                     val draft = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
                     Text(
-                        text = "Draft: $draft",
+                        text = stringResource(R.string.chat_draft_prefix) + draft,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
@@ -767,7 +773,7 @@ private fun ConversationRow(
                     val snippet =
                         if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
                     val preview =
-                        if (convo.isMe && snippet.isNotEmpty()) "You: $snippet"
+                        if (convo.isMe && snippet.isNotEmpty()) stringResource(R.string.convo_your_prefix) + snippet
                         else snippet
                     Text(
                         text = preview,
@@ -782,7 +788,7 @@ private fun ConversationRow(
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = formatListTime(convo.timestamp, now),
+                    text = formatListTime(convo.timestamp, now, context),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (convo.unreadCount > 0) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -819,7 +825,7 @@ private fun SheetActionRow(
 }
 
 /**
- * GM-style "Start chat" button: an extended pill while the list is at the top,
+ * GM-style stringResource(R.string.access_start_chat) button: an extended pill while the list is at the top,
  * morphing to an icon-only rounded square as soon as the list scrolls away.
  * The label never wraps: it is clipped by the shrinking width, so "chat"
  * disappears first and "Start" last.
@@ -865,7 +871,7 @@ private fun StartChatFab(
         if (p > 0.01f) {
             Spacer(Modifier.width(8.dp))
             Text(
-                "Start chat",
+                stringResource(R.string.access_start_chat),
                 style = MaterialTheme.typography.labelLarge,
                 color = cs.primary,
                 maxLines = 1,

@@ -61,9 +61,27 @@
     <string name="settings_backup_title">Backup messages</string>
     <string name="settings_import_title">Import messages</string>
     <string name="settings_import_subtitle">Import a backup database file</string>
+    <string name="settings_import_failed">Import failed: %s</string>
     <string name="settings_merge_title">Merge with existing messages</string>
     <string name="settings_merge_subtitle">Keep current messages and add the backup data</string>
     <string name="settings_restore_title">Restore (replace all)</string>
     <string name="settings_restore_subtitle">Remove current messages and restore the backup</string>
     <string name="settings_delay_with_value">%ds before sending</string>
+    <string name="settings_sound_default">Default (system)</string>
+    <string name="settings_sound_classic">Classic</string>
+    <string name="settings_sound_dragon">Dragon Studio</string>
+    <string name="settings_sound_chime">Chime</string>
+    <string name="settings_sound_bubble">Bubble</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_system">System default</string>
+    <string name="convo_your_prefix">You: </string>
+    <string name="settings_restored_msg">Restored %s messages. Existing conversations kept.</string>
+    <string name="settings_sim_default">Default (System)</string>
+    <string name="settings_sim_label_format">%s (SIM %s)</string>
+    <string name="settings_backup_saved">Backup saved with PIN to Documents/Messages</string>
+    <string name="settings_backup_failed">Backup failed</string>
+    <string name="settings_save">Save</string>
+    <string name="settings_import">Import</string>
+    <string name="advanced_turn_on_links">Turn on "Highlight links" first</string>
 </resources>

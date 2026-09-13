@@ -53,7 +53,7 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.new_chat_title)) }, navigationIcon = {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back)) }
         }) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {

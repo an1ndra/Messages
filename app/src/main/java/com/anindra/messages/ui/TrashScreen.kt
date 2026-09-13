@@ -70,7 +70,7 @@ fun TrashScreen(
                 title = { Text(stringResource(R.string.trash_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
                     }
                 },
                 actions = {
@@ -100,13 +100,13 @@ fun TrashScreen(
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "Trash is empty",
+                    stringResource(R.string.trash_empty_is_empty),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Deleted conversations are permanently removed after 30 days",
+                    stringResource(R.string.trash_empty_message),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -138,7 +138,7 @@ fun TrashScreen(
                 title = { Text(stringResource(R.string.trash_empty)) },
                 text = {
                     Text(
-                        "Delete all ${trashed.size} conversations from trash? This can't be undone."
+                        String.format(context.getString(R.string.trash_empty_confirm), trashed.size)
                     )
                 },
                 confirmButton = {
@@ -169,7 +169,7 @@ fun TrashScreen(
                 text = {
                     val name = targetConvo?.name?.ifBlank { targetConvo?.address ?: "conversation" }
                     Text(
-                        "Permanently delete '\u201C$name\u201D'? This can't be undone."
+                        String.format(context.getString(R.string.trash_delete_forever_confirm), name)
                     )
                 },
                 confirmButton = {
@@ -219,7 +219,7 @@ private fun TrashRow(
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "Deleted ${formatTrashDate(convo.deletedAt)}",
+                    text = String.format(LocalContext.current.getString(R.string.trash_deleted_on), formatTrashDate(convo.deletedAt)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
