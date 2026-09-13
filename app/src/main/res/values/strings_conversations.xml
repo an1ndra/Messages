@@ -11,4 +11,5 @@
     <string name="new_chat_hint">Enter name or phone number</string>
     <string name="new_chat_only_phone">Only phone numbers can be messaged</string>
     <string name="new_chat_send_to">Send to \u201C%s\u201D</string>
+    <string name="text_placeholder">Text message</string>
 </resources>

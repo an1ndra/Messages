@@ -4,6 +4,8 @@
 
     <!-- App lock & permissions -->
     <string name="lock_title">Authenticate to access your messages</string>
+    <string name="lock_unlock_title">Unlock Messages</string>
+    <string name="lock_auth_subtitle">Authenticate to reveal these messages</string>
     <string name="lock_got_it">Got it</string>
     <string name="lock_not_now">Not now</string>
     <string name="lock_off">App lock is off</string>

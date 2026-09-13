@@ -229,7 +229,7 @@ private fun TrashRow(
             IconButton(onClick = onRestore) {
                 Icon(
                     Icons.Rounded.RestoreFromTrash,
-                    contentDescription = "Restore",
+                    contentDescription = stringResource(R.string.access_restore),
                     modifier = Modifier.size(22.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -237,7 +237,7 @@ private fun TrashRow(
             IconButton(onClick = onDeleteForever) {
                 Icon(
                     Icons.Rounded.DeleteForever,
-                    contentDescription = "Delete forever",
+                    contentDescription = stringResource(R.string.access_delete_forever),
                     modifier = Modifier.size(22.dp),
                     tint = MaterialTheme.colorScheme.error
                 )

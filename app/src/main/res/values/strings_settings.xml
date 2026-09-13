@@ -18,4 +18,8 @@
     <!-- Advanced settings -->
     <string name="settings_advanced_delete_permanently">Delete permanently?</string>
     <string name="settings_advanced_warning">Don\'t show this warning again</string>
+    <string name="settings_sim_indicator">SIM indicator</string>
+    <string name="settings_sim_indicator_desc">Show which SIM was used for each message</string>
+    <string name="sim_slot_suffix"> · SIM %s</string>
+    <string name="settings_sim_label">SIM %s</string>
 </resources>
