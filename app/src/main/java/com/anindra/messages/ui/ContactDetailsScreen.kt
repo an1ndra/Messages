@@ -101,7 +101,7 @@ fun ContactDetailsScreen(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
                     }
                 }
             )
@@ -236,7 +236,7 @@ fun ContactDetailsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "1 other person",
+                            stringResource(R.string.contact_one_person),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -259,7 +259,7 @@ fun ContactDetailsScreen(
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "Add people",
+                                stringResource(R.string.contact_add_people),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )

@@ -265,7 +265,7 @@ private fun ChatBubble(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Not sent",
+                        stringResource(R.string.chat_status_not_sent),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = ChatMetaWeight),
                         color = cs.error
                     )
@@ -275,7 +275,7 @@ private fun ChatBubble(
                         color = cs.error
                     )
                     Text(
-                        "Tap to retry",
+                        stringResource(R.string.chat_status_retry),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = ChatMetaWeight),
                         color = cs.error,
                         modifier = Modifier.clickable { onRetry() }
@@ -285,7 +285,7 @@ private fun ChatBubble(
                 // Google shows the type only on your own messages.
                 val statusText = if (msg.isMe) {
                     when {
-                        deliveryReports && msg.status == "delivered" -> "Delivered"
+                        deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                         msg.status == "sending" -> "Sending…"
                         else -> "SMS"
                     }
@@ -535,8 +535,8 @@ fun ChatScreen(
         clearSelection()
         scope.launch {
             val result = snackbarHostState.showSnackbar(
-                message = if (ids.size == 1) "Message deleted" else "${ids.size} messages deleted",
-                actionLabel = "Undo",
+                message = if (ids.size == 1) context.getString(R.string.chat_message_deleted) else String.format(context.getString(R.string.chat_messages_deleted), ids.size),
+                actionLabel = context.getString(R.string.action_undo),
                 duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -647,7 +647,7 @@ fun ChatScreen(
                     (fadeIn() + slideInVertically { -it / 4 }) togetherWith
                         (fadeOut() + slideOutVertically { -it / 4 })
                 },
-                label = "chatTopBar"
+                label = stringResource(R.string.access_chat_top_bar)
             ) { selecting ->
             if (selecting) {
                 MessageSelectionToolbar(
@@ -862,7 +862,7 @@ fun ChatScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Sending in $sendCountdown seconds...",
+                            String.format(context.getString(R.string.chat_sending_countdown), sendCountdown),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -1037,7 +1037,7 @@ private fun MessageSelectionToolbar(
         ),
         navigationIcon = {
             IconButton(onClick = onClose) {
-                Icon(Icons.Outlined.Close, "Cancel selection", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Outlined.Close, stringResource(R.string.icon_cancel_selection), tint = MaterialTheme.colorScheme.primary)
             }
         },
         title = {
@@ -1046,14 +1046,14 @@ private fun MessageSelectionToolbar(
         actions = {
             if (count == 1) {
                 IconButton(onClick = onCopy) {
-                    Icon(Icons.Default.ContentCopy, "Copy", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.ContentCopy, stringResource(R.string.icon_copy), tint = MaterialTheme.colorScheme.primary)
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Delete, stringResource(R.string.icon_delete), tint = MaterialTheme.colorScheme.primary)
                 }
                 Box {
                     IconButton(onClick = { overflow = true }) {
-                        Icon(Icons.Outlined.MoreVert, "More options", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Outlined.MoreVert, stringResource(R.string.icon_more_options), tint = MaterialTheme.colorScheme.primary)
                     }
                     DropdownMenu(
                         expanded = overflow,
@@ -1073,14 +1073,14 @@ private fun MessageSelectionToolbar(
                             onClick = { overflow = false; onViewDetails() }
                         )
                         DropdownMenuItem(
-                            text = { Text(if (allLocked) "Unlock" else "Lock") },
+                            text = { Text(stringResource(if (allLocked) R.string.chat_unlock_dialog else R.string.chat_lock_dialog)) },
                             onClick = { overflow = false; onLockUnlock() }
                         )
                     }
                 }
             } else {
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Delete, stringResource(R.string.icon_delete), tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -1117,7 +1117,7 @@ private fun ChatTopBar(
         ),
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
             }
         },
         title = {
@@ -1144,7 +1144,7 @@ private fun ChatTopBar(
                     }
                     if (draftsEnabled && convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
                         Text(
-                            "Draft",
+                            stringResource(R.string.chat_draft_prefix),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -1157,11 +1157,11 @@ private fun ChatTopBar(
                 convo?.address?.let {
                     context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$it")))
                 }
-            }) { Icon(Icons.Rounded.Call, "Call") }
+            }) { Icon(Icons.Rounded.Call, stringResource(R.string.icon_call)) }
 
             Box {
                 IconButton(onClick = onMenuToggle) {
-                    Icon(Icons.Rounded.MoreVert, "More options")
+                    Icon(Icons.Rounded.MoreVert, stringResource(R.string.icon_more_options))
                 }
                 DropdownMenu(
                     expanded = menuOpen,
@@ -1550,8 +1550,8 @@ private fun ConversationDetailsDialog(
                 Spacer(Modifier.height(16.dp))
                 HorizontalDivider()
                 Spacer(Modifier.height(12.dp))
-                DetailRow("Phone number", formatPhoneNumber(address))
-                DetailRow("Messages", "$messageCount")
+                DetailRow(stringResource(R.string.detail_phone_number), formatPhoneNumber(address))
+                DetailRow(stringResource(R.string.detail_messages), "$messageCount")
             }
         },
         confirmButton = {
@@ -1602,7 +1602,7 @@ fun MessageRow(
     ) { pendingUrl = it }
 
     // cache derived text/sim so an unlock doesn't recompute row allocations
-    val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp) }
+    val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp, context) }
     val timeText = remember(msg.timestamp) { formatTimeOnly(msg.timestamp) }
     val simLabel = remember(msg.subId, showSimIndicator) {
         if (showSimIndicator && msg.subId > 0) {
@@ -1715,7 +1715,7 @@ fun MessageRow(
                     color = cs.error
                 )
                 Text(
-                    "Tap to retry",
+                    stringResource(R.string.chat_status_retry),
                     style = MaterialTheme.typography.labelSmall,
                     color = cs.error,
                     modifier = Modifier.clickable { onRetry() }
@@ -1724,7 +1724,7 @@ fun MessageRow(
         } else {
             val statusText = if (msg.isMe) {
                 when {
-                    showStatus && deliveryReports && msg.status == "delivered" -> "Delivered"
+                    showStatus && deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                     showStatus && msg.status == "sending" -> "Sending…"
                     else -> "SMS"
                 }
@@ -1807,7 +1807,7 @@ private fun InputBar(
     ) {
         IconButton(onClick = onAttach) {
             Icon(
-                Icons.Rounded.AddCircleOutline, "Attach",
+                Icons.Rounded.AddCircleOutline, stringResource(R.string.icon_attach),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -1829,7 +1829,7 @@ private fun InputBar(
                         if (simTrailing != null) simTrailing()
                         IconButton(onClick = onEmojiToggle) {
                             Icon(
-                                Icons.Rounded.EmojiEmotions, "Emoji",
+                                Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -1864,7 +1864,7 @@ private fun InputBar(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.AutoMirrored.Rounded.Send, "Send",
+                Icons.AutoMirrored.Rounded.Send, stringResource(R.string.icon_send),
                 tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (canSend) 1f else 0.38f),
                 modifier = Modifier.size(20.dp)
             )

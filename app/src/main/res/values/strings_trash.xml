@@ -6,4 +6,10 @@
     <string name="toast_trash_deleted">Conversation deleted</string>
     <string name="trash_delete_conversation">Delete conversation</string>
     <string name="trash_conversation_deleted">Conversation deleted</string>
+
+    <string name="trash_empty_is_empty">Trash is empty</string>
+    <string name="trash_empty_message">Deleted conversations are permanently removed after 30 days</string>
+    <string name="trash_empty_confirm">Delete all %d conversations from trash? This cannot be undone.</string>
+    <string name="trash_delete_forever_confirm">Permanently delete %s? This cannot be undone.</string>
+    <string name="trash_deleted_on">Deleted %s</string>
 </resources>

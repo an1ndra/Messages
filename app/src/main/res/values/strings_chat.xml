@@ -53,4 +53,15 @@
     <string name="chat_cancel">Cancel</string>
     <string name="chat_delete">Delete</string>
     <string name="chat_details_title">Conversation details</string>
+
+    <string name="chat_status_not_sent">Not sent</string>
+    <string name="chat_status_retry">Tap to retry</string>
+    <string name="chat_draft_prefix">Draft: </string>
+    <string name="chat_sending_countdown">Sending in %d seconds...</string>
+    <string name="chat_alphanumeric_error">You cannot send messages to alphanumeric senders like %s. Only phone numbers are supported.</string>
+    <string name="chat_unlock_dialog">Unlock</string>
+    <string name="chat_lock_dialog">Lock</string>
+    <string name="chat_message_deleted">Message deleted</string>
+    <string name="chat_messages_deleted">%d messages deleted</string>
+    <string name="status_not_sent">Not sent</string>
 </resources>

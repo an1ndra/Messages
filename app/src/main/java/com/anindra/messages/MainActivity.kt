@@ -515,9 +515,7 @@ class MainActivity : FragmentActivity() {
                                 )
                                 Spacer(Modifier.height(12.dp))
                                 Text(
-                                    "App lock can't be used because this device has no " +
-                                        "screen lock (fingerprint, face, or PIN) to verify it's you. " +
-                                        stringResource(R.string.lock_turn_on_hint),
+                                    stringResource(R.string.lock_error_no_screen_lock),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
@@ -635,7 +633,7 @@ class MainActivity : FragmentActivity() {
                             }
                         },
                         modifier = Modifier.fillMaxSize(),
-                        label = "nav"
+                        label = stringResource(R.string.access_nav)
                     ) { target ->
                         if (target == "list") {
                             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())

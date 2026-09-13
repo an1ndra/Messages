@@ -191,21 +191,21 @@ private fun zoned(ts: Long): ZonedDateTime = Instant.ofEpochMilli(ts).atZone(zon
  *  relative labels ("Now", "5 min") age instead of freezing at composition. */
 val LocalNowTick = compositionLocalOf { System.currentTimeMillis() }
 
-fun formatListTime(ts: Long, now: Long = System.currentTimeMillis()): String {
+fun formatListTime(ts: Long, now: Long = System.currentTimeMillis(), ctx: android.content.Context): String {
     if (ts <= 0) return ""
     return when {
-        now - ts < 60_000L -> "Now"
-        now - ts < 3_600_000L -> "${(now - ts) / 60_000} min"
+        now - ts < 60_000L -> ctx.getString(R.string.time_now)
+        now - ts < 3_600_000L -> String.format(ctx.getString(R.string.time_minutes), (now - ts) / 60_000)
         sameDay(ts, now) -> timeFmt.format(zoned(ts))
-        isYesterday(ts) -> "Yesterday"
+        isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
         else -> dayFmt.format(zoned(ts))
     }
 }
 
-fun formatDividerTime(ts: Long): String {
+fun formatDividerTime(ts: Long, ctx: android.content.Context): String {
     return when {
-        sameDay(ts, System.currentTimeMillis()) -> "Today"
-        isYesterday(ts) -> "Yesterday"
+        sameDay(ts, System.currentTimeMillis()) -> ctx.getString(R.string.time_today)
+        isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
         else -> dividerFmt.format(zoned(ts))
     }
 }

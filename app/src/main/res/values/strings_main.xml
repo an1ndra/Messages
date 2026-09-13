@@ -21,4 +21,35 @@
 
     <!-- Notifications -->
     <string name="notifications_disabled">Notifications disabled — you won\'t be alerted for new messages</string>
+
+    <string name="messages_footer">Messages 1.0 - offline SMS</string>
+    <string name="settings_light_mode">Light</string>
+    <string name="settings_dark_mode">Dark</string>
+    <string name="system_default">System default</string>
+    <string name="settings_backup_restored">Backup restored. Restart app to apply.</string>
+    <string name="settings_saving">Saving...</string>
+    <string name="settings_backup_saving">PIN-protected save to Documents/Messages</string>
+    <string name="settings_link_tap_info">Tap links in messages to open the website</string>
+    <string name="settings_choose_delay">Choose how long to wait before sending:</string>
+    <string name="settings_backup_apply">How should this backup be applied to your current messages?</string>
+    <string name="settings_backup_pin_protection">Your backup is protected by this PIN. You will need it to restore - even after reinstalling the app or on a new phone.</string>
+    <string name="settings_pin_dialog_set">Set backup PIN</string>
+    <string name="settings_pin_dialog_enter">Enter backup PIN</string>
+    <string name="settings_pin_error_too_short">PIN must be at least 4 digits</string>
+    <string name="settings_pin_error_mismatch">PINs do not match</string>
+    <string name="settings_sound_arrival">Sound played when a message arrives</string>
+    <string name="convo_moved_to_trash">Conversation moved to trash</string>
+    <string name="convo_archived">Conversation archived</string>
+    <string name="action_undo">Undo</string>
+    <string name="lock_error_no_screen_lock">App lock cannot be used because this device has no screen lock (fingerprint, face, or PIN) to verify it is you.</string>
+    <string name="sim_default">Default</string>
+    <string name="time_yesterday">Yesterday</string>
+    <string name="link_warning_confirm">Confirm before opening external links</string>
+    <string name="notification_channel_title">Messages</string>
+    <string name="notification_channel_desc">New message notifications</string>
+    <string name="notif_title_private">New message</string>
+    <string name="notif_body_private">You have a new message</string>
+    <string name="notif_send_fail_private">Couldn\'t send message. Tap to retry.</string>
+    <string name="notif_send_fail">Couldn\'t send message to %s. Tap to retry.</string>
+    <string name="notif_not_delivered">Message not delivered</string>
 </resources>

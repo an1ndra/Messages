@@ -8,4 +8,8 @@
     <string name="settings_advanced_link_warning">Link open warning</string>
     <string name="settings_advanced_permanent_delete">Permanent delete</string>
     <string name="settings_advanced_permanent_delete_desc">Delete messages immediately instead of moving them to trash</string>
+    <string name="settings_advanced_turn_off">Turn off "</string>
+    <string name="settings_advanced_turn_off_suffix">" first</string>
+    <string name="settings_advanced_permanent_delete_on">Permanent delete is on. This conversation and its messages will be removed from your device right away — not moved to trash — and cannot be restored.</string>
+
 </resources>

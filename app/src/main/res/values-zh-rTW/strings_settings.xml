@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_general">一般設定</string>
-    <string name="settings_advanced">進階設定</string>
     <string name="settings_choose_theme">選擇主題</string>
     <string name="settings_pin_enter">4-16 位數字密碼</string>
     <string name="settings_pin_repeat">再次輸入密碼</string>
@@ -26,7 +25,7 @@
     <string name="settings_send_sound_subtitle">傳送訊息時播放聲音</string>
     <string name="settings_receive_sound_title">接收聲音</string>
     <string name="settings_receive_sound_subtitle">收到訊息時播放聲音</string>
-    <string name="settings_delivery_reports_title">送达報告</string>
+    <string name="settings_delivery_reports_title">送達報告</string>
     <string name="settings_delivery_reports_subtitle">追蹤 SMS 訊息是否已成功送達</string>
     <string name="settings_mark_read_title">全部標記為已讀</string>
     <string name="settings_mark_read_subtitle">清除所有對話的未讀徽章</string>
@@ -48,6 +47,7 @@
     <string name="settings_delayed_title">延遲傳送</string>
     <string name="settings_delayed_subtitle">傳送訊息前等待時間</string>
     <string name="settings_delay_secs_title">延遲秒數</string>
+    <string name="settings_delay_secs_subtitle"></string>
     <string name="settings_advanced_title">進階</string>
     <string name="settings_advanced_subtitle">永久刪除、滑動方向、連結行為</string>
     <string name="settings_blocking_title">封鎖號碼</string>
@@ -64,6 +64,24 @@
     <string name="settings_merge_title">與現有訊息合併</string>
     <string name="settings_merge_subtitle">保留目前的訊息並加入備份中的訊息</string>
     <string name="settings_restore_title">還原（取代所有）</string>
-    <string name="settings_restore_subtitle">清除目前的訊息並還原備份</string>
+    <string name="settings_restore_subtitle">移除目前的訊息並還原備份</string>
     <string name="settings_delay_with_value">傳送前等待 %s 秒</string>
+    <string name="settings_import_failed">匯入失敗：%s</string>
+    <string name="settings_sound_default">預設（系統）</string>
+    <string name="settings_sound_classic">經典</string>
+    <string name="settings_sound_dragon">龍聲音頻工作室</string>
+    <string name="settings_sound_chime">風鈴</string>
+    <string name="settings_sound_bubble">泡泡</string>
+    <string name="settings_theme_light">淺色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_theme_system">系統預設</string>
+    <string name="convo_your_prefix">我： </string>
+    <string name="settings_restored_msg">已還原 %s 則訊息。現有對話已保留。</string>
+    <string name="settings_sim_default">預設（系統）</string>
+    <string name="settings_sim_label_format">%s（SIM %s）</string>
+    <string name="settings_backup_saved">備份已使用 PIN 碼儲存至 文件/訊息</string>
+    <string name="settings_backup_failed">備份失敗</string>
+    <string name="settings_save">儲存</string>
+    <string name="settings_import">匯入</string>
+    <string name="advanced_turn_on_links">先開啟「隱藏訊息中的連結」</string>
 </resources>

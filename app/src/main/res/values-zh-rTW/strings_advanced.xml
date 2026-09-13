@@ -8,4 +8,8 @@
     <string name="settings_advanced_link_warning">開啟連結警告</string>
     <string name="settings_advanced_permanent_delete">永久刪除</string>
     <string name="settings_advanced_permanent_delete_desc">直接刪除訊息，不放入垃圾桶</string>
+    <string name="settings_advanced_turn_off">關閉「</string>
+    <string name="settings_advanced_turn_off_suffix">」</string>
+    <string name="settings_advanced_permanent_delete_on">永久刪除已開啟。此對話及其訊息將立即從您的裝置上移除 — 不會移至垃圾桶 — 且無法復原。</string>
+    <string name="link_warning_confirm">開啟外部連結前確認</string>
 </resources>

@@ -110,9 +110,9 @@ object NotificationHelper {
         val id = channelId(context)
         nm.createNotificationChannel(
             NotificationChannel(
-                id, "Messages", NotificationManager.IMPORTANCE_HIGH
+                id, context.getString(R.string.notification_channel_title), NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "New message notifications"
+                description = context.getString(R.string.notification_channel_desc)
                 if (soundOn) {
                     setSound(
                         selectedSoundUri(context)
@@ -192,9 +192,9 @@ object NotificationHelper {
             .addRemoteInput(remoteInput).build()
 
         val senderName = app.repository.contactNameFor(from) ?: from
-        val title = if (privacyMode) "New message" else senderName
+        val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
-            privacyMode -> "You have a new message"
+            privacyMode -> context.getString(R.string.notif_body_private)
             app.repository.settings.hideLinks -> hideUrls(body)
             else -> body
         }
@@ -245,12 +245,12 @@ object NotificationHelper {
         )
 
         val privacyMode = app.repository.settings.privacyModeEnabled
-        val failText = if (privacyMode) "Couldn't send message. Tap to retry."
-            else "Couldn't send message to $to. Tap to retry."
+        val failText = if (privacyMode) context.getString(R.string.notif_send_fail_private)
+            else String.format(context.getString(R.string.notif_send_fail), to)
 
         val notif = NotificationCompat.Builder(context, channelId(context))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Message not delivered")
+            .setContentTitle(context.getString(R.string.notif_not_delivered))
             .setContentText(failText)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
