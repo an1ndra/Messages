@@ -763,6 +763,7 @@ fun ChatScreen(
                                 showBlockedDialog = true
                                 return@InputBar
                             }
+                            if (addr.isBlank()) return@InputBar
                             if (!isPhoneNumber(addr)) {
                                 showAlphanumericDialog = true
                                 return@InputBar
@@ -787,6 +788,7 @@ fun ChatScreen(
                                 showBlockedDialog = true
                                 return@InputBar
                             }
+                            if (addr.isBlank()) return@InputBar
                             if (!isPhoneNumber(addr)) {
                                 showAlphanumericDialog = true
                                 return@InputBar

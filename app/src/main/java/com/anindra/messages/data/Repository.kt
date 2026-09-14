@@ -488,9 +488,10 @@ class Repository(private val context: Context) {
         return rev in 1..3 && db_.drop(rev) == da
     }
 
-    private fun matchConversationId(database: SQLiteDatabase, address: String): Long? {
+    private fun matchConversationId(database: SQLiteDatabase, address: String, activeOnly: Boolean = false): Long? {
         if (address.isBlank()) return null
-        database.rawQuery("SELECT id, address FROM conversations", null).use { c ->
+        val where = if (activeOnly) "WHERE deleted_at=0" else ""
+        database.rawQuery("SELECT id, address FROM conversations $where", null).use { c ->
             while (c.moveToNext()) {
                 if (samePerson(c.getString(1), address)) return c.getLong(0)
             }
@@ -549,6 +550,17 @@ class Repository(private val context: Context) {
             convoId = db.writableDatabase.insert("conversations", null, cv)
             upsertParticipant(db.writableDatabase, target, subId)
             notifyChanged()
+        } else {
+            // A trashed thread addressed by a new chat / incoming message must be
+            // restored, or ChatScreen (which filters deleted_at=0) shows a blank
+            // header and sends are rejected.
+            val restored = db.writableDatabase.update(
+                "conversations",
+                ContentValues().apply { put("deleted_at", 0) },
+                "id=? AND deleted_at>0",
+                arrayOf(convoId.toString())
+            )
+            if (restored > 0) notifyChanged()
         }
         convoId
     }
@@ -952,9 +964,9 @@ class Repository(private val context: Context) {
     fun conversationIdForAddress(address: String): Long? = runOnIo {
         var id: Long? = null
         db.readableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE address=?", arrayOf(address)
+            "SELECT id FROM conversations WHERE address=? AND deleted_at=0", arrayOf(address)
         ).use { c -> if (c.moveToFirst()) id = c.getLong(0) }
-        id ?: findConversationForAddress(address)
+        id ?: matchConversationId(db.readableDatabase, address, activeOnly = true)
     }
 
     suspend fun getConversationNotificationsEnabled(conversationId: Long): Boolean = runOnIoAsync {
@@ -1534,7 +1546,7 @@ class Repository(private val context: Context) {
                 val byAddress = LinkedHashMap<String, MutableList<SysSms>>()
                 cursor.use { c ->
                     while (c.moveToNext()) {
-                        val addr = c.getString(1) ?: continue
+                        val addr = c.getString(1)?.takeIf { it.isNotBlank() } ?: continue
                         val body = c.getString(2) ?: continue
                         val date = c.getLong(3)
                         val type = c.getInt(4)

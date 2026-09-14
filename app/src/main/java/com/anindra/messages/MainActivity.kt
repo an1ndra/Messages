@@ -415,7 +415,7 @@ class MainActivity : FragmentActivity() {
         }
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
-    private var pendingOpenAddress: String? = null
+    private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
 
     private var lastResumeTime = 0L
 
@@ -449,6 +449,10 @@ class MainActivity : FragmentActivity() {
             // Dismiss all notifications when opening a chat from notification
             NotificationManagerCompat.from(this@MainActivity).cancelAll()
         }
+        recipientFromIntent(intent)?.let { pendingOpenAddress = it }
+        // Opening straight from an external sms:/smsto: launch: hold on a neutral
+        // screen while the conversation resolves, so the list never flashes first.
+        if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
 
         val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -571,13 +575,13 @@ class MainActivity : FragmentActivity() {
 
                 androidx.compose.runtime.LaunchedEffect(pendingOpenAddress) {
                     val addr = pendingOpenAddress ?: return@LaunchedEffect
-                    pendingOpenAddress = null
                     val repo = (application as com.anindra.messages.MessagesApplication).repository
                     val id = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         repo.conversationIdForAddress(addr) ?: repo.getOrCreateConversationBlocking(addr)
                     }
                     chatId = id
-                    navRoute = "chat"
+                    navRoute = if (id > 0) "chat" else "list"
+                    pendingOpenAddress = null
                 }
 
                 if (showDefaultSmsDialog) {
@@ -617,7 +621,7 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2)
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2)
                 val isList = navRoute == "list"
                 val isChat = navRoute == "chat"
 
@@ -655,6 +659,7 @@ class MainActivity : FragmentActivity() {
                         } else {
                             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                                 when (target) {
+                                    "opening" -> androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())
                                     "new" -> NewChatScreen(
                                         vm = vm,
                                         onBack = { navRoute = "list" },
@@ -747,5 +752,23 @@ class MainActivity : FragmentActivity() {
             // Dismiss all notifications when opening a chat from notification
             NotificationManagerCompat.from(this@MainActivity).cancelAll()
         }
+        recipientFromIntent(intent)?.let { pendingOpenAddress = it }
+        // Warm external launch: hide whatever is on screen (usually the list)
+        // immediately so it never shows before the resolved chat.
+        if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
+    }
+
+    /** Recipient of an external `sms:`/`smsto:`/`mms:`/`mmsto:` launch (the
+     *  Contacts "Text" button), or null when the intent carries no address.
+     *  Strips the `?body=` query and takes the first of any `;`/`,`-separated
+     *  recipients, so the chat opens on the dialed number instead of the list. */
+    private fun recipientFromIntent(intent: Intent): String? {
+        val data = intent.data ?: return null
+        val scheme = data.scheme?.lowercase(java.util.Locale.ROOT) ?: return null
+        if (scheme !in setOf("sms", "smsto", "mms", "mmsto")) return null
+        val raw = data.schemeSpecificPart?.trimStart('/') ?: return null
+        val first = raw.substringBefore('?').split(';', ',').firstOrNull()?.trim().orEmpty()
+        val decoded = Uri.decode(first)
+        return decoded.ifBlank { null }
     }
 }
