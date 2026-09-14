@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">Inverser les gestes de balayage</string>
+    <string name="settings_advanced_reverse_swipe_desc">Balayer vers la gauche pour archiver et vers la droite pour supprimer</string>
+    <string name="settings_advanced_hide_links">Masquer les liens des messages</string>
+    <string name="settings_advanced_hide_links_desc">Ne jamais transformer les liens dans les messages en liens cliquables</string>
+    <string name="settings_advanced_highlight_links">Mettre en surbrillance les liens</string>
+    <string name="settings_advanced_link_warning">Avertissement d\'ouverture de lien</string>
+    <string name="settings_advanced_permanent_delete">Suppression permanente</string>
+    <string name="settings_advanced_permanent_delete_desc">Supprimer les messages immédiatement au lieu de les déplacer dans la corbeille</string>
+    <string name="settings_advanced_turn_off">Désactiver « </string>
+    <string name="settings_advanced_turn_off_suffix">" d\'abord</string>
+    <string name="settings_advanced_permanent_delete_on">La suppression permanente est activée. Cette conversation et ses messages seront supprimés de votre appareil immédiatement — non déplacés dans la corbeille — et ne peuvent pas être restaurés.</string>
+
+</resources>

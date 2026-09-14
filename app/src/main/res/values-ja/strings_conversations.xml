@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">会話を検索</string>
+    <string name="conversations_retry_loading">再読み込み</string>
+    <string name="conversations_allow_access">アクセスを許可</string>
+    <string name="conversations_open_settings">アプリ設定を開く</string>
+    <string name="conversations_press_back_exit">再度戻るを押して終了</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">新しい会話</string>
+    <string name="new_chat_hint">名前または電話番号を入力</string>
+    <string name="new_chat_only_phone">メッセージを送信できるのは電話番号のみです</string>
+    <string name="new_chat_send_to">「%s」に送信</string>
+    <string name="text_placeholder">テキストメッセージ</string>
+    <string name="conversations_archived">アーカイブ</string>
+    <string name="conversations_messages">メッセージ</string>
+    <string name="conversations_me">自分</string>
+    <string name="conversations_allow_sms_access">SMSアクセスを許可</string>
+    <string name="conversations_sms_permission">メッセージにはSMSを読み取る権限が必要です。これにより会話がここに表示されます。</string>
+
+    <string name="convo_close_search">検索を閉じる</string>
+    <string name="convo_back_to_inbox">受信トレイに戻る</string>
+</resources>

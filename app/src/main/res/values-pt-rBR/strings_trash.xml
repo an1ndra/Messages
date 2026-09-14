@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">Lixeira</string>
+    <string name="trash_empty">Esvaziar lixeira</string>
+    <string name="trash_emptied">Lixeira esvaziada</string>
+    <string name="toast_trash_deleted">Conversa excluída</string>
+    <string name="trash_delete_conversation">Excluir conversa</string>
+    <string name="trash_conversation_deleted">Conversa excluída</string>
+
+    <string name="trash_empty_is_empty">A lixeira está vazia</string>
+    <string name="trash_empty_message">Conversas excluídas são removidas permanentemente após 30 dias</string>
+    <string name="trash_empty_confirm">Excluir todas as %d conversas da lixeira? Esta ação não pode ser desfeita.</string>
+    <string name="trash_delete_forever_confirm">Excluir %s permanentemente? Esta ação não pode ser desfeita.</string>
+    <string name="trash_deleted_on">Excluída em %s</string>
+</resources>

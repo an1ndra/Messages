@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">البحث في المحادثات</string>
+    <string name="conversations_retry_loading">إعادة المحاولة</string>
+    <string name="conversations_allow_access">السماح بالوصول</string>
+    <string name="conversations_open_settings">فتح إعدادات التطبيق</string>
+    <string name="conversations_press_back_exit">انقر زر الرجوع مرة أخرى للخروج</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">محادثة جديدة</string>
+    <string name="new_chat_hint">أدخل الاسم أو رقم الهاتف</string>
+    <string name="new_chat_only_phone">يمكن إرسال الرسائل إلى أرقام الهواتف فقط</string>
+    <string name="new_chat_send_to">إرسال إلى \"%s\"</string>
+    <string name="text_placeholder">رسالة نصية</string>
+    <string name="conversations_archived">المؤرشفة</string>
+    <string name="conversations_messages">الرسائل</string>
+    <string name="conversations_me">أنا</string>
+    <string name="conversations_allow_sms_access">السماح بالوصول إلى الرسائل القصيرة</string>
+    <string name="conversations_sms_permission">يحتاج التطبيق إلى إذن لقراءة رسائل SMS القصيرة حتى تظهر محادثاتك هنا.</string>
+
+    <string name="convo_close_search">إغلاق البحث</string>
+    <string name="convo_back_to_inbox">العودة إلى صندوق الوارد</string>
+</resources>

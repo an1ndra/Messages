@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">संवाद खोजें</string>
+    <string name="conversations_retry_loading">लोड करने का पुनः प्रयास करें</string>
+    <string name="conversations_allow_access">पहुँच अनुमति दें</string>
+    <string name="conversations_open_settings">एप सेटिंग्स खोलें</string>
+    <string name="conversations_press_back_exit">बाहर निकलने के लिए फिर से बैक दबाएं</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">नया संवाद</string>
+    <string name="new_chat_hint">नाम या फ़ोन नंबर दर्ज करें</string>
+    <string name="new_chat_only_phone">केवल फ़ोन नंबरों को संदेश भेजे जा सकते हैं</string>
+    <string name="new_chat_send_to">“%s” को भेजें</string>
+    <string name="text_placeholder">पाठ संदेश</string>
+    <string name="conversations_archived">संग्रहीत</string>
+    <string name="conversations_messages">संदेश</string>
+    <string name="conversations_me">मैं</string>
+    <string name="conversations_allow_sms_access">SMS पहुँच अनुमति दें</string>
+    <string name="conversations_sms_permission">Messages को आपके SMS पढ़ने की अनुमति की आवश्यकता है ताकि आपके संदर्भ यहाँ दिखें।</string>
+
+    <string name="convo_close_search">खोज बंद करें</string>
+    <string name="convo_back_to_inbox">इनबॉक्स पर वापस जाएं</string>
+</resources>

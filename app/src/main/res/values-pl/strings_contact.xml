@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="contact_block">Blokuj</string>
+    <string name="contact_block_confirm">%s — nie będziesz otrzymywać połączeń ani wiadomości od tego numeru.</string>
+    <string name="contact_block_report">Blokuj i zgłoś jako spam</string>
+    <string name="contact_notifications">Powiadomienia</string>
+
+    <string name="contact_one_person">1 inna osoba</string>
+    <string name="contact_add_people">Dodaj osoby</string>
+</resources>

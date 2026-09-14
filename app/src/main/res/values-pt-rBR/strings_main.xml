@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Messages</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">Autentique para acessar suas mensagens</string>
+    <string name="lock_unlock_title">Desbloquear Messages</string>
+    <string name="lock_auth_subtitle">Autentique para revelar estas mensagens</string>
+    <string name="lock_got_it">Entendi</string>
+    <string name="lock_not_now">Agora não</string>
+    <string name="lock_off">Bloqueio do app está desativado</string>
+    <string name="lock_setup_needed">Primeiro, configure um bloqueio de tela (impressão digital, rosto ou PIN) no seu dispositivo</string>
+    <string name="lock_turn_on">Configurar bloqueio de tela</string>
+    <string name="lock_turn_on_hint">Configure um para reativar o Bloqueio do app.</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">Definir como app SMS padrão?</string>
+    <string name="default_sms_message">Para enviar e receber mensagens, Messages precisa ser seu app SMS padrão.</string>
+    <string name="default_sms_set">Definir padrão</string>
+    <string name="default_sms_not_now">Agora não</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">Notificações desativadas — você não será alertado sobre novas mensagens</string>
+
+    <string name="messages_footer">Messages 1.0 - SMS offline</string>
+    <string name="settings_light_mode">Claro</string>
+    <string name="settings_dark_mode">Escuro</string>
+    <string name="system_default">Padrão do sistema</string>
+    <string name="settings_backup_restored">Backup restaurado. Reinicie o app para aplicar.</string>
+    <string name="settings_saving">Salvando...</string>
+    <string name="settings_backup_saving">Salvamento protegido por PIN em Documentos/Messages</string>
+    <string name="settings_link_tap_info">Toque nos links das mensagens para abrir o site</string>
+    <string name="settings_choose_delay">Escolha quanto tempo esperar antes de enviar:</string>
+    <string name="settings_backup_apply">Como este backup deve ser aplicado às suas mensagens atuais?</string>
+    <string name="settings_backup_pin_protection">Seu backup é protegido por este PIN. Você precisará dele para restaurar — mesmo após reinstalar o app ou em um telefone novo.</string>
+    <string name="settings_pin_dialog_set">Definir PIN de backup</string>
+    <string name="settings_pin_dialog_enter">Digitar PIN de backup</string>
+    <string name="settings_pin_error_too_short">O PIN deve ter pelo menos 4 dígitos</string>
+    <string name="settings_pin_error_mismatch">Os PINs não correspondem</string>
+    <string name="settings_sound_arrival">Som reproduzido ao receber uma mensagem</string>
+    <string name="convo_moved_to_trash">Conversa movida para a lixeira</string>
+    <string name="convo_archived">Conversa arquivada</string>
+    <string name="action_undo">Desfazer</string>
+    <string name="lock_error_no_screen_lock">O bloqueio do app não pode ser usado porque este dispositivo não tem bloqueio de tela (impressão digital, rosto ou PIN) para verificar sua identidade.</string>
+    <string name="sim_default">Padrão</string>
+    <string name="time_yesterday">Ontem</string>
+    <string name="link_warning_confirm">Confirmar antes de abrir links externos</string>
+    <string name="notification_channel_title">Messages</string>
+    <string name="notification_channel_desc">Notificações de mensagens novas</string>
+    <string name="notif_title_private">Nova mensagem</string>
+    <string name="notif_body_private">Você tem uma nova mensagem</string>
+    <string name="notif_send_fail_private">Não foi possível enviar a mensagem. Toque para tentar novamente.</string>
+    <string name="notif_send_fail">Não foi possível enviar a mensagem para %s. Toque para tentar novamente.</string>
+    <string name="notif_not_delivered">Mensagem não entregue</string>
+</resources>

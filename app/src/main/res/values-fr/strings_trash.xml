@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">Corbeille</string>
+    <string name="trash_empty">Vider la corbeille</string>
+    <string name="trash_emptied">Corbeille vidée</string>
+    <string name="toast_trash_deleted">Conversation supprimée</string>
+    <string name="trash_delete_conversation">Supprimer la conversation</string>
+    <string name="trash_conversation_deleted">Conversation supprimée</string>
+
+    <string name="trash_empty_is_empty">La corbeille est vide</string>
+    <string name="trash_empty_message">Les conversations supprimées sont définitivement supprimées après 30 jours</string>
+    <string name="trash_empty_confirm">Supprimer toutes les %d conversations de la corbeille ? Cela ne peut pas être annulé.</string>
+    <string name="trash_delete_forever_confirm">Supprimer définitivement %s ? Cela ne peut pas être annulé.</string>
+    <string name="trash_deleted_on">Supprimé le %s</string>
+</resources>

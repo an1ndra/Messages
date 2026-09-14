@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">الرسائل</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">اعتماد هويتك للوصول إلى رسائلك</string>
+    <string name="lock_unlock_title">فتح قفل الرسائل</string>
+    <string name="lock_auth_subtitle">اعتماد هويتك لإظهار هذه الرسائل</string>
+    <string name="lock_got_it">فهمت</string>
+    <string name="lock_not_now">ليس الآن</string>
+    <string name="lock_off">قفل التطبيق غير مفعّل</string>
+    <string name="lock_setup_needed">أنشئ أولاً قفل شاشة (بصمة وجه، بصمة إصبع، أو رقم سري) على جهازك</string>
+    <string name="lock_turn_on">إعداد قفل الشاشة</string>
+    <string name="lock_turn_on_hint">أنشئ قفل شاشة لإعادة تفعيل قفل التطبيق.</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">تعيين كتطبيق رسائل SMS الافتراضي؟</string>
+    <string name="default_sms_message">لإرسال الرسائل واستلامها، يجب أن يكون الرسائل هو تطبيق SMS الافتراضي لديك.</string>
+    <string name="default_sms_set">تعيين الافتراضي</string>
+    <string name="default_sms_not_now">ليس الآن</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">الإشعارات معطّلة - لن تتلقّى تنبيّهات بالرسائل الجديدة</string>
+
+    <string name="messages_footer">الرسائل 1.0 - رسائل SMS بدون إنترنت</string>
+    <string name="settings_light_mode">فاتح</string>
+    <string name="settings_dark_mode">داكن</string>
+    <string name="system_default">تفضيلات النظام</string>
+    <string name="settings_backup_restored">تم استعادة النسخة الاحتياطية. أعد تشغيل التطبيق للتطبيق.</string>
+    <string name="settings_saving">جارٍ الحفظ...</string>
+    <string name="settings_backup_saving">حماية بالحفظ فيDocuments/الرسائل</string>
+    <string name="settings_link_tap_info">انقر على الروابط في الرسائل لفتح الموقع</string>
+    <string name="settings_choose_delay">اختر المدة الزمنية للانتظار قبل الإرسال:</string>
+    <string name="settings_backup_apply">كيف يجب تطبيق النسخة الاحتياطية على رسائل الحالية؟</string>
+    <string name="settings_backup_pin_protection">نسختك الاحتياطية محمية بهذا الرقم السري. ستحتاجه لاستعادته - حتى بعد إعادة تثبيت التطبيق أو على هاتف جديد.</string>
+    <string name="settings_pin_dialog_set">تعيين الرقم السري للنسخة الاحتياطية</string>
+    <string name="settings_pin_dialog_enter">أدخل الرقم السري للنسخة الاحتياطية</string>
+    <string name="settings_pin_error_too_short">يجب أن يتألف الرقم السري من 4 أرقام على الأقل</string>
+    <string name="settings_pin_error_mismatch">الأرقام السرية غير متطابقة</string>
+    <string name="settings_sound_arrival">الصوت الذي يُشغَّل عند وصول رسالة</string>
+    <string name="convo_moved_to_trash">تم نقل المحادثة إلى سلة المحذوفات</string>
+    <string name="convo_archived">تم أرشفت المحادثة</string>
+   <string name="action_undo">تراجع</string>
+    <string name="lock_error_no_screen_lock">لا يمكن استخدام قفل التطبيق لأن هذا الجهاز لا يحتوي على قفل شاشة (بصمة وجه، بصمة إصبع، أو رقم سري) للتحقق من هويتك.</string>
+    <string name="sim_default">الافتراضي</string>
+    <string name="time_yesterday">أمس</string>
+    <string name="link_warning_confirm">تأكيد قبل فتح الروابط الخارجية</string>
+    <string name="notification_channel_title">الرسائل</string>
+    <string name="notification_channel_desc">إشعارات الرسائل الجديدة</string>
+    <string name="notif_title_private">رسالة جديدة</string>
+    <string name="notif_body_private">لديك رسالة جديدة</string>
+    <string name="notif_send_fail_private">فشل إرسال الرسالة. انقر للمحاولة مرة أخرى.</string>
+    <string name="notif_send_fail">فشل إرسال الرسالة إلى %s. انقر للمحاولة مرة أخرى.</string>
+    <string name="notif_not_delivered">لم تُسلّم الرسالة</string>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">Изменить направление свайпов</string>
+    <string name="settings_advanced_reverse_swipe_desc">Свайп влево для архивирования, вправо — для удаления</string>
+    <string name="settings_advanced_hide_links">Скрыть ссылки из сообщений</string>
+    <string name="settings_advanced_hide_links_desc">Не превращать ссылки в сообщениях в кликабельные</string>
+    <string name="settings_advanced_highlight_links">Подсвечивать ссылки</string>
+    <string name="settings_advanced_link_warning">Предупреждение при открытии ссылки</string>
+    <string name="settings_advanced_permanent_delete">Удаление безвозвратно</string>
+    <string name="settings_advanced_permanent_delete_desc">Удалять сообщения сразу, не перемещая в корзину</string>
+    <string name="settings_advanced_turn_off">Сначала отключите «</string>
+    <string name="settings_advanced_turn_off_suffix">"»</string>
+    <string name="settings_advanced_permanent_delete_on">Удаление безвозвратно включено. Эта переписка и её сообщения будут немедленно удалены с устройства — без перемещения в корзину — и не могут быть восстановлены.</string>
+
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">Wischaktionen umkehren</string>
+    <string name="settings_advanced_reverse_swipe_desc">Nach links wischen zum Archivieren und nach rechts wischen zum Löschen</string>
+    <string name="settings_advanced_hide_links">Links in Nachrichten verstecken</string>
+    <string name="settings_advanced_hide_links_desc">Links in Nachrichten niemals klickbar machen</string>
+    <string name="settings_advanced_highlight_links">Links hervorheben</string>
+    <string name="settings_advanced_link_warning">Link-Öffnen-Warnung</string>
+    <string name="settings_advanced_permanent_delete">Endgültig löschen</string>
+    <string name="settings_advanced_permanent_delete_desc">Nachrichten sofort löschen statt in den Papierkorb verschieben</string>
+    <string name="settings_advanced_turn_off">"„"</string>
+    <string name="settings_advanced_turn_off_suffix">" "aktivieren zuerst</string>
+    <string name="settings_advanced_permanent_delete_on">Endgültiges Löschen ist aktiviert. Diese Unterhaltung und ihre Nachrichten werden sofort von Ihrem Gerät entfernt — nicht in den Papierkorb verschoben — und können nicht wiederhergestellt werden.</string>
+
+</resources>
