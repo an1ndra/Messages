@@ -172,15 +172,16 @@ object NotificationHelper {
 
         // The reply action must be backed by a MUTABLE PendingIntent (RemoteInput
         // is silently dropped otherwise on Android 15+), so the wrapped Intent
-        // carries an explicit component + package to stay safe; it is built inline
-        // so CodeQL's explicit-intent sanitizer applies (cross-method flow does not).
-        val replyData = Intent(context, QuickReplyReceiver::class.java).apply {
-            action = QuickReplyReceiver.ACTION_REPLY
-            setPackage(context.packageName)
-            putExtra(QuickReplyReceiver.EXTRA_ADDRESS, from)
-            putExtra(QuickReplyReceiver.EXTRA_FROM, from)
-            putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId)
-        }
+        // carries an explicit component + package. It is built with plain
+        // statements in this method (no helper, no apply-block) and the notify()
+        // sink is inlined below, so CodeQL's intra-procedural explicit-intent
+        // sanitizer can see the whole flow.
+        val replyData = Intent(context, QuickReplyReceiver::class.java)
+        replyData.action = QuickReplyReceiver.ACTION_REPLY
+        replyData.setPackage(context.packageName)
+        replyData.putExtra(QuickReplyReceiver.EXTRA_ADDRESS, from)
+        replyData.putExtra(QuickReplyReceiver.EXTRA_FROM, from)
+        replyData.putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId)
         val replyIntent = PendingIntent.getBroadcast(
             context, reqCode,
             replyData,
@@ -194,14 +195,14 @@ object NotificationHelper {
         ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
             .addRemoteInput(remoteInput).build()
 
+        val markReadData = Intent(context, MarkReadReceiver::class.java)
+        markReadData.action = MarkReadReceiver.ACTION_MARK_READ
+        markReadData.setPackage(context.packageName)
+        markReadData.putExtra(MarkReadReceiver.EXTRA_ADDRESS, from)
+        markReadData.putExtra(MarkReadReceiver.EXTRA_NOTIF_ID, notifId)
         val markReadIntent = PendingIntent.getBroadcast(
             context, reqCode + 1000,
-            Intent(context, MarkReadReceiver::class.java).apply {
-                action = MarkReadReceiver.ACTION_MARK_READ
-                setPackage(context.packageName)
-                putExtra(MarkReadReceiver.EXTRA_ADDRESS, from)
-                putExtra(MarkReadReceiver.EXTRA_NOTIF_ID, notifId)
-            },
+            markReadData,
             PendingIntent.FLAG_IMMUTABLE
         )
         val markReadAction = NotificationCompat.Action.Builder(
@@ -232,12 +233,8 @@ object NotificationHelper {
             .setContentIntent(tap)
             .addAction(replyAction)
             .addAction(markReadAction)
-        notify(context, notifId, builder.build())
-    }
-
-    private fun notify(context: Context, notifId: Int, notif: android.app.Notification) {
         try {
-            NotificationManagerCompat.from(context).notify(notifId, notif)
+            NotificationManagerCompat.from(context).notify(notifId, builder.build())
         } catch (_: SecurityException) {
         }
     }
