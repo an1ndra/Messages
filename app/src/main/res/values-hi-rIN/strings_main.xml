@@ -11,7 +11,7 @@
     <string name="lock_off">एप लॉक बंद है</string>
     <string name="lock_setup_needed">पहले अपने डिवाइस पर स्क्रीन लॉक (फिंगरप्रिंट, फेस या PIN) सेटअप करें</string>
     <string name="lock_turn_on">स्क्रीन लॉक सेटअप करें</string>
-    <string name="lock_turn_on_hint">एप लॉक को वापस চালু करने के लिए एक सेटअप करें।</string>
+    <string name="lock_turn_on_hint">एप लॉक को वापस चालू करने के लिए एक सेटअप करें।</string>
 
     <!-- Default SMS app prompt -->
     <string name="default_sms_title">डिफ़ॉल्ट SMS एप के रूप में सेट करें?</string>

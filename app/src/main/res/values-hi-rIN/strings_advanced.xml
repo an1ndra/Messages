@@ -10,6 +10,6 @@
     <string name="settings_advanced_permanent_delete_desc">कूड़े में ले जाने के बजाय संदेशों को तुरंत हटाएं</string>
     <string name="settings_advanced_turn_off">पहले "</string>
     <string name="settings_advanced_turn_off_suffix">" बंद करें</string>
-    <string name="settings_advanced_permanent_delete_on">स्थायी हटाना চালু है। यह संवाद और इसके संदेश आपके डिवाइस से तुरंत हटा दिए जाएंगे — कूड़े में नहीं ले जाए जाएंगे — और बहाल नहीं किए जा सकते।</string>
+    <string name="settings_advanced_permanent_delete_on">स्थायी हटाना चालू है। यह संवाद और इसके संदेश आपके डिवाइस से तुरंत हटा दिए जाएंगे — कूड़े में नहीं ले जाए जाएंगे — और बहाल नहीं किए जा सकते।</string>
 
 </resources>
