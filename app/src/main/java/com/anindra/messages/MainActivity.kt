@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.app.NotificationManagerCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -443,7 +444,11 @@ class MainActivity : FragmentActivity() {
             "dark", "light", "system" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
-        intent.getStringExtra("open_conversation_address")?.let { pendingOpenAddress = it }
+        intent.getStringExtra("open_conversation_address")?.let {
+            pendingOpenAddress = it
+            // Dismiss all notifications when opening a chat from notification
+            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+        }
 
         val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -599,11 +604,16 @@ class MainActivity : FragmentActivity() {
 
                 // Single back dispatcher for all routes; child screen BackHandlers win.
                 androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
+                    val wasChat = navRoute == "chat"
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "trash" -> navRoute = "settings"
                         "advanced" -> navRoute = "settings"
                         else -> navRoute = "list"
+                    }
+                    // Clear ForegroundTracker when leaving chat
+                    if (wasChat) {
+                        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(null)
                     }
                 }
 
@@ -614,7 +624,12 @@ class MainActivity : FragmentActivity() {
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     ConversationsScreen(
                         vm = vm,
-                        onOpenConversation = { id -> chatId = id; navRoute = "chat" },
+                        onOpenConversation = { id ->
+                            // Dismiss notifications when opening chat from conversation list
+                            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+                            chatId = id
+                            navRoute = "chat"
+                        },
                         onNewChat = { navRoute = "new" },
                         onOpenSettings = { navRoute = "settings" }
                     )
@@ -727,6 +742,10 @@ class MainActivity : FragmentActivity() {
             "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
-        intent.getStringExtra("open_conversation_address")?.let { pendingOpenAddress = it }
+        intent.getStringExtra("open_conversation_address")?.let {
+            pendingOpenAddress = it
+            // Dismiss all notifications when opening a chat from notification
+            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+        }
     }
 }
