@@ -142,9 +142,21 @@ jobs:
           [View the full report on VirusTotal]($GUILINK)
           EOF
           )
-          BODY=$(gh release view "$TAG" --json body --jq .body)
-          printf '%s\n\n%s\n' "$BODY" "$REPORT" > /tmp/vt/notes.md
-          gh release edit "$TAG" --notes-file /tmp/vt/notes.md
+          # The release notes can be rewritten by the release pipeline a short
+          # while after publishing (eventual consistency), which would clobber
+          # an append done once. Re-check and re-append for a few minutes so the
+          # report is present at the end regardless of when the last write lands.
+          for i in $(seq 1 12); do
+            BODY=$(gh release view "$TAG" --json body --jq .body)
+            if printf '%s' "$BODY" | grep -qF "## VirusTotal Scan Report"; then
+              echo "VirusTotal report present (check $i)"
+            else
+              printf '%s\n\n%s\n' "$BODY" "$REPORT" > /tmp/vt/notes.md
+              gh release edit "$TAG" --notes-file /tmp/vt/notes.md
+              echo "Appended VirusTotal report (attempt $i)"
+            fi
+            sleep 30
+          done
           {
             echo "## VirusTotal Scan Report"
             echo ""
