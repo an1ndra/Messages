@@ -188,7 +188,8 @@ object NotificationHelper {
 
         val replyAction = NotificationCompat.Action.Builder(
             R.drawable.ic_reply, "Reply", replyIntent
-        ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY).build()
+        ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+            .addRemoteInput(remoteInput).build()
 
         val markReadIntent = PendingIntent.getBroadcast(
             context, reqCode + 1000,
@@ -201,7 +202,7 @@ object NotificationHelper {
             PendingIntent.FLAG_IMMUTABLE
         )
         val markReadAction = NotificationCompat.Action.Builder(
-            R.drawable.ic_mark_as_read, "Mark as read", markReadIntent
+            0, "Mark as read", markReadIntent
         ).build()
 
         val senderName = app.repository.contactNameFor(from) ?: from
