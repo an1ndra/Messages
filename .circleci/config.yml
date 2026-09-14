@@ -1,21 +1,23 @@
 version: 2.1
 
-# CircleCI: build the Android app whenever a pull request targets `main`
-# (and on pushes to main), so a broken merge is caught before it lands.
-# The debug APK is stored as a job artifact you can download and install.
+# CircleCI: run unit tests on every PR that targets `main` as a merge gate.
+# Minimal footprint: smallest resource class.
+# The job halts early for non-main PRs and non-PR pushes.
 #
-# One-time project setup (CircleCI UI -> Project Settings -> Advanced):
-#   * enable "Build forked pull requests" if you also want PRs from forks built.
-# The job also halts itself for PRs that do not target main, so no extra
-# branch filters are needed.
+# One-time project setup:
+#   CircleCI UI -> Project Settings -> Advanced:
+#     * enable "Build forked pull requests" for PRs from forks.
+#   GitHub UI -> Settings -> Branches -> Branch protection rules for `main`:
+#     * enable "Require status checks to pass before merging"
+#     * add `build-apk` as a required check
 
 executors:
   android:
     docker:
       - image: cimg/android:2026.08.1
-    resource_class: large
+    resource_class: small
     environment:
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g"
 
 jobs:
   build-apk:
@@ -24,15 +26,11 @@ jobs:
       - checkout
 
       - run:
-          name: Gate - only PRs targeting main (and pushes to main)
+          name: Gate - only build PRs targeting main
           command: |
             set -eu
             if [ -z "${CIRCLE_PULL_REQUEST:-}" ]; then
-              if [ "${CIRCLE_BRANCH:-}" = "main" ]; then
-                echo "Push to main - building."
-                exit 0
-              fi
-              echo "Not a pull request and not main - nothing to build."
+              echo "Not a pull request - nothing to build."
               circleci-agent step halt
             fi
             PR="${CIRCLE_PULL_REQUEST##*/}"
@@ -52,7 +50,7 @@ jobs:
             - gradle-
 
       - run:
-          name: Build debug APK + run unit tests
+          name: Run unit tests + build debug APK
           command: ./gradlew --no-daemon assembleDebug testDebugUnitTest
 
       - save_cache:
@@ -69,17 +67,13 @@ jobs:
           command: |
             V=$(grep -oE 'versionName = "[^"]+"' app/build.gradle.kts | cut -d '"' -f2)
             SRC=$(ls app/build/outputs/apk/debug/*.apk | head -1)
-            NAME="Messages-${V}-debug-${CIRCLE_SHA1:0:7}.apk"
+            NAME="Messages-${V}-debug-$(date +%d-%m-%Y_%S-%M-%H).apk"
             cp "$SRC" "app/build/outputs/apk/debug/${NAME}"
             echo "Built ${NAME}"
 
       - store_artifacts:
           path: app/build/outputs/apk/debug
           destination: apk
-
-      - store_artifacts:
-          path: app/build/reports/tests
-          destination: unit-test-report
 
 workflows:
   build:
