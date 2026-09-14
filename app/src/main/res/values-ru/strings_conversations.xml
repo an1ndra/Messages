@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">Поиск переписок</string>
+    <string name="conversations_retry_loading">Повторить загрузку</string>
+    <string name="conversations_allow_access">Разрешить доступ</string>
+    <string name="conversations_open_settings">Открыть настройки приложения</string>
+    <string name="conversations_press_back_exit">Нажмите «Назад» ещё раз для выхода</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">Новая переписка</string>
+    <string name="new_chat_hint">Введите имя или номер телефона</string>
+    <string name="new_chat_only_phone">Сообщения можно отправлять только на номера телефонов</string>
+    <string name="new_chat_send_to">Отправить «%s»</string>
+    <string name="text_placeholder">Текстовое сообщение</string>
+    <string name="conversations_archived">Архив</string>
+    <string name="conversations_messages">Сообщения</string>
+    <string name="conversations_me">Я</string>
+    <string name="conversations_allow_sms_access">Разрешить доступ к SMS</string>
+    <string name="conversations_sms_permission">Messages нужен доступ к SMS, чтобы ваши переписки отображались здесь.</string>
+
+    <string name="convo_close_search">Закрыть поиск</string>
+    <string name="convo_back_to_inbox">Вернуться в входящие</string>
+</resources>

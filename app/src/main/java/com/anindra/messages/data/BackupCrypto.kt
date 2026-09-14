@@ -32,6 +32,7 @@ object BackupCrypto {
     private const val PIN_MAX_DIGITS = 16
     private const val PBKDF2_ITERATIONS = 120_000
     private val PIN_MAGIC = byteArrayOf('M'.code.toByte(), 'S'.code.toByte(), 'P'.code.toByte(), 1)
+    private val secureRandom = SecureRandom()
 
     fun isValidPin(pin: String): Boolean =
         pin.length in 4..PIN_MAX_DIGITS && pin.all { it.isDigit() }
@@ -40,7 +41,7 @@ object BackupCrypto {
         magic.size == PIN_MAGIC_LENGTH && magic.contentEquals(PIN_MAGIC)
 
     fun encryptWithPin(input: InputStream, output: OutputStream, pin: String) {
-        val salt = ByteArray(PIN_SALT_LENGTH).also { SecureRandom().nextBytes(it) }
+        val salt = ByteArray(PIN_SALT_LENGTH).also { secureRandom.nextBytes(it) }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, deriveKey(pin, salt))
         output.write(PIN_MAGIC)

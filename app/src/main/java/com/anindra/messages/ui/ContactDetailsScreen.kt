@@ -50,15 +50,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.anindra.messages.R
 import androidx.compose.ui.res.painterResource
 import com.anindra.messages.AppViewModel
-import com.anindra.messages.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,13 +72,19 @@ fun ContactDetailsScreen(
 ) {
     val context = LocalContext.current
     val convo by vm.conversationById(conversationId).collectAsState(initial = null)
+    val vmContacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
+    val workNums = remember(vmContacts) {
+        vmContacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
+    }
     if (convo == null) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
         return
     }
     val address = convo!!.address
     val name = convo!!.name
+    val display = convo!!.display
     val isKnownContact = name != address
+    val workProfile = phoneKey(address).let { it.isNotEmpty() && it in workNums }
 
     // flows (not sync SELECTs) for notify/block state; VM retains last value
     val notificationsEnabled by vm.conversationNotificationsEnabledFlow(conversationId)
@@ -93,7 +102,7 @@ fun ContactDetailsScreen(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
                     }
                 }
             )
@@ -116,11 +125,18 @@ fun ContactDetailsScreen(
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = if (isKnownContact) name else formatPhoneNumber(address),
+                    text = if (isKnownContact) name else display,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(Alignment.CenterVertically)
                 )
+                if (workProfile) {
+                    Spacer(Modifier.height(4.dp))
+                    WorkProfileBadge()
+                }
 
                 if (!isKnownContact) {
                     Spacer(Modifier.height(4.dp))
@@ -135,7 +151,7 @@ fun ContactDetailsScreen(
                 ) {
                     DetailActionButton(
                         icon = Icons.Rounded.Call,
-                        label = "Call",
+                        label = stringResource(R.string.action_call),
                         onClick = {
                             context.startActivity(
                                 Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$address"))
@@ -145,7 +161,7 @@ fun ContactDetailsScreen(
                     Spacer(Modifier.width(32.dp))
                     DetailActionButton(
                         icon = Icons.Rounded.PersonAdd,
-                        label = "Add",
+                        label = stringResource(R.string.action_add),
                         onClick = {
                             context.startActivity(
                                 Intent(ContactsContract.Intents.Insert.ACTION).apply {
@@ -172,7 +188,7 @@ fun ContactDetailsScreen(
                 Column {
                     DetailCardRow(
                         icon = Icons.Rounded.Notifications,
-                        title = "Notifications",
+                        title = stringResource(R.string.contact_notifications),
                         trailing = {
                             Switch(
                                 checked = notifState,
@@ -193,7 +209,7 @@ fun ContactDetailsScreen(
                     )
                     DetailCardRow(
                         icon = Icons.Rounded.Block,
-                        title = "Block & report spam",
+                        title = stringResource(R.string.contact_block_report),
                         titleColor = MaterialTheme.colorScheme.error,
                         iconColor = MaterialTheme.colorScheme.error,
                         onClick = { showBlockDialog = true }
@@ -221,7 +237,7 @@ fun ContactDetailsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "1 other person",
+                            stringResource(R.string.contact_one_person),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -244,7 +260,7 @@ fun ContactDetailsScreen(
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "Add people",
+                                stringResource(R.string.contact_add_people),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -262,11 +278,17 @@ fun ContactDetailsScreen(
                     ) {
                         PersonAvatar(address, size = 40.dp)
                         Spacer(Modifier.width(16.dp))
-                        Text(
-                            if (isKnownContact) name else formatPhoneNumber(address),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (isKnownContact) name else display,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (workProfile) {
+                                Spacer(Modifier.width(6.dp))
+                                WorkProfileBadge()
+                            }
+                        }
                     }
                 }
             }
@@ -278,17 +300,17 @@ fun ContactDetailsScreen(
     if (showBlockDialog) {
         AlertDialog(
             onDismissRequest = { showBlockDialog = false },
-            title = { Text("Block & report spam") },
-            text = { Text("Block ${formatPhoneNumber(address)}? You won't receive calls or messages from this number.") },
+            title = { Text(stringResource(R.string.contact_block_report)) },
+            text = { Text(context.getString(R.string.contact_block_confirm, formatPhoneNumber(address))) },
             confirmButton = {
                 TextButton(onClick = {
                     showBlockDialog = false
                     vm.blockNumber(address)
                     numberIsBlocked = true
-                }) { Text("Block") }
+                }) { Text(stringResource(R.string.contact_block)) }
             },
             dismissButton = {
-                TextButton(onClick = { showBlockDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showBlockDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">Odwróć akcje przesunięcia</string>
+    <string name="settings_advanced_reverse_swipe_desc">Przesuń w lewo, aby archiwizować, i w prawo, aby usuwać</string>
+    <string name="settings_advanced_hide_links">Ukryj linki z wiadomości</string>
+    <string name="settings_advanced_hide_links_desc">Nigdy nie zamieniaj linków w wiadomościach na klikalne</string>
+    <string name="settings_advanced_highlight_links">Wyróżnij linki</string>
+    <string name="settings_advanced_link_warning">Ostrzeżenie o otwarciu linku</string>
+    <string name="settings_advanced_permanent_delete">Trwałe usunięcie</string>
+    <string name="settings_advanced_permanent_delete_desc">Usuwaj wiadomości natychmiast zamiast przenosić je do kosza</string>
+    <string name="settings_advanced_turn_off">Najpierw wyłącz „</string>
+    <string name="settings_advanced_turn_off_suffix">"</string>
+    <string name="settings_advanced_permanent_delete_on">Trwałe usuwanie jest włączone. Ta rozmowa i jej wiadomości zostaną natychmiast usunięte z urządzenia — nie przeniesione do kosza — i nie mogą zostać przywrócone.</string>
+
+</resources>

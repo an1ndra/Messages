@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">回收站</string>
+    <string name="trash_empty">清空回收站</string>
+    <string name="trash_emptied">回收站已清空</string>
+    <string name="trash_delete_conversation">删除对话</string>
+    <string name="trash_conversation_deleted">对话已删除</string>
+    <string name="trash_empty_is_empty">回收站是空的</string>
+    <string name="trash_empty_message">已删除的对话会在 30 天后永久移除</string>
+    <string name="trash_empty_confirm">确定要从回收站删除所有 %d 条对话吗？此操作无法恢复。</string>
+    <string name="trash_delete_forever_confirm">确定要永久删除「%s」吗？此操作无法恢复。</string>
+    <string name="trash_deleted_on">于 %s 删除</string>
+    <string name="toast_trash_deleted">对话已删除</string>
+    <string name="action_undo">撤销</string>
+</resources>

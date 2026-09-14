@@ -20,11 +20,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BusinessCenter
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -164,6 +168,17 @@ private fun loadContactPhoto(context: Context, number: String): Bitmap? {
     }
 }
 
+/** Small briefcase glyph marking a contact that comes from the work profile. */
+@Composable
+fun WorkProfileBadge(modifier: Modifier = Modifier) {
+    Icon(
+        Icons.Rounded.BusinessCenter,
+        contentDescription = stringResource(R.string.contact_work_profile),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.size(14.dp)
+    )
+}
+
 private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
 private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
 private val dividerFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())
@@ -172,22 +187,25 @@ private val zone: ZoneId get() = ZoneId.systemDefault()
 
 private fun zoned(ts: Long): ZonedDateTime = Instant.ofEpochMilli(ts).atZone(zone)
 
-fun formatListTime(ts: Long): String {
+/** Ambient "now" (epoch millis) that advances while a screen is visible, so
+ *  relative labels ("Now", "5 min") age instead of freezing at composition. */
+val LocalNowTick = compositionLocalOf { System.currentTimeMillis() }
+
+fun formatListTime(ts: Long, now: Long = System.currentTimeMillis(), ctx: android.content.Context): String {
     if (ts <= 0) return ""
-    val now = System.currentTimeMillis()
     return when {
-        now - ts < 60_000L -> "Now"
-        now - ts < 3_600_000L -> "${(now - ts) / 60_000} min"
+        now - ts < 60_000L -> ctx.getString(R.string.time_now)
+        now - ts < 3_600_000L -> String.format(ctx.getString(R.string.time_minutes), (now - ts) / 60_000)
         sameDay(ts, now) -> timeFmt.format(zoned(ts))
-        isYesterday(ts) -> "Yesterday"
+        isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
         else -> dayFmt.format(zoned(ts))
     }
 }
 
-fun formatDividerTime(ts: Long): String {
+fun formatDividerTime(ts: Long, ctx: android.content.Context): String {
     return when {
-        sameDay(ts, System.currentTimeMillis()) -> "Today"
-        isYesterday(ts) -> "Yesterday"
+        sameDay(ts, System.currentTimeMillis()) -> ctx.getString(R.string.time_today)
+        isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
         else -> dividerFmt.format(zoned(ts))
     }
 }

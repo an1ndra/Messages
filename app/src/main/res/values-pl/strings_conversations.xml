@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">Szukaj rozmów</string>
+    <string name="conversations_retry_loading">Spróbuj ponownie</string>
+    <string name="conversations_allow_access">Zezwól na dostęp</string>
+    <string name="conversations_open_settings">Otwórz ustawienia aplikacji</string>
+    <string name="conversations_press_back_exit">Naciśnij ponownie wstecz, aby wyjść</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">Nowa rozmowa</string>
+    <string name="new_chat_hint">Wpisz imię lub numer telefonu</string>
+    <string name="new_chat_only_phone">Do numerów telefonów można wysyłać wiadomości</string>
+    <string name="new_chat_send_to">Wyślij do „%s”</string>
+    <string name="text_placeholder">Wiadomość tekstowa</string>
+    <string name="conversations_archived">Zarchiwizowane</string>
+    <string name="conversations_messages">Wiadomości</string>
+    <string name="conversations_me">Ja</string>
+    <string name="conversations_allow_sms_access">Zezwól na dostęp do SMS</string>
+    <string name="conversations_sms_permission">Aplikacja Wiadomości wymaga uprawnień do odczytu Twoich wiadomości SMS, aby rozmowy pojawiały się tutaj.</string>
+
+    <string name="convo_close_search">Zamknij wyszukiwanie</string>
+    <string name="convo_back_to_inbox">Wróć do skrzynki odbiorczej</string>
+</resources>

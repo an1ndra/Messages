@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">反转滑动方向</string>
+    <string name="settings_advanced_reverse_swipe_desc">向左滑动归档，向右滑动删除</string>
+    <string name="settings_advanced_hide_links">隐藏消息中的链接</string>
+    <string name="settings_advanced_hide_links_desc">不要将链接转换为可点击的文字</string>
+    <string name="settings_advanced_highlight_links">高亮链接</string>
+    <string name="settings_advanced_link_warning">打开链接警告</string>
+    <string name="settings_advanced_permanent_delete">永久删除</string>
+    <string name="settings_advanced_permanent_delete_desc">直接删除消息，不放入回收站</string>
+    <string name="settings_advanced_turn_off">关闭「</string>
+    <string name="settings_advanced_turn_off_suffix">」</string>
+    <string name="settings_advanced_permanent_delete_on">永久删除已开启。此对话及其消息将立即从您的设备上移除 — 不会移至回收站 — 且无法恢复。</string>
+    <string name="link_warning_confirm">打开外部链接前确认</string>
+</resources>

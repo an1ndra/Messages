@@ -110,9 +110,9 @@ object NotificationHelper {
         val id = channelId(context)
         nm.createNotificationChannel(
             NotificationChannel(
-                id, "Messages", NotificationManager.IMPORTANCE_HIGH
+                id, context.getString(R.string.notification_channel_title), NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "New message notifications"
+                description = context.getString(R.string.notification_channel_desc)
                 if (soundOn) {
                     setSound(
                         selectedSoundUri(context)
@@ -140,6 +140,9 @@ object NotificationHelper {
     }
 
     fun show(context: Context, from: String, body: String) {
+        // Skip notification if user is already reading this conversation
+        if (ForegroundTracker.isAppInForeground && ForegroundTracker.isConversationOpen(from)) return
+
         // create the channel before any early-return: notify() with an unknown
         // channel id is a silent no-op, so the first-ever post must have it ready
         ensureChannel(context)
@@ -167,10 +170,20 @@ object NotificationHelper {
             PendingIntent.FLAG_IMMUTABLE
         )
 
+        // The reply action must be backed by a MUTABLE PendingIntent (RemoteInput
+        // is silently dropped otherwise on Android 15+), so the wrapped Intent
+        // carries an explicit component + package to stay safe; it is built inline
+        // so CodeQL's explicit-intent sanitizer applies (cross-method flow does not).
+        val replyData = Intent(context, QuickReplyReceiver::class.java).apply {
+            action = QuickReplyReceiver.ACTION_REPLY
+            setPackage(context.packageName)
+            putExtra(QuickReplyReceiver.EXTRA_ADDRESS, from)
+            putExtra(QuickReplyReceiver.EXTRA_FROM, from)
+            putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId)
+        }
         val replyIntent = PendingIntent.getBroadcast(
             context, reqCode,
-            QuickReplyReceiver.createReplyIntent(context, from, from)
-                .putExtra(QuickReplyReceiver.EXTRA_NOTIF_ID, notifId),
+            replyData,
             PendingIntent.FLAG_MUTABLE
         )
 
@@ -181,10 +194,24 @@ object NotificationHelper {
         ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
             .addRemoteInput(remoteInput).build()
 
+        val markReadIntent = PendingIntent.getBroadcast(
+            context, reqCode + 1000,
+            Intent(context, MarkReadReceiver::class.java).apply {
+                action = MarkReadReceiver.ACTION_MARK_READ
+                setPackage(context.packageName)
+                putExtra(MarkReadReceiver.EXTRA_ADDRESS, from)
+                putExtra(MarkReadReceiver.EXTRA_NOTIF_ID, notifId)
+            },
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val markReadAction = NotificationCompat.Action.Builder(
+            0, "Mark as read", markReadIntent
+        ).build()
+
         val senderName = app.repository.contactNameFor(from) ?: from
-        val title = if (privacyMode) "New message" else senderName
+        val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
-            privacyMode -> "You have a new message"
+            privacyMode -> context.getString(R.string.notif_body_private)
             app.repository.settings.hideLinks -> hideUrls(body)
             else -> body
         }
@@ -204,6 +231,7 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setContentIntent(tap)
             .addAction(replyAction)
+            .addAction(markReadAction)
         notify(context, notifId, builder.build())
     }
 
@@ -235,12 +263,12 @@ object NotificationHelper {
         )
 
         val privacyMode = app.repository.settings.privacyModeEnabled
-        val failText = if (privacyMode) "Couldn't send message. Tap to retry."
-            else "Couldn't send message to $to. Tap to retry."
+        val failText = if (privacyMode) context.getString(R.string.notif_send_fail_private)
+            else String.format(context.getString(R.string.notif_send_fail), to)
 
         val notif = NotificationCompat.Builder(context, channelId(context))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Message not delivered")
+            .setContentTitle(context.getString(R.string.notif_not_delivered))
             .setContentText(failText)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)

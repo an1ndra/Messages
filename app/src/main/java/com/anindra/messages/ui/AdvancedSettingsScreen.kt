@@ -35,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.anindra.messages.R
 import com.anindra.messages.AppViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,10 +57,10 @@ fun AdvancedSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Advanced settings") },
+                title = { Text(stringResource(R.string.settings_advanced_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
                     }
                 }
             )
@@ -75,8 +77,8 @@ fun AdvancedSettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Reverse swipe actions",
-                    subtitle = "Swipe left to archive and right to delete",
+                    title = stringResource(R.string.settings_advanced_reverse_swipe),
+                    subtitle = stringResource(R.string.settings_advanced_reverse_swipe_desc),
                     checked = reverseSwipe,
                     onChecked = {
                         reverseSwipe = it
@@ -84,8 +86,8 @@ fun AdvancedSettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Hide links from messages",
-                    subtitle = "Never turn links in messages into tappable links",
+                    title = stringResource(R.string.settings_advanced_hide_links),
+                    subtitle = stringResource(R.string.settings_advanced_hide_links_desc),
                     checked = hideLinks,
                     onChecked = {
                         hideLinks = it
@@ -93,11 +95,11 @@ fun AdvancedSettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Highlight links",
+                    title = stringResource(R.string.settings_advanced_highlight_links),
                     subtitle = if (hideLinks) {
-                        "Turn off \"Hide links from messages\" first"
+                        stringResource(R.string.settings_advanced_turn_off) + stringResource(R.string.settings_advanced_hide_links) + stringResource(R.string.settings_advanced_turn_off_suffix)
                     } else {
-                        "Tap links in messages to open the website"
+                        stringResource(R.string.settings_link_tap_info)
                     },
                     checked = highlightLinks,
                     onChecked = {
@@ -107,11 +109,11 @@ fun AdvancedSettingsScreen(
                     enabled = !hideLinks
                 )
                 SettingsRow(
-                    title = "Link open warning",
+                    title = stringResource(R.string.settings_advanced_link_warning),
                     subtitle = when {
-                        hideLinks -> "Turn off \"Hide links from messages\" first"
+                        hideLinks -> stringResource(R.string.settings_advanced_turn_off) + stringResource(R.string.settings_advanced_hide_links) + stringResource(R.string.settings_advanced_turn_off_suffix)
                         !highlightLinks -> "Turn on \"Highlight links\" first"
-                        else -> "Confirm before opening external links"
+                        else -> stringResource(R.string.link_warning_confirm)
                     },
                     checked = linkWarning,
                     onChecked = {
@@ -121,8 +123,8 @@ fun AdvancedSettingsScreen(
                     enabled = !hideLinks && highlightLinks
                 )
                 SettingsRow(
-                    title = "Permanent delete",
-                    subtitle = "Delete messages immediately instead of moving them to trash",
+                    title = stringResource(R.string.settings_advanced_permanent_delete),
+                    subtitle = stringResource(R.string.settings_advanced_permanent_delete_desc),
                     checked = permanentDelete,
                     onChecked = {
                         permanentDelete = it
@@ -146,12 +148,11 @@ fun PermanentDeleteConfirmDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
-        title = { Text("Delete permanently?") },
+        title = { Text(stringResource(R.string.settings_advanced_delete_permanently)) },
         text = {
             Column(Modifier.fillMaxWidth()) {
                 Text(
-                    "Permanent delete is on. This conversation and its messages will be " +
-                        "removed from your device right away — not moved to trash — and cannot be restored."
+                    stringResource(R.string.settings_advanced_permanent_delete_on)
                 )
                 Spacer(Modifier.height(4.dp))
                 Row(
@@ -161,15 +162,15 @@ fun PermanentDeleteConfirmDialog(
                 ) {
                     Checkbox(checked = dontShowAgain, onCheckedChange = { dontShowAgain = it })
                     Spacer(Modifier.width(4.dp))
-                    Text("Don't show this warning again")
+                    Text(stringResource(R.string.settings_advanced_warning))
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(dontShowAgain) }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = { onConfirm(dontShowAgain) }) { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

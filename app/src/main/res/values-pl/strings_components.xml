@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared action labels -->
+    <string name="common_cancel">Anuluj</string>
+    <string name="common_ok">OK</string>
+    <string name="common_delete">Usuń</string>
+    <string name="common_open">Otwórz</string>
+    <string name="common_close">Zamknij</string>
+    <string name="common_next">Dalej</string>
+
+    <!-- Time formatting -->
+    <string name="time_now">Teraz</string>
+    <string name="time_today">Dziś</string>
+    <string name="time_minutes">%s min</string>
+    <string name="time_format_hour">h:mm a</string>
+    <string name="time_format_date">MMM d</string>
+    <string name="time_format_divider">EEE, MMM d</string>
+
+    <!-- Contacts -->
+    <string name="contact_work_profile">Kontakt z profilu służbowego</string>
+
+    <!-- Accessibility -->
+    <string name="access_restore">Przywróć</string>
+    <string name="access_delete_forever">Usuń na zawsze</string>
+    <string name="access_delete">Usuń</string>
+    <string name="access_archive">Archiwum</string>
+    <string name="access_pinned">Przypięte</string>
+    <string name="access_start_chat">Rozpocznij czat</string>
+    <string name="access_loading_messages">Ładowanie wiadomości</string>
+    <string name="access_photo">Zdjęcie</string>
+    <string name="action_call">Zadzwoń</string>
+    <string name="action_add">Dodaj</string>
+    <string name="access_chat_top_bar">Górny pasek czatu</string>
+    <string name="access_swipe_background">Tło przesunięcia</string>
+    <string name="access_nav">Szuflejka nawigacji</string>
+    <!-- Icon content descriptions -->
+    <string name="icon_back">Wróć</string>
+    <string name="icon_cancel_selection">Anuluj zaznaczenie</string>
+    <string name="icon_copy">Kopiuj</string>
+    <string name="icon_delete">Usuń</string>
+    <string name="icon_more_options">Więcej opcji</string>
+    <string name="icon_call">Zadzwoń</string>
+    <string name="icon_attach">Dołącz</string>
+    <string name="icon_emoji">Emoji</string>
+    <string name="icon_send">Wyślij</string>
+    <string name="icon_close_search">Zamknij wyszukiwanie</string>
+    <string name="icon_back_to_inbox">Wróć do skrzynki odbiorczej</string>
+    <string name="icon_search">Szukaj</string>
+    <string name="icon_cancel">Anuluj</string>
+    <!-- Message statuses -->
+    <string name="status_delivered">Dostarczone</string>
+    <string name="status_sending">Wysyłanie…</string>
+    <string name="status_sms">SMS</string>
+    <!-- Sheet actions -->
+    <string name="sheet_unarchive">Przywróć z archiwum</string>
+    <string name="sheet_unpin">Odepnij</string>
+    <string name="sheet_pin">Przypnij</string>
+    <string name="sheet_archive">Archiwizuj</string>
+    <string name="sheet_delete">Usuń</string>
+    <string name="sheet_block">Blokuj</string>
+    <!-- Detail row labels -->
+    <string name="detail_phone_number">Numer telefonu</string>
+    <string name="detail_messages">Wiadomości</string>
+</resources>

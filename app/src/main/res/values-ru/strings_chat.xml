@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Chat actions & labels -->
+    <string name="chat_archive">Архив</string>
+    <string name="chat_block">Блок</string>
+    <string name="chat_block_report">Заблокировать и сообщить о спаме</string>
+    <string name="chat_unblock">Разблокировать</string>
+    <string name="chat_block_number">Заблокировать номер</string>
+    <string name="chat_unblock_number">Разблокировать номер</string>
+    <string name="chat_forward">Переслать</string>
+    <string name="chat_forward_to">Переслать</string>
+    <string name="chat_share">Поделиться</string>
+    <string name="chat_details">Подробности</string>
+    <string name="chat_view_details">Посмотреть подробности</string>
+    <string name="chat_schedule">Планировщик</string>
+    <string name="chat_select_time">Выбрать время</string>
+    <string name="chat_media_camera">Камера</string>
+    <string name="chat_media_gallery">Галерея</string>
+
+    <!-- Status messages -->
+    <string name="chat_cant_send">Не удалось отправить сообщение</string>
+    <string name="chat_archived">Переписка отправлена в архив</string>
+    <string name="chat_deleted">Переписка удалена</string>
+    <string name="chat_moved_to_trash">Переписка перемещена в корзину</string>
+    <string name="chat_forwarded">Сообщение переслано</string>
+    <string name="chat_blocked_send">Этот номер заблокирован. Разблокировать для отправки?</string>
+    <string name="chat_number_blocked">Номер заблокирован</string>
+    <string name="chat_number_unblocked">Номер разблокирован</string>
+    <string name="chat_loading_earlier">Загрузить более ранние сообщения</string>
+    <string name="chat_retry">Повторить</string>
+    <string name="chat_retry_sim">Повторить через SIM</string>
+    <string name="chat_sending_via">Отправка через %s</string>
+    <string name="chat_scheduled_for">Запланировано на %s</string>
+    <string name="chat_search_contacts">Поиск контактов</string>
+    <string name="chat_add_people">Добавить участников</string>
+    <string name="chat_locked">Заблокировано</string>
+
+    <!-- Copy & links -->
+    <string name="chat_copied">Скопировано</string>
+    <string name="chat_link_copied">Ссылка скопирована</string>
+    <string name="chat_copy_link">Копировать ссылку</string>
+    <string name="chat_link_caution">Осторожно: внешняя ссылка</string>
+    <string name="chat_link_warning">Ссылки в сообщениях могут вести на поддельные веб-сайты, которые крадут ваши личные данные или устанавливают вредоносное ПО.</string>
+    <string name="chat_link_no_dont_show">Больше не показывать это предупреждение</string>
+    <string name="chat_link_label">ссылка</string>
+    <string name="chat_messages_label">сообщения</string>
+
+    <!-- General -->
+    <string name="chat_close">Закрыть</string>
+    <string name="chat_open">Открыть</string>
+    <string name="chat_next">Далее</string>
+    <string name="chat_ok">ОК</string>
+    <string name="chat_cancel">Отмена</string>
+    <string name="chat_delete">Удалить</string>
+    <string name="chat_details_title">Подробности переписки</string>
+
+    <string name="chat_status_not_sent">Не отправлено</string>
+    <string name="chat_status_retry">Нажмите для повтора</string>
+    <string name="chat_draft_prefix">Черновик: </string>
+    <string name="chat_sending_countdown">Отправка через %d сек…</string>
+    <string name="chat_alphanumeric_error">Вы не можете отправлять сообщения алфавитно-цифровым отправителям, таким как %s. Поддерживаются только номера телефонов.</string>
+    <string name="chat_unlock_dialog">Разблокировать</string>
+    <string name="chat_lock_dialog">Заблокировать</string>
+    <string name="chat_message_deleted">Сообщение удалено</string>
+    <string name="chat_messages_deleted">Удалено сообщений: %d</string>
+    <string name="status_not_sent">Не отправлено</string>
+</resources>

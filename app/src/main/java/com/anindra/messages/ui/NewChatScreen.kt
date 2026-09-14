@@ -32,15 +32,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.anindra.messages.R
 
-data class Contact(val name: String, val number: String)
+data class Contact(val name: String, val number: String, val workProfile: Boolean = false)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onPick: (String, String) -> Unit) {
     var query by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
     androidx.activity.compose.BackHandler(onBack = onBack)
     val contacts by vm.contacts.collectAsState()
     val filtered = contacts.filter {
@@ -48,15 +52,15 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("New conversation") }, navigationIcon = {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.new_chat_title)) }, navigationIcon = {
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back)) }
         }) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             TextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Enter name or phone number") },
+                placeholder = { Text(stringResource(R.string.new_chat_hint)) },
                 singleLine = true,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
@@ -82,12 +86,12 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
                 PersonAvatar("#", size = 40.dp)
                 Spacer(Modifier.width(16.dp))
                 Column {
-                    Text("Send to \u201C${query.ifBlank { "number" }}\u201D",
+                    Text(context.getString(R.string.new_chat_send_to, query.ifBlank { "number" }),
                         fontWeight = FontWeight.Medium,
                         color = if (query.isNotBlank() && !canSendToQuery)
                             MaterialTheme.colorScheme.error else Color.Unspecified)
                     if (query.isNotBlank() && !canSendToQuery) {
-                        Text("Only phone numbers can be messaged",
+                        Text(stringResource(R.string.new_chat_only_phone),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error)
                     }
@@ -107,8 +111,14 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
                         PersonAvatar(contact.number, size = 40.dp)
                         Spacer(Modifier.width(16.dp))
                         Column {
-                            Text(contact.name, fontWeight = FontWeight.Medium)
-                            Text(contact.number,
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(contact.name, fontWeight = FontWeight.Medium)
+                                if (contact.workProfile) {
+                                    Spacer(Modifier.width(6.dp))
+                                    WorkProfileBadge()
+                                }
+                            }
+                            Text(formatPhoneNumber(contact.number),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

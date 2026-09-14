@@ -58,18 +58,5 @@ class QuickReplyReceiver : BroadcastReceiver() {
         const val EXTRA_ADDRESS = "address"
         const val EXTRA_FROM = "from"
         const val EXTRA_NOTIF_ID = "notif_id"
-
-        fun createReplyIntent(
-            context: Context,
-            address: String,
-            from: String
-        ): Intent {
-            return Intent(context, QuickReplyReceiver::class.java).apply {
-                action = ACTION_REPLY
-                setPackage(context.packageName)
-                putExtra(EXTRA_ADDRESS, address)
-                putExtra(EXTRA_FROM, from)
-            }
-        }
     }
 }

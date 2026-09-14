@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="contact_block">차단</string>
+    <string name="contact_block_confirm">%s - 이 번호에서 전화나 메시지를 받을 수 없습니다.</string>
+    <string name="contact_block_report">차단 &amp; 스팸 신고</string>
+    <string name="contact_notifications">알림</string>
+
+    <string name="contact_one_person">다른 사람 1명</string>
+    <string name="contact_add_people">사람 추가</string>
+</resources>

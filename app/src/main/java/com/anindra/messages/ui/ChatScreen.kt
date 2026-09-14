@@ -13,6 +13,7 @@ import android.text.SpannableStringBuilder
 import android.text.style.URLSpan
 import android.text.util.Linkify
 import androidx.activity.compose.BackHandler
+import androidx.core.app.NotificationManagerCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -130,6 +131,7 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
+import androidx.compose.ui.res.stringResource
 import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.ChatMetaWeight
 import com.anindra.messages.ui.theme.incomingBubble
@@ -183,8 +185,10 @@ private fun ChatBubble(
     val bodyText = rememberLinkedText(
         displayBody,
         highlightLinks && !isLockedAndHidden,
-        hideLinks && !isLockedAndHidden
-    ) { pendingUrl = it }
+        hideLinks && !isLockedAndHidden,
+        onLinkClick = { pendingUrl = it },
+        textColor = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface
+    )
 
     pendingUrl?.let { url ->
         if (linkWarningEnabled) {
@@ -264,7 +268,7 @@ private fun ChatBubble(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Not sent",
+                        stringResource(R.string.chat_status_not_sent),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = ChatMetaWeight),
                         color = cs.error
                     )
@@ -274,7 +278,7 @@ private fun ChatBubble(
                         color = cs.error
                     )
                     Text(
-                        "Tap to retry",
+                        stringResource(R.string.chat_status_retry),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = ChatMetaWeight),
                         color = cs.error,
                         modifier = Modifier.clickable { onRetry() }
@@ -284,7 +288,7 @@ private fun ChatBubble(
                 // Google shows the type only on your own messages.
                 val statusText = if (msg.isMe) {
                     when {
-                        deliveryReports && msg.status == "delivered" -> "Delivered"
+                        deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                         msg.status == "sending" -> "Sending…"
                         else -> "SMS"
                     }
@@ -292,7 +296,7 @@ private fun ChatBubble(
                 val simLabel = if (showSimIndicator && msg.subId > 0) {
                     try {
                         val slotIndex = SubscriptionManager.getSlotIndex(msg.subId)
-                        if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
+                        if (slotIndex >= 0) String.format(context.getString(R.string.sim_slot_suffix), slotIndex + 1) else ""
                     } catch (_: Exception) { "" }
                 } else ""
                 val time = formatTimeOnly(msg.timestamp)
@@ -332,6 +336,10 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val convo by remember(conversationId) { vm.conversationById(conversationId) }.collectAsState(initial = null)
+    val vmContacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
+    val workNums = remember(vmContacts) {
+        vmContacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
+    }
     val listState = rememberLazyListState()
     // Progressive loading: latest chunk first, shimmer while older messages queue
     var pageLimit by remember(conversationId) { mutableIntStateOf(INITIAL_CHUNK) }
@@ -428,8 +436,8 @@ fun ChatScreen(
         currentSimId = next.subscriptionId
         vm.settings.simSubscriptionId = next.subscriptionId
         val carrier = next.carrierName?.toString()?.ifBlank { null }
-        val label = if (carrier != null) "$carrier · SIM ${next.simSlotIndex + 1}" else "SIM ${next.simSlotIndex + 1}"
-        Toast.makeText(context, "Sending via $label", Toast.LENGTH_SHORT).show()
+        val label = if (carrier != null) String.format("%s · SIM %s", carrier, next.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), next.simSlotIndex + 1)
+        Toast.makeText(context, context.getString(R.string.chat_sending_via, label), Toast.LENGTH_SHORT).show()
     }
 
     LaunchedEffect(Unit) {
@@ -497,8 +505,8 @@ fun ChatScreen(
         val text = selectedText()
         if (text.isNotBlank()) {
             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            cm.setPrimaryClip(android.content.ClipData.newPlainText("messages", text))
-            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+            cm.setPrimaryClip(android.content.ClipData.newPlainText(context.getString(R.string.chat_messages_label), text))
+            Toast.makeText(context, context.getString(R.string.chat_copied), Toast.LENGTH_SHORT).show()
         }
         clearSelection()
     }
@@ -519,7 +527,7 @@ fun ChatScreen(
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, text)
             }
-            context.startActivity(Intent.createChooser(send, "Share"))
+            context.startActivity(Intent.createChooser(send, context.getString(R.string.chat_share)))
         }
         clearSelection()
     }
@@ -530,8 +538,8 @@ fun ChatScreen(
         clearSelection()
         scope.launch {
             val result = snackbarHostState.showSnackbar(
-                message = if (ids.size == 1) "Message deleted" else "${ids.size} messages deleted",
-                actionLabel = "Undo",
+                message = if (ids.size == 1) context.getString(R.string.chat_message_deleted) else String.format(context.getString(R.string.chat_messages_deleted), ids.size),
+                actionLabel = context.getString(R.string.action_undo),
                 duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -545,7 +553,7 @@ fun ChatScreen(
         if (targets.isEmpty()) return
         if (targets.any { !it.locked }) {
             targets.forEach { vm.setLocked(it.id, true) }
-            Toast.makeText(context, "Locked", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.chat_locked), Toast.LENGTH_SHORT).show()
             clearSelection()
         } else if (activity != null) {
             val biometricManager = BiometricManager.from(activity)
@@ -564,8 +572,8 @@ fun ChatScreen(
                     })
                 prompt.authenticate(
                     BiometricPrompt.PromptInfo.Builder()
-                        .setTitle("Unlock Messages")
-                        .setSubtitle("Authenticate to reveal these messages")
+                        .setTitle(context.getString(R.string.lock_unlock_title))
+                        .setSubtitle(context.getString(R.string.lock_auth_subtitle))
                         .setAllowedAuthenticators(
                             BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
                         )
@@ -614,6 +622,8 @@ fun ChatScreen(
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)
+        // Dismiss all app notifications when user opens a chat
+        NotificationManagerCompat.from(context).cancelAll()
         draftLoaded = false
     }
     LaunchedEffect(convo?.address) {
@@ -642,7 +652,7 @@ fun ChatScreen(
                     (fadeIn() + slideInVertically { -it / 4 }) togetherWith
                         (fadeOut() + slideOutVertically { -it / 4 })
                 },
-                label = "chatTopBar"
+                label = stringResource(R.string.access_chat_top_bar)
             ) { selecting ->
             if (selecting) {
                 MessageSelectionToolbar(
@@ -657,8 +667,14 @@ fun ChatScreen(
                     onLockUnlock = { lockUnlockSelection() }
                 )
             } else {
+    val workProfile = convo?.let { c ->
+        val key = phoneKey(c.address)
+        key.isNotEmpty() && key in workNums
+    } ?: false
+
             ChatTopBar(
                 convo = convo,
+                workProfile = workProfile,
                 sims = sims,
                 currentSimId = currentSimId,
                 menuOpen = menuOpen,
@@ -673,11 +689,11 @@ fun ChatScreen(
                 onSimSelect = { simId, label ->
                     currentSimId = simId
                     vm.settings.simSubscriptionId = simId
-                    Toast.makeText(context, "Sending via $label", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.chat_sending_via, label), Toast.LENGTH_SHORT).show()
                 },
                 onArchive = {
                     vm.setArchived(conversationId, true)
-                    Toast.makeText(context, "Conversation archived", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.chat_archived), Toast.LENGTH_SHORT).show()
                     onBack()
                 },
                 onDelete = {
@@ -690,7 +706,7 @@ fun ChatScreen(
                         }
                     } else {
                         vm.deleteConversation(conversationId)
-                        Toast.makeText(context, "Conversation moved to trash", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.chat_moved_to_trash), Toast.LENGTH_SHORT).show()
                         onBack()
                     }
                 },
@@ -698,25 +714,17 @@ fun ChatScreen(
                     convo?.address?.let { addr ->
                         vm.blockNumber(addr)
                         numberIsBlocked = true
-                        Toast.makeText(context, "Number blocked", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.chat_number_blocked), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onUnblock = {
                     convo?.address?.let { addr ->
                         vm.unblockNumber(addr)
                         numberIsBlocked = false
-                        Toast.makeText(context, "Number unblocked", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.chat_number_unblocked), Toast.LENGTH_SHORT).show()
                     }
                 },
-                onAddPeople = {
-                    convo?.address?.let {
-                        context.startActivity(
-                            Intent(ContactsContract.Intents.Insert.ACTION).apply {
-                                type = ContactsContract.RawContacts.CONTENT_TYPE
-                                putExtra(ContactsContract.Intents.Insert.PHONE, it)
-                            })
-                    }
-                }
+                onAddPeople = { /* no-op: MMS group chat, stub */ }
             )
             }
             }
@@ -745,7 +753,7 @@ fun ChatScreen(
                 }
                 InputBar(
                     draft = draft,
-                    placeholder = "Text message",
+                    placeholder = stringResource(R.string.text_placeholder),
                     onDraftChange = { draft = it },
                     onSend = {
                         val text = draft.trim()
@@ -755,6 +763,7 @@ fun ChatScreen(
                                 showBlockedDialog = true
                                 return@InputBar
                             }
+                            if (addr.isBlank()) return@InputBar
                             if (!isPhoneNumber(addr)) {
                                 showAlphanumericDialog = true
                                 return@InputBar
@@ -779,6 +788,7 @@ fun ChatScreen(
                                 showBlockedDialog = true
                                 return@InputBar
                             }
+                            if (addr.isBlank()) return@InputBar
                             if (!isPhoneNumber(addr)) {
                                 showAlphanumericDialog = true
                                 return@InputBar
@@ -862,7 +872,7 @@ fun ChatScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Sending in $sendCountdown seconds...",
+                            String.format(context.getString(R.string.chat_sending_countdown), sendCountdown),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -871,7 +881,7 @@ fun ChatScreen(
                             sendCountdown = 0
                             pendingSendText = ""
                         }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.chat_cancel))
                         }
                     }
                 }
@@ -916,8 +926,8 @@ fun ChatScreen(
     if (showBlockedDialog) {
         AlertDialog(
             onDismissRequest = { showBlockedDialog = false },
-            title = { Text("Number blocked") },
-            text = { Text("This number is blocked. Unblock to send?") },
+            title = { Text(stringResource(R.string.chat_number_blocked)) },
+            text = { Text(stringResource(R.string.chat_blocked_send)) },
             confirmButton = {
                 TextButton(onClick = {
                     showBlockedDialog = false
@@ -925,10 +935,10 @@ fun ChatScreen(
                         vm.unblockNumber(addr)
                         numberIsBlocked = false
                     }
-                }) { Text("Unblock") }
+                }) { Text(stringResource(R.string.chat_unblock)) }
             },
             dismissButton = {
-                TextButton(onClick = { showBlockedDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showBlockedDialog = false }) { Text(stringResource(R.string.chat_cancel)) }
             }
         )
     }
@@ -936,7 +946,7 @@ fun ChatScreen(
     if (showAlphanumericDialog) {
         AlertDialog(
             onDismissRequest = { showAlphanumericDialog = false },
-            title = { Text("Can't send message") },
+            title = { Text(stringResource(R.string.chat_cant_send)) },
             text = {
                 Text(
                     "You can't send messages to alphanumeric senders like " +
@@ -944,7 +954,7 @@ fun ChatScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showAlphanumericDialog = false }) { Text("OK") }
+                TextButton(onClick = { showAlphanumericDialog = false }) { Text(stringResource(R.string.chat_ok)) }
             }
         )
     }
@@ -970,7 +980,7 @@ fun ChatScreen(
                 vm.openOrCreate(address, name) { targetId ->
                     vm.forwardMessage(forwardingMessageId, targetId)
                     forwardingMessageId = -1
-                    Toast.makeText(context, "Message forwarded", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.chat_forwarded), Toast.LENGTH_SHORT).show()
                 }
             },
             onDismiss = {
@@ -1003,7 +1013,7 @@ fun ChatScreen(
                 val addr = convo?.address ?: return@ChatSchedulePicker
                 vm.scheduleMessage(addr, text, ts, conversationId)
                 val fmt = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
-                Toast.makeText(context, "Scheduled for ${fmt.format(Date(ts))}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.chat_scheduled_for, fmt.format(Date(ts))), Toast.LENGTH_SHORT).show()
                 vm.saveDraft(conversationId, "")
                 draft = ""
                 showEmoji = false
@@ -1037,7 +1047,7 @@ private fun MessageSelectionToolbar(
         ),
         navigationIcon = {
             IconButton(onClick = onClose) {
-                Icon(Icons.Outlined.Close, "Cancel selection", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Outlined.Close, stringResource(R.string.icon_cancel_selection), tint = MaterialTheme.colorScheme.primary)
             }
         },
         title = {
@@ -1046,14 +1056,14 @@ private fun MessageSelectionToolbar(
         actions = {
             if (count == 1) {
                 IconButton(onClick = onCopy) {
-                    Icon(Icons.Default.ContentCopy, "Copy", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.ContentCopy, stringResource(R.string.icon_copy), tint = MaterialTheme.colorScheme.primary)
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Delete, stringResource(R.string.icon_delete), tint = MaterialTheme.colorScheme.primary)
                 }
                 Box {
                     IconButton(onClick = { overflow = true }) {
-                        Icon(Icons.Outlined.MoreVert, "More options", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Outlined.MoreVert, stringResource(R.string.icon_more_options), tint = MaterialTheme.colorScheme.primary)
                     }
                     DropdownMenu(
                         expanded = overflow,
@@ -1061,26 +1071,26 @@ private fun MessageSelectionToolbar(
                         containerColor = MaterialTheme.colorScheme.surface
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Share") },
+                            text = { Text(stringResource(R.string.chat_share)) },
                             onClick = { overflow = false; onShare() }
                         )
                         DropdownMenuItem(
-                            text = { Text("Forward") },
+                            text = { Text(stringResource(R.string.chat_forward)) },
                             onClick = { overflow = false; onForward() }
                         )
                         DropdownMenuItem(
-                            text = { Text("View details") },
+                            text = { Text(stringResource(R.string.chat_view_details)) },
                             onClick = { overflow = false; onViewDetails() }
                         )
                         DropdownMenuItem(
-                            text = { Text(if (allLocked) "Unlock" else "Lock") },
+                            text = { Text(stringResource(if (allLocked) R.string.chat_unlock_dialog else R.string.chat_lock_dialog)) },
                             onClick = { overflow = false; onLockUnlock() }
                         )
                     }
                 }
             } else {
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Delete, stringResource(R.string.icon_delete), tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -1091,6 +1101,7 @@ private fun MessageSelectionToolbar(
 @Composable
 private fun ChatTopBar(
     convo: com.anindra.messages.data.Conversation?,
+    workProfile: Boolean,
     sims: List<SubscriptionInfo>,
     currentSimId: Int,
     menuOpen: Boolean,
@@ -1116,7 +1127,7 @@ private fun ChatTopBar(
         ),
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
             }
         },
         title = {
@@ -1127,17 +1138,23 @@ private fun ChatTopBar(
                 PersonAvatar(convo?.address ?: "?", size = 36.dp)
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(
-                        convo?.let {
-                            if (it.name != it.address) it.name
-                            else formatPhoneNumber(it.address)
-                        } ?: "",
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            convo?.let {
+                                if (it.name != it.address) it.name
+                                else it.display
+                            } ?: "",
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1
+                        )
+                        if (workProfile) {
+                            Spacer(Modifier.width(6.dp))
+                            WorkProfileBadge()
+                        }
+                    }
                     if (draftsEnabled && convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
                         Text(
-                            "Draft",
+                            stringResource(R.string.chat_draft_prefix),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -1150,11 +1167,11 @@ private fun ChatTopBar(
                 convo?.address?.let {
                     context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$it")))
                 }
-            }) { Icon(Icons.Rounded.Call, "Call") }
+            }) { Icon(Icons.Rounded.Call, stringResource(R.string.icon_call)) }
 
             Box {
                 IconButton(onClick = onMenuToggle) {
-                    Icon(Icons.Rounded.MoreVert, "More options")
+                    Icon(Icons.Rounded.MoreVert, stringResource(R.string.icon_more_options))
                 }
                 DropdownMenu(
                     expanded = menuOpen,
@@ -1162,19 +1179,19 @@ private fun ChatTopBar(
                     containerColor = MaterialTheme.colorScheme.chatBar
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Add people") },
+                        text = { Text(stringResource(R.string.chat_add_people)) },
                         onClick = { onMenuDismiss(); onAddPeople() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Details") },
+                        text = { Text(stringResource(R.string.chat_details)) },
                         onClick = { onMenuDismiss(); onOpenDetails() }
                     )
                     if (sims.size > 1) {
                         sims.sortedBy { it.simSlotIndex }.forEach { sub ->
                             val carrier = sub.carrierName?.toString()?.ifBlank { null }
                             val simLabel = buildString {
-                                append("SIM ${sub.simSlotIndex + 1}")
-                                if (carrier != null) append(" · $carrier")
+                                append(String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1))
+                                if (carrier != null) append(String.format(" · %s", carrier))
                             }
                             DropdownMenuItem(
                                 text = {
@@ -1197,22 +1214,22 @@ private fun ChatTopBar(
                         }
                     }
                     DropdownMenuItem(
-                        text = { Text("Archive") },
+                        text = { Text(stringResource(R.string.chat_archive)) },
                         onClick = { onMenuDismiss(); onArchive() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete") },
+                        text = { Text(stringResource(R.string.chat_delete)) },
                         onClick = { onMenuDismiss(); onDelete() }
                     )
                     if (blockingEnabled) {
                         if (numberIsBlocked) {
                             DropdownMenuItem(
-                                text = { Text("Unblock number") },
+                                text = { Text(stringResource(R.string.chat_unblock_number)) },
                                 onClick = { onMenuDismiss(); onUnblock() }
                             )
                         } else {
                             DropdownMenuItem(
-                                text = { Text("Block number") },
+                                text = { Text(stringResource(R.string.chat_block_number)) },
                                 onClick = { onMenuDismiss(); onBlock() }
                             )
                         }
@@ -1263,7 +1280,7 @@ private fun ChatMessageList(
                         onClick = onLoadEarlier,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                     ) {
-                        Text("Load earlier messages")
+                        Text(stringResource(R.string.chat_loading_earlier))
                     }
                 }
             }
@@ -1344,11 +1361,11 @@ private fun ChatSchedulePicker(
             onDismissRequest = onDismiss,
             confirmButton = {
                 TextButton(onClick = { onDateSelected(datePickerState.selectedDateMillis ?: System.currentTimeMillis()) }) {
-                    Text("Next")
+                    Text(stringResource(R.string.chat_next))
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -1360,7 +1377,7 @@ private fun ChatSchedulePicker(
         )
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Select time") },
+            title = { Text(stringResource(R.string.chat_select_time)) },
             text = { TimePicker(state = timePickerState) },
             confirmButton = {
                 TextButton(onClick = {
@@ -1373,20 +1390,23 @@ private fun ChatSchedulePicker(
                         set(Calendar.MILLISECOND, 0)
                     }
                     onSchedule(cal.timeInMillis)
-                }) { Text("Schedule") }
+                }) { Text(stringResource(R.string.chat_schedule)) }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
             }
         )
     }
 }
 
-fun formatPhoneNumber(raw: String): String = try {
-    android.telephony.PhoneNumberUtils.formatNumber(raw, java.util.Locale.getDefault().country) ?: raw
-} catch (_: Exception) {
-    raw
-}
+fun formatPhoneNumber(raw: String): String =
+    com.anindra.messages.data.PhoneNumberUtils.displayFor(raw, com.anindra.messages.data.PhoneNumberUtils.region())
+
+/** Stable identity for cross-referencing a stored address against a contact
+ *  number: E.164 when valid, else bare digits ("" for alphanumeric IDs). */
+fun phoneKey(address: String): String =
+    com.anindra.messages.data.PhoneNumberUtils.toE164(address, com.anindra.messages.data.PhoneNumberUtils.region())
+        ?: address.filter { it.isDigit() }
 
 /** True for actual phone/short-code numbers; false for alphanumeric sender IDs (DK-AIRCEL, VM-HDFCBK…). */
 fun isPhoneNumber(address: String): Boolean =
@@ -1407,9 +1427,10 @@ private fun rememberLinkedText(
     body: String,
     highlight: Boolean,
     hide: Boolean = false,
-    onLinkClick: (String) -> Unit = {}
+    onLinkClick: (String) -> Unit = {},
+    textColor: Color = MaterialTheme.colorScheme.onSurface
 ): AnnotatedString {
-    val linkColor = MaterialTheme.colorScheme.primary
+    val linkColor = if (highlight) textColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
     val context = LocalContext.current
     // produceState remembers its value WITHOUT keys, so an async redaction would
     // keep painting the previous (unredacted) text and only swap it once the
@@ -1424,7 +1445,7 @@ private fun rememberLinkedText(
             builder.toAnnotatedString()
         }
     }
-    return produceState(AnnotatedString(body), body, highlight, linkColor) {
+    return produceState(AnnotatedString(body), body, highlight, textColor, linkColor) {
         value = withContext(Dispatchers.Default) {
             val builder = AnnotatedString.Builder(body)
             val urlRanges = if (highlight) {
@@ -1465,12 +1486,18 @@ private fun applyOtpStyles(
         .filter { r -> exclude.none { s -> r.first >= s.first && r.last + 1 <= s.second } }
         .forEach { r ->
             builder.addStyle(
-                SpanStyle(color = linkColor, fontWeight = FontWeight.Bold),
+                SpanStyle(color = linkColor),
+                r.first,
+                r.last + 1
+            )
+            builder.addStyle(
+                SpanStyle(textDecoration = TextDecoration.Underline),
                 r.first,
                 r.last + 1
             )
         }
 }
+
 
 @Composable
 private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> Unit) {
@@ -1478,10 +1505,10 @@ private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> 
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.Info, contentDescription = null) },
-        title = { Text("Caution: external link") },
+        title = { Text(stringResource(R.string.chat_link_caution)) },
         text = {
             Column {
-                Text("Links in messages can lead to fake websites that steal your personal data or install malware.")
+                Text(stringResource(R.string.chat_link_warning))
                 Spacer(Modifier.height(12.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -1497,18 +1524,18 @@ private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> 
             }
         },
         confirmButton = {
-            TextButton(onClick = onOpen) { Text("Open") }
+            TextButton(onClick = onOpen) { Text(stringResource(R.string.chat_open)) }
         },
         dismissButton = {
             Row {
                 TextButton(onClick = {
                     val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                             as android.content.ClipboardManager
-                    cm.setPrimaryClip(android.content.ClipData.newPlainText("link", url))
-                    Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText(context.getString(R.string.chat_link_label), url))
+                    Toast.makeText(context, context.getString(R.string.chat_link_copied), Toast.LENGTH_SHORT).show()
                     onDismiss()
-                }) { Text("Copy link") }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                }) { Text(stringResource(R.string.chat_copy_link)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
             }
         }
     )
@@ -1523,7 +1550,7 @@ private fun ConversationDetailsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Conversation details") },
+        title = { Text(stringResource(R.string.chat_details_title)) },
         text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1543,12 +1570,12 @@ private fun ConversationDetailsDialog(
                 Spacer(Modifier.height(16.dp))
                 HorizontalDivider()
                 Spacer(Modifier.height(12.dp))
-                DetailRow("Phone number", formatPhoneNumber(address))
-                DetailRow("Messages", "$messageCount")
+                DetailRow(stringResource(R.string.detail_phone_number), formatPhoneNumber(address))
+                DetailRow(stringResource(R.string.detail_messages), "$messageCount")
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_close)) }
         }
     )
 }
@@ -1591,17 +1618,19 @@ fun MessageRow(
     val bodyText = rememberLinkedText(
         displayBody,
         highlightLinks && !isLockedAndHidden,
-        hideLinks && !isLockedAndHidden
-    ) { pendingUrl = it }
+        hideLinks && !isLockedAndHidden,
+        onLinkClick = { pendingUrl = it },
+        textColor = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface
+    )
 
     // cache derived text/sim so an unlock doesn't recompute row allocations
-    val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp) }
+    val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp, context) }
     val timeText = remember(msg.timestamp) { formatTimeOnly(msg.timestamp) }
     val simLabel = remember(msg.subId, showSimIndicator) {
         if (showSimIndicator && msg.subId > 0) {
             try {
                 val slotIndex = SubscriptionManager.getSlotIndex(msg.subId)
-                if (slotIndex >= 0) " · SIM ${slotIndex + 1}" else ""
+                if (slotIndex >= 0) String.format(context.getString(R.string.sim_slot_suffix), slotIndex + 1) else ""
             } catch (_: Exception) { "" }
         } else ""
     }
@@ -1708,7 +1737,7 @@ fun MessageRow(
                     color = cs.error
                 )
                 Text(
-                    "Tap to retry",
+                    stringResource(R.string.chat_status_retry),
                     style = MaterialTheme.typography.labelSmall,
                     color = cs.error,
                     modifier = Modifier.clickable { onRetry() }
@@ -1717,7 +1746,7 @@ fun MessageRow(
         } else {
             val statusText = if (msg.isMe) {
                 when {
-                    showStatus && deliveryReports && msg.status == "delivered" -> "Delivered"
+                    showStatus && deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                     showStatus && msg.status == "sending" -> "Sending…"
                     else -> "SMS"
                 }
@@ -1771,7 +1800,7 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
     if (bmp != null) {
         Image(
             bitmap = bmp.asImageBitmap(),
-            contentDescription = "Photo",
+            contentDescription = stringResource(R.string.access_photo),
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .widthIn(max = 260.dp)
@@ -1800,7 +1829,7 @@ private fun InputBar(
     ) {
         IconButton(onClick = onAttach) {
             Icon(
-                Icons.Rounded.AddCircleOutline, "Attach",
+                Icons.Rounded.AddCircleOutline, stringResource(R.string.icon_attach),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -1822,7 +1851,7 @@ private fun InputBar(
                         if (simTrailing != null) simTrailing()
                         IconButton(onClick = onEmojiToggle) {
                             Icon(
-                                Icons.Rounded.EmojiEmotions, "Emoji",
+                                Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -1857,7 +1886,7 @@ private fun InputBar(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.AutoMirrored.Rounded.Send, "Send",
+                Icons.AutoMirrored.Rounded.Send, stringResource(R.string.icon_send),
                 tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (canSend) 1f else 0.38f),
                 modifier = Modifier.size(20.dp)
             )
@@ -1878,7 +1907,7 @@ private fun AttachSheet(
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(
-                "Share",
+                stringResource(R.string.chat_share),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -1889,7 +1918,7 @@ private fun AttachSheet(
             ) {
                 Icon(Icons.Rounded.Image, null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(16.dp))
-                Text("Gallery", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.chat_media_gallery), style = MaterialTheme.typography.bodyLarge)
             }
             Row(
                 Modifier.fillMaxWidth().clickable { onCamera() }.padding(vertical = 14.dp),
@@ -1897,7 +1926,7 @@ private fun AttachSheet(
             ) {
                 Icon(Icons.Rounded.CameraAlt, null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(16.dp))
-                Text("Camera", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.chat_media_camera), style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
@@ -1911,15 +1940,16 @@ private fun SimPickerDialog(
     onDismiss: () -> Unit
 ) {
     var selected by remember { mutableIntStateOf(currentSimId) }
+    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Retry with SIM") },
+        title = { Text(stringResource(R.string.chat_retry_sim)) },
         text = {
             Column {
                 sims.forEach { sub ->
                     val carrier = sub.carrierName?.toString()?.ifBlank { null }
                     val label =
-                        if (carrier != null) "$carrier · SIM ${sub.simSlotIndex + 1}" else "SIM ${sub.simSlotIndex + 1}"
+                        if (carrier != null) String.format("%s · SIM %s", carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { selected = sub.subscriptionId }
@@ -1934,10 +1964,10 @@ private fun SimPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSelect(selected) }) { Text("Retry") }
+            TextButton(onClick = { onSelect(selected) }) { Text(stringResource(R.string.chat_retry)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
         }
     )
 }
@@ -1954,13 +1984,13 @@ private fun ForwardPicker(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Forward to") },
+        title = { Text(stringResource(R.string.chat_forward_to)) },
         text = {
             Column {
                 TextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Search contacts") },
+                    placeholder = { Text(stringResource(R.string.chat_search_contacts)) },
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -1983,7 +2013,13 @@ private fun ForwardPicker(
                             PersonAvatar(contact.number, size = 36.dp)
                             Spacer(Modifier.width(12.dp))
                             Column {
-                                Text(contact.name, fontWeight = FontWeight.Medium)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(contact.name, fontWeight = FontWeight.Medium)
+                                    if (contact.workProfile) {
+                                        Spacer(Modifier.width(6.dp))
+                                        WorkProfileBadge()
+                                    }
+                                }
                                 Text(
                                     contact.number,
                                     style = MaterialTheme.typography.bodySmall,
@@ -1997,7 +2033,7 @@ private fun ForwardPicker(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
         }
     )
 }

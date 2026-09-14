@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared action labels -->
+    <string name="common_cancel">إلغاء</string>
+    <string name="common_ok">موافق</string>
+    <string name="common_delete">حذف</string>
+    <string name="common_open">فتح</string>
+    <string name="common_close">إغلاق</string>
+    <string name="common_next">التالي</string>
+
+    <!-- Time formatting -->
+    <string name="time_now">الآن</string>
+    <string name="time_today">اليوم</string>
+    <string name="time_minutes">%s دقيقة</string>
+    <string name="time_format_hour">h:mm a</string>
+    <string name="time_format_date">MMM d</string>
+    <string name="time_format_divider">EEE, MMM d</string>
+
+    <!-- Contacts -->
+    <string name="contact_work_profile">جهة اتصال من ملف العمل</string>
+
+    <!-- Accessibility -->
+    <string name="access_restore">استعادة</string>
+    <string name="access_delete_forever">حذف نهائيًا</string>
+    <string name="access_delete">حذف</string>
+    <string name="access_archive">أرشفة</string>
+    <string name="access_pinned">مثبّت</string>
+    <string name="access_start_chat">بدء محادثة</string>
+    <string name="access_loading_messages">جارٍ تحميل الرسائل</string>
+    <string name="access_photo">صورة</string>
+    <string name="action_call">اتصال</string>
+    <string name="action_add">إضافة</string>
+    <string name="access_chat_top_bar">الشريط العلوي للمحادثة</string>
+    <string name="access_swipe_background">خلفية التمرير</string>
+    <string name="access_nav">درج التنقل</string>
+    <!-- Icon content descriptions -->
+    <string name="icon_back">رجوع</string>
+    <string name="icon_cancel_selection">إلغاء التحديد</string>
+    <string name="icon_copy">نسخ</string>
+    <string name="icon_delete">حذف</string>
+    <string name="icon_more_options">المزيد من الخيارات</string>
+    <string name="icon_call">اتصال</string>
+    <string name="icon_attach">إرفاق</string>
+    <string name="icon_emoji">رمز تعبيري</string>
+    <string name="icon_send">إرسال</string>
+    <string name="icon_close_search">إغلاق البحث</string>
+    <string name="icon_back_to_inbox">العودة إلى صندوق الوارد</string>
+    <string name="icon_search">البحث</string>
+    <string name="icon_cancel">إلغاء</string>
+    <!-- Message statuses -->
+    <string name="status_delivered">تم التسليم</string>
+    <string name="status_sending">جارٍ الإرسال...</string>
+    <string name="status_sms">SMS</string>
+    <!-- Sheet actions -->
+    <string name="sheet_unarchive">إلغاء الأرشفة</string>
+    <string name="sheet_unpin">إلغاء التثبيت</string>
+    <string name="sheet_pin">تثبيت</string>
+    <string name="sheet_archive">أرشفة</string>
+    <string name="sheet_delete">حذف</string>
+    <string name="sheet_block">حظر</string>
+    <!-- Detail row labels -->
+    <string name="detail_phone_number">رقم الهاتف</string>
+    <string name="detail_messages">الرسائل</string>
+</resources>

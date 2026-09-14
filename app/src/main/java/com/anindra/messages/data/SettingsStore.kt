@@ -40,6 +40,8 @@ class SettingsStore(context: Context) {
         const val KEY_PRIVACY_MODE = "privacy_mode"
         const val KEY_APP_LOCK = "app_lock_enabled"
         const val KEY_FIRST_IMPORT_DONE = "first_import_done"
+        const val KEY_PARTICIPANTS_MIGRATED = "participants_migrated"
+        const val KEY_PHONE_REGION = "phone_region"
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
         const val KEY_NOTIFICATION_SOUND = "notification_sound"
@@ -82,6 +84,14 @@ class SettingsStore(context: Context) {
     var firstImportDone: Boolean
         get() = prefs.getBoolean(KEY_FIRST_IMPORT_DONE, false)
         set(v) { prefs.edit().putBoolean(KEY_FIRST_IMPORT_DONE, v).apply(); _revision.value++ }
+
+    var participantsMigrated: Boolean
+        get() = prefs.getBoolean(KEY_PARTICIPANTS_MIGRATED, false)
+        set(v) { prefs.edit().putBoolean(KEY_PARTICIPANTS_MIGRATED, v).apply() }
+
+    var phoneRegion: String
+        get() = prefs.getString(KEY_PHONE_REGION, "") ?: ""
+        set(v) { prefs.edit().putString(KEY_PHONE_REGION, v).apply() }
 
     var pinnedEnabled: Boolean
         get() = prefs.getBoolean(KEY_PINNED_ENABLED, true)

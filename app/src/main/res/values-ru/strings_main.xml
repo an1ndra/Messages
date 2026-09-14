@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Messages</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">Аутентификация для доступа к сообщениям</string>
+    <string name="lock_unlock_title">Разблокировать Messages</string>
+    <string name="lock_auth_subtitle">Аутентификация для просмотра сообщений</string>
+    <string name="lock_got_it">Понятно</string>
+    <string name="lock_not_now">Не сейчас</string>
+    <string name="lock_off">Блокировка приложения отключена</string>
+    <string name="lock_setup_needed">Сначала настройте блокировку экрана (отпечаток, лицо или PIN) на устройстве</string>
+    <string name="lock_turn_on">Настроить блокировку экрана</string>
+    <string name="lock_turn_on_hint">Настройте одну из них, чтобы снова включить блокировку приложения.</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">Сделать приложением SMS по умолчанию?</string>
+    <string name="default_sms_message">Для отправки и получения сообщений Messages должен быть вашим основным приложением для SMS.</string>
+    <string name="default_sms_set">Сделать основным</string>
+    <string name="default_sms_not_now">Не сейчас</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">Уведомления отключены — вы не будете получать оповещения о новых сообщениях</string>
+
+    <string name="messages_footer">Messages 1.0 — офлайн SMS</string>
+    <string name="settings_light_mode">Светлая</string>
+    <string name="settings_dark_mode">Тёмная</string>
+    <string name="system_default">Системные</string>
+    <string name="settings_backup_restored">Резервная копия восстановлена. Перезапустите приложение для применения.</string>
+    <string name="settings_saving">Сохранение…</string>
+    <string name="settings_backup_saving">Защита PIN, сохранение в Documents/Messages</string>
+    <string name="settings_link_tap_info">Нажмите на ссылки в сообщениях, чтобы открыть веб-сайт</string>
+    <string name="settings_choose_delay">Выберите время ожидания перед отправкой:</string>
+    <string name="settings_backup_apply">Как применить эту резервную копию к текущим сообщениям?</string>
+    <string name="settings_backup_pin_protection">Ваша резервная копия защищена этим PIN-кодом. Он потребуется для восстановления — даже после переустановки приложения или на новом телефоне.</string>
+    <string name="settings_pin_dialog_set">Установить PIN для резервной копии</string>
+    <string name="settings_pin_dialog_enter">Введите PIN резервной копии</string>
+    <string name="settings_pin_error_too_short">PIN-код должен содержать не менее 4 цифр</string>
+    <string name="settings_pin_error_mismatch">PIN-коды не совпадают</string>
+    <string name="settings_sound_arrival">Звук при поступлении сообщения</string>
+    <string name="convo_moved_to_trash">Переписка перемещена в корзину</string>
+    <string name="convo_archived">Переписка отправлена в архив</string>
+    <string name="action_undo">Отменить</string>
+    <string name="lock_error_no_screen_lock">Блокировку приложения нельзя использовать, так как на устройстве не настроена блокировка экрана (отпечаток, лицо или PIN) для проверки личности.</string>
+    <string name="sim_default">Основная</string>
+    <string name="time_yesterday">Вчера</string>
+    <string name="link_warning_confirm">Подтверждать открытие внешних ссылок</string>
+    <string name="notification_channel_title">Messages</string>
+    <string name="notification_channel_desc">Уведомления о новых сообщениях</string>
+    <string name="notif_title_private">Новое сообщение</string>
+    <string name="notif_body_private">У вас новое сообщение</string>
+    <string name="notif_send_fail_private">Не удалось отправить сообщение. Нажмите для повтора.</string>
+    <string name="notif_send_fail">Не удалось отправить сообщение адресату %s. Нажмите для повтора.</string>
+    <string name="notif_not_delivered">Сообщение не доставлено</string>
+</resources>

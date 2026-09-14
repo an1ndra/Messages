@@ -356,10 +356,12 @@ Messages/
 │   │   │       └── theme/Theme.kt         # Material 3 color system
 │   │   └── res/                           # Resources
 │   └── build.gradle.kts                   # App dependencies
-├── scripts/                               # Test automation
+├── scripts/                               # Test automation (git submodule
+│                                          #   git@github.com:an1ndra/Messages-scripts.git;
+│                                          #   git submodule update --init scripts;
+│                                          #   agent rules + task tracking live
+│                                          #   in scripts/AGENTS.md, scripts/TODO.md)
 ├── screenshots/                           # App screenshots
-├── AGENTS.md                             # AI agent instructions
-├── TODO.md                               # Task tracking
 └── README.md                             # Project overview
 ```
 
@@ -469,7 +471,7 @@ Without the keystore/env vars, `assembleRelease` produces an unsigned APK
 2. Add data model in `data/Models.kt` if needed
 3. Add database column/migration in `data/Repository.kt`
 4. Add UI in `ui/` directory
-5. Update `TODO.md` with completion status
+5. Track completion in `scripts/TODO.md` (scripts submodule)
 6. Create test script in `scripts/`
 7. Build and test: `./gradlew assembleDebug`
 
@@ -480,7 +482,7 @@ When modifying the database:
 1. Increment version in `Repository.kt` (currently v14)
 2. Add migration in `onUpgrade()` (incremental per-version ALTER/CREATE/INDEX)
 3. Test with existing data (don't clear app data)
-4. Update `TODO.md` with migration notes
+4. Update `scripts/TODO.md` with migration notes (scripts submodule)
 
 ### UI Changes
 
