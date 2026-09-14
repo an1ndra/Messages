@@ -5,7 +5,6 @@ import android.app.Application
 import android.content.pm.PackageManager
 import com.anindra.messages.data.PhoneNumberUtils
 import com.anindra.messages.data.Repository
-import com.anindra.messages.sms.ForegroundTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,7 +17,6 @@ class MessagesApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         PhoneNumberUtils.init(this)
-        ForegroundTracker.init(this)
         repository = Repository(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             repository.migrateParticipants()
@@ -28,11 +26,5 @@ class MessagesApplication : Application() {
                 repository.syncFromSystem()
             }
         }
-    }
-
-    override fun onTerminate() {
-        super.onTerminate()
-        ForegroundTracker.setAppForeground(false)
-        ForegroundTracker.setOpenConversation(null)
     }
 }
