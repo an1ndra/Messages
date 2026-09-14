@@ -191,6 +191,20 @@ object NotificationHelper {
         ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
             .addRemoteInput(remoteInput).build()
 
+        val markReadIntent = PendingIntent.getBroadcast(
+            context, reqCode + 1000,
+            Intent(context, MarkReadReceiver::class.java).apply {
+                action = MarkReadReceiver.ACTION_MARK_READ
+                setPackage(context.packageName)
+                putExtra(MarkReadReceiver.EXTRA_ADDRESS, from)
+                putExtra(MarkReadReceiver.EXTRA_NOTIF_ID, notifId)
+            },
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val markReadAction = NotificationCompat.Action.Builder(
+            0, "Mark as read", markReadIntent
+        ).build()
+
         val senderName = app.repository.contactNameFor(from) ?: from
         val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
@@ -214,6 +228,7 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setContentIntent(tap)
             .addAction(replyAction)
+            .addAction(markReadAction)
         notify(context, notifId, builder.build())
     }
 
