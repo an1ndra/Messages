@@ -13,6 +13,7 @@ import android.text.SpannableStringBuilder
 import android.text.style.URLSpan
 import android.text.util.Linkify
 import androidx.activity.compose.BackHandler
+import androidx.core.app.NotificationManagerCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -621,6 +622,8 @@ fun ChatScreen(
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)
+        // Dismiss all app notifications when user opens a chat
+        NotificationManagerCompat.from(context).cancelAll()
         draftLoaded = false
     }
     LaunchedEffect(convo?.address) {
