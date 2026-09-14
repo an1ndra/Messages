@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">メッセージ</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">認証してメッセージにアクセス</string>
+    <string name="lock_unlock_title">メッセージのロック解除</string>
+    <string name="lock_auth_subtitle">認証してメッセージを表示</string>
+    <string name="lock_got_it">了解</string>
+    <string name="lock_not_now">後で</string>
+    <string name="lock_off">アプリロックはオフです</string>
+    <string name="lock_setup_needed">まずデバイスに画面ロック（指紋、顔、PIN）を設定してください</string>
+    <string name="lock_turn_on">画面ロックを設定</string>
+    <string name="lock_turn_on_hint">アプリロックを再度オンにするには、まず設定してください。</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">デフォルトのSMSアプリに設定しますか？</string>
+    <string name="default_sms_message">メッセージの送受信には、メッセージをデフォルトのSMSアプリに設定する必要があります。</string>
+    <string name="default_sms_set">デフォルトに設定</string>
+    <string name="default_sms_not_now">後で</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">通知が無効です - 新しいメッセージの通知を受け取れません</string>
+
+    <string name="messages_footer">メッセージ 1.0 - オフラインSMS</string>
+    <string name="settings_light_mode">ライト</string>
+    <string name="settings_dark_mode">ダーク</string>
+    <string name="system_default">システム規定値</string>
+    <string name="settings_backup_restored">バックアップを復元しました。適用するにはアプリを再起動してください。</string>
+    <string name="settings_saving">保存中...</string>
+    <string name="settings_backup_saving">PINで保護して Documents/Messages に保存</string>
+    <string name="settings_link_tap_info">メッセージ内のリンクをタップしてウェブサイトを開く</string>
+    <string name="settings_choose_delay">送信するまでの待ち時間を選択:</string>
+    <string name="settings_backup_apply">このバックアップを現在のメッセージにどう適用しますか？</string>
+    <string name="settings_backup_pin_protection">バックアップはこのPINで保護されています。アプリの再インストールや新しい phoneでも復元するために必要です。</string>
+    <string name="settings_pin_dialog_set">バックアップPINを設定</string>
+    <string name="settings_pin_dialog_enter">バックアップPINを入力</string>
+    <string name="settings_pin_error_too_short">PINは4桁以上である必要があります</string>
+    <string name="settings_pin_error_mismatch">PINが一致しません</string>
+    <string name="settings_sound_arrival">メッセージ受信時に再生されるサウンド</string>
+    <string name="convo_moved_to_trash">会話がゴミ箱に移動されました</string>
+    <string name="convo_archived">会話がアーカイブされました</string>
+    <string name="action_undo">元に戻す</string>
+    <string name="lock_error_no_screen_lock">デバイスに画面ロック（指紋、顔、PIN）がないため、アプリロックを使用できません。</string>
+    <string name="sim_default">既定</string>
+    <string name="time_yesterday">昨日</string>
+    <string name="link_warning_confirm">外部リンクを開く前に確認する</string>
+    <string name="notification_channel_title">メッセージ</string>
+    <string name="notification_channel_desc">新しいメッセージの通知</string>
+    <string name="notif_title_private">新しいメッセージ</string>
+    <string name="notif_body_private">新しいメッセージがあります</string>
+    <string name="notif_send_fail_private">メッセージを送信できませんでした。タップして再試行。</string>
+    <string name="notif_send_fail">%s にメッセージを送信できませんでした。タップして再試行。</string>
+    <string name="notif_not_delivered">メッセージが配信されませんでした</string>
+</resources>

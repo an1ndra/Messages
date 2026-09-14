@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Messages</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">Authentifizieren, um auf Ihre Nachrichten zuzugreifen</string>
+    <string name="lock_unlock_title">Messages entsperren</string>
+    <string name="lock_auth_subtitle">Authentifizieren, um diese Nachrichten anzuzeigen</string>
+    <string name="lock_got_it">Verstanden</string>
+    <string name="lock_not_now">Nicht jetzt</string>
+    <string name="lock_off">App-Sperre ist deaktiviert</string>
+    <string name="lock_setup_needed">Richten Sie zuerst einen Bildschirmsperre (Fingerabdruck, Gesicht oder PIN) auf Ihrem Gerät ein</string>
+    <string name="lock_turn_on">Bildschirmsperre einrichten</string>
+    <string name="lock_turn_on_hint">Richten Sie eine ein, um die App-Sperre wieder zu aktivieren.</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">Als Standard-SMS-App festlegen?</string>
+    <string name="default_sms_message">Um Nachrichten zu senden und zu empfangen, muss Messages Ihre Standard-SMS-App sein.</string>
+    <string name="default_sms_set">Als Standard festlegen</string>
+    <string name="default_sms_not_now">Nicht jetzt</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">Benachrichtigungen deaktiviert — Sie werden nicht über neue Nachrichten informiert</string>
+
+    <string name="messages_footer">Messages 1.0 - Offline-SMS</string>
+    <string name="settings_light_mode">Hell</string>
+    <string name="settings_dark_mode">Dunkel</string>
+    <string name="system_default">Systemstandard</string>
+    <string name="settings_backup_restored">Sicherung wiederhergestellt. App neu starten, um Änderungen zu übernehmen.</string>
+    <string name="settings_saving">Speichern…</string>
+    <string name="settings_backup_saving">PIN-geschützter Speichern in Dokumente/Messages</string>
+    <string name="settings_link_tap_info">Tippen Sie auf Links in Nachrichten, um die Website zu öffnen</string>
+    <string name="settings_choose_delay">Wählen Sie, wie lange gewartet werden soll, bevor die Nachricht gesendet wird:</string>
+    <string name="settings_backup_apply">Wie soll diese Sicherung auf Ihre aktuellen Nachrichten angewendet werden?</string>
+    <string name="settings_backup_pin_protection">Ihre Sicherung ist durch diese PIN geschützt. Sie benötigen sie zur Wiederherstellung — auch nach einer Neuinstallation der App oder auf einem neuen Telefon.</string>
+    <string name="settings_pin_dialog_set">Sicherungs-PIN festlegen</string>
+    <string name="settings_pin_dialog_enter">Sicherungs-PIN eingeben</string>
+    <string name="settings_pin_error_too_short">PIN muss mindestens 4 Ziffern haben</string>
+    <string name="settings_pin_error_mismatch">PINs stimmen nicht überein</string>
+    <string name="settings_sound_arrival">Ton bei eingegangenen Nachrichten</string>
+    <string name="convo_moved_to_trash">Unterhaltung in Papierkorb verschoben</string>
+    <string name="convo_archived">Unterhaltung archiviert</string>
+    <string name="action_undo">Rückgängig</string>
+    <string name="lock_error_no_screen_lock">Die App-Sperre kann nicht verwendet werden, da dieses Gerät über keine Bildschirmsperre (Fingerabdruck, Gesicht oder PIN) verfügt, um Ihre Identität zu überprüfen.</string>
+    <string name="sim_default">Standard</string>
+    <string name="time_yesterday">Gestern</string>
+    <string name="link_warning_confirm">Bestätigen vor dem Öffnen externer Links</string>
+    <string name="notification_channel_title">Messages</string>
+    <string name="notification_channel_desc">Benachrichtigungen für neue Nachrichten</string>
+    <string name="notif_title_private">Neue Nachricht</string>
+    <string name="notif_body_private">Sie haben eine neue Nachricht</string>
+    <string name="notif_send_fail_private">Nachricht konnte nicht gesendet werden. Tippen zum wiederholen.</string>
+    <string name="notif_send_fail">Nachricht an %s konnte nicht gesendet werden. Tippen zum wiederholen.</string>
+    <string name="notif_not_delivered">Nachricht nicht zugestellt</string>
+</resources>

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name_placeholder">placeholder</string>
+    <string name="translation_help">Translations are community-powered and may contain errors. If you find any inaccurate or missing translations, please open a new GitHub issue at github.com/an1ndra/Messages to help us improve.</string>
     <!-- App strings split into separate feature files for easier translation:
          - strings_main.xml: app name, lock, permissions
          - strings_conversations.xml: conversation list, new chat

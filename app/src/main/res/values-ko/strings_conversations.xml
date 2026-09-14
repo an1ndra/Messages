@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">대화 검색</string>
+    <string name="conversations_retry_loading">다시 시도</string>
+    <string name="conversations_allow_access">접근 허용</string>
+    <string name="conversations_open_settings">앱 설정 열기</string>
+    <string name="conversations_press_back_exit">뒤로 가기를 다시 누르면 종료됩니다</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">새 대화</string>
+    <string name="new_chat_hint">이름 또는 전화번호 입력</string>
+    <string name="new_chat_only_phone">전화번호로만 메시지 전송이 가능합니다</string>
+    <string name="new_chat_send_to">\"%s\"(으)로 보내기</string>
+    <string name="text_placeholder">문자 메시지</string>
+    <string name="conversations_archived">보관됨</string>
+    <string name="conversations_messages">메시지</string>
+    <string name="conversations_me">나</string>
+    <string name="conversations_allow_sms_access">SMS 접근 허용</string>
+    <string name="conversations_sms_permission">대화가 여기에 표시되도록 Messages에 SMS 읽기 권한이 필요합니다.</string>
+
+    <string name="convo_close_search">검색 닫기</string>
+    <string name="convo_back_to_inbox">받은 편지함으로 돌아가기</string>
+</resources>

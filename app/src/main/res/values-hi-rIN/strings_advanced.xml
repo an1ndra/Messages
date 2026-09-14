@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">उल्टा स्वाइप एक्शन</string>
+    <string name="settings_advanced_reverse_swipe_desc">संग्रहीत करने के लिए बाईं ओर स्वाइप करें और हटाने के लिए दाईं ओर स्वाइप करें</string>
+    <string name="settings_advanced_hide_links">संदेशों से लिंक छुपाएं</string>
+    <string name="settings_advanced_hide_links_desc">संदेशों में लिंक को कभी भी टैप करने योग्य लिंक में न बदलें</string>
+    <string name="settings_advanced_highlight_links">लिंक हाइलाइट करें</string>
+    <string name="settings_advanced_link_warning">लिंक खोलने की चेतावनी</string>
+    <string name="settings_advanced_permanent_delete">स्थायी हटाना</string>
+    <string name="settings_advanced_permanent_delete_desc">कूड़े में ले जाने के बजाय संदेशों को तुरंत हटाएं</string>
+    <string name="settings_advanced_turn_off">पहले "</string>
+    <string name="settings_advanced_turn_off_suffix">" बंद करें</string>
+    <string name="settings_advanced_permanent_delete_on">स्थायी हटाना चालू है। यह संवाद और इसके संदेश आपके डिवाइस से तुरंत हटा दिए जाएंगे — कूड़े में नहीं ले जाए जाएंगे — और बहाल नहीं किए जा सकते।</string>
+
+</resources>

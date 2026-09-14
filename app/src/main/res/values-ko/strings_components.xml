@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared action labels -->
+    <string name="common_cancel">취소</string>
+    <string name="common_ok">확인</string>
+    <string name="common_delete">삭제</string>
+    <string name="common_open">열기</string>
+    <string name="common_close">닫기</string>
+    <string name="common_next">다음</string>
+
+    <!-- Time formatting -->
+    <string name="time_now">지금</string>
+    <string name="time_today">오늘</string>
+    <string name="time_minutes">%s분</string>
+    <string name="time_format_hour">h:mm a</string>
+    <string name="time_format_date">MMM d</string>
+    <string name="time_format_divider">EEE, MMM d</string>
+
+    <!-- Contacts -->
+    <string name="contact_work_profile">업무 프로필 연락처</string>
+
+    <!-- Accessibility -->
+    <string name="access_restore">복원</string>
+    <string name="access_delete_forever">영구 삭제</string>
+    <string name="access_delete">삭제</string>
+    <string name="access_archive">보관</string>
+    <string name="access_pinned">고정됨</string>
+    <string name="access_start_chat">채팅 시작</string>
+    <string name="access_loading_messages">메시지 로딩 중</string>
+    <string name="access_photo">사진</string>
+    <string name="action_call">전화</string>
+    <string name="action_add">추가</string>
+    <string name="access_chat_top_bar">채팅 상단 바</string>
+    <string name="access_swipe_background">스와이프 배경</string>
+    <string name="access_nav">내비게이션 드로어</string>
+    <!-- Icon content descriptions -->
+    <string name="icon_back">뒤로</string>
+    <string name="icon_cancel_selection">선택 취소</string>
+    <string name="icon_copy">복사</string>
+    <string name="icon_delete">삭제</string>
+    <string name="icon_more_options">추가 옵션</string>
+    <string name="icon_call">전화</string>
+    <string name="icon_attach">첨부</string>
+    <string name="icon_emoji">이모지</string>
+    <string name="icon_send">보내기</string>
+    <string name="icon_close_search">검색 닫기</string>
+    <string name="icon_back_to_inbox">받은 편지함으로 돌아가기</string>
+    <string name="icon_search">검색</string>
+    <string name="icon_cancel">취소</string>
+    <!-- Message statuses -->
+    <string name="status_delivered">전달됨</string>
+    <string name="status_sending">전송 중...</string>
+    <string name="status_sms">SMS</string>
+    <!-- Sheet actions -->
+    <string name="sheet_unarchive">보관 해제</string>
+    <string name="sheet_unpin">고정 해제</string>
+    <string name="sheet_pin">고정</string>
+    <string name="sheet_archive">보관</string>
+    <string name="sheet_delete">삭제</string>
+    <string name="sheet_block">차단</string>
+    <!-- Detail row labels -->
+    <string name="detail_phone_number">전화번호</string>
+    <string name="detail_messages">메시지</string>
+</resources>

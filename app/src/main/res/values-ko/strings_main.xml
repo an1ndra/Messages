@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Messages</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">메시지에 액세스하려면 인증하세요</string>
+    <string name="lock_unlock_title">Messages 잠금 해제</string>
+    <string name="lock_auth_subtitle">인증하여 이 메시지들을 표시하세요</string>
+    <string name="lock_got_it">알겠습니다</string>
+    <string name="lock_not_now">나중에</string>
+    <string name="lock_off">앱 잠금이 꺼져 있습니다</string>
+    <string name="lock_setup_needed">먼저 기기에서 화면 잠금(지문, 얼굴 또는 PIN)을 설정하세요</string>
+    <string name="lock_turn_on">화면 잠금 설정</string>
+    <string name="lock_turn_on_hint">앱 잠금을 다시 켜려면 하나 설정하세요.</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">기본 SMS 앱으로 설정하시겠습니까?</string>
+    <string name="default_sms_message">메시지를 보내고 받으려면 Messages가 기본 SMS 앱이어야 합니다.</string>
+    <string name="default_sms_set">기본값 설정</string>
+    <string name="default_sms_not_now">나중에</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">알림이 비활성화되었습니다 - 새 메시지에 대해 알림이 표시되지 않습니다</string>
+
+    <string name="messages_footer">Messages 1.0 - 오프라인 SMS</string>
+    <string name="settings_light_mode">밝게</string>
+    <string name="settings_dark_mode">어둡게</string>
+    <string name="system_default">시스템 기본값</string>
+    <string name="settings_backup_restored">백업이 복원되었습니다. 적용하려면 앱을 다시 시작하세요.</string>
+    <string name="settings_saving">저장 중...</string>
+    <string name="settings_backup_saving">PIN으로 보호되어 Documents/Messages에 저장됨</string>
+    <string name="settings_link_tap_info">메시지에서 링크를 탭하여 웹사이트를 여세요</string>
+    <string name="settings_choose_delay">보내기 전 대기 시간을 선택하세요:</string>
+    <string name="settings_backup_apply">이 백업을 현재 메시지에 어떻게 적용할까요?</string>
+    <string name="settings_backup_pin_protection">백업은 이 PIN으로 보호됩니다. 앱을 재설치하거나 새로운 폰에서도 복원하려면 필요합니다.</string>
+    <string name="settings_pin_dialog_set">백업 PIN 설정</string>
+    <string name="settings_pin_dialog_enter">백업 PIN 입력</string>
+    <string name="settings_pin_error_too_short">PIN은 최소 4자리여야 합니다</string>
+    <string name="settings_pin_error_mismatch">PIN이 일치하지 않습니다</string>
+    <string name="settings_sound_arrival">메시지 수신 시 재생되는 소리</string>
+    <string name="convo_moved_to_trash">대화가 휴지통으로 이동되었습니다</string>
+    <string name="convo_archived">대화 보관됨</string>
+    <string name="action_undo">실행 취소</string>
+    <string name="lock_error_no_screen_lock">이 기기에 화면 잠금(지문, 얼굴 또는 PIN)이 없으므로 앱 잠금을 사용할 수 없습니다.</string>
+    <string name="sim_default">기본</string>
+    <string name="time_yesterday">어제</string>
+    <string name="link_warning_confirm">외부 링크 열기 전에 확인</string>
+    <string name="notification_channel_title">메시지</string>
+    <string name="notification_channel_desc">새 메시지 알림</string>
+    <string name="notif_title_private">새 메시지</string>
+    <string name="notif_body_private">새 메시지가 도착했습니다</string>
+    <string name="notif_send_fail_private">메시지를 보낼 수 없습니다. 다시 시도하려면 탭하세요.</string>
+    <string name="notif_send_fail">%s(으)로 메시지를 보낼 수 없습니다. 다시 시도하려면 탭하세요.</string>
+    <string name="notif_not_delivered">메시지가 전달되지 않았습니다</string>
+</resources>
