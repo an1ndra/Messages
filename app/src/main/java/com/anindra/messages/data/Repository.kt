@@ -770,16 +770,16 @@ class Repository(private val context: Context) {
      *  non-deleted messages and no draft worth keeping. Otherwise a no-op, so it
      *  is safe to call on every exit from a chat. */
     fun trashConversationIfEmptySuspend(conversationId: Long) {
-        var remaining = 0
-        var draft = ""
-        db.readableDatabase.rawQuery(
+        // Return the two values from the query lambda instead of capturing
+        // mutable locals: the capture hides the assignment from static analysis
+        // (CodeQL saw `remaining` as always 0 -> java/constant-comparison).
+        val (remaining, draft) = db.readableDatabase.rawQuery(
             """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0), draft
                FROM conversations WHERE id=? AND deleted_at=0""",
             arrayOf(conversationId.toString(), conversationId.toString())
         ).use { c ->
             if (!c.moveToFirst()) return
-            remaining = c.getInt(0)
-            draft = c.getString(1) ?: ""
+            c.getInt(0) to (c.getString(1) ?: "")
         }
         // A draft only keeps the chat around while drafts are actually surfaced;
         // a leftover column value from when the feature was on must not.
