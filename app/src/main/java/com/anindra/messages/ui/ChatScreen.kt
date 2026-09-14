@@ -1425,7 +1425,6 @@ private fun rememberLinkedText(
     onLinkClick: (String) -> Unit = {},
     textColor: Color = MaterialTheme.colorScheme.onSurface
 ): AnnotatedString {
-    val otpColor = if (highlight) textColor.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
     val linkColor = if (highlight) textColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
     val context = LocalContext.current
     // produceState remembers its value WITHOUT keys, so an async redaction would
@@ -1437,11 +1436,11 @@ private fun rememberLinkedText(
         return remember(body) {
             val stripped = hideUrls(body)
             val builder = AnnotatedString.Builder(stripped)
-            applyOtpStyles(builder, stripped, textColor, otpColor)
+            applyOtpStyles(builder, stripped, linkColor)
             builder.toAnnotatedString()
         }
     }
-    return produceState(AnnotatedString(body), body, highlight, textColor, otpColor) {
+    return produceState(AnnotatedString(body), body, highlight, textColor, linkColor) {
         value = withContext(Dispatchers.Default) {
             val builder = AnnotatedString.Builder(body)
             val urlRanges = if (highlight) {
@@ -1466,7 +1465,7 @@ private fun rememberLinkedText(
                 }
                 ranges
             } else emptyList()
-            applyOtpStyles(builder, body, textColor, otpColor, urlRanges)
+            applyOtpStyles(builder, body, linkColor, urlRanges)
             builder.toAnnotatedString()
         }
     }.value
@@ -1475,15 +1474,19 @@ private fun rememberLinkedText(
 private fun applyOtpStyles(
     builder: AnnotatedString.Builder,
     body: String,
-    textColor: Color,
-    otpColor: Color,
+    linkColor: Color,
     exclude: List<Pair<Int, Int>> = emptyList()
 ) {
     OtpDetector.findRanges(body)
         .filter { r -> exclude.none { s -> r.first >= s.first && r.last + 1 <= s.second } }
         .forEach { r ->
             builder.addStyle(
-                SpanStyle(color = otpColor, fontWeight = FontWeight.Bold),
+                SpanStyle(color = linkColor),
+                r.first,
+                r.last + 1
+            )
+            builder.addStyle(
+                SpanStyle(textDecoration = TextDecoration.Underline),
                 r.first,
                 r.last + 1
             )
