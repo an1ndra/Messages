@@ -40,6 +40,7 @@ object MessageLockCrypto {
                 KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
             )
         } else {
+            // Still the correct call on Android 10 (per-use biometric auth).
             @Suppress("DEPRECATION")
             builder.setUserAuthenticationValidityDurationSeconds(-1)
         }
