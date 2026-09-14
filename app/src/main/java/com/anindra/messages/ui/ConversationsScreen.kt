@@ -120,7 +120,7 @@ fun ConversationsScreen(
     val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
     val contacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
     val workNums = remember(contacts) {
-        contacts.filter { it.workProfile }.map { it.number.filter { c -> c.isDigit() } }.toSet()
+        contacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
     }
     // Recreated on empty→loaded so the list opens at the top (no restored offset, no anchor jump).
     val listState = remember(conversations.isNotEmpty()) { LazyListState(0, 0) }
@@ -460,7 +460,7 @@ fun ConversationsScreen(
                                 settings = rowSettings,
                                 swipeEnabled = rowSettings.swipeEnabled && !showArchived,
                                 convo = convo,
-                                workProfile = workNums.contains(convo.address.filter { it.isDigit() }),
+                                workProfile = workNums.contains(phoneKey(convo.address)),
                                 showArchived = showArchived,
                                 onClick = { onOpenConversation(convo.id) },
                                 onDelete = { moveToTrash(convo) },
@@ -489,7 +489,7 @@ fun ConversationsScreen(
                     .padding(bottom = 32.dp)
             ) {
                 Text(
-                    text = if (sheetConvo.name == sheetConvo.address) formatPhoneNumber(sheetConvo.name) else sheetConvo.name,
+                    text = if (sheetConvo.name == sheetConvo.address) sheetConvo.display else sheetConvo.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -737,7 +737,7 @@ private fun ConversationRow(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (convo.name == convo.address) formatPhoneNumber(convo.name) else convo.name,
+                        text = if (convo.name == convo.address) convo.display else convo.name,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,

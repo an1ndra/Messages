@@ -212,7 +212,7 @@ private fun TrashRow(
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = convo.name.ifBlank { convo.address },
+                    text = convo.name.ifBlank { convo.display },
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

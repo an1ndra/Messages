@@ -25,7 +25,7 @@ private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
 enum class ImportMode { REPLACE, MERGE }
 
-private const val DB_VERSION = 14
+private const val DB_VERSION = 15
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -91,6 +91,16 @@ class Db(context: Context) :
             """CREATE TABLE conversation_notifications(
                 conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
                 notifications_enabled INTEGER NOT NULL DEFAULT 1)"""
+        )
+        db.execSQL(
+            """CREATE TABLE participants(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                normalized_destination TEXT NOT NULL UNIQUE,
+                send_destination TEXT NOT NULL,
+                display_destination TEXT NOT NULL,
+                comparable_destination TEXT NOT NULL,
+                country_code TEXT NOT NULL DEFAULT '',
+                sub_id INTEGER NOT NULL DEFAULT -1)"""
         )
     }
 
@@ -159,6 +169,18 @@ class Db(context: Context) :
         }
         if (oldVersion < 14) {
             db.execSQL("ALTER TABLE messages ADD COLUMN deleted_at INTEGER NOT NULL DEFAULT 0")
+        }
+        if (oldVersion < 15) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS participants(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    normalized_destination TEXT NOT NULL UNIQUE,
+                    send_destination TEXT NOT NULL,
+                    display_destination TEXT NOT NULL,
+                    comparable_destination TEXT NOT NULL,
+                    country_code TEXT NOT NULL DEFAULT '',
+                    sub_id INTEGER NOT NULL DEFAULT -1)"""
+            )
         }
     }
 
@@ -297,8 +319,12 @@ class Repository(private val context: Context) {
     fun conversations(): Flow<List<Conversation>> = observe {
         val out = mutableListOf<Conversation>()
         db.readableDatabase.rawQuery(
-            """SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date,deleted_at
-               FROM conversations WHERE deleted_at=0 ORDER BY pinned DESC, timestamp DESC""",
+            """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
+               c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
+               COALESCE(p.display_destination, c.address)
+               FROM conversations c
+               LEFT JOIN participants p ON p.normalized_destination = c.address
+               WHERE c.deleted_at=0 ORDER BY c.pinned DESC, c.timestamp DESC""",
             null
         ).use { c ->
             while (c.moveToNext()) {
@@ -315,7 +341,8 @@ class Repository(private val context: Context) {
                         pinned = c.getInt(8) == 1,
                         draft = c.getString(9),
                         draftDate = c.getLong(10),
-                        deletedAt = c.getLong(11)
+                        deletedAt = c.getLong(11),
+                        display = c.getString(12)
                     )
                 )
             }
@@ -326,8 +353,12 @@ class Repository(private val context: Context) {
     fun conversationByIdFlow(id: Long): Flow<Conversation?> = observe {
         var out: Conversation? = null
         db.readableDatabase.rawQuery(
-            """SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date,deleted_at
-               FROM conversations WHERE id=? AND deleted_at=0""",
+            """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
+               c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
+               COALESCE(p.display_destination, c.address)
+               FROM conversations c
+               LEFT JOIN participants p ON p.normalized_destination = c.address
+               WHERE c.id=? AND c.deleted_at=0""",
             arrayOf(id.toString())
         ).use { c ->
             if (c.moveToFirst()) {
@@ -343,7 +374,8 @@ class Repository(private val context: Context) {
                     pinned = c.getInt(8) == 1,
                     draft = c.getString(9),
                     draftDate = c.getLong(10),
-                    deletedAt = c.getLong(11)
+                    deletedAt = c.getLong(11),
+                    display = c.getString(12)
                 )
             }
         }
@@ -353,8 +385,12 @@ class Repository(private val context: Context) {
     fun trashedConversations(): Flow<List<Conversation>> = observe {
         val out = mutableListOf<Conversation>()
         db.readableDatabase.rawQuery(
-            """SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date,deleted_at
-               FROM conversations WHERE deleted_at>0 ORDER BY deleted_at DESC""",
+            """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
+               c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
+               COALESCE(p.display_destination, c.address)
+               FROM conversations c
+               LEFT JOIN participants p ON p.normalized_destination = c.address
+               WHERE c.deleted_at>0 ORDER BY c.deleted_at DESC""",
             null
         ).use { c ->
             while (c.moveToNext()) {
@@ -371,7 +407,8 @@ class Repository(private val context: Context) {
                         pinned = c.getInt(8) == 1,
                         draft = c.getString(9),
                         draftDate = c.getLong(10),
-                        deletedAt = c.getLong(11)
+                        deletedAt = c.getLong(11),
+                        display = c.getString(12)
                     )
                 )
             }
@@ -464,23 +501,53 @@ class Repository(private val context: Context) {
     private fun findConversationForAddress(address: String): Long? =
         matchConversationId(db.readableDatabase, address)
 
+    /** Canonical identity for same-person checks: E.164 when the address is a
+     *  valid phone number, else its bare digits ("" for alphanumeric IDs). */
+    private fun canonical(address: String): String =
+        PhoneNumberUtils.toE164(address, PhoneNumberUtils.region()) ?: address.filter { it.isDigit() }
+
+    /** Inserts/refreshes the participant row (display form, country, SIM) for a
+     *  canonical address. No-op for non-phone addresses (alphanumeric senders). */
+    private fun upsertParticipant(database: SQLiteDatabase, address: String, subId: Int = -1) {
+        if (!PhoneNumberUtils.isLikelyPhoneNumber(address)) return
+        val region = PhoneNumberUtils.region()
+        val e164 = PhoneNumberUtils.toE164(address, region) ?: return
+        database.execSQL(
+            """INSERT INTO participants(
+                  normalized_destination,send_destination,display_destination,
+                  comparable_destination,country_code,sub_id)
+               VALUES(?,?,?,?,?,?)
+               ON CONFLICT(normalized_destination) DO UPDATE SET
+                  send_destination=excluded.send_destination,
+                  display_destination=excluded.display_destination,
+                  country_code=excluded.country_code,
+                  sub_id=excluded.sub_id""",
+            arrayOf<Any>(e164, e164, PhoneNumberUtils.displayFor(e164, region),
+                e164.lowercase(), PhoneNumberUtils.regionFor(e164), subId)
+        )
+    }
+
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =
         getOrCreateConversationBlocking(address, displayName)
 
-    fun getOrCreateConversationBlocking(address: String, displayName: String? = null): Long = runOnIo {
+    fun getOrCreateConversationBlocking(address: String, displayName: String? = null, subId: Int = -1): Long = runOnIo {
+        // Store one canonical spelling per person: every incoming spelling
+        // (E.164, national, formatted) maps to the same conversation row.
+        val target = canonical(address).ifEmpty { address }
         var convoId = -1L
         db.writableDatabase.rawQuery(
             "SELECT id FROM conversations WHERE address=?",
-            arrayOf(address)
+            arrayOf(target)
         ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
-        if (convoId == -1L) convoId = findConversationForAddress(address) ?: -1L
+        if (convoId == -1L) convoId = findConversationForAddress(target) ?: -1L
 
         if (convoId == -1L) {
             val cv = ContentValues().apply {
-                put("address", address)
-                put("name", displayName ?: contactNameFor(address) ?: address)
+                put("address", target)
+                put("name", displayName ?: contactNameFor(target) ?: target)
             }
             convoId = db.writableDatabase.insert("conversations", null, cv)
+            upsertParticipant(db.writableDatabase, target, subId)
             notifyChanged()
         }
         convoId
@@ -489,13 +556,18 @@ class Repository(private val context: Context) {
     suspend fun conversationByIdSuspend(id: Long): Conversation? = runOnIoAsync {
         var found: Conversation? = null
         db.readableDatabase.rawQuery(
-            "SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date FROM conversations WHERE id=? AND deleted_at=0",
+            """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
+               c.archived,c.pinned,c.draft,c.draft_date,
+               COALESCE(p.display_destination, c.address)
+               FROM conversations c
+               LEFT JOIN participants p ON p.normalized_destination = c.address
+               WHERE c.id=? AND c.deleted_at=0""",
             arrayOf(id.toString())
         ).use { c ->
             if (c.moveToFirst()) found = Conversation(
                 c.getLong(0), c.getString(1), c.getString(2), c.getString(3),
                 c.getLong(4), c.getInt(5), c.getInt(6) == 1, c.getInt(7) == 1,
-                c.getInt(8) == 1, c.getString(9), c.getLong(10)
+                c.getInt(8) == 1, c.getString(9), c.getLong(10), display = c.getString(11)
             )
         }
         found
@@ -547,7 +619,7 @@ class Repository(private val context: Context) {
      *  [subId] is the SIM subscription id for dual-SIM display. */
     fun receiveMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
-        val convoId = getOrCreateConversationBlocking(address)
+        val convoId = getOrCreateConversationBlocking(address, null, subId)
 
         db.writableDatabase.execSQL(
             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,sub_id)
@@ -804,8 +876,12 @@ class Repository(private val context: Context) {
     fun pinnedConversations(): Flow<List<Conversation>> = observe {
         val out = mutableListOf<Conversation>()
         db.readableDatabase.rawQuery(
-            """SELECT id,address,name,snippet,timestamp,unread_count,last_is_me,archived,pinned,draft,draft_date
-               FROM conversations WHERE pinned=1 ORDER BY timestamp DESC""",
+            """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
+               c.archived,c.pinned,c.draft,c.draft_date,
+               COALESCE(p.display_destination, c.address)
+               FROM conversations c
+               LEFT JOIN participants p ON p.normalized_destination = c.address
+               WHERE c.pinned=1 ORDER BY c.timestamp DESC""",
             null
         ).use { c ->
             while (c.moveToNext()) {
@@ -821,7 +897,8 @@ class Repository(private val context: Context) {
                         archived = c.getInt(7) == 1,
                         pinned = c.getInt(8) == 1,
                         draft = c.getString(9),
-                        draftDate = c.getLong(10)
+                        draftDate = c.getLong(10),
+                        display = c.getString(11)
                     )
                 )
             }
@@ -1087,6 +1164,7 @@ class Repository(private val context: Context) {
                 val merged = mergeDatabase(tempFile, onProgress)
                 tempFile.delete()
                 pushLocalMessagesToProvider()
+                reMigrateParticipants()
                 notifyChanged()
                 return ImportResult.Success(merged)
             }
@@ -1112,6 +1190,7 @@ class Repository(private val context: Context) {
                 db.writableDatabase.execSQL("UPDATE messages SET deleted_at=0")
                 // Mirror the restored history into the system SMS store.
                 pushLocalMessagesToProvider()
+                reMigrateParticipants()
                 // Clean up
                 tempFile.delete()
                 backupFile.delete()
@@ -1598,6 +1677,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             "SELECT id, address, deleted_at FROM conversations ORDER BY id", null
         ).use { c -> while (c.moveToNext()) convos.add(Triple(c.getLong(0), c.getString(1), c.getInt(2))) }
+        val canon = convos.map { canonical(it.second) }
         val primary = HashMap<Long, Long>()
         for (i in convos.indices) {
             val a = convos[i]
@@ -1606,7 +1686,10 @@ class Repository(private val context: Context) {
             for (j in 0 until i) {
                 val b = convos[j]
                 if (b.third != 0 || primary[b.first] != b.first) continue
-                if (samePerson(b.second, a.second)) { base = primary.getValue(b.first); break }
+                val ca = canon[i]
+                val same = samePerson(b.second, a.second) ||
+                    (ca.isNotEmpty() && ca == canon[j])
+                if (same) { base = primary.getValue(b.first); break }
             }
             primary[a.first] = base
         }
@@ -1656,6 +1739,145 @@ class Repository(private val context: Context) {
         }
         refreshConversationSnippets()
         notifyChanged()
+    }
+
+    @Volatile private var migrationStarted = false
+
+    /** One-shot (per install) migration to canonical E.164 addresses:
+     *  1. rewrites each phone-number conversation's address to its E.164 form,
+     *  2. folds conversations whose spellings normalize to the same person,
+     *  3. populates the participants table (display form, country, SIM),
+     *  4. renames fallback names that still hold the old raw address.
+     *  Re-runs its display pass when the device region changes (SIM/locale).
+     *  Safe to call repeatedly; actual work happens once. */
+    fun migrateParticipants() {
+        if (migrationStarted) return
+        migrationStarted = true
+        runOnIo { runParticipantMigration() }
+    }
+
+    /** Imports bring in fresh (possibly raw) conversations; force a re-scan.
+     *  Cheap in steady state: every address is already E.164, so the pass
+     *  reduces to idempotent participant upserts. */
+    fun reMigrateParticipants() {
+        settings.participantsMigrated = false
+        migrationStarted = true
+        runOnIo { runParticipantMigration() }
+    }
+
+    private fun runParticipantMigration() {
+        val region = PhoneNumberUtils.region()
+        val firstRun = !settings.participantsMigrated
+        val regionChanged = settings.phoneRegion.isNotBlank() && settings.phoneRegion != region
+
+        if (!firstRun && !regionChanged) { settings.phoneRegion = region; return }
+
+        if (regionChanged) {
+            db.readableDatabase.rawQuery(
+                "SELECT normalized_destination FROM participants", null
+            ).use { c ->
+                var updated = 0
+                while (c.moveToNext()) {
+                    val e164 = c.getString(0)
+                    db.writableDatabase.execSQL(
+                        "UPDATE participants SET display_destination=? WHERE normalized_destination=?",
+                        arrayOf(PhoneNumberUtils.displayFor(e164, region), e164)
+                    )
+                    updated++
+                }
+            }
+        }
+
+        if (firstRun) {
+            val convos = mutableListOf<Triple<Long, String, String>>()
+            db.readableDatabase.rawQuery(
+                "SELECT id, address, name FROM conversations", null
+            ).use { c ->
+                while (c.moveToNext()) {
+                    convos.add(Triple(c.getLong(0), c.getString(1), c.getString(2)))
+                }
+            }
+            // Group by canonical E.164; a group with >1 row means the same
+            // person split across address spellings (issue #183, generalized).
+            // Addresses that don't resolve to a number (alphanumeric IDs,
+            // ambiguous locals) are left untouched — samePerson still
+            // dedupes them at merge time.
+            val byE164 = LinkedHashMap<String, MutableList<Triple<Long, String, String>>>()
+            for (convo in convos) {
+                val e164 = PhoneNumberUtils.toE164(convo.second, region) ?: continue
+                byE164.getOrPut(e164) { mutableListOf() }.add(convo)
+            }
+
+            db.writableDatabase.beginTransaction()
+            try {
+                for ((e164, group) in byE164) {
+                    // Primary: an already-canonical row, else the lowest id.
+                    val primary = group.firstOrNull { it.second == e164 }
+                        ?: group.minByOrNull { it.first }!!
+                    for ((id, addr, name) in group) {
+                        if (id == primary.first) {
+                            if (addr != e164) {
+                                db.writableDatabase.execSQL(
+                                    """UPDATE conversations
+                                       SET address=?, name=CASE WHEN name=? THEN ? ELSE name END
+                                       WHERE id=?""",
+                                    arrayOf(e164, addr, e164, id.toString())
+                                )
+                            }
+                        } else {
+                            db.writableDatabase.execSQL(
+                                "UPDATE messages SET conversation_id=? WHERE conversation_id=?",
+                                arrayOf(primary.first.toString(), id.toString())
+                            )
+                            db.writableDatabase.execSQL(
+                                """UPDATE conversation_notifications SET conversation_id=?
+                                   WHERE conversation_id=? AND NOT EXISTS(
+                                     SELECT 1 FROM conversation_notifications WHERE conversation_id=?)""",
+                                arrayOf(primary.first.toString(), id.toString(), primary.first.toString())
+                            )
+                            db.writableDatabase.execSQL(
+                                "DELETE FROM conversations WHERE id=?", arrayOf(id.toString())
+                            )
+                        }
+                    }
+                    upsertParticipant(db.writableDatabase, e164)
+                }
+                // Blocked numbers keep their stored spelling; normalize + dedupe.
+                db.readableDatabase.rawQuery(
+                    "SELECT id, number FROM blocked_numbers", null
+                ).use { c ->
+                    while (c.moveToNext()) {
+                        val id = c.getLong(0)
+                        val num = c.getString(1)
+                        val e164 = PhoneNumberUtils.toE164(num, region) ?: continue
+                        if (e164 != num) {
+                            val other = db.writableDatabase.rawQuery(
+                                "SELECT id FROM blocked_numbers WHERE number=?", arrayOf(e164)
+                            ).use { q -> if (q.moveToFirst()) q.getLong(0) else -1L }
+                            if (other != -1L && other != id) {
+                                db.writableDatabase.execSQL(
+                                    "DELETE FROM blocked_numbers WHERE id=?", arrayOf(id.toString())
+                                )
+                            } else {
+                                db.writableDatabase.execSQL(
+                                    "UPDATE blocked_numbers SET number=? WHERE id=?",
+                                    arrayOf(e164, id.toString())
+                                )
+                            }
+                        }
+                    }
+                }
+                db.writableDatabase.setTransactionSuccessful()
+            } catch (e: Exception) {
+                throw e
+            } finally {
+                db.writableDatabase.endTransaction()
+            }
+            settings.participantsMigrated = true
+            refreshConversationSnippets()
+            notifyChanged()
+        }
+        settings.phoneRegion = region
     }
 
     /** Writes an outgoing SMS into the system Sent box (required when default app)

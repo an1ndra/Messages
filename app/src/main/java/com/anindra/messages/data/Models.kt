@@ -12,7 +12,8 @@ data class Conversation(
     val pinned: Boolean = false,
     val draft: String = "",
     val draftDate: Long = 0,
-    val deletedAt: Long = 0
+    val deletedAt: Long = 0,
+    val display: String = address
 )
 
 data class Message(
