@@ -447,7 +447,7 @@ fun SettingsScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(sm.body, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                                 Text(
-                                    "To: ${sm.address} · ${fmt.format(Date(sm.timestamp))}",
+                                    "To: ${formatPhoneNumber(sm.address)} · ${fmt.format(Date(sm.timestamp))}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

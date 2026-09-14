@@ -74,7 +74,7 @@ fun ContactDetailsScreen(
     val convo by vm.conversationById(conversationId).collectAsState(initial = null)
     val vmContacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
     val workNums = remember(vmContacts) {
-        vmContacts.filter { it.workProfile }.map { it.number.filter { c -> c.isDigit() } }.toSet()
+        vmContacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
     }
     if (convo == null) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
@@ -82,8 +82,9 @@ fun ContactDetailsScreen(
     }
     val address = convo!!.address
     val name = convo!!.name
+    val display = convo!!.display
     val isKnownContact = name != address
-    val workProfile = address.filter { it.isDigit() } in workNums
+    val workProfile = phoneKey(address).let { it.isNotEmpty() && it in workNums }
 
     // flows (not sync SELECTs) for notify/block state; VM retains last value
     val notificationsEnabled by vm.conversationNotificationsEnabledFlow(conversationId)
@@ -124,7 +125,7 @@ fun ContactDetailsScreen(
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = if (isKnownContact) name else formatPhoneNumber(address),
+                    text = if (isKnownContact) name else display,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
@@ -279,7 +280,7 @@ fun ContactDetailsScreen(
                         Spacer(Modifier.width(16.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                if (isKnownContact) name else formatPhoneNumber(address),
+                                if (isKnownContact) name else display,
                                 style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.weight(1f)
                             )
