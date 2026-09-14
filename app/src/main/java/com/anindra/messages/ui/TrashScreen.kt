@@ -38,11 +38,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
+import com.anindra.messages.R
 import com.anindra.messages.data.Conversation
 import java.text.DateFormat
 import java.util.Date
@@ -65,16 +67,16 @@ fun TrashScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Trash") },
+                title = { Text(stringResource(R.string.trash_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
                     }
                 },
                 actions = {
                     if (trashed.isNotEmpty()) {
                         TextButton(onClick = { showEmptyTrashDialog = true }) {
-                            Text("Empty trash", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.trash_empty), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -98,13 +100,13 @@ fun TrashScreen(
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "Trash is empty",
+                    stringResource(R.string.trash_empty_is_empty),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Deleted conversations are permanently removed after 30 days",
+                    stringResource(R.string.trash_empty_message),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -133,24 +135,24 @@ fun TrashScreen(
         if (showEmptyTrashDialog) {
             AlertDialog(
                 onDismissRequest = { showEmptyTrashDialog = false },
-                title = { Text("Empty trash") },
+                title = { Text(stringResource(R.string.trash_empty)) },
                 text = {
                     Text(
-                        "Delete all ${trashed.size} conversations from trash? This can't be undone."
+                        String.format(context.getString(R.string.trash_empty_confirm), trashed.size)
                     )
                 },
                 confirmButton = {
                     TextButton(onClick = {
                         vm.emptyTrash()
                         showEmptyTrashDialog = false
-                        Toast.makeText(context, "Trash emptied", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.trash_emptied), Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Empty trash", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.trash_empty), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showEmptyTrashDialog = false }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.common_cancel))
                     }
                 }
             )
@@ -163,11 +165,11 @@ fun TrashScreen(
                     showDeleteForeverDialog = false
                     deleteTarget = null
                 },
-                title = { Text("Delete conversation") },
+                title = { Text(stringResource(R.string.trash_delete_conversation)) },
                 text = {
                     val name = targetConvo?.name?.ifBlank { targetConvo?.address ?: "conversation" }
                     Text(
-                        "Permanently delete '\u201C$name\u201D'? This can't be undone."
+                        String.format(context.getString(R.string.trash_delete_forever_confirm), name)
                     )
                 },
                 confirmButton = {
@@ -175,9 +177,9 @@ fun TrashScreen(
                         deleteTarget?.let { vm.deleteForever(it) }
                         showDeleteForeverDialog = false
                         deleteTarget = null
-                        Toast.makeText(context, "Conversation deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.toast_trash_deleted), Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
@@ -185,7 +187,7 @@ fun TrashScreen(
                         showDeleteForeverDialog = false
                         deleteTarget = null
                     }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.common_cancel))
                     }
                 }
             )
@@ -210,14 +212,14 @@ private fun TrashRow(
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = convo.name.ifBlank { convo.address },
+                    text = convo.name.ifBlank { convo.display },
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "Deleted ${formatTrashDate(convo.deletedAt)}",
+                    text = String.format(LocalContext.current.getString(R.string.trash_deleted_on), formatTrashDate(convo.deletedAt)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -227,7 +229,7 @@ private fun TrashRow(
             IconButton(onClick = onRestore) {
                 Icon(
                     Icons.Rounded.RestoreFromTrash,
-                    contentDescription = "Restore",
+                    contentDescription = stringResource(R.string.access_restore),
                     modifier = Modifier.size(22.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -235,7 +237,7 @@ private fun TrashRow(
             IconButton(onClick = onDeleteForever) {
                 Icon(
                     Icons.Rounded.DeleteForever,
-                    contentDescription = "Delete forever",
+                    contentDescription = stringResource(R.string.access_delete_forever),
                     modifier = Modifier.size(22.dp),
                     tint = MaterialTheme.colorScheme.error
                 )

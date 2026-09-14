@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Chat actions & labels -->
+    <string name="chat_archive">Archiwum</string>
+    <string name="chat_block">Blokuj</string>
+    <string name="chat_block_report">Blokuj i zgłoś jako spam</string>
+    <string name="chat_unblock">Odblokuj</string>
+    <string name="chat_block_number">Zablokuj numer</string>
+    <string name="chat_unblock_number">Odblokuj numer</string>
+    <string name="chat_forward">Przekaż</string>
+    <string name="chat_forward_to">Przekaż do</string>
+    <string name="chat_share">Udostępnij</string>
+    <string name="chat_details">Szczegóły</string>
+    <string name="chat_view_details">Zobacz szczegóły</string>
+    <string name="chat_schedule">Harmonogram</string>
+    <string name="chat_select_time">Wybierz czas</string>
+    <string name="chat_media_camera">Aparat</string>
+    <string name="chat_media_gallery">Galeria</string>
+
+    <!-- Status messages -->
+    <string name="chat_cant_send">Nie można wysłać wiadomości</string>
+    <string name="chat_archived">Rozmowa zarchiwizowana</string>
+    <string name="chat_deleted">Rozmowa usunięta</string>
+    <string name="chat_moved_to_trash">Rozmowa przeniesiona do kosza</string>
+    <string name="chat_forwarded">Wiadomość przekazana</string>
+    <string name="chat_blocked_send">Ten numer jest zablokowany. Odblokować, aby wysłać?</string>
+    <string name="chat_number_blocked">Numer zablokowany</string>
+    <string name="chat_number_unblocked">Numer odblokowany</string>
+    <string name="chat_loading_earlier">Załaduj wcześniejsze wiadomości</string>
+    <string name="chat_retry">Ponów</string>
+    <string name="chat_retry_sim">Ponów z SIM</string>
+    <string name="chat_sending_via">Wysyłanie przez %s</string>
+    <string name="chat_scheduled_for">Zaplanowane na %s</string>
+    <string name="chat_search_contacts">Szukaj w kontaktach</string>
+    <string name="chat_add_people">Dodaj osoby</string>
+    <string name="chat_locked">Zablokowane</string>
+
+    <!-- Copy & links -->
+    <string name="chat_copied">Skopiowano</string>
+    <string name="chat_link_copied">Link skopiowany</string>
+    <string name="chat_copy_link">Kopiuj link</string>
+    <string name="chat_link_caution">Uwaga: link zewnętrzny</string>
+    <string name="chat_link_warning">Linki w wiadomościach mogą prowadzić do fałszywych stron internetowych, które kradną Twoje dane osobowe lub instalują złośliwe oprogramowanie.</string>
+    <string name="chat_link_no_dont_show">Nie pokazuj ponownie tego ostrzeżenia</string>
+    <string name="chat_link_label">link</string>
+    <string name="chat_messages_label">wiadomości</string>
+
+    <!-- General -->
+    <string name="chat_close">Zamknij</string>
+    <string name="chat_open">Otwórz</string>
+    <string name="chat_next">Dalej</string>
+    <string name="chat_ok">OK</string>
+    <string name="chat_cancel">Anuluj</string>
+    <string name="chat_delete">Usuń</string>
+    <string name="chat_details_title">Szczegóły rozmowy</string>
+
+    <string name="chat_status_not_sent">Nie wysłano</string>
+    <string name="chat_status_retry">Stuknij, aby ponowić</string>
+    <string name="chat_draft_prefix">Wersja robocza: </string>
+    <string name="chat_sending_countdown">Wysyłanie za %d sekund…</string>
+    <string name="chat_alphanumeric_error">Nie można wysyłać wiadomości do nadawców alfanumerycznych, takich jak %s. Obsługiwane są tylko numery telefonów.</string>
+    <string name="chat_unlock_dialog">Odblokuj</string>
+    <string name="chat_lock_dialog">Zablokuj</string>
+    <string name="chat_message_deleted">Wiadomość usunięta</string>
+    <string name="chat_messages_deleted">%d wiadomości usunięto</string>
+    <string name="status_not_sent">Nie wysłano</string>
+</resources>

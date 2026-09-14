@@ -67,6 +67,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
+import androidx.compose.ui.res.stringResource
+import com.anindra.messages.R
 import com.anindra.messages.sms.NotificationHelper
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -95,6 +97,13 @@ fun SettingsScreen(
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
     var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
+    val notificationSoundOptions = listOf(
+        SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
+        SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
+        SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
+        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
+        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
+    )
     var showSim by remember(revision) { mutableStateOf(vm.settings.showSimIndicator) }
     val themeMode = vm.themeMode
 
@@ -148,10 +157,10 @@ fun SettingsScreen(
     val showImportResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit = { result ->
         val msg = when (result) {
             is com.anindra.messages.data.Repository.ImportResult.Success ->
-                if (result.merged != null) "Restored ${result.merged} messages. Existing conversations kept."
-                else "Backup restored. Restart app to apply."
+                if (result.merged != null) String.format(context.getString(R.string.settings_restored_msg), result.merged)
+                else context.getString(R.string.settings_backup_restored)
             is com.anindra.messages.data.Repository.ImportResult.Error ->
-                "Import failed: ${result.message}"
+                String.format(context.getString(R.string.settings_import_failed), result.message)
         }
         Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
     }
@@ -171,10 +180,10 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("General settings") },
+                title = { Text(stringResource(R.string.settings_general)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
                     }
                 }
             )
@@ -191,20 +200,20 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Notifications",
-                    subtitle = "Show message notifications",
+                    title = stringResource(R.string.settings_notif_title),
+                    subtitle = stringResource(R.string.settings_notif_subtitle),
                     checked = notifications,
                     onChecked = { notifications = it; vm.settings.notificationsEnabled = it }
                 )
                 SettingsRow(
-                    title = "Send sound",
-                    subtitle = "Play sound when sending a message",
+                    title = stringResource(R.string.settings_send_sound_title),
+                    subtitle = stringResource(R.string.settings_send_sound_subtitle),
                     checked = sendSound,
                     onChecked = { sendSound = it; vm.settings.sendSoundEnabled = it }
                 )
                 SettingsRow(
-                    title = "Receive sound",
-                    subtitle = "Play a sound when a message arrives",
+                    title = stringResource(R.string.settings_receive_sound_title),
+                    subtitle = stringResource(R.string.settings_receive_sound_subtitle),
                     checked = receiveSound,
                     onChecked = {
                         receiveSound = it
@@ -213,25 +222,25 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Notification sound",
-                    subtitle = notificationSoundLabel(notificationSound),
+                    title = stringResource(R.string.settings_pin_notification_sound),
+                    subtitle = notificationSoundLabel(notificationSound, notificationSoundOptions, context),
                     onClick = {
                         notificationSound = vm.settings.notificationSound
                         soundDialog = true
                     }
                 )
                 SettingsRow(
-                    title = "Delivery reports",
-                    subtitle = "Find out when an SMS message is delivered",
+                    title = stringResource(R.string.settings_delivery_reports_title),
+                    subtitle = stringResource(R.string.settings_delivery_reports_subtitle),
                     checked = delivery,
                     onChecked = { delivery = it; vm.settings.deliveryReportsEnabled = it }
                 )
                 SettingsRow(
-                    title = "Mark all as read",
-                    subtitle = "Clear unread badges for every conversation",
+                    title = stringResource(R.string.settings_mark_read_title),
+                    subtitle = stringResource(R.string.settings_mark_read_subtitle),
                     onClick = {
                         vm.markAllRead()
-                        Toast.makeText(context, "All conversations marked as read", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.settings_mark_read), Toast.LENGTH_SHORT).show()
                     }
                 )
             }
@@ -240,15 +249,15 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Theme",
-                    subtitle = themeLabel(themeMode),
+                    title = stringResource(R.string.settings_theme_title),
+                    subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
                 )
-                val currentSimLabel = if (vm.settings.simSubscriptionId == -1) "Default"
+                val currentSimLabel = if (vm.settings.simSubscriptionId == -1) context.getString(R.string.sim_default)
                 else sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }?.displayName?.toString()
-                    ?: "SIM ${vm.settings.simSubscriptionId}"
+                    ?: context.getString(R.string.settings_sim_label, vm.settings.simSubscriptionId)
                 SettingsRow(
-                    title = "SIM card",
+                    title = stringResource(R.string.settings_pin_sim_card),
                     subtitle = currentSimLabel,
                     onClick = {
                         val hasPerm = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
@@ -267,8 +276,8 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "SIM indicator",
-                    subtitle = "Show which SIM was used for each message",
+                    title = stringResource(R.string.settings_sim_indicator),
+                    subtitle = stringResource(R.string.settings_sim_indicator_desc),
                     checked = showSim,
                     onChecked = { showSim = it; vm.settings.showSimIndicator = it }
                 )
@@ -278,32 +287,32 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Drafts",
-                    subtitle = "Auto-save unsent text as drafts",
+                    title = stringResource(R.string.settings_drafts_title),
+                    subtitle = stringResource(R.string.settings_drafts_subtitle),
                     checked = drafts,
                     onChecked = { drafts = it; vm.settings.draftsEnabled = it }
                 )
                 SettingsRow(
-                    title = "Archiving",
-                    subtitle = "Allow archiving conversations",
+                    title = stringResource(R.string.settings_archiving_title),
+                    subtitle = stringResource(R.string.settings_archiving_subtitle),
                     checked = archiving,
                     onChecked = { archiving = it; vm.settings.archivingEnabled = it }
                 )
                 SettingsRow(
-                    title = "Pinned conversations",
-                    subtitle = "Show pinned conversations at top",
+                    title = stringResource(R.string.settings_pinned_title),
+                    subtitle = stringResource(R.string.settings_pinned_subtitle),
                     checked = pinned,
                     onChecked = { pinned = it; vm.settings.pinnedEnabled = it; if (!it) vm.unpinAll() }
                 )
                 SettingsRow(
-                    title = "Swipe actions",
-                    subtitle = "Enable swipe to archive/delete",
+                    title = stringResource(R.string.settings_swipe_actions_title),
+                    subtitle = stringResource(R.string.settings_swipe_actions_subtitle),
                     checked = swipeActions,
                     onChecked = { swipeActions = it; vm.settings.swipeActionsEnabled = it }
                 )
                 SettingsRow(
-                    title = "Unread at top",
-                    subtitle = "Sort unread messages at top",
+                    title = stringResource(R.string.settings_unread_top_title),
+                    subtitle = stringResource(R.string.settings_unread_top_subtitle),
                     checked = unreadAtTop,
                     onChecked = { unreadAtTop = it; vm.settings.unreadAtTopEnabled = it }
                 )
@@ -313,20 +322,20 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Forwarding",
-                    subtitle = "Enable message forwarding",
+                    title = stringResource(R.string.settings_forwarding_title),
+                    subtitle = stringResource(R.string.settings_forwarding_subtitle),
                     checked = forwarding,
                     onChecked = { forwarding = it; vm.settings.forwardingEnabled = it }
                 )
                 SettingsRow(
-                    title = "Scheduled messages",
-                    subtitle = "Enable scheduling messages",
+                    title = stringResource(R.string.settings_scheduled_title),
+                    subtitle = stringResource(R.string.settings_scheduled_subtitle),
                     checked = scheduledMessages,
                     onChecked = { scheduledMessages = it; vm.settings.scheduledMessagesEnabled = it }
                 )
                 SettingsRow(
-                    title = "Delayed sending",
-                    subtitle = "Wait before sending a message",
+                    title = stringResource(R.string.settings_delayed_title),
+                    subtitle = stringResource(R.string.settings_delayed_subtitle),
                     checked = delayedSending,
                     onChecked = {
                         delayedSending = it; vm.settings.delayedSendingEnabled = it
@@ -335,8 +344,8 @@ fun SettingsScreen(
                 )
                 if (delayedSending) {
                     SettingsRow(
-                        title = "Delay seconds",
-                        subtitle = "${delaySeconds}s before sending",
+                        title = stringResource(R.string.settings_delay_secs_title),
+                        subtitle = String.format(context.getString(R.string.settings_delay_with_value), delaySeconds),
                         onClick = { delayDialog = true }
                     )
                 }
@@ -346,8 +355,8 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Advanced",
-                    subtitle = "Permanent delete, swipe direction, link behaviour",
+                    title = stringResource(R.string.settings_advanced_title),
+                    subtitle = stringResource(R.string.settings_advanced_subtitle),
                     onClick = onOpenAdvanced
                 )
             }
@@ -356,14 +365,14 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = "Number blocking",
-                    subtitle = "Block numbers from messaging you",
+                    title = stringResource(R.string.settings_blocking_title),
+                    subtitle = stringResource(R.string.settings_blocking_subtitle),
                     checked = blocking,
                     onChecked = { blocking = it; vm.settings.blockingEnabled = it }
                 )
                 SettingsRow(
-                    title = "Privacy mode",
-                    subtitle = "Hide content from screenshots and screen recording",
+                    title = stringResource(R.string.settings_privacy_title),
+                    subtitle = stringResource(R.string.settings_privacy_subtitle),
                     checked = privacyMode,
                     onChecked = {
                         privacyMode = it
@@ -371,8 +380,8 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "App lock",
-                    subtitle = "Require fingerprint or PIN to open app",
+                    title = stringResource(R.string.settings_applock_title),
+                    subtitle = stringResource(R.string.settings_applock_subtitle),
                     checked = appLock,
                     onChecked = { enable ->
                         val canAuth = androidx.biometric.BiometricManager.from(context)
@@ -383,7 +392,7 @@ fun SettingsScreen(
                         if (enable && canAuth != androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS) {
                             Toast.makeText(
                                 context,
-                                "Set up a screen lock (fingerprint, face, or PIN) on your device first",
+                                context.getString(R.string.lock_setup_needed),
                                 Toast.LENGTH_LONG
                             ).show()
                         } else {
@@ -393,13 +402,13 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Trash",
-                    subtitle = "Deleted conversations · purged after 30 days",
+                    title = stringResource(R.string.settings_trash_title),
+                    subtitle = stringResource(R.string.settings_trash_subtitle),
                     onClick = onOpenTrash
                 )
                 SettingsRow(
-                    title = "Backup messages",
-                    subtitle = if (backingUp) "Saving..." else "PIN-protected save to Documents/Messages",
+                    title = stringResource(R.string.settings_backup_title),
+                    subtitle = if (backingUp) stringResource(R.string.settings_saving) else stringResource(R.string.settings_backup_saving),
                     onClick = {
                         pinMode = PinDialogMode.SET
                         pinInput = ""
@@ -408,8 +417,8 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Import messages",
-                    subtitle = "Import a backup database file",
+                    title = stringResource(R.string.settings_import_title),
+                    subtitle = stringResource(R.string.settings_import_subtitle),
                     onClick = {
                         pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
                         importLauncher.launch(arrayOf("application/octet-stream", "application/x-sqlite3"))
@@ -438,7 +447,7 @@ fun SettingsScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(sm.body, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                                 Text(
-                                    "To: ${sm.address} · ${fmt.format(Date(sm.timestamp))}",
+                                    "To: ${formatPhoneNumber(sm.address)} · ${fmt.format(Date(sm.timestamp))}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -447,7 +456,7 @@ fun SettingsScreen(
                                 onClick = { vm.cancelScheduledMessage(sm.id) },
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Rounded.Cancel, "Cancel", modifier = Modifier.size(20.dp))
+                                Icon(Icons.Rounded.Cancel, stringResource(R.string.icon_cancel), modifier = Modifier.size(20.dp))
                             }
                         }
                     }
@@ -457,7 +466,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                "Messages 1.0 — offline SMS",
+                stringResource(R.string.messages_footer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -471,13 +480,13 @@ fun SettingsScreen(
     if (themeDialog) {
         AlertDialog(
             onDismissRequest = { themeDialog = false },
-            title = { Text("Choose theme") },
+            title = { Text(stringResource(R.string.settings_choose_theme)) },
             text = {
                 Column {
                     listOf(
-                        "light" to "Light",
-                        "dark" to "Dark",
-                        "system" to "System default"
+                        "light" to stringResource(R.string.settings_theme_light),
+                        "dark" to stringResource(R.string.settings_theme_dark),
+                        "system" to stringResource(R.string.settings_theme_system)
                     ).forEach { (value, label) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -497,10 +506,10 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { themeDialog = false }) { Text("OK") }
+                TextButton(onClick = { themeDialog = false }) { Text(stringResource(R.string.common_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { themeDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { themeDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -508,11 +517,11 @@ fun SettingsScreen(
     if (soundDialog) {
         AlertDialog(
             onDismissRequest = { soundDialog = false },
-            title = { Text("Notification sound") },
+            title = { Text(stringResource(R.string.settings_pin_notification_sound)) },
             text = {
                 Column {
                     Text(
-                        "Sound played when a message arrives",
+                        stringResource(R.string.settings_sound_arrival),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -546,25 +555,25 @@ fun SettingsScreen(
                     vm.settings.notificationSound = notificationSound
                     NotificationHelper.ensureChannel(context)
                     soundDialog = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.common_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { soundDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { soundDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
 
     if (simDialog) {
         var selected by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
-        val options = mutableListOf(-1 to "Default (System)")
+        val options = mutableListOf(-1 to context.getString(R.string.settings_sim_default))
         sims.forEach { sub ->
             val carrier = sub.carrierName?.toString()?.ifBlank { null }
-            val label = if (carrier != null) "$carrier (SIM ${sub.simSlotIndex + 1})" else "SIM ${sub.simSlotIndex + 1}"
+            val label = if (carrier != null) String.format(context.getString(R.string.settings_sim_label_format), carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
             options += sub.subscriptionId to label
         }
         AlertDialog(
             onDismissRequest = { simDialog = false },
-            title = { Text("SIM card") },
+            title = { Text(stringResource(R.string.settings_pin_sim_card)) },
             text = {
                 Column {
                     options.forEach { (id, label) ->
@@ -589,10 +598,10 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     vm.settings.simSubscriptionId = selected
                     simDialog = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.common_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { simDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { simDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -601,11 +610,11 @@ fun SettingsScreen(
         val options = listOf(1, 3, 5, 10, 30)
         AlertDialog(
             onDismissRequest = { delayDialog = false },
-            title = { Text("Delay before sending") },
+            title = { Text(stringResource(R.string.settings_pin_delay)) },
             text = {
                 Column {
                     Text(
-                        "Choose how long to wait before sending:",
+                        stringResource(R.string.settings_choose_delay),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -630,13 +639,13 @@ fun SettingsScreen(
                                 }
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("${secs}s")
+                            Text(context.getString(R.string.settings_countdown_placeholder, secs))
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { delayDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { delayDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -648,18 +657,18 @@ fun SettingsScreen(
                 importModeDialog = false
                 pendingImportUri = null
             },
-            title = { Text("Import backup") },
+            title = { Text(stringResource(R.string.settings_import_backup)) },
             text = {
                 Column {
                     Text(
-                        "How should this backup be applied to your current messages?",
+                        stringResource(R.string.settings_backup_apply),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     ImportChoiceRow(
-                        title = "Merge with existing messages",
-                        subtitle = "Keep current messages and add the backup's",
+                        title = stringResource(R.string.settings_merge_title),
+                        subtitle = stringResource(R.string.settings_merge_subtitle),
                         onClick = {
                             importModeDialog = false
                             pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
@@ -673,8 +682,8 @@ fun SettingsScreen(
                         }
                     )
                     ImportChoiceRow(
-                        title = "Restore (replace all)",
-                        subtitle = "Remove current messages and restore the backup",
+                        title = stringResource(R.string.settings_restore_title),
+                        subtitle = stringResource(R.string.settings_restore_subtitle),
                         onClick = {
                             importModeDialog = false
                             pendingImportMode = com.anindra.messages.data.ImportMode.REPLACE
@@ -694,7 +703,7 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     importModeDialog = false
                     pendingImportUri = null
-                }) { Text("Cancel") }
+                }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -707,15 +716,15 @@ fun SettingsScreen(
             },
             title = {
                 Text(
-                    if (mode == PinDialogMode.SET) "Set backup PIN"
-                    else "Enter backup PIN"
+                    if (mode == PinDialogMode.SET) stringResource(R.string.settings_pin_dialog_set)
+                    else stringResource(R.string.settings_pin_dialog_enter)
                 )
             },
             text = {
                 Column {
                     if (mode == PinDialogMode.SET) {
                         Text(
-                            "Your backup is protected by this PIN. You'll need it to " +
+                            stringResource(R.string.settings_backup_pin_protection) +
                                 "restore — even after reinstalling the app or on a new phone.",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -726,7 +735,7 @@ fun SettingsScreen(
                         onValueChange = { new ->
                             if (new.length <= 16 && new.all { it.isDigit() }) pinInput = new
                         },
-                        label = { Text("4-16 digit PIN") },
+                        label = { Text(stringResource(R.string.settings_pin_enter)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         visualTransformation = PasswordVisualTransformation(),
@@ -739,7 +748,7 @@ fun SettingsScreen(
                             onValueChange = { new ->
                                 if (new.length <= 16 && new.all { it.isDigit() }) pinConfirm = new
                             },
-                            label = { Text("Repeat PIN") },
+                            label = { Text(stringResource(R.string.settings_pin_repeat)) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                             visualTransformation = PasswordVisualTransformation(),
@@ -760,9 +769,9 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     val pin = pinInput.trim()
                     when {
-                        pin.length < 4 -> pinError = "PIN must be at least 4 digits"
+                        pin.length < 4 -> pinError = context.getString(R.string.settings_pin_error_too_short)
                         mode == PinDialogMode.SET && pin != pinConfirm ->
-                            pinError = "PINs do not match"
+                            pinError = context.getString(R.string.settings_pin_error_mismatch)
                         else -> {
                             if (mode == PinDialogMode.SET) {
                                 pinMode = null
@@ -771,8 +780,8 @@ fun SettingsScreen(
                                     backingUp = false
                                     Toast.makeText(
                                         context,
-                                        if (ok) "Backup saved with PIN to Documents/Messages"
-                                        else "Backup failed",
+                                        if (ok) context.getString(R.string.settings_backup_saved)
+                                        else context.getString(R.string.settings_backup_failed),
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }
@@ -786,13 +795,13 @@ fun SettingsScreen(
                             }
                         }
                     }
-                }) { Text(if (mode == PinDialogMode.SET) "Save" else "Import") }
+                }) { Text(if (mode == PinDialogMode.SET) stringResource(R.string.settings_save) else stringResource(R.string.settings_import)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     pinMode = null
                     pendingImportUri = null
-                }) { Text("Cancel") }
+                }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -801,7 +810,7 @@ fun SettingsScreen(
     if (importLoading != null) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Loading messages") },
+            title = { Text(stringResource(R.string.settings_loading)) },
             text = {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -809,7 +818,7 @@ fun SettingsScreen(
                 ) {
                     CircularProgressIndicator()
                     Spacer(Modifier.height(12.dp))
-                    Text("$importLoading messages loaded", style = MaterialTheme.typography.bodyMedium)
+                    Text(context.getString(R.string.settings_loading_progress, importLoading), style = MaterialTheme.typography.bodyMedium)
                 }
             },
             confirmButton = {},
@@ -831,22 +840,16 @@ fun SettingsGroup(content: @Composable () -> Unit) {
     }
 }
 
-private fun themeLabel(mode: String) = when (mode) {
-    "light" -> "Light"
-    "dark" -> "Dark"
-    else -> "System default"
+private fun themeLabel(mode: String, context: android.content.Context) = when (mode) {
+    "light" -> context.getString(R.string.settings_theme_light)
+    "dark" -> context.getString(R.string.settings_theme_dark)
+    else -> context.getString(R.string.settings_theme_system)
 }
 
-private val notificationSoundOptions = listOf(
-    SettingsStore.NOTIFY_SOUND_DEFAULT to "Default (system)",
-    SettingsStore.NOTIFY_SOUND_APP to "Classic",
-    SettingsStore.NOTIFY_SOUND_DRAGON to "Dragon Studio",
-    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to "Chime",
-    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to "Bubble"
-)
 
-private fun notificationSoundLabel(value: String) =
-    notificationSoundOptions.firstOrNull { it.first == value }?.second ?: "Default (system)"
+
+private fun notificationSoundLabel(value: String, options: List<Pair<String, String>>, context: android.content.Context) =
+    options.firstOrNull { it.first == value }?.second ?: context.getString(R.string.settings_sound_default)
 
 @Composable
 private fun ImportChoiceRow(

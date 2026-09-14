@@ -30,6 +30,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:taskAffinity=""
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -78,6 +79,14 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.anindra.messages.QUICK_REPLY" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".sms.MarkReadReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.anindra.messages.MARK_READ" />
             </intent-filter>
         </receiver>
 

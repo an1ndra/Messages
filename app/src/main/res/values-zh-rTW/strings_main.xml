@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lock_title">驗證以存取您的訊息</string>
+    <string name="lock_unlock_title">解鎖訊息</string>
+    <string name="lock_auth_subtitle">驗證以顯示這些訊息</string>
+    <string name="lock_got_it">知道了</string>
+    <string name="lock_not_now">現在不要</string>
+    <string name="lock_off">應用程式鎖定已關閉</string>
+    <string name="lock_setup_needed">請先在裝置上設定螢幕鎖定（指紋、人臉或密碼）</string>
+    <string name="lock_turn_on">設定螢幕鎖定</string>
+    <string name="lock_turn_on_hint">設定後即可重新開啟應用程式鎖定。</string>
+    <string name="lock_error_no_screen_lock">應用程式鎖定無法使用，因為此裝置沒有螢幕鎖定（指紋、人臉或密碼）來驗證您的身份。</string>
+    <string name="default_sms_title">設為預設訊息應用程式？</string>
+    <string name="default_sms_message">若要傳送和接收訊息，「訊息」需要設為您預設的 SMS 應用程式。</string>
+    <string name="default_sms_set">設為預設</string>
+    <string name="default_sms_not_now">現在不要</string>
+    <string name="notifications_disabled">已停用通知 — 您將不會收到新訊息通知</string>
+    <string name="messages_footer">訊息 1.0 — 離線 SMS</string>
+    <string name="settings_light_mode">淺色</string>
+    <string name="settings_dark_mode">深色</string>
+    <string name="system_default">系統預設</string>
+    <string name="settings_backup_restored">已還原備份。重新啟動應用程式以套用。</string>
+    <string name="settings_saving">正在儲存…</string>
+    <string name="settings_backup_saving">PIN 保護儲存至 文件/訊息</string>
+    <string name="settings_link_tap_info">輕觸訊息中的連結以開啟網站</string>
+    <string name="settings_choose_delay">選擇發送前等待時間：</string>
+    <string name="settings_backup_apply">此備份如何套用至目前的訊息？</string>
+    <string name="settings_backup_pin_protection">此備份受此 PIN 碼保護。還原時需要它 — 即使重新安裝應用程式或在新手機上也一樣。</string>
+    <string name="settings_pin_dialog_set">設定備份 PIN</string>
+    <string name="settings_pin_dialog_enter">輸入備份 PIN</string>
+    <string name="settings_pin_error_too_short">PIN 碼至少需要 4 位數</string>
+    <string name="settings_pin_error_mismatch">PIN 碼不一致</string>
+    <string name="settings_sound_arrival">收到訊息時播放的聲音</string>
+    <string name="app_name">訊息</string>
+    <string name="sim_default">預設</string>
+    <string name="time_yesterday">昨天</string>
+    <string name="notification_channel_title">訊息</string>
+    <string name="notification_channel_desc">新訊息通知</string>
+    <string name="notif_title_private">新訊息</string>
+    <string name="notif_body_private">您有一則新訊息</string>
+    <string name="notif_send_fail_private">無法傳送訊息。輕觸以重試。</string>
+    <string name="notif_send_fail">無法傳送至 %s。輕觸以重試。</string>
+    <string name="notif_not_delivered">訊息未送達</string>
+</resources>

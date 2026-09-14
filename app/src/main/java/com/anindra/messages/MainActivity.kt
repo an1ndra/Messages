@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.app.NotificationManagerCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -56,6 +57,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.R
+import androidx.compose.ui.res.stringResource
 import com.anindra.messages.data.BlockedNumber
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.Repository
@@ -94,13 +97,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val ctx = app.applicationContext
             val out = mutableListOf<com.anindra.messages.ui.Contact>()
-            try {
+            val enterpriseBase = android.provider.ContactsContract.Directory.ENTERPRISE_DEFAULT
+
+            fun load(uri: android.net.Uri, withContactId: Boolean) {
+                val projection = if (withContactId) arrayOf(
+                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER,
+                    "contact_id"
+                ) else arrayOf(
+                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+                )
                 ctx.contentResolver.query(
-                    android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                    arrayOf(
-                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                        android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
-                    ),
+                    uri,
+                    projection,
                     null, null,
                     android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
                 )?.use { c ->
@@ -108,10 +118,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     while (c.moveToNext()) {
                         val name = c.getString(0) ?: continue
                         val num = c.getString(1) ?: continue
-                        if (seen.add(num.filter { it.isDigit() })) out.add(com.anindra.messages.ui.Contact(name, num))
+                        val work = withContactId && c.getLong(2) >= enterpriseBase
+                        if (seen.add(num.filter { it.isDigit() })) {
+                            out.add(com.anindra.messages.ui.Contact(name, num, work))
+                        }
                     }
                 }
-            } catch (_: SecurityException) {
+            }
+
+            try {
+                load(android.provider.ContactsContract.CommonDataKinds.Phone.ENTERPRISE_CONTENT_URI, true)
+            } catch (_: Exception) {
+                out.clear()
+                try {
+                    load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
+                } catch (_: SecurityException) {
+                }
             }
             contacts.value = out
         }
@@ -386,14 +408,14 @@ class MainActivity : FragmentActivity() {
             ) {
                 android.widget.Toast.makeText(
                     this,
-                    "Notifications disabled — you won't be alerted for new messages",
+                    getString(R.string.notifications_disabled),
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             }
         }
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
-    private var pendingOpenAddress: String? = null
+    private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
 
     private var lastResumeTime = 0L
 
@@ -422,7 +444,15 @@ class MainActivity : FragmentActivity() {
             "dark", "light", "system" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
-        intent.getStringExtra("open_conversation_address")?.let { pendingOpenAddress = it }
+        intent.getStringExtra("open_conversation_address")?.let {
+            pendingOpenAddress = it
+            // Dismiss all notifications when opening a chat from notification
+            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+        }
+        recipientFromIntent(intent)?.let { pendingOpenAddress = it }
+        // Opening straight from an external sms:/smsto: launch: hold on a neutral
+        // screen while the conversation resolves, so the list never flashes first.
+        if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
 
         val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -451,8 +481,8 @@ class MainActivity : FragmentActivity() {
                             })
                         prompt.authenticate(
                             BiometricPrompt.PromptInfo.Builder()
-                                .setTitle("Unlock Messages")
-                                .setSubtitle("Authenticate to access your messages")
+                                .setTitle(getString(R.string.lock_unlock_title))
+                                .setSubtitle(getString(R.string.lock_title))
                                 .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                                 .build()
                         )
@@ -488,15 +518,13 @@ class MainActivity : FragmentActivity() {
                                 )
                                 Spacer(Modifier.height(24.dp))
                                 Text(
-                                    "App lock is off",
+                                    stringResource(R.string.lock_off),
                                     style = MaterialTheme.typography.headlineSmall,
                                     textAlign = TextAlign.Center
                                 )
                                 Spacer(Modifier.height(12.dp))
                                 Text(
-                                    "App lock can't be used because this device has no " +
-                                        "screen lock (fingerprint, face, or PIN) to verify it's you. " +
-                                        "Set one up to turn App lock back on.",
+                                    stringResource(R.string.lock_error_no_screen_lock),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
@@ -513,9 +541,9 @@ class MainActivity : FragmentActivity() {
                                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         )
                                     }
-                                }) { Text("Set up screen lock") }
+                                }) { Text(stringResource(R.string.lock_turn_on)) }
                                 Spacer(Modifier.height(8.dp))
-                                TextButton(onClick = { appUnlocked = true }) { Text("Got it") }
+                                TextButton(onClick = { appUnlocked = true }) { Text(stringResource(R.string.lock_got_it)) }
                             }
                         }
                     }
@@ -547,20 +575,20 @@ class MainActivity : FragmentActivity() {
 
                 androidx.compose.runtime.LaunchedEffect(pendingOpenAddress) {
                     val addr = pendingOpenAddress ?: return@LaunchedEffect
-                    pendingOpenAddress = null
                     val repo = (application as com.anindra.messages.MessagesApplication).repository
                     val id = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         repo.conversationIdForAddress(addr) ?: repo.getOrCreateConversationBlocking(addr)
                     }
                     chatId = id
-                    navRoute = "chat"
+                    navRoute = if (id > 0) "chat" else "list"
+                    pendingOpenAddress = null
                 }
 
                 if (showDefaultSmsDialog) {
                     androidx.compose.material3.AlertDialog(
                         onDismissRequest = { showDefaultSmsDialog = false },
-                        title = { androidx.compose.material3.Text("Set as default SMS app?") },
-                        text = { androidx.compose.material3.Text("To send and receive messages, Messages needs to be your default SMS app.") },
+                        title = { androidx.compose.material3.Text(stringResource(R.string.default_sms_title)) },
+                        text = { androidx.compose.material3.Text(stringResource(R.string.default_sms_message)) },
                         confirmButton = {
                             androidx.compose.material3.TextButton(onClick = {
                                 showDefaultSmsDialog = false
@@ -568,11 +596,11 @@ class MainActivity : FragmentActivity() {
                                 if (roleManager.isRoleAvailable(RoleManager.ROLE_SMS)) {
                                     defaultSmsLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS))
                                 }
-                            }) { androidx.compose.material3.Text("Set default") }
+                            }) { androidx.compose.material3.Text(stringResource(R.string.default_sms_set)) }
                         },
                         dismissButton = {
                             androidx.compose.material3.TextButton(onClick = { showDefaultSmsDialog = false }) {
-                                androidx.compose.material3.Text("Not now")
+                                androidx.compose.material3.Text(stringResource(R.string.lock_not_now))
                             }
                         }
                     )
@@ -580,22 +608,32 @@ class MainActivity : FragmentActivity() {
 
                 // Single back dispatcher for all routes; child screen BackHandlers win.
                 androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
+                    val wasChat = navRoute == "chat"
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "trash" -> navRoute = "settings"
                         "advanced" -> navRoute = "settings"
                         else -> navRoute = "list"
                     }
+                    // Clear ForegroundTracker when leaving chat
+                    if (wasChat) {
+                        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(null)
+                    }
                 }
 
-                val routeDepth = mapOf("list" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2)
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2)
                 val isList = navRoute == "list"
                 val isChat = navRoute == "chat"
 
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     ConversationsScreen(
                         vm = vm,
-                        onOpenConversation = { id -> chatId = id; navRoute = "chat" },
+                        onOpenConversation = { id ->
+                            // Dismiss notifications when opening chat from conversation list
+                            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+                            chatId = id
+                            navRoute = "chat"
+                        },
                         onNewChat = { navRoute = "new" },
                         onOpenSettings = { navRoute = "settings" }
                     )
@@ -614,13 +652,14 @@ class MainActivity : FragmentActivity() {
                             }
                         },
                         modifier = Modifier.fillMaxSize(),
-                        label = "nav"
+                        label = stringResource(R.string.access_nav)
                     ) { target ->
                         if (target == "list") {
                             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())
                         } else {
                             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                                 when (target) {
+                                    "opening" -> androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())
                                     "new" -> NewChatScreen(
                                         vm = vm,
                                         onBack = { navRoute = "list" },
@@ -708,6 +747,28 @@ class MainActivity : FragmentActivity() {
             "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
-        intent.getStringExtra("open_conversation_address")?.let { pendingOpenAddress = it }
+        intent.getStringExtra("open_conversation_address")?.let {
+            pendingOpenAddress = it
+            // Dismiss all notifications when opening a chat from notification
+            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+        }
+        recipientFromIntent(intent)?.let { pendingOpenAddress = it }
+        // Warm external launch: hide whatever is on screen (usually the list)
+        // immediately so it never shows before the resolved chat.
+        if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
+    }
+
+    /** Recipient of an external `sms:`/`smsto:`/`mms:`/`mmsto:` launch (the
+     *  Contacts "Text" button), or null when the intent carries no address.
+     *  Strips the `?body=` query and takes the first of any `;`/`,`-separated
+     *  recipients, so the chat opens on the dialed number instead of the list. */
+    private fun recipientFromIntent(intent: Intent): String? {
+        val data = intent.data ?: return null
+        val scheme = data.scheme?.lowercase(java.util.Locale.ROOT) ?: return null
+        if (scheme !in setOf("sms", "smsto", "mms", "mmsto")) return null
+        val raw = data.schemeSpecificPart?.trimStart('/') ?: return null
+        val first = raw.substringBefore('?').split(';', ',').firstOrNull()?.trim().orEmpty()
+        val decoded = Uri.decode(first)
+        return decoded.ifBlank { null }
     }
 }

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">搜尋對話</string>
+    <string name="conversations_retry_loading">重新載入</string>
+    <string name="conversations_allow_access">允許存取</string>
+    <string name="conversations_open_settings">開啟設定</string>
+    <string name="conversations_press_back_exit">再按一次返回以退出</string>
+    <string name="new_chat_title">新對話</string>
+    <string name="new_chat_hint">輸入姓名或電話號碼</string>
+    <string name="new_chat_only_phone">僅能傳送訊息給電話號碼</string>
+    <string name="new_chat_send_to">傳送至「%s」</string>
+    <string name="text_placeholder">輸入訊息</string>
+    <string name="conversations_archived">已封存</string>
+    <string name="conversations_messages">訊息</string>
+    <string name="conversations_me">我</string>
+    <string name="conversations_allow_sms_access">允許 SMS 存取</string>
+    <string name="conversations_sms_permission">訊息需要權限來讀取您的 SMS，以便在此顯示您的對話。</string>
+    <string name="convo_archived">對話已封存</string>
+    <string name="convo_moved_to_trash">對話已移至垃圾桶</string>
+    <string name="convo_close_search">关闭搜索</string>
+    <string name="convo_back_to_inbox">返回收件匣</string>
+</resources>

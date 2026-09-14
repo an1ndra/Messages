@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">垃圾桶</string>
+    <string name="trash_empty">清空垃圾桶</string>
+    <string name="trash_emptied">垃圾桶已清空</string>
+    <string name="trash_delete_conversation">刪除對話</string>
+    <string name="trash_conversation_deleted">對話已刪除</string>
+    <string name="trash_empty_is_empty">垃圾桶是空的</string>
+    <string name="trash_empty_message">已刪除的對話會在 30 天後永久移除</string>
+    <string name="trash_empty_confirm">確定要從垃圾桶刪除所有 %d 則對話嗎？此操作無法復原。</string>
+    <string name="trash_delete_forever_confirm">確定要永久刪除「%s」嗎？此操作無法復原。</string>
+    <string name="trash_deleted_on">於 %s 刪除</string>
+    <string name="toast_trash_deleted">對話已刪除</string>
+    <string name="action_undo">復原</string>
+</resources>

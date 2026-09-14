@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared action labels -->
+    <string name="common_cancel">Abbrechen</string>
+    <string name="common_ok">OK</string>
+    <string name="common_delete">Löschen</string>
+    <string name="common_open">Öffnen</string>
+    <string name="common_close">Schließen</string>
+    <string name="common_next">Weiter</string>
+
+    <!-- Time formatting -->
+    <string name="time_now">Jetzt</string>
+    <string name="time_today">Heute</string>
+    <string name="time_minutes">%s Min.</string>
+    <string name="time_format_hour">h:mm a</string>
+    <string name="time_format_date">MMM d</string>
+    <string name="time_format_divider">EEE, MMM d</string>
+
+    <!-- Contacts -->
+    <string name="contact_work_profile">Work-Profile-Kontakt</string>
+
+    <!-- Accessibility -->
+    <string name="access_restore">Wiederherstellen</string>
+    <string name="access_delete_forever">Immer löschen</string>
+    <string name="access_delete">Löschen</string>
+    <string name="access_archive">Archivieren</string>
+    <string name="access_pinned">Angeheftet</string>
+    <string name="access_start_chat">Chat starten</string>
+    <string name="access_loading_messages">Nachrichten werden geladen</string>
+    <string name="access_photo">Foto</string>
+    <string name="action_call">Anrufen</string>
+    <string name="action_add">Hinzufügen</string>
+    <string name="access_chat_top_bar">Chat-Oberleiste</string>
+    <string name="access_swipe_background">Wischoberfläche</string>
+    <string name="access_nav">Navigationsleiste</string>
+    <!-- Icon content descriptions -->
+    <string name="icon_back">Zurück</string>
+    <string name="icon_cancel_selection">Auswahl abbrechen</string>
+    <string name="icon_copy">Kopieren</string>
+    <string name="icon_delete">Löschen</string>
+    <string name="icon_more_options">Weitere Optionen</string>
+    <string name="icon_call">Anrufen</string>
+    <string name="icon_attach">Anhängen</string>
+    <string name="icon_emoji">Emoji</string>
+    <string name="icon_send">Senden</string>
+    <string name="icon_close_search">Suche schließen</string>
+    <string name="icon_back_to_inbox">Zurück zum Posteingang</string>
+    <string name="icon_search">Durchsuchen</string>
+    <string name="icon_cancel">Abbrechen</string>
+    <!-- Message statuses -->
+    <string name="status_delivered">Zugestellt</string>
+    <string name="status_sending">Wird gesendet…</string>
+    <string name="status_sms">SMS</string>
+    <!-- Sheet actions -->
+    <string name="sheet_unarchive">Entarchivieren</string>
+    <string name="sheet_unpin">Loslösen</string>
+    <string name="sheet_pin">Anheften</string>
+    <string name="sheet_archive">Archivieren</string>
+    <string name="sheet_delete">Löschen</string>
+    <string name="sheet_block">Blockieren</string>
+    <!-- Detail row labels -->
+    <string name="detail_phone_number">Telefonnummer</string>
+    <string name="detail_messages">Nachrichten</string>
+</resources>
