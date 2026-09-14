@@ -7,6 +7,7 @@ Offline SMS messaging app for Android (Google Messages clone).
 
 ```bash
 ./gradlew assembleDebug
+./gradlew testDebugUnitTest   # JUnit tests live in app/src/test/java/...
 ~/android/platform-tools/adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -44,6 +45,13 @@ git add scripts && git commit -m "chore: bump scripts submodule"
 1. M3 color roles only — no hex colors outside `Theme.kt` seeds + GM avatar palette.
 2. No dead controls. 3. No comments unless genuinely non-obvious.
 4. After code changes: build → install → run `scripts/test-*.sh` → track completion in `scripts/TODO.md`.
-5. Add a `test-*.sh` regression script for every bug fixed (dev must be able to re-run it).
+5. **Every change ships with BOTH tests — never miss this.** For any code change,
+   not just bug fixes:
+   - a **JUnit test file** under `app/src/test/java/...` covering the changed
+     logic, runnable with `./gradlew testDebugUnitTest` (must stay green); and
+   - a **`scripts/test-*.sh` regression script** the developer can re-run on
+     `emulator-5554`.
+   For a bug fix the script must fail before the fix and pass after. A change is
+   not "done" until both exist and pass.
 6. Don't take screenshots without the user's permission (AI readback is slow).
 7. Never create GitHub issues unless explicitly asked.
