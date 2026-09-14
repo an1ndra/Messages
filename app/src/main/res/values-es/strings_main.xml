@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Messages</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">Autenticar para acceder a tus mensajes</string>
+    <string name="lock_unlock_title">Desbloquear Messages</string>
+    <string name="lock_auth_subtitle">Autenticar para revelar estos mensajes</string>
+    <string name="lock_got_it">Entendido</string>
+    <string name="lock_not_now">Ahora no</string>
+    <string name="lock_off">El bloqueo de la app está desactivado</string>
+    <string name="lock_setup_needed">Primero configura un bloqueo de pantalla (huella, rostro o PIN) en tu dispositivo</string>
+    <string name="lock_turn_on">Configurar bloqueo de pantalla</string>
+    <string name="lock_turn_on_hint">Configura uno para volver a activar el bloqueo de la app.</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">¿Establecer como app SMS predeterminada?</string>
+    <string name="default_sms_message">Para enviar y recibir mensajes, Messages necesita ser tu app SMS predeterminada.</string>
+    <string name="default_sms_set">Establecer como predeterminada</string>
+    <string name="default_sms_not_now">Ahora no</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">Notificaciones desactivadas — no recibirás alertas de nuevos mensajes</string>
+
+    <string name="messages_footer">Messages 1.0 - SMS sin conexión</string>
+    <string name="settings_light_mode">Claro</string>
+    <string name="settings_dark_mode">Oscuro</string>
+    <string name="system_default">Predeterminado del sistema</string>
+    <string name="settings_backup_restored">Copia de seguridad restaurada. Reinicia la app para aplicar.</string>
+    <string name="settings_saving">Guardando...</string>
+    <string name="settings_backup_saving">Guardado protegido con PIN en Documentos/Messages</string>
+    <string name="settings_link_tap_info">Toca los enlaces en los mensajes para abrir el sitio web</string>
+    <string name="settings_choose_delay">Elige cuánto tiempo esperar antes de enviar:</string>
+    <string name="settings_backup_apply">¿Cómo se debe aplicar esta copia de seguridad a tus mensajes actuales?</string>
+    <string name="settings_backup_pin_protection">Tu copia de seguridad está protegida con este PIN. Lo necesitarás para restaurarla, incluso después de reinstalar la app o en un teléfono nuevo.</string>
+    <string name="settings_pin_dialog_set">Establecer PIN de copia de seguridad</string>
+    <string name="settings_pin_dialog_enter">Ingresar PIN de copia de seguridad</string>
+    <string name="settings_pin_error_too_short">El PIN debe tener al menos 4 dígitos</string>
+    <string name="settings_pin_error_mismatch">Los PIN no coinciden</string>
+    <string name="settings_sound_arrival">Sonido al recibir un mensaje</string>
+    <string name="convo_moved_to_trash">Conversación movida a la papelera</string>
+    <string name="convo_archived">Conversación archivada</string>
+    <string name="action_undo">Deshacer</string>
+    <string name="lock_error_no_screen_lock">El bloqueo de la app no se puede usar porque este dispositivo no tiene un bloqueo de pantalla (huella, rostro o PIN) para verificar que eres tú.</string>
+    <string name="sim_default">Predeterminada</string>
+    <string name="time_yesterday">Ayer</string>
+    <string name="link_warning_confirm">Confirmar antes de abrir enlaces externos</string>
+    <string name="notification_channel_title">Messages</string>
+    <string name="notification_channel_desc">Notificaciones de mensajes nuevos</string>
+    <string name="notif_title_private">Mensaje nuevo</string>
+    <string name="notif_body_private">Tienes un mensaje nuevo</string>
+    <string name="notif_send_fail_private">No se pudo enviar el mensaje. Toca para reintentar.</string>
+    <string name="notif_send_fail">No se pudo enviar el mensaje a %s. Toca para reintentar.</string>
+    <string name="notif_not_delivered">Mensaje no entregado</string>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">عكس إجراءات التمرير</string>
+    <string name="settings_advanced_reverse_swipe_desc">مرر إلى اليسار للأرشفة وليمين للحذف</string>
+    <string name="settings_advanced_hide_links">إخفاء الروابط من الرسائل</string>
+    <string name="settings_advanced_hide_links_desc">لا تحول الروابط في الرسائل إلى روابط قابلة للنقر</string>
+    <string name="settings_advanced_highlight_links">تسليط الضوء على الروابط</string>
+    <string name="settings_advanced_link_warning">تحذير فتح الرابط</string>
+    <string name="settings_advanced_permanent_delete">حذف نهائي</string>
+    <string name="settings_advanced_permanent_delete_desc">حذف الرسائل فورًا بدلاً من نقلها إلى سلة المحذوفات</string>
+    <string name="settings_advanced_turn_off">أطفئ \"</string>
+    <string name="settings_advanced_turn_off_suffix">" أولاً</string>
+    <string name="settings_advanced_permanent_delete_on">الحذف النهائي مفعّل. سيتم إزالة هذه المحادثة ورسائلها من جهازك فورًا - لن تُنقل إلى سلة المحذوفات - ولا يمكن استعادتها.</string>
+
+</resources>

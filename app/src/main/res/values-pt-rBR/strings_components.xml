@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared action labels -->
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_ok">OK</string>
+    <string name="common_delete">Excluir</string>
+    <string name="common_open">Abrir</string>
+    <string name="common_close">Fechar</string>
+    <string name="common_next">Próximo</string>
+
+    <!-- Time formatting -->
+    <string name="time_now">Agora</string>
+    <string name="time_today">Hoje</string>
+    <string name="time_minutes">%s min</string>
+    <string name="time_format_hour">h:mm a</string>
+    <string name="time_format_date">d de MMM</string>
+    <string name="time_format_divider">EEE, d de MMM</string>
+
+    <!-- Contacts -->
+    <string name="contact_work_profile">Contato do perfil profissional</string>
+
+    <!-- Accessibility -->
+    <string name="access_restore">Restaurar</string>
+    <string name="access_delete_forever">Excluir para sempre</string>
+    <string name="access_delete">Excluir</string>
+    <string name="access_archive">Arquivar</string>
+    <string name="access_pinned">Fixada</string>
+    <string name="access_start_chat">Iniciar conversa</string>
+    <string name="access_loading_messages">Carregando mensagens</string>
+    <string name="access_photo">Foto</string>
+    <string name="action_call">Ligar</string>
+    <string name="action_add">Adicionar</string>
+    <string name="access_chat_top_bar">Barra superior da conversa</string>
+    <string name="access_swipe_background">Fundo ao deslizar</string>
+    <string name="access_nav">Gaveta de navegação</string>
+    <!-- Icon content descriptions -->
+    <string name="icon_back">Voltar</string>
+    <string name="icon_cancel_selection">Cancelar seleção</string>
+    <string name="icon_copy">Copiar</string>
+    <string name="icon_delete">Excluir</string>
+    <string name="icon_more_options">Mais opções</string>
+    <string name="icon_call">Ligar</string>
+    <string name="icon_attach">Anexar</string>
+    <string name="icon_emoji">Emoji</string>
+    <string name="icon_send">Enviar</string>
+    <string name="icon_close_search">Fechar pesquisa</string>
+    <string name="icon_back_to_inbox">Voltar à caixa de entrada</string>
+    <string name="icon_search">Pesquisar</string>
+    <string name="icon_cancel">Cancelar</string>
+    <!-- Message statuses -->
+    <string name="status_delivered">Entregue</string>
+    <string name="status_sending">Enviando…</string>
+    <string name="status_sms">SMS</string>
+    <!-- Sheet actions -->
+    <string name="sheet_unarchive">Desarquivar</string>
+    <string name="sheet_unpin">Desafixar</string>
+    <string name="sheet_pin">Fixar</string>
+    <string name="sheet_archive">Arquivar</string>
+    <string name="sheet_delete">Excluir</string>
+    <string name="sheet_block">Bloquear</string>
+    <!-- Detail row labels -->
+    <string name="detail_phone_number">Número de telefone</string>
+    <string name="detail_messages">Mensagens</string>
+</resources>

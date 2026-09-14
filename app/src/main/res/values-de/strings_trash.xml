@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">Papierkorb</string>
+    <string name="trash_empty">Papierkorb leeren</string>
+    <string name="trash_emptied">Papierkorb geleert</string>
+    <string name="toast_trash_deleted">Unterhaltung gelöscht</string>
+    <string name="trash_delete_conversation">Unterhaltung löschen</string>
+    <string name="trash_conversation_deleted">Unterhaltung gelöscht</string>
+
+    <string name="trash_empty_is_empty">Papierkorb ist leer</string>
+    <string name="trash_empty_message">Gelöschte Unterhaltungen werden nach 30 Tagen endgültig entfernt</string>
+    <string name="trash_empty_confirm">%d Unterhaltungen endgültig aus dem Papierkorb löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="trash_delete_forever_confirm">%s endgültig löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="trash_deleted_on">Gelöscht %s</string>
+</resources>

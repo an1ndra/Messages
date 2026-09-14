@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">스와이프 작업 반전</string>
+    <string name="settings_advanced_reverse_swipe_desc">왼쪽으로 스와이프하여 보관, 오른쪽으로 스와이프하여 삭제</string>
+    <string name="settings_advanced_hide_links">메시지에서 링크 숨기기</string>
+    <string name="settings_advanced_hide_links_desc">메시지의 링크를 탭 가능한 링크로 변환하지 않음</string>
+    <string name="settings_advanced_highlight_links">링크 강조</string>
+    <string name="settings_advanced_link_warning">링크 열기 경고</string>
+    <string name="settings_advanced_permanent_delete">영구 삭제</string>
+    <string name="settings_advanced_permanent_delete_desc">휴지통으로 이동하는 대신 메시지를 즉시 삭제</string>
+    <string name="settings_advanced_turn_off">먼저 \"</string>
+    <string name="settings_advanced_turn_off_suffix">\"를 끄세요</string>
+    <string name="settings_advanced_permanent_delete_on">영구 삭제가 켜져 있습니다. 이 대화와 메시지가 휴지통으로 이동되지 않고 기기에서 즉시 제거되며 복원할 수 없습니다.</string>
+
+</resources>

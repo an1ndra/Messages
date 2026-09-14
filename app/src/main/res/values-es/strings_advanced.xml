@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">Invertir acciones al deslizar</string>
+    <string name="settings_advanced_reverse_swipe_desc">Deslizar a la izquierda para archivar y a la derecha para eliminar</string>
+    <string name="settings_advanced_hide_links">Ocultar enlaces de los mensajes</string>
+    <string name="settings_advanced_hide_links_desc">Nunca convertir los enlaces en los mensajes en enlaces seleccionables</string>
+    <string name="settings_advanced_highlight_links">Resaltar enlaces</string>
+    <string name="settings_advanced_link_warning">Aviso al abrir enlaces</string>
+    <string name="settings_advanced_permanent_delete">Eliminación permanente</string>
+    <string name="settings_advanced_permanent_delete_desc">Eliminar mensajes inmediatamente en lugar de moverlos a la papelera</string>
+    <string name="settings_advanced_turn_off">Desactivar «</string>
+    <string name="settings_advanced_turn_off_suffix">" primero</string>
+    <string name="settings_advanced_permanent_delete_on">La eliminación permanente está activada. Esta conversación y sus mensajes se eliminarán de tu dispositivo de inmediato — no se moverán a la papelera — y no podrán ser restaurados.</string>
+
+</resources>

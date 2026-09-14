@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">Pesquisar conversas</string>
+    <string name="conversations_retry_loading">Tentar carregar novamente</string>
+    <string name="conversations_allow_access">Permitir acesso</string>
+    <string name="conversations_open_settings">Abrir configurações do app</string>
+    <string name="conversations_press_back_exit">Pressione voltar novamente para sair</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">Nova conversa</string>
+    <string name="new_chat_hint">Digitar nome ou número de telefone</string>
+    <string name="new_chat_only_phone">Somente números de telefone podem receber mensagens</string>
+    <string name="new_chat_send_to">Enviar para \"%s\"</string>
+    <string name="text_placeholder">Mensagem de texto</string>
+    <string name="conversations_archived">Arquivadas</string>
+    <string name="conversations_messages">Mensagens</string>
+    <string name="conversations_me">Eu</string>
+    <string name="conversations_allow_sms_access">Permitir acesso SMS</string>
+    <string name="conversations_sms_permission">Messages precisa de permissão para ler seus SMS para que suas conversas apareçam aqui.</string>
+
+    <string name="convo_close_search">Fechar pesquisa</string>
+    <string name="convo_back_to_inbox">Voltar à caixa de entrada</string>
+</resources>
