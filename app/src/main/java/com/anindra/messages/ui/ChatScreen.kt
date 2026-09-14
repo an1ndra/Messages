@@ -337,7 +337,7 @@ fun ChatScreen(
     val convo by remember(conversationId) { vm.conversationById(conversationId) }.collectAsState(initial = null)
     val vmContacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
     val workNums = remember(vmContacts) {
-        vmContacts.filter { it.workProfile }.map { it.number.filter { c -> c.isDigit() } }.toSet()
+        vmContacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
     }
     val listState = rememberLazyListState()
     // Progressive loading: latest chunk first, shimmer while older messages queue
@@ -664,7 +664,10 @@ fun ChatScreen(
                     onLockUnlock = { lockUnlockSelection() }
                 )
             } else {
-    val workProfile = convo?.address?.filter { it.isDigit() }?.let { it in workNums } ?: false
+    val workProfile = convo?.let { c ->
+        val key = phoneKey(c.address)
+        key.isNotEmpty() && key in workNums
+    } ?: false
 
             ChatTopBar(
                 convo = convo,
@@ -1134,7 +1137,7 @@ private fun ChatTopBar(
                         Text(
                             convo?.let {
                                 if (it.name != it.address) it.name
-                                else formatPhoneNumber(it.address)
+                                else it.display
                             } ?: "",
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1
@@ -1391,11 +1394,14 @@ private fun ChatSchedulePicker(
     }
 }
 
-fun formatPhoneNumber(raw: String): String = try {
-    android.telephony.PhoneNumberUtils.formatNumber(raw, java.util.Locale.getDefault().country) ?: raw
-} catch (_: Exception) {
-    raw
-}
+fun formatPhoneNumber(raw: String): String =
+    com.anindra.messages.data.PhoneNumberUtils.displayFor(raw, com.anindra.messages.data.PhoneNumberUtils.region())
+
+/** Stable identity for cross-referencing a stored address against a contact
+ *  number: E.164 when valid, else bare digits ("" for alphanumeric IDs). */
+fun phoneKey(address: String): String =
+    com.anindra.messages.data.PhoneNumberUtils.toE164(address, com.anindra.messages.data.PhoneNumberUtils.region())
+        ?: address.filter { it.isDigit() }
 
 /** True for actual phone/short-code numbers; false for alphanumeric sender IDs (DK-AIRCEL, VM-HDFCBK…). */
 fun isPhoneNumber(address: String): Boolean =
