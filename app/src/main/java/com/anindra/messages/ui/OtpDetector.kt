@@ -4,7 +4,7 @@ object OtpDetector {
 
     // ── Tier 1: STRONG keywords (high precision, low false-positives) ──
     private val STRONG_KEYWORD = Regex(
-        """(?i)\b(otp|one[\s-]?time|verification|passcode|2fa|security[\s-]?code)\b"""
+        """(?i)\b(otp|one[\s-]?time|verification|verify|passcode|2fa|security[\s-]?code)\b"""
     )
 
     // ── Tier 2: WEAK keywords (need tighter context before trusting) ──
@@ -40,6 +40,7 @@ object OtpDetector {
 
         // ── 2. WEAK keyword requires co-occurrence with STRONG or tighter window ──
         _weakKeywordTight(body, candidates)
+        _weakKeywordAfter(body, candidates)
 
         // ── 3. Fallback: strong keyword + bare 6-digit ──
         _strongFallbackBare6(body, candidates)
@@ -53,7 +54,7 @@ object OtpDetector {
 
     // ── Strong: "Your otp 1234" ──
     private fun _strongKeywordBefore(body: String, out: MutableList<Candidate>) {
-        val pat = Regex("""(?i)\b(otp|one[\s-]?time|verification|passcode|2fa|security[\s-]?code)\b\D{1,8}(\d{4,8})(?!\d)""")
+        val pat = Regex("""(?i)\b(otp|one[\s-]?time|verification|verify|passcode|2fa|security[\s-]?code)\b\D{1,8}(\d{4,8})(?!\d)""")
         for (m in pat.findAll(body)) {
             val dist = m.groups[2]!!.range.first - m.range.first
             out += Candidate(m.groups[2]!!.range, dist)
@@ -63,7 +64,7 @@ object OtpDetector {
     // ── Strong: "1234 is your verification code" ──
     private fun _strongKeywordAfter(body: String, out: MutableList<Candidate>) {
         val pat = Regex(
-            """(?<!\d)(\d{4,8})(?:\s*(?:is|:))?\s+(?:(?:your|the|my|google|app|login|bank)\s+){0,3}(?:verification[\s-]?code|one[\s-]?time[\s-]?code|otp|passcode|2fa|security[\s-]?code)\b"""
+            """(?<!\d)(\d{4,8})(?:\s*(?:is|:))?\s+(?:(?:your|the|my|google|app|login|bank)\s+){0,3}(?:verification[\s-]?code|one[\s-]?time[\s-]?code|otp|passcode|2fa|security[\s-]?code|verify)\b"""
         )
         for (m in pat.findAll(body)) {
             val dist = m.range.last - m.groups[1]!!.range.last
@@ -101,6 +102,20 @@ object OtpDetector {
         }
     }
 
+    // ── Weak keyword AFTER digits, but only with an explicit connector
+    //    ("1122 is your PIN", "1122: your code"). Without the connector this
+    //    would fire on ordinary prose like "Copyright 2024 code review". ──
+    private fun _weakKeywordAfter(body: String, out: MutableList<Candidate>) {
+        if (!WEAK_KEYWORD.containsMatchIn(body)) return
+        val pat = Regex(
+            """(?i)(?<!\d)(\d{4,8})\s*(?:is|:)\s+(?:(?:your|the|my)\s+){0,2}(?:code|pin|token|password)\b"""
+        )
+        for (m in pat.findAll(body)) {
+            val dist = m.range.last - m.groups[1]!!.range.last
+            out += Candidate(m.groups[1]!!.range, dist)
+        }
+    }
+
     // ── Fallback: strong keyword + bare 6 digits ──
     private fun _strongFallbackBare6(body: String, out: MutableList<Candidate>) {
         if (out.isNotEmpty()) return
@@ -126,7 +141,14 @@ object OtpDetector {
         // Sort by distance (closest to keyword first), then by position
         val sorted = raw.sortedBy { it.distance }.distinctBy { it.range }
 
-        return sorted.filter { c ->
+        // Drop candidates fully contained in a larger one (e.g. the bare "4433"
+        // inside the grouped "4433-2211") so only the fullest match survives.
+        val ranges = sorted.map { it.range }
+        val nonOverlapping = sorted.filter { c ->
+            ranges.none { o -> o != c.range && o.first <= c.range.first && o.last >= c.range.last }
+        }
+
+        return nonOverlapping.filter { c ->
             val digits = body.substring(c.range)
             // Exclude years (19xx/20xx) unless keyword nearby
             if (digits.length == 4 && YEAR.matches(digits)) {
