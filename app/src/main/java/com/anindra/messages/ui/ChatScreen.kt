@@ -131,6 +131,7 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
+import com.anindra.messages.data.MessageLockCrypto
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.ChatMetaWeight
@@ -561,24 +562,36 @@ fun ChatScreen(
                 BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
             )
             if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                val authCipher = MessageLockCrypto.newAuthCipher()
                 val prompt = BiometricPrompt(activity, biometricExecutor,
                     object : BiometricPrompt.AuthenticationCallback() {
                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                            // Tie the unlock to the authenticated Keystore key: a
+                            // crypto operation with the CryptoObject cipher proves the
+                            // user actually authenticated, instead of trusting a
+                            // boolean that UI-hooking tools can flip.
+                            val cipher = result.cryptoObject?.cipher
+                            val authenticated = cipher == null || MessageLockCrypto.proveAuth(cipher)
                             activity.runOnUiThread {
-                                targets.forEach { vm.setLocked(it.id, false) }
-                                unlockedIds = unlockedIds + targets.map { it.id }
+                                if (authenticated) {
+                                    targets.forEach { vm.setLocked(it.id, false) }
+                                    unlockedIds = unlockedIds + targets.map { it.id }
+                                }
                             }
                         }
                     })
-                prompt.authenticate(
-                    BiometricPrompt.PromptInfo.Builder()
-                        .setTitle(context.getString(R.string.lock_unlock_title))
-                        .setSubtitle(context.getString(R.string.lock_auth_subtitle))
-                        .setAllowedAuthenticators(
-                            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                        )
-                        .build()
-                )
+                val info = BiometricPrompt.PromptInfo.Builder()
+                    .setTitle(context.getString(R.string.lock_unlock_title))
+                    .setSubtitle(context.getString(R.string.lock_auth_subtitle))
+                    .setAllowedAuthenticators(
+                        BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                    )
+                    .build()
+                if (authCipher != null) {
+                    prompt.authenticate(info, BiometricPrompt.CryptoObject(authCipher))
+                } else {
+                    prompt.authenticate(info)
+                }
             } else {
                 targets.forEach { vm.setLocked(it.id, false) }
                 unlockedIds = unlockedIds + targets.map { it.id }
