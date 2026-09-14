@@ -118,7 +118,7 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
                                     WorkProfileBadge()
                                 }
                             }
-                            Text(contact.number,
+                            Text(formatPhoneNumber(contact.number),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
