@@ -81,6 +81,14 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".sms.MarkReadReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.anindra.messages.MARK_READ" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".sms.NoConfirmationSmsSendService"
             android:exported="true"
