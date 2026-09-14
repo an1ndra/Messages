@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">Papelera</string>
+    <string name="trash_empty">Vaciar papelera</string>
+    <string name="trash_emptied">Papelera vaciada</string>
+    <string name="toast_trash_deleted">Conversación eliminada</string>
+    <string name="trash_delete_conversation">Eliminar conversación</string>
+    <string name="trash_conversation_deleted">Conversación eliminada</string>
+
+    <string name="trash_empty_is_empty">La papelera está vacía</string>
+    <string name="trash_empty_message">Las conversaciones eliminadas se eliminan permanentemente después de 30 días</string>
+    <string name="trash_empty_confirm">¿Eliminar todas las %d conversaciones de la papelera? Esta acción no se puede deshacer.</string>
+    <string name="trash_delete_forever_confirm">¿Eliminar %s permanentemente? Esta acción no se puede deshacer.</string>
+    <string name="trash_deleted_on">Eliminado el %s</string>
+</resources>

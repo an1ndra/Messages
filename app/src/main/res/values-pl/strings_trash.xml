@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">Kosz</string>
+    <string name="trash_empty">Opróżnij kosz</string>
+    <string name="trash_emptied">Kosz opróżniony</string>
+    <string name="toast_trash_deleted">Rozmowa usunięta</string>
+    <string name="trash_delete_conversation">Usuń rozmowę</string>
+    <string name="trash_conversation_deleted">Rozmowa usunięta</string>
+
+    <string name="trash_empty_is_empty">Kosz jest pusty</string>
+    <string name="trash_empty_message">Usunięte rozmowy są trwale usuwane po 30 dniach</string>
+    <string name="trash_empty_confirm">Usunąć wszystkie %d rozmowy z kosza? Tej operacji nie można cofnąć.</string>
+    <string name="trash_delete_forever_confirm">Trwale usunąć %s? Tej operacji nie można cofnąć.</string>
+    <string name="trash_deleted_on">Usunięto %s</string>
+</resources>

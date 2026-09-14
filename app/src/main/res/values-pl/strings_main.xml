@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wiadomości</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">Uwierzytelnij, aby uzyskać dostęp do wiadomości</string>
+    <string name="lock_unlock_title">Odblokuj Wiadomości</string>
+    <string name="lock_auth_subtitle">Uwierzytelnij, aby wyświetlić te wiadomości</string>
+    <string name="lock_got_it">Zrozumiano</string>
+    <string name="lock_not_now">Nie teraz</string>
+    <string name="lock_off">Blokada aplikacji jest wyłączona</string>
+    <string name="lock_setup_needed">Najpierw skonfiguruj blokadę ekranu (odbitnik, twarz lub PIN) na swoim urządzeniu</string>
+    <string name="lock_turn_on">Skonfiguruj blokadę ekranu</string>
+    <string name="lock_turn_on_hint">Skonfiguruj jedną, aby ponownie włączyć blokadę aplikacji.</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">Ustawić jako domyślną aplikację SMS?</string>
+    <string name="default_sms_message">Aby wysyłać i odbierać wiadomości, aplikacja Wiadomości musi być Twoją domyślną aplikacją SMS.</string>
+    <string name="default_sms_set">Ustaw jako domyślną</string>
+    <string name="default_sms_not_now">Nie teraz</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">Powiadomienia wyłączone — nie będziesz otrzymywać powiadomień o nowych wiadomościach</string>
+
+    <string name="messages_footer">Wiadomości 1.0 — offline SMS</string>
+    <string name="settings_light_mode">Jasny</string>
+    <string name="settings_dark_mode">Ciemny</string>
+    <string name="system_default">Domyślne systemowe</string>
+    <string name="settings_backup_restored">Kopia zapasowa przywrócona. Uruchom ponownie aplikację, aby zastosować zmiany.</string>
+    <string name="settings_saving">Zapisywanie…</string>
+    <string name="settings_backup_saving">Zapisz chroniony hasłem PIN w Dokumenty/Messages</string>
+    <string name="settings_link_tap_info">Kliknij linki w wiadomościach, aby otworzyć stronę internetową</string>
+    <string name="settings_choose_delay">Wybierz, jak długo czekać przed wysłaniem:</string>
+    <string name="settings_backup_apply">Jak należy zastosować tę kopię zapasową do bieżących wiadomości?</string>
+    <string name="settings_backup_pin_protection">Twoja kopia zapasowa jest chroniona tym hasłem PIN. Będziesz jej potrzebować do przywrócenia — nawet po ponownej instalacji aplikacji lub na nowym telefonie.</string>
+    <string name="settings_pin_dialog_set">Ustaw hasło PIN do kopii zapasowej</string>
+    <string name="settings_pin_dialog_enter">Wprowadź hasło PIN do kopii zapasowej</string>
+    <string name="settings_pin_error_too_short">PIN musi mieć co najmniej 4 cyfry</string>
+    <string name="settings_pin_error_mismatch">Hasła PIN nie są zgodne</string>
+    <string name="settings_sound_arrival">Dźwięk odtwarzany przy odbiorze wiadomości</string>
+    <string name="convo_moved_to_trash">Rozmowa przeniesiona do kosza</string>
+    <string name="convo_archived">Rozmowa zarchiwizowana</string>
+    <string name="action_undo">Cofnij</string>
+    <string name="lock_error_no_screen_lock">Blokady aplikacji nie można używać, ponieważ to urządzenie nie ma blokady ekranu (odbitnik, twarz lub PIN) do weryfikacji Twojej tożsamości.</string>
+    <string name="sim_default">Domyślne</string>
+    <string name="time_yesterday">Wczoraj</string>
+    <string name="link_warning_confirm">Potwierdzaj przed otwarciem zewnętrznych linków</string>
+    <string name="notification_channel_title">Wiadomości</string>
+    <string name="notification_channel_desc">Powiadomienia o nowych wiadomościach</string>
+    <string name="notif_title_private">Nowa wiadomość</string>
+    <string name="notif_body_private">Masz nową wiadomość</string>
+    <string name="notif_send_fail_private">Nie udało się wysłać wiadomości. Stuknij, aby ponowić.</string>
+    <string name="notif_send_fail">Nie udało się wysłać wiadomości do %s. Stuknij, aby ponowić.</string>
+    <string name="notif_not_delivered">Wiadomość nie została dostarczona</string>
+</resources>

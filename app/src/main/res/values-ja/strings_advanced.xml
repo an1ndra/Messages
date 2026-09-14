@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_advanced_reverse_swipe">スワイプアクションを逆にする</string>
+    <string name="settings_advanced_reverse_swipe_desc">左にスワイプしてアーカイブ、右にスワイプして削除</string>
+    <string name="settings_advanced_hide_links">メッセージからリンクを非表示</string>
+    <string name="settings_advanced_hide_links_desc">メッセージ内のリンクをタップ可能なリンクにしない</string>
+    <string name="settings_advanced_highlight_links">リンクを強調表示</string>
+    <string name="settings_advanced_link_warning">リンク開封警告</string>
+    <string name="settings_advanced_permanent_delete">完全に削除</string>
+    <string name="settings_advanced_permanent_delete_desc">ゴミ箱に移動するのではなくメッセージを即座に削除</string>
+    <string name="settings_advanced_turn_off">まず「"</string>
+    <string name="settings_advanced_turn_off_suffix">"」をオフにしてください</string>
+    <string name="settings_advanced_permanent_delete_on">完全削除がオンになっています。この会話とそのメッセージはゴミ箱に移動されることなくデバイスから即座に削除され、復元できません。</string>
+
+</resources>

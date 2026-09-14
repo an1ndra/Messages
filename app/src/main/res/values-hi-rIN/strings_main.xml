@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Messages</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">अपने संदेशों तक पहुँचने के लिए प्रमाणीकृत करें</string>
+    <string name="lock_unlock_title">Messages अनलॉक करें</string>
+    <string name="lock_auth_subtitle">इन संदेशों को दिखाने के लिए प्रमाणीकृत करें</string>
+    <string name="lock_got_it">समझ गया</string>
+    <string name="lock_not_now">अभी नहीं</string>
+    <string name="lock_off">एप लॉक बंद है</string>
+    <string name="lock_setup_needed">पहले अपने डिवाइस पर स्क्रीन लॉक (फिंगरप्रिंट, फेस या PIN) सेटअप करें</string>
+    <string name="lock_turn_on">स्क्रीन लॉक सेटअप करें</string>
+    <string name="lock_turn_on_hint">एप लॉक को वापस চালু करने के लिए एक सेटअप करें।</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">डिफ़ॉल्ट SMS एप के रूप में सेट करें?</string>
+    <string name="default_sms_message">संदेश भेजने और प्राप्त करने के लिए, Messages को आपके डिफ़ॉल्ट SMS एप होने की आवश्यकता है।</string>
+    <string name="default_sms_set">डिफ़ॉल्ट सेट करें</string>
+    <string name="default_sms_not_now">अभी नहीं</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">सूचनाएँ अक्षम — आपको नए संदेशों के लिए सूचित नहीं किया जाएगा</string>
+
+    <string name="messages_footer">Messages 1.0 - ऑफ़लाइन SMS</string>
+    <string name="settings_light_mode">लाइट</string>
+    <string name="settings_dark_mode">डार्क</string>
+    <string name="system_default">सिस्टम डिफ़ॉल्ट</string>
+    <string name="settings_backup_restored">बैकअप बहाल हुआ। लागू करने के लिए एप पुनः प्रारंभ करें।</string>
+    <string name="settings_saving">सहेजा जा रहा है...</string>
+    <string name="settings_backup_saving">Documents/Messages में PIN-सुरक्षित सहेजें</string>
+    <string name="settings_link_tap_info">संदेशों में लिंक पर टैप करने से वेबसाइट खुलती है</string>
+    <string name="settings_choose_delay">भेजने से पहले कितना इंतज़ार करें, यह चुनें:</string>
+    <string name="settings_backup_apply">इस बैकअप को आपके मौजूदा संदेशों पर कैसे लागू किया जाए?</string>
+    <string name="settings_backup_pin_protection">आपका बैकअप इस PIN द्वारा सुरक्षित है। आपको इसे बहाल करने की आवश्यकता होगी — एप रीइंस्टॉल करने के बाद या नए फ़ोन पर भी।</string>
+    <string name="settings_pin_dialog_set">बैकअप PIN सेट करें</string>
+    <string name="settings_pin_dialog_enter">बैकअप PIN दर्ज करें</string>
+    <string name="settings_pin_error_too_short">PIN कम से कम 4 अंकों का होना चाहिए</string>
+    <string name="settings_pin_error_mismatch">PIN मेल नहीं खा रहे हैं</string>
+    <string name="settings_sound_arrival">संदेश आने पर ध्वनि बजाई जाती है</string>
+    <string name="convo_moved_to_trash">संवाद कूड़े में ले जाया गया</string>
+    <string name="convo_archived">संवाद संग्रहीत किया गया</string>
+    <string name="action_undo">पूर्ववत् करें</string>
+    <string name="lock_error_no_screen_lock">एप लॉक का उपयोग नहीं किया जा सकता क्योंकि इस डिवाइस पर कोई स्क्रीन लॉक (फिंगरप्रिंट, फेस या PIN) नहीं है जो यह सत्यापित कर सके कि आप ही आप हैं।</string>
+    <string name="sim_default">डिफ़ॉल्ट</string>
+    <string name="time_yesterday">कल</string>
+    <string name="link_warning_confirm">बाहरी लिंक खोलने से पहले पुष्टि करें</string>
+    <string name="notification_channel_title">Messages</string>
+    <string name="notification_channel_desc">नए संदेश सूचनाएँ</string>
+    <string name="notif_title_private">नया संदेश</string>
+    <string name="notif_body_private">आपके पास एक नया संदेश है</string>
+    <string name="notif_send_fail_private">संदेश भेजा नहीं जा सका। पुनः प्रयास करने के लिए टैप करें।</string>
+    <string name="notif_send_fail">%s को संदेश भेजा नहीं जा सका। पुनः प्रयास करने के लिए टैप करें।</string>
+    <string name="notif_not_delivered">संदेश वितरित नहीं हुआ</string>
+</resources>

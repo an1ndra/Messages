@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">कूड़ा</string>
+    <string name="trash_empty">कूड़ा खाली करें</string>
+    <string name="trash_emptied">कूड़ा खाली किया गया</string>
+    <string name="toast_trash_deleted">संवाद हटाया गया</string>
+    <string name="trash_delete_conversation">संवाद हटाएं</string>
+    <string name="trash_conversation_deleted">संवाद हटाया गया</string>
+
+    <string name="trash_empty_is_empty">कूड़ा खाली है</string>
+    <string name="trash_empty_message">हटाए गए संवाद 30 दिनों बाद स्थायी रूप से हटा दिए जाते हैं</string>
+    <string name="trash_empty_confirm">कूड़े से सभी %d संवाद हटाएं? यह पूर्ववत नहीं किया जा सकता।</string>
+    <string name="trash_delete_forever_confirm">%s को स्थायी रूप से हटाएं? यह पूर्ववत नहीं किया जा सकता।</string>
+    <string name="trash_deleted_on">हटाया गया %s</string>
+</resources>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Messages</string>
+
+    <!-- App lock & permissions -->
+    <string name="lock_title">Authentifiez-vous pour accéder à vos messages</string>
+    <string name="lock_unlock_title">Déverrouiller Messages</string>
+    <string name="lock_auth_subtitle">Authentifiez-vous pour révéler ces messages</string>
+    <string name="lock_got_it">Compris</string>
+    <string name="lock_not_now">Pas maintenant</string>
+    <string name="lock_off">Le verrouillage de l\'application est désactivé</string>
+    <string name="lock_setup_needed">Configurez d\'abord un verrouillage d\'écran (empreinte digitale, visage ou PIN) sur votre appareil</string>
+    <string name="lock_turn_on">Configurer le verrouillage d\'écran</string>
+    <string name="lock_turn_on_hint">Configurez-en un pour réactiver le verrouillage de l\'application.</string>
+
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">Définir comme application SMS par défaut ?</string>
+    <string name="default_sms_message">Pour envoyer et recevoir des messages, Messages doit être votre application SMS par défaut.</string>
+    <string name="default_sms_set">Définir par défaut</string>
+    <string name="default_sms_not_now">Pas maintenant</string>
+
+    <!-- Notifications -->
+    <string name="notifications_disabled">Notifications désactivées — vous ne serez pas alerté des nouveaux messages</string>
+
+    <string name="messages_footer">Messages 1.0 - SMS hors ligne</string>
+    <string name="settings_light_mode">Clair</string>
+    <string name="settings_dark_mode">Sombre</string>
+    <string name="system_default">Par défaut système</string>
+    <string name="settings_backup_restored">Sauvegarde restaurée. Redémarrez l\'application pour appliquer.</string>
+    <string name="settings_saving">Enregistrement...</string>
+    <string name="settings_backup_saving">Sauvegarde protégée par PIN dans Documents/Messages</string>
+    <string name="settings_link_tap_info">Appuyez sur les liens dans les messages pour ouvrir le site web</string>
+    <string name="settings_choose_delay">Choisissez la durée d\'attente avant l\'envoi :</string>
+    <string name="settings_backup_apply">Comment cette sauvegarde doit-elle être appliquée à vos messages actuels ?</string>
+    <string name="settings_backup_pin_protection">Votre sauvegarde est protégée par ce PIN. Vous en aurez besoin pour restaurer - même après avoir réinstallé l\'application ou sur un nouvel téléphone.</string>
+    <string name="settings_pin_dialog_set">Définir le PIN de sauvegarde</string>
+    <string name="settings_pin_dialog_enter">Saisir le PIN de sauvegarde</string>
+    <string name="settings_pin_error_too_short">Le PIN doit comporter au moins 4 chiffres</string>
+    <string name="settings_pin_error_mismatch">Les PIN ne correspondent pas</string>
+    <string name="settings_sound_arrival">Son joué lors de l\'arrivée d\'un message</string>
+    <string name="convo_moved_to_trash">Conversation déplacée dans la corbeille</string>
+    <string name="convo_archived">Conversation archivée</string>
+    <string name="action_undo">Annuler</string>
+    <string name="lock_error_no_screen_lock">Le verrouillage de l\'application ne peut pas être utilisé car cet appareil n\'a pas de verrouillage d\'écran (empreinte digitale, visage ou PIN) pour vérifier votre identité.</string>
+    <string name="sim_default">Par défaut</string>
+    <string name="time_yesterday">Hier</string>
+    <string name="link_warning_confirm">Confirmer avant d\'ouvrir les liens externes</string>
+    <string name="notification_channel_title">Messages</string>
+    <string name="notification_channel_desc">Notifications de nouveaux messages</string>
+    <string name="notif_title_private">Nouveau message</string>
+    <string name="notif_body_private">Vous avez un nouveau message</string>
+    <string name="notif_send_fail_private">Échec de l\'envoi du message. Appuyez pour réessayer.</string>
+    <string name="notif_send_fail">Échec de l\'envoi du message à %s. Appuyez pour réessayer.</string>
+    <string name="notif_not_delivered">Message non remis</string>
+</resources>
