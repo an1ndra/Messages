@@ -55,6 +55,11 @@ class SettingsStore(context: Context) {
         const val KEY_PERMANENT_DELETE_WARN = "permanent_delete_warn"
         const val KEY_REVERSE_SWIPE = "reverse_swipe_enabled"
         const val KEY_LINK_WARNING = "link_open_warning_enabled"
+        const val KEY_FONT_FAMILY = "font_family"
+        const val FONT_SYSTEM = "system"
+        const val FONT_DM_SANS = "dm_sans"
+        const val FONT_INTER = "inter"
+        const val FONT_FIGTREE = "figtree"
         const val DEFAULTS_NOTIFICATIONS = true
         const val DEFAULTS_SOUNDS = true
         const val DEFAULTS_DELIVERY = false
@@ -197,4 +202,8 @@ class SettingsStore(context: Context) {
             prefs.edit().putBoolean(KEY_LINK_WARNING, enabled).apply()
             _revision.value++
         }
+
+    var fontFamily: String
+        get() = prefs.getString(KEY_FONT_FAMILY, FONT_DM_SANS) ?: FONT_DM_SANS
+        set(v) { prefs.edit().putString(KEY_FONT_FAMILY, v).apply(); _revision.value++ }
 }

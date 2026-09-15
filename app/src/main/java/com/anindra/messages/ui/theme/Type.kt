@@ -8,22 +8,43 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.anindra.messages.R
+import com.anindra.messages.data.SettingsStore
 
-/**
- * DM Sans (SIL OFL, bundled in res/font) as a close, freely-licensed stand-in
- * for Google Sans, which is proprietary and cannot be redistributed. DM Sans
- * ships as a variable font, so each weight maps to the same file with a `wght`
- * variation.
- */
-val MessagesFontFamily: FontFamily = FontFamily(
-    Font(R.font.dm_sans, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
-    Font(R.font.dm_sans, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-    Font(R.font.dm_sans, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-    Font(R.font.dm_sans, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700)))
+/** Maps the 400/500/600/700 weights of a variable font to a [FontFamily]. */
+private fun variableFont(resId: Int): FontFamily = FontFamily(
+    Font(resId, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(resId, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(resId, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(resId, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700)))
 )
 
+/**
+ * Bundled UI fonts (SIL OFL) — free stand-ins for Google Sans, which is
+ * proprietary and cannot be redistributed. All are variable fonts in res/font.
+ */
+val DmSansFontFamily: FontFamily = variableFont(R.font.dm_sans)
+val InterFontFamily: FontFamily = variableFont(R.font.inter)
+val FigtreeFontFamily: FontFamily = variableFont(R.font.figtree)
+
+object AppFonts {
+    /** Selectable fonts, in picker order (default first). */
+    val options: List<String> = listOf(
+        SettingsStore.FONT_DM_SANS,
+        SettingsStore.FONT_INTER,
+        SettingsStore.FONT_FIGTREE,
+        SettingsStore.FONT_SYSTEM
+    )
+
+    fun familyFor(key: String): FontFamily = when (key) {
+        SettingsStore.FONT_DM_SANS -> DmSansFontFamily
+        SettingsStore.FONT_INTER -> InterFontFamily
+        SettingsStore.FONT_FIGTREE -> FigtreeFontFamily
+        else -> FontFamily.Default
+    }
+}
+
 fun messagesTypography(
-    family: FontFamily = MessagesFontFamily,
+    family: FontFamily = DmSansFontFamily,
     base: Typography = Typography()
 ): Typography = base.copy(
     displayLarge = base.displayLarge.copy(fontFamily = family),
@@ -42,5 +63,3 @@ fun messagesTypography(
     labelMedium = base.labelMedium.copy(fontFamily = family),
     labelSmall = base.labelSmall.copy(fontFamily = family)
 )
-
-val MessagesTypography: Typography = messagesTypography()

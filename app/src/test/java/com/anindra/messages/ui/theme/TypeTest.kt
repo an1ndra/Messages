@@ -19,8 +19,8 @@ class TypeTest {
     }
 
     @Test
-    fun appTypographyUsesTheBundledFamily() {
-        assertEquals(MessagesFontFamily, MessagesTypography.bodyLarge.fontFamily)
-        assertEquals(MessagesFontFamily, MessagesTypography.headlineSmall.fontFamily)
+    fun defaultTypographyUsesDmSans() {
+        assertEquals(DmSansFontFamily, messagesTypography().bodyLarge.fontFamily)
+        assertEquals(DmSansFontFamily, messagesTypography().headlineSmall.fontFamily)
     }
 }

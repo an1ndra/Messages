@@ -1,7 +1,6 @@
 package com.anindra.messages.ui
 
 import android.Manifest
-import android.app.Activity
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.telephony.SubscriptionInfo
@@ -94,8 +93,6 @@ fun SettingsScreen(
     var themeDialog by remember { mutableStateOf(false) }
     var notifications by remember(revision) { mutableStateOf(vm.settings.notificationsEnabled) }
     var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
-    var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
-    var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
     var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
     val notificationSoundOptions = listOf(
         SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
@@ -111,15 +108,12 @@ fun SettingsScreen(
 
     var pinned by remember(revision) { mutableStateOf(vm.settings.pinnedEnabled) }
     var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
-    var drafts by remember(revision) { mutableStateOf(vm.settings.draftsEnabled) }
     var swipeActions by remember(revision) { mutableStateOf(vm.settings.swipeActionsEnabled) }
     var blocking by remember(revision) { mutableStateOf(vm.settings.blockingEnabled) }
     var forwarding by remember(revision) { mutableStateOf(vm.settings.forwardingEnabled) }
     var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
     var scheduledMessages by remember(revision) { mutableStateOf(vm.settings.scheduledMessagesEnabled) }
     var delayedSending by remember(revision) { mutableStateOf(vm.settings.delayedSendingEnabled) }
-    var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
-    var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
     var delaySeconds by remember(revision) { mutableIntStateOf(vm.settings.delaySeconds) }
 
     var simDialog by remember { mutableStateOf(false) }
@@ -206,22 +200,6 @@ fun SettingsScreen(
                     onChecked = { notifications = it; vm.settings.notificationsEnabled = it }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_send_sound_title),
-                    subtitle = stringResource(R.string.settings_send_sound_subtitle),
-                    checked = sendSound,
-                    onChecked = { sendSound = it; vm.settings.sendSoundEnabled = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_receive_sound_title),
-                    subtitle = stringResource(R.string.settings_receive_sound_subtitle),
-                    checked = receiveSound,
-                    onChecked = {
-                        receiveSound = it
-                        vm.settings.receiveSoundEnabled = it
-                        NotificationHelper.ensureChannel(context)
-                    }
-                )
-                SettingsRow(
                     title = stringResource(R.string.settings_pin_notification_sound),
                     subtitle = notificationSoundLabel(notificationSound, notificationSoundOptions, context),
                     onClick = {
@@ -286,12 +264,6 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_drafts_title),
-                    subtitle = stringResource(R.string.settings_drafts_subtitle),
-                    checked = drafts,
-                    onChecked = { drafts = it; vm.settings.draftsEnabled = it }
-                )
                 SettingsRow(
                     title = stringResource(R.string.settings_archiving_title),
                     subtitle = stringResource(R.string.settings_archiving_subtitle),
@@ -369,37 +341,6 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_blocking_subtitle),
                     checked = blocking,
                     onChecked = { blocking = it; vm.settings.blockingEnabled = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_privacy_title),
-                    subtitle = stringResource(R.string.settings_privacy_subtitle),
-                    checked = privacyMode,
-                    onChecked = {
-                        privacyMode = it
-                        (context as? Activity)?.let { act -> vm.setPrivacyMode(act, it) }
-                    }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_applock_title),
-                    subtitle = stringResource(R.string.settings_applock_subtitle),
-                    checked = appLock,
-                    onChecked = { enable ->
-                        val canAuth = androidx.biometric.BiometricManager.from(context)
-                            .canAuthenticate(
-                                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                                    androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                            )
-                        if (enable && canAuth != androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.lock_setup_needed),
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            appLock = enable
-                            vm.settings.appLockEnabled = enable
-                        }
-                    }
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_trash_title),
