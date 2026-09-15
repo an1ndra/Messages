@@ -162,23 +162,18 @@ private fun loadContactPhoto(context: Context, number: String): Bitmap? {
         } else {
             resolveContactPhotoUri(context, number).also { photoUriCache.put(number, it) }
         }
-        if (photoUri.isNullOrBlank()) null
-        else {
-            val resolver = context.contentResolver
-            resolver.openInputStream(Uri.parse(photoUri))?.use { input ->
-                val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeStream(input, null, opts)
-                val req = 144 * context.resources.displayMetrics.densityDpi / 160
-                var sample = 1
-                while (opts.outWidth / sample > req * 2 || opts.outHeight / sample > req * 2) {
-                    sample *= 2
-                }
-                val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sample }
-                resolver.openInputStream(Uri.parse(photoUri))?.use { s ->
-                    BitmapFactory.decodeStream(s, null, decodeOpts)
-                }
-            }
+        if (photoUri.isNullOrBlank()) return null
+        // Read the bytes once (the old code opened the stream twice: once for
+        // the bounds, once to decode), then decode at a downsampled size.
+        val bytes = context.contentResolver.openInputStream(Uri.parse(photoUri))
+            ?.use { it.readBytes() } ?: return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val req = 144 * context.resources.displayMetrics.densityDpi / 160
+        val decodeOpts = BitmapFactory.Options().apply {
+            inSampleSize = PhotoDecode.sampleSize(bounds.outWidth, bounds.outHeight, req)
         }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOpts)
     } catch (_: Exception) {
         null
     }
