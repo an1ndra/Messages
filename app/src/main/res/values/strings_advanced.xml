@@ -19,4 +19,13 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_system">System default</string>
 
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_subtitle">Device and app diagnostics for troubleshooting</string>
+    <string name="diagnostics_save">Save</string>
+    <string name="diagnostics_copy">Copy</string>
+    <string name="diagnostics_close">Close</string>
+    <string name="diagnostics_saved">Saved to Downloads/Messages</string>
+    <string name="diagnostics_clip_label">Messages diagnostics</string>
+    <string name="settings_sim_unknown">Unknown SIM</string>
+
 </resources>
