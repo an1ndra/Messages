@@ -484,11 +484,20 @@ class MainActivity : FragmentActivity() {
         requestSmsPermissions()
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            val modes = window.context.display?.supportedModes
-            val highRefresh = modes?.maxByOrNull { it.refreshRate }
-            if (highRefresh != null) {
-                window.attributes.preferredDisplayModeId = highRefresh.modeId
+            val display = window.context.display
+            val current = display?.mode?.let {
+                com.anindra.messages.diagnostics.DisplayModeInfo(
+                    it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
+                )
             }
+            val modes = display?.supportedModes?.map {
+                com.anindra.messages.diagnostics.DisplayModeInfo(
+                    it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
+                )
+            } ?: emptyList()
+            com.anindra.messages.diagnostics.DisplayModeSelector
+                .bestModeId(current, modes)
+                ?.let { window.attributes.preferredDisplayModeId = it }
         }
 
         val bootVm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
