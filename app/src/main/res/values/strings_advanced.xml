@@ -17,6 +17,10 @@
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>
     <string name="font_figtree">Figtree</string>
+    <string name="font_montserrat">Montserrat</string>
+    <string name="font_manrope">Manrope</string>
+    <string name="font_jost">Jost</string>
+    <string name="font_poppins">Poppins</string>
     <string name="font_system">System default</string>
 
     <string name="keywords_title">Blocked keywords</string>

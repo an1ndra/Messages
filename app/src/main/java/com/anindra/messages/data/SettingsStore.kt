@@ -60,6 +60,10 @@ class SettingsStore(context: Context) {
         const val FONT_DM_SANS = "dm_sans"
         const val FONT_INTER = "inter"
         const val FONT_FIGTREE = "figtree"
+        const val FONT_MONTSERRAT = "montserrat"
+        const val FONT_MANROPE = "manrope"
+        const val FONT_JOST = "jost"
+        const val FONT_POPPINS = "poppins"
         const val KEY_BLOCKED_KEYWORDS = "blocked_keywords"
         const val DEFAULTS_NOTIFICATIONS = true
         const val DEFAULTS_SOUNDS = true
