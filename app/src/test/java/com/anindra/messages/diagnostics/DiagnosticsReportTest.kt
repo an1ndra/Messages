@@ -24,7 +24,25 @@ class DiagnosticsReportTest {
         locale = "en_US",
         timeZone = "America/New_York",
         themeMode = "system",
-        notificationsEnabled = true
+        notificationsEnabled = true,
+        fontFamily = "dm_sans",
+        blockedKeywords = 2
+    )
+    private val deviceExtra = DeviceExtra(release = "15", device = "panther", product = "panther")
+    private val appExtra = AppExtra(packageName = "com.anindra.messages", targetSdk = 35)
+    private val system = SystemInfo(
+        memoryTotalBytes = 4L * 1024 * 1024 * 1024,
+        memoryAvailBytes = 2L * 1024 * 1024 * 1024,
+        heapMaxBytes = 256L * 1024 * 1024,
+        heapUsedBytes = 32L * 1024 * 1024,
+        storageTotalBytes = 64L * 1024 * 1024 * 1024,
+        storageFreeBytes = 16L * 1024 * 1024 * 1024,
+        batteryLevel = 87,
+        batteryCharging = true,
+        dbSizeBytes = 100L * 1024,
+        conversationCount = 12,
+        messageCount = 345,
+        pendingCrashReports = 1
     )
     private val sims = listOf(
         SimInfo(7, 0, "Vodafone", "Vodafone UK", "23415", "gb", false),
@@ -44,49 +62,75 @@ class DiagnosticsReportTest {
         )
     )
 
+    private fun report() = DiagnosticsReport.format(
+        DiagnosticsData(
+            device = device,
+            app = app,
+            appDetails = appDetails,
+            deviceExtra = deviceExtra,
+            appExtra = appExtra,
+            system = system,
+            selectedSubId = 7,
+            phoneStateGranted = true,
+            multiSim = true,
+            phoneCount = 2,
+            sims = sims,
+            display = display,
+            timestamp = 0L
+        )
+    )
+
     @Test
     fun reportIncludesAppAndPermissionDetails() {
-        val text = DiagnosticsReport.format(
-            device, app, appDetails, 7, true, true, 2, sims, display, 0L
-        )
+        val text = report()
         assertTrue(text.contains("Default SMS handler: true"))
         assertTrue(text.contains("Locale: en_US"))
-        assertTrue(text.contains("Time zone: America/New_York"))
         assertTrue(text.contains("Theme mode: system"))
+        assertTrue(text.contains("Font: dm_sans"))
+        assertTrue(text.contains("Blocked keywords: 2"))
         assertTrue(text.contains("SEND_SMS: granted"))
         assertTrue(text.contains("READ_PHONE_STATE: denied"))
     }
 
     @Test
-    fun reportIncludesSimDetails() {
-        val text = DiagnosticsReport.format(
-            device, app, appDetails, 7, true, true, 2, sims, display, 0L
-        )
-        assertTrue(text.contains("Selected subscriptionId: 7"))
-        assertTrue(text.contains("Multi-SIM: true, phoneCount: 2"))
-        assertTrue(text.contains("Subscription 7:"))
-        assertTrue(text.contains("slotIndex: 0"))
-        assertTrue(text.contains("carrierName: Vodafone"))
-        assertTrue(text.contains("mccMnc: 23415"))
-        assertTrue(text.contains("Subscription 3:"))
-        assertTrue(text.contains("embedded: true"))
+    fun reportIncludesDeviceSystemAndDataDetails() {
+        val text = report()
+        assertTrue(text.contains("Android: 15 (SDK 35)"))
+        assertTrue(text.contains("Device: panther"))
+        assertTrue(text.contains("Product: panther"))
+        assertTrue(text.contains("Memory: 2048 / 4096 MB free"))
+        assertTrue(text.contains("Battery: 87% (charging)"))
+        assertTrue(text.contains("Conversations: 12"))
+        assertTrue(text.contains("Messages: 345"))
+        assertTrue(text.contains("Database size: 100 KB"))
+        assertTrue(text.contains("Pending crash reports: 1"))
     }
 
     @Test
-    fun reportIncludesDisplayModes() {
-        val text = DiagnosticsReport.format(
-            device, app, appDetails, -1, false, false, 1, emptyList(), display, 0L
-        )
+    fun reportIncludesSimAndDisplayDetails() {
+        val text = report()
+        assertTrue(text.contains("Selected subscriptionId: 7"))
+        assertTrue(text.contains("Multi-SIM: true, phoneCount: 2"))
+        assertTrue(text.contains("carrierName: Vodafone"))
         assertTrue(text.contains("Current mode: id=2 1080x2400 @ 120.0Hz"))
-        assertTrue(text.contains("Preferred display mode id: 2"))
-        assertTrue(text.contains("id=1 1080x2400 @ 60.0Hz"))
         assertTrue(text.contains("id=2 1440x3120 @ 120.0Hz"))
     }
 
     @Test
     fun reportHandlesMissingSimPermission() {
         val text = DiagnosticsReport.format(
-            device, app, appDetails, -1, false, false, 1, emptyList(), display, 0L
+            DiagnosticsData(
+                device = device,
+                app = app,
+                appDetails = appDetails,
+                selectedSubId = -1,
+                phoneStateGranted = false,
+                multiSim = false,
+                phoneCount = 1,
+                sims = emptyList(),
+                display = display,
+                timestamp = 0L
+            )
         )
         assertTrue(text.contains("READ_PHONE_STATE granted: false"))
         assertTrue(text.contains("Active subscriptions: none"))

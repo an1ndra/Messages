@@ -60,6 +60,7 @@ class SettingsStore(context: Context) {
         const val FONT_DM_SANS = "dm_sans"
         const val FONT_INTER = "inter"
         const val FONT_FIGTREE = "figtree"
+        const val KEY_BLOCKED_KEYWORDS = "blocked_keywords"
         const val DEFAULTS_NOTIFICATIONS = true
         const val DEFAULTS_SOUNDS = true
         const val DEFAULTS_DELIVERY = false
@@ -206,4 +207,11 @@ class SettingsStore(context: Context) {
     var fontFamily: String
         get() = prefs.getString(KEY_FONT_FAMILY, FONT_DM_SANS) ?: FONT_DM_SANS
         set(v) { prefs.edit().putString(KEY_FONT_FAMILY, v).apply(); _revision.value++ }
+
+    var blockedKeywords: Set<String>
+        get() = prefs.getStringSet(KEY_BLOCKED_KEYWORDS, emptySet()) ?: emptySet()
+        set(v) { prefs.edit().putStringSet(KEY_BLOCKED_KEYWORDS, v).apply(); _revision.value++ }
+
+    /** True when [body] contains any blocked keyword (case-insensitive). */
+    fun isKeywordBlocked(body: String): Boolean = KeywordFilter.isBlocked(body, blockedKeywords)
 }

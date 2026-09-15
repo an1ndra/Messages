@@ -453,6 +453,22 @@ class Repository(private val context: Context) {
         count
     }
 
+    fun totalConversationCount(): Int = runOnIo {
+        var count = 0
+        db.readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM conversations WHERE deleted_at=0", null
+        ).use { if (it.moveToFirst()) count = it.getInt(0) }
+        count
+    }
+
+    fun totalMessageCount(): Int = runOnIo {
+        var count = 0
+        db.readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM messages WHERE deleted_at=0", null
+        ).use { if (it.moveToFirst()) count = it.getInt(0) }
+        count
+    }
+
     fun messageCountFlow(conversationId: Long): Flow<Int> = observe {
         var count = 0
         db.readableDatabase.rawQuery(

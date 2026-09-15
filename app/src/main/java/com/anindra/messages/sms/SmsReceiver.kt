@@ -60,6 +60,10 @@ class SmsReceiver : BroadcastReceiver() {
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
             val body = parts.joinToString("") { it.messageBody!! }
 
+            // Blocked keyword: drop the message entirely — not stored, no
+            // notification, no sound (the user asked for keyword blocking).
+            if (repo.settings.isKeywordBlocked(body)) continue
+
             var sysId = 0L
             if (isDefaultHandler) {
                 try {
