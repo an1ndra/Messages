@@ -18,7 +18,6 @@ import com.anindra.messages.R
 @Composable
 fun DiagnosticsDialog(
     report: String,
-    onSave: () -> Unit,
     onCopy: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -37,7 +36,6 @@ fun DiagnosticsDialog(
         confirmButton = {
             Row(horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.diagnostics_close)) }
-                TextButton(onClick = onSave) { Text(stringResource(R.string.diagnostics_save)) }
                 TextButton(onClick = onCopy) { Text(stringResource(R.string.diagnostics_copy)) }
             }
         }
