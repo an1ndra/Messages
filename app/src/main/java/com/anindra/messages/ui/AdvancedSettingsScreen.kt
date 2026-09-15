@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +28,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -33,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
@@ -261,21 +266,28 @@ fun AdvancedSettingsScreen(
             onDismissRequest = { fontDialog = false },
             title = { Text(stringResource(R.string.settings_choose_font)) },
             text = {
-                Column {
-                    AppFonts.options.forEach { key ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { vm.fontFamily = key }
-                                .padding(vertical = 4.dp)
-                        ) {
-                            RadioButton(
-                                selected = vm.fontFamily == key,
-                                onClick = { vm.fontFamily = key }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(fontLabel(key))
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    Column(
+                        Modifier
+                            .heightIn(max = 420.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        AppFonts.options.forEach { key ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 32.dp)
+                                    .clickable { vm.fontFamily = key }
+                            ) {
+                                RadioButton(
+                                    selected = vm.fontFamily == key,
+                                    onClick = { vm.fontFamily = key },
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(fontLabel(key), style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
                     }
                 }
@@ -314,6 +326,10 @@ fun AdvancedSettingsScreen(
 private fun fontLabel(key: String): String = when (key) {
     SettingsStore.FONT_INTER -> stringResource(R.string.font_inter)
     SettingsStore.FONT_FIGTREE -> stringResource(R.string.font_figtree)
+    SettingsStore.FONT_MONTSERRAT -> stringResource(R.string.font_montserrat)
+    SettingsStore.FONT_MANROPE -> stringResource(R.string.font_manrope)
+    SettingsStore.FONT_JOST -> stringResource(R.string.font_jost)
+    SettingsStore.FONT_POPPINS -> stringResource(R.string.font_poppins)
     SettingsStore.FONT_SYSTEM -> stringResource(R.string.font_system)
     else -> stringResource(R.string.font_dm_sans)
 }
