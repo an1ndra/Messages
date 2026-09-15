@@ -10,7 +10,6 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.StatFs
 import android.provider.Telephony
-import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import android.view.Display
 import com.anindra.messages.crash.CrashAppInfo
@@ -18,6 +17,8 @@ import com.anindra.messages.crash.CrashDeviceInfo
 import com.anindra.messages.crash.CrashReporter
 import com.anindra.messages.data.DownloadsStore
 import com.anindra.messages.data.SettingsStore
+import com.anindra.messages.data.SimCard
+import com.anindra.messages.data.SimCards
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -95,16 +96,6 @@ data class SystemInfo(
     val pendingCrashReports: Int = 0
 )
 
-data class SimInfo(
-    val subscriptionId: Int,
-    val slotIndex: Int,
-    val carrier: String?,
-    val displayName: String?,
-    val mccMnc: String?,
-    val countryIso: String?,
-    val embedded: Boolean
-)
-
 data class DisplayModeInfo(
     val modeId: Int,
     val width: Int,
@@ -134,7 +125,7 @@ data class DiagnosticsData(
     val phoneStateGranted: Boolean,
     val multiSim: Boolean,
     val phoneCount: Int,
-    val sims: List<SimInfo>,
+    val sims: List<SimCard>,
     val display: DisplayInfo,
     val timestamp: Long
 )
@@ -222,7 +213,7 @@ object DiagnosticsReport {
                 data.sims.forEach { s ->
                     appendLine("Subscription ${s.subscriptionId}:")
                     appendLine("  slotIndex: ${s.slotIndex}")
-                    appendLine("  carrierName: ${s.carrier ?: "null"}")
+                    appendLine("  carrierName: ${s.carrierName ?: "null"}")
                     appendLine("  displayName: ${s.displayName ?: "null"}")
                     appendLine("  mccMnc: ${s.mccMnc ?: "null"}")
                     appendLine("  countryIso: ${s.countryIso ?: "null"}")
@@ -270,25 +261,7 @@ object DiagnosticsReport {
         val phoneStateGranted = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
             PackageManager.PERMISSION_GRANTED
         val tm = context.getSystemService(TelephonyManager::class.java)
-        val sims = if (phoneStateGranted) {
-            try {
-                context.getSystemService(SubscriptionManager::class.java)
-                    ?.activeSubscriptionInfoList
-                    ?.map {
-                        SimInfo(
-                            subscriptionId = it.subscriptionId,
-                            slotIndex = it.simSlotIndex,
-                            carrier = it.carrierName?.toString()?.ifBlank { null },
-                            displayName = it.displayName?.toString()?.ifBlank { null },
-                            mccMnc = "${it.mccString ?: ""}${it.mncString ?: ""}".ifBlank { null },
-                            countryIso = it.countryIso?.ifBlank { null },
-                            embedded = it.isEmbedded
-                        )
-                    } ?: emptyList()
-            } catch (_: Exception) {
-                emptyList()
-            }
-        } else emptyList()
+        val sims = SimCards.load(context)
 
         val display = context.getSystemService(DisplayManager::class.java)
             ?.getDisplay(Display.DEFAULT_DISPLAY)

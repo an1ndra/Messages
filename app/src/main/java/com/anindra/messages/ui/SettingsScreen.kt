@@ -3,8 +3,6 @@ package com.anindra.messages.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.telephony.SubscriptionInfo
-import android.telephony.SubscriptionManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -67,6 +65,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
+import com.anindra.messages.data.SimCard
+import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimLabel
 import com.anindra.messages.data.SimLabels
 import androidx.compose.ui.res.stringResource
@@ -120,7 +120,7 @@ fun SettingsScreen(
     var delaySeconds by remember(revision) { mutableIntStateOf(vm.settings.delaySeconds) }
 
     var simDialog by remember { mutableStateOf(false) }
-    var sims by remember { mutableStateOf(emptyList<SubscriptionInfo>()) }
+    var sims by remember { mutableStateOf(emptyList<SimCard>()) }
     var backingUp by remember { mutableStateOf(false) }
     var delayDialog by remember { mutableStateOf(false) }
 
@@ -138,28 +138,14 @@ fun SettingsScreen(
     var pinError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            sims = try {
-                context.getSystemService(SubscriptionManager::class.java)
-                    ?.activeSubscriptionInfoList ?: emptyList()
-            } catch (_: Exception) {
-                emptyList()
-            }
-        }
+        sims = SimCards.load(context)
     }
 
     val simPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            sims = try {
-                val sm = context.getSystemService(SubscriptionManager::class.java)
-                sm?.activeSubscriptionInfoList ?: emptyList()
-            } catch (_: Exception) {
-                emptyList()
-            }
+            sims = SimCards.load(context)
             simDialog = true
         }
     }
@@ -250,8 +236,8 @@ fun SettingsScreen(
                 val selectedSub = sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }
                 val currentSimLabel = when (val label = SimLabels.resolve(
                     vm.settings.simSubscriptionId,
-                    selectedSub?.simSlotIndex,
-                    selectedSub?.carrierName?.toString()
+                    selectedSub?.slotIndex,
+                    selectedSub?.carrierName
                 )) {
                     SimLabel.Default -> context.getString(R.string.sim_default)
                     is SimLabel.Carrier -> String.format(
@@ -269,12 +255,7 @@ fun SettingsScreen(
                         val hasPerm = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
                                 PackageManager.PERMISSION_GRANTED
                         if (hasPerm) {
-                            sims = try {
-                                val sm = context.getSystemService(SubscriptionManager::class.java)
-                                sm?.activeSubscriptionInfoList ?: emptyList()
-                            } catch (_: Exception) {
-                                emptyList()
-                            }
+                            sims = SimCards.load(context)
                             simDialog = true
                         } else {
                             simPermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
@@ -536,8 +517,8 @@ fun SettingsScreen(
         var selected by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
         val options = mutableListOf(-1 to context.getString(R.string.settings_sim_default))
         sims.forEach { sub ->
-            val carrier = sub.carrierName?.toString()?.ifBlank { null }
-            val label = if (carrier != null) String.format(context.getString(R.string.settings_sim_label_format), carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
+            val carrier = sub.carrierName?.ifBlank { null }
+            val label = if (carrier != null) String.format(context.getString(R.string.settings_sim_label_format), carrier, sub.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.slotIndex + 1)
             options += sub.subscriptionId to label
         }
         AlertDialog(

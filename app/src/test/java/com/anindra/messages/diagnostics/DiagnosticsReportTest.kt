@@ -1,6 +1,7 @@
 package com.anindra.messages.diagnostics
 
 import com.anindra.messages.crash.CrashAppInfo
+import com.anindra.messages.data.SimCard
 import com.anindra.messages.crash.CrashDeviceInfo
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -65,8 +66,8 @@ class DiagnosticsReportTest {
         pendingCrashReports = 1
     )
     private val sims = listOf(
-        SimInfo(7, 0, "Vodafone", "Vodafone UK", "23415", "gb", false),
-        SimInfo(3, 1, null, null, null, null, true)
+        SimCard(7, 0, "Vodafone", "Vodafone UK", "23415", "gb", false),
+        SimCard(3, 1, null, null, null, null, true)
     )
     private val display = DisplayInfo(
         modeId = 2,
