@@ -142,6 +142,7 @@ fun MessagesTheme(
 
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
+        typography = MessagesTypography,
         content = content
     )
 }
