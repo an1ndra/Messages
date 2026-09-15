@@ -52,4 +52,14 @@
     <string name="notif_send_fail_private">Couldn\'t send message. Tap to retry.</string>
     <string name="notif_send_fail">Couldn\'t send message to %s. Tap to retry.</string>
     <string name="notif_not_delivered">Message not delivered</string>
+
+    <!-- Crash reports -->
+    <string name="crash_report_title">Crash report</string>
+    <string name="crash_report_message">The app crashed last time. Export the report as a ZIP to attach it to a GitHub issue.</string>
+    <string name="crash_report_message_many">The app crashed %1$d times. Export the reports as a ZIP to attach them to a GitHub issue.</string>
+    <string name="crash_report_export">Export as ZIP</string>
+    <string name="crash_report_copy">Copy</string>
+    <string name="crash_report_delete">Delete</string>
+    <string name="crash_report_share">Share crash report</string>
+    <string name="crash_report_clip_label">Messages crash report</string>
 </resources>

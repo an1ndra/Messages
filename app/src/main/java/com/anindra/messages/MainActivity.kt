@@ -93,6 +93,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val contacts = kotlinx.coroutines.flow.MutableStateFlow<List<com.anindra.messages.ui.Contact>>(emptyList())
 
+    val pendingCrashReports =
+        androidx.compose.runtime.mutableStateOf<List<java.io.File>>(emptyList())
+
     init {
         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val ctx = app.applicationContext
@@ -136,6 +139,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             contacts.value = out
+        }
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            pendingCrashReports.value =
+                com.anindra.messages.crash.CrashReporter.pending(app.applicationContext)
         }
     }
 
@@ -393,6 +400,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             repo.deleteScheduledMessage(id)
         }
     }
+
+    fun exportCrashReports(onReady: (java.io.File?) -> Unit) {
+        scope.launch {
+            val zip = withContext(Dispatchers.IO) {
+                com.anindra.messages.crash.CrashReporter.exportZip(getApplication())
+            }
+            onReady(zip)
+        }
+    }
+
+    fun copyCrashReports() {
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                com.anindra.messages.crash.CrashReporter.reportText(getApplication())
+            }
+            val cm = getApplication<Application>()
+                .getSystemService(android.content.ClipboardManager::class.java)
+            cm?.setPrimaryClip(
+                android.content.ClipData.newPlainText(
+                    getApplication<Application>().getString(R.string.crash_report_clip_label),
+                    text
+                )
+            )
+        }
+    }
+
+    fun clearCrashReports() {
+        com.anindra.messages.crash.CrashReporter.clear(getApplication())
+        pendingCrashReports.value = emptyList()
+    }
 }
 
 class MainActivity : FragmentActivity() {
@@ -606,6 +643,17 @@ class MainActivity : FragmentActivity() {
                     )
                 }
 
+                if (vm.pendingCrashReports.value.isNotEmpty()) {
+                    com.anindra.messages.crash.CrashReportDialog(
+                        reportCount = vm.pendingCrashReports.value.size,
+                        onExportZip = {
+                            vm.exportCrashReports { zip -> if (zip != null) shareCrashZip(zip) }
+                        },
+                        onCopy = { vm.copyCrashReports() },
+                        onDelete = { vm.clearCrashReports() }
+                    )
+                }
+
                 // Single back dispatcher for all routes; child screen BackHandlers win.
                 androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
                     val wasChat = navRoute == "chat"
@@ -700,6 +748,19 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    private fun shareCrashZip(file: java.io.File) {
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            this, "$packageName.fileprovider", file
+        )
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "application/zip"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = android.content.ClipData.newUri(contentResolver, "crash", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(send, getString(R.string.crash_report_share)))
     }
 
     private fun requestSmsPermissions() {
