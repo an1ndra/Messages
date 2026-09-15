@@ -17,6 +17,7 @@ class MessagesApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.anindra.messages.crash.CrashReporter.install(this)
         PhoneNumberUtils.init(this)
         ForegroundTracker.init(this)
         repository = Repository(this)

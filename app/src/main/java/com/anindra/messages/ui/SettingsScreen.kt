@@ -51,6 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -67,6 +68,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
+import com.anindra.messages.data.SimLabel
+import com.anindra.messages.data.SimLabels
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
 import com.anindra.messages.sms.NotificationHelper
@@ -139,6 +142,19 @@ fun SettingsScreen(
     var pinInput by remember { mutableStateOf("") }
     var pinConfirm by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            sims = try {
+                context.getSystemService(SubscriptionManager::class.java)
+                    ?.activeSubscriptionInfoList ?: emptyList()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+    }
 
     val simPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -253,9 +269,21 @@ fun SettingsScreen(
                     subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
                 )
-                val currentSimLabel = if (vm.settings.simSubscriptionId == -1) context.getString(R.string.sim_default)
-                else sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }?.displayName?.toString()
-                    ?: context.getString(R.string.settings_sim_label, vm.settings.simSubscriptionId)
+                val selectedSub = sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }
+                val currentSimLabel = when (val label = SimLabels.resolve(
+                    vm.settings.simSubscriptionId,
+                    selectedSub?.simSlotIndex,
+                    selectedSub?.carrierName?.toString()
+                )) {
+                    SimLabel.Default -> context.getString(R.string.sim_default)
+                    is SimLabel.Carrier -> String.format(
+                        context.getString(R.string.settings_sim_label_format), label.carrier, label.slot
+                    )
+                    is SimLabel.Slot -> String.format(
+                        context.getString(R.string.settings_sim_label), label.slot
+                    )
+                    SimLabel.Unknown -> context.getString(R.string.settings_sim_unknown)
+                }
                 SettingsRow(
                     title = stringResource(R.string.settings_pin_sim_card),
                     subtitle = currentSimLabel,
