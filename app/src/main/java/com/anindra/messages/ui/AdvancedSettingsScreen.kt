@@ -71,6 +71,7 @@ fun AdvancedSettingsScreen(
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
     var fontDialog by remember { mutableStateOf(false) }
+    var keywordsDialog by remember { mutableStateOf(false) }
     var diagReport by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
@@ -94,7 +95,14 @@ fun AdvancedSettingsScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
+            // Conversations
             SettingsGroup {
+                SettingsRow(
+                    title = stringResource(R.string.settings_drafts_title),
+                    subtitle = stringResource(R.string.settings_drafts_subtitle),
+                    checked = drafts,
+                    onChecked = { drafts = it; vm.settings.draftsEnabled = it }
+                )
                 SettingsRow(
                     title = stringResource(R.string.settings_advanced_reverse_swipe),
                     subtitle = stringResource(R.string.settings_advanced_reverse_swipe_desc),
@@ -104,6 +112,22 @@ fun AdvancedSettingsScreen(
                         vm.settings.reverseSwipeEnabled = it
                     }
                 )
+                SettingsRow(
+                    title = stringResource(R.string.settings_advanced_permanent_delete),
+                    subtitle = stringResource(R.string.settings_advanced_permanent_delete_desc),
+                    checked = permanentDelete,
+                    onChecked = {
+                        permanentDelete = it
+                        vm.settings.permanentDeleteEnabled = it
+                        if (!it) vm.settings.permanentDeleteWarn = true
+                    }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Links
+            SettingsGroup {
                 SettingsRow(
                     title = stringResource(R.string.settings_advanced_hide_links),
                     subtitle = stringResource(R.string.settings_advanced_hide_links_desc),
@@ -141,20 +165,11 @@ fun AdvancedSettingsScreen(
                     },
                     enabled = !hideLinks && highlightLinks
                 )
-                SettingsRow(
-                    title = stringResource(R.string.settings_advanced_permanent_delete),
-                    subtitle = stringResource(R.string.settings_advanced_permanent_delete_desc),
-                    checked = permanentDelete,
-                    onChecked = {
-                        permanentDelete = it
-                        vm.settings.permanentDeleteEnabled = it
-                        if (!it) vm.settings.permanentDeleteWarn = true
-                    }
-                )
             }
 
             Spacer(Modifier.height(8.dp))
 
+            // Privacy & security
             SettingsGroup {
                 SettingsRow(
                     title = stringResource(R.string.settings_privacy_title),
@@ -187,11 +202,16 @@ fun AdvancedSettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_drafts_title),
-                    subtitle = stringResource(R.string.settings_drafts_subtitle),
-                    checked = drafts,
-                    onChecked = { drafts = it; vm.settings.draftsEnabled = it }
+                    title = stringResource(R.string.keywords_title),
+                    subtitle = blockedKeywordsSubtitle(vm.settings.blockedKeywords),
+                    onClick = { keywordsDialog = true }
                 )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Notifications
+            SettingsGroup {
                 SettingsRow(
                     title = stringResource(R.string.settings_send_sound_title),
                     subtitle = stringResource(R.string.settings_send_sound_subtitle),
@@ -212,6 +232,7 @@ fun AdvancedSettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
+            // Appearance
             SettingsGroup {
                 SettingsRow(
                     title = stringResource(R.string.settings_font_title),
@@ -222,6 +243,7 @@ fun AdvancedSettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
+            // Support
             SettingsGroup {
                 SettingsRow(
                     title = stringResource(R.string.diagnostics_title),
@@ -264,17 +286,19 @@ fun AdvancedSettingsScreen(
         )
     }
 
+    if (keywordsDialog) {
+        BlockedKeywordsDialog(
+            keywords = vm.settings.blockedKeywords.sorted(),
+            onAdd = { vm.addBlockedKeyword(it) },
+            onRemove = { vm.removeBlockedKeyword(it) },
+            onDismiss = { keywordsDialog = false }
+        )
+    }
+
     val report = diagReport
     if (report != null) {
         DiagnosticsDialog(
             report = report,
-            onSave = {
-                vm.saveDiagnostics { ok ->
-                    if (ok) Toast.makeText(
-                        context, context.getString(R.string.diagnostics_saved), Toast.LENGTH_LONG
-                    ).show()
-                }
-            },
             onCopy = {
                 val cm = context.getSystemService(ClipboardManager::class.java)
                 cm?.setPrimaryClip(
@@ -293,6 +317,11 @@ private fun fontLabel(key: String): String = when (key) {
     SettingsStore.FONT_SYSTEM -> stringResource(R.string.font_system)
     else -> stringResource(R.string.font_dm_sans)
 }
+
+@Composable
+private fun blockedKeywordsSubtitle(keywords: Set<String>): String =
+    if (keywords.isEmpty()) stringResource(R.string.keywords_subtitle_none)
+    else stringResource(R.string.keywords_subtitle_count, keywords.size)
 
 @Composable
 fun PermanentDeleteConfirmDialog(

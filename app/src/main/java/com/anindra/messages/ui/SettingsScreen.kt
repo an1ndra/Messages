@@ -355,16 +355,6 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = stringResource(R.string.settings_advanced_title),
-                    subtitle = stringResource(R.string.settings_advanced_subtitle),
-                    onClick = onOpenAdvanced
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
-                SettingsRow(
                     title = stringResource(R.string.settings_blocking_title),
                     subtitle = stringResource(R.string.settings_blocking_subtitle),
                     checked = blocking,
@@ -392,6 +382,16 @@ fun SettingsScreen(
                         pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
                         importLauncher.launch(arrayOf("application/octet-stream", "application/x-sqlite3"))
                     }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            SettingsGroup {
+                SettingsRow(
+                    title = stringResource(R.string.settings_advanced_title),
+                    subtitle = stringResource(R.string.settings_advanced_subtitle),
+                    onClick = onOpenAdvanced
                 )
             }
 

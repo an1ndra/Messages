@@ -139,17 +139,33 @@ fun PersonAvatar(
     }
 }
 
+private val photoUriCache = PhotoUriCache()
+
+/** Resolves the contact's photo URI via ContactsContract (no caching). */
+private fun resolveContactPhotoUri(context: Context, number: String): String? = try {
+    val lookupUri = Uri.withAppendedPath(
+        ContactsContract.AUTHORITY_URI, "phone_lookup/" + Uri.encode(number)
+    )
+    context.contentResolver.query(lookupUri, arrayOf("photo_uri"), null, null, null)?.use { c ->
+        if (c.moveToFirst()) c.getString(0)?.ifBlank { null } else null
+    }
+} catch (_: Exception) {
+    null
+}
+
 /** Loads the contact's profile photo thumbnail for a phone number, or null. */
 private fun loadContactPhoto(context: Context, number: String): Bitmap? {
     return try {
-        val resolver = context.contentResolver
-        val lookupUri = Uri.withAppendedPath(
-            ContactsContract.AUTHORITY_URI, "phone_lookup/" + Uri.encode(number)
-        )
-        resolver.query(lookupUri, arrayOf("photo_uri"), null, null, null)?.use { c ->
-            val photoUri = if (c.moveToFirst()) c.getString(0) else null
-            if (photoUri.isNullOrBlank()) null
-            else resolver.openInputStream(Uri.parse(photoUri))?.use { input ->
+        val cached = photoUriCache.get(number)
+        val photoUri: String? = if (cached != null) {
+            cached.ifBlank { null }
+        } else {
+            resolveContactPhotoUri(context, number).also { photoUriCache.put(number, it) }
+        }
+        if (photoUri.isNullOrBlank()) null
+        else {
+            val resolver = context.contentResolver
+            resolver.openInputStream(Uri.parse(photoUri))?.use { input ->
                 val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeStream(input, null, opts)
                 val req = 144 * context.resources.displayMetrics.densityDpi / 160

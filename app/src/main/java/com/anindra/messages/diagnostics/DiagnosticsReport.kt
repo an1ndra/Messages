@@ -1,11 +1,14 @@
 package com.anindra.messages.diagnostics
 
 import android.Manifest
+import android.app.ActivityManager
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
+import android.os.BatteryManager
 import android.os.Build
+import android.os.StatFs
 import android.provider.Telephony
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
@@ -31,7 +34,47 @@ data class AppDetails(
     val locale: String,
     val timeZone: String,
     val themeMode: String,
-    val notificationsEnabled: Boolean
+    val notificationsEnabled: Boolean,
+    val fontFamily: String = "",
+    val sendSound: Boolean = false,
+    val receiveSound: Boolean = false,
+    val privacyMode: Boolean = false,
+    val appLock: Boolean = false,
+    val drafts: Boolean = false,
+    val blockedKeywords: Int = 0
+)
+
+data class DeviceExtra(
+    val release: String = "",
+    val device: String = "",
+    val product: String = "",
+    val hardware: String = "",
+    val board: String = "",
+    val abis: String = "",
+    val tags: String = ""
+)
+
+data class AppExtra(
+    val packageName: String = "",
+    val targetSdk: Int = 0,
+    val firstInstallTime: Long = 0L,
+    val lastUpdateTime: Long = 0L
+)
+
+data class SystemInfo(
+    val memoryTotalBytes: Long = 0L,
+    val memoryAvailBytes: Long = 0L,
+    val lowMemory: Boolean = false,
+    val heapMaxBytes: Long = 0L,
+    val heapUsedBytes: Long = 0L,
+    val storageTotalBytes: Long = 0L,
+    val storageFreeBytes: Long = 0L,
+    val batteryLevel: Int = -1,
+    val batteryCharging: Boolean = false,
+    val dbSizeBytes: Long = 0L,
+    val conversationCount: Int = 0,
+    val messageCount: Int = 0,
+    val pendingCrashReports: Int = 0
 )
 
 data class SimInfo(
@@ -62,49 +105,86 @@ data class DisplayInfo(
     val supportedModes: List<DisplayModeInfo>
 )
 
+data class DiagnosticsData(
+    val device: CrashDeviceInfo,
+    val app: CrashAppInfo,
+    val appDetails: AppDetails,
+    val deviceExtra: DeviceExtra = DeviceExtra(),
+    val appExtra: AppExtra = AppExtra(),
+    val system: SystemInfo = SystemInfo(),
+    val selectedSubId: Int,
+    val phoneStateGranted: Boolean,
+    val multiSim: Boolean,
+    val phoneCount: Int,
+    val sims: List<SimInfo>,
+    val display: DisplayInfo,
+    val timestamp: Long
+)
+
 object DiagnosticsReport {
     const val FILE_NAME = "messages-diagnostics.txt"
 
-    fun format(
-        device: CrashDeviceInfo,
-        app: CrashAppInfo,
-        appDetails: AppDetails,
-        selectedSubId: Int,
-        phoneStateGranted: Boolean,
-        multiSim: Boolean,
-        phoneCount: Int,
-        sims: List<SimInfo>,
-        display: DisplayInfo,
-        timestamp: Long
-    ): String {
-        val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(timestamp))
+    fun format(data: DiagnosticsData): String {
+        val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(data.timestamp))
         return buildString {
             appendLine("Messages diagnostics report")
             appendLine("Time: $time")
-            appendLine("App: ${app.versionName} (${app.versionCode})")
-            appendLine("Android SDK: ${device.sdkInt}")
-            appendLine("Device: ${device.manufacturer} ${device.model} (${device.brand})")
-            appendLine("Fingerprint: ${device.fingerprint}")
             appendLine()
             appendLine("--- App ---")
-            appendLine("Default SMS handler: ${appDetails.defaultSms}")
-            appendLine("Locale: ${appDetails.locale}")
-            appendLine("Time zone: ${appDetails.timeZone}")
-            appendLine("Theme mode: ${appDetails.themeMode}")
-            appendLine("Notifications enabled: ${appDetails.notificationsEnabled}")
+            appendLine("Version: ${data.app.versionName} (${data.app.versionCode})")
+            appendLine("Package: ${data.appExtra.packageName}")
+            appendLine("Target SDK: ${data.appExtra.targetSdk}")
+            appendLine("First install: ${date(data.appExtra.firstInstallTime)}")
+            appendLine("Last update: ${date(data.appExtra.lastUpdateTime)}")
+            appendLine("Default SMS handler: ${data.appDetails.defaultSms}")
+            appendLine("Locale: ${data.appDetails.locale}")
+            appendLine("Time zone: ${data.appDetails.timeZone}")
+            appendLine("Theme mode: ${data.appDetails.themeMode}")
+            appendLine("Font: ${data.appDetails.fontFamily}")
+            appendLine("Notifications enabled: ${data.appDetails.notificationsEnabled}")
+            appendLine("Send sound: ${data.appDetails.sendSound}")
+            appendLine("Receive sound: ${data.appDetails.receiveSound}")
+            appendLine("Privacy mode: ${data.appDetails.privacyMode}")
+            appendLine("App lock: ${data.appDetails.appLock}")
+            appendLine("Drafts: ${data.appDetails.drafts}")
+            appendLine("Blocked keywords: ${data.appDetails.blockedKeywords}")
             appendLine("Permissions:")
-            appDetails.permissions.forEach { p ->
+            data.appDetails.permissions.forEach { p ->
                 appendLine("  ${p.name}: ${if (p.granted) "granted" else "denied"}")
             }
             appendLine()
+            appendLine("--- Device ---")
+            appendLine("Android: ${data.deviceExtra.release} (SDK ${data.device.sdkInt})")
+            appendLine("Model: ${data.device.manufacturer} ${data.device.model} (${data.device.brand})")
+            appendLine("Device: ${data.deviceExtra.device}")
+            appendLine("Product: ${data.deviceExtra.product}")
+            appendLine("Hardware: ${data.deviceExtra.hardware}")
+            appendLine("Board: ${data.deviceExtra.board}")
+            appendLine("ABIs: ${data.deviceExtra.abis}")
+            appendLine("Build tags: ${data.deviceExtra.tags}")
+            appendLine("Fingerprint: ${data.device.fingerprint}")
+            appendLine()
+            appendLine("--- System ---")
+            appendLine("Memory: ${mb(data.system.memoryAvailBytes)} / ${mb(data.system.memoryTotalBytes)} MB free")
+            appendLine("Low memory: ${data.system.lowMemory}")
+            appendLine("App heap: ${mb(data.system.heapUsedBytes)} / ${mb(data.system.heapMaxBytes)} MB used")
+            appendLine("Storage: ${mb(data.system.storageFreeBytes)} / ${mb(data.system.storageTotalBytes)} MB free")
+            appendLine("Battery: ${data.system.batteryLevel}% (${if (data.system.batteryCharging) "charging" else "discharging"})")
+            appendLine()
+            appendLine("--- Data ---")
+            appendLine("Conversations: ${data.system.conversationCount}")
+            appendLine("Messages: ${data.system.messageCount}")
+            appendLine("Database size: ${kb(data.system.dbSizeBytes)} KB")
+            appendLine("Pending crash reports: ${data.system.pendingCrashReports}")
+            appendLine()
             appendLine("--- SIM ---")
-            appendLine("READ_PHONE_STATE granted: $phoneStateGranted")
-            appendLine("Multi-SIM: $multiSim, phoneCount: $phoneCount")
-            appendLine("Selected subscriptionId: $selectedSubId")
-            if (sims.isEmpty()) {
+            appendLine("READ_PHONE_STATE granted: ${data.phoneStateGranted}")
+            appendLine("Multi-SIM: ${data.multiSim}, phoneCount: ${data.phoneCount}")
+            appendLine("Selected subscriptionId: ${data.selectedSubId}")
+            if (data.sims.isEmpty()) {
                 appendLine("Active subscriptions: none")
             } else {
-                sims.forEach { s ->
+                data.sims.forEach { s ->
                     appendLine("Subscription ${s.subscriptionId}:")
                     appendLine("  slotIndex: ${s.slotIndex}")
                     appendLine("  carrierName: ${s.carrier ?: "null"}")
@@ -116,17 +196,31 @@ object DiagnosticsReport {
             }
             appendLine()
             appendLine("--- Display ---")
-            appendLine("Current mode: id=${display.modeId} ${display.width}x${display.height} @ ${display.refreshRate}Hz")
-            appendLine("Density: ${display.densityDpi}dpi (config ${display.configDensityDpi}dpi)")
-            appendLine("Preferred display mode id: ${display.preferredModeId}")
+            appendLine("Current mode: id=${data.display.modeId} ${data.display.width}x${data.display.height} @ ${data.display.refreshRate}Hz")
+            appendLine("Density: ${data.display.densityDpi}dpi (config ${data.display.configDensityDpi}dpi)")
+            appendLine("Preferred display mode id: ${data.display.preferredModeId}")
             appendLine("Supported modes:")
-            display.supportedModes.forEach { m ->
+            data.display.supportedModes.forEach { m ->
                 appendLine("  id=${m.modeId} ${m.width}x${m.height} @ ${m.refreshRate}Hz")
             }
         }
     }
 
-    fun collect(context: Context, selectedSubId: Int, settings: SettingsStore): String {
+    private fun date(millis: Long): String =
+        if (millis <= 0) "unknown"
+        else SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(millis))
+
+    private fun mb(bytes: Long): Long = bytes / (1024 * 1024)
+
+    private fun kb(bytes: Long): Long = bytes / 1024
+
+    fun collect(
+        context: Context,
+        selectedSubId: Int,
+        settings: SettingsStore,
+        conversationCount: Int,
+        messageCount: Int
+    ): String {
         val phoneStateGranted = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
             PackageManager.PERMISSION_GRANTED
         val tm = context.getSystemService(TelephonyManager::class.java)
@@ -172,25 +266,70 @@ object DiagnosticsReport {
             @Suppress("DEPRECATION")
             tm?.phoneCount ?: 0
         }
+
+        val dbFile = context.getDatabasePath("messages.db")
+        val stat = try { StatFs(context.filesDir.path) } catch (_: Exception) { null }
+        val memory = ActivityManager.MemoryInfo()
+        context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(memory)
+        val runtime = Runtime.getRuntime()
+        val battery = context.getSystemService(BatteryManager::class.java)
+        val packageInfo = try {
+            val pm = context.packageManager
+            if (Build.VERSION.SDK_INT >= 33) {
+                pm.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(context.packageName, 0)
+            }
+        } catch (_: Exception) {
+            null
+        }
+
         return format(
-            CrashReporter.deviceInfo(),
-            CrashReporter.appInfo(context),
-            appDetails(context, settings),
-            selectedSubId,
-            phoneStateGranted,
-            phoneCount > 1,
-            phoneCount,
-            sims,
-            displayInfo,
-            System.currentTimeMillis()
+            DiagnosticsData(
+                device = CrashReporter.deviceInfo(),
+                app = CrashReporter.appInfo(context),
+                appDetails = appDetails(context, settings),
+                deviceExtra = DeviceExtra(
+                    release = Build.VERSION.RELEASE ?: "",
+                    device = Build.DEVICE ?: "",
+                    product = Build.PRODUCT ?: "",
+                    hardware = Build.HARDWARE ?: "",
+                    board = Build.BOARD ?: "",
+                    abis = Build.SUPPORTED_ABIS?.joinToString(", ") ?: "",
+                    tags = Build.TAGS ?: ""
+                ),
+                appExtra = AppExtra(
+                    packageName = context.packageName,
+                    targetSdk = context.applicationInfo.targetSdkVersion,
+                    firstInstallTime = packageInfo?.firstInstallTime ?: 0L,
+                    lastUpdateTime = packageInfo?.lastUpdateTime ?: 0L
+                ),
+                system = SystemInfo(
+                    memoryTotalBytes = memory.totalMem,
+                    memoryAvailBytes = memory.availMem,
+                    lowMemory = memory.lowMemory,
+                    heapMaxBytes = runtime.maxMemory(),
+                    heapUsedBytes = runtime.totalMemory() - runtime.freeMemory(),
+                    storageTotalBytes = stat?.totalBytes ?: 0L,
+                    storageFreeBytes = stat?.availableBytes ?: 0L,
+                    batteryLevel = battery?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1,
+                    batteryCharging = battery?.isCharging ?: false,
+                    dbSizeBytes = if (dbFile != null && dbFile.exists()) dbFile.length() else 0L,
+                    conversationCount = conversationCount,
+                    messageCount = messageCount,
+                    pendingCrashReports = CrashReporter.pending(context).size
+                ),
+                selectedSubId = selectedSubId,
+                phoneStateGranted = phoneStateGranted,
+                multiSim = phoneCount > 1,
+                phoneCount = phoneCount,
+                sims = sims,
+                display = displayInfo,
+                timestamp = System.currentTimeMillis()
+            )
         )
     }
-
-    fun saveToDownloads(context: Context, selectedSubId: Int, settings: SettingsStore): Boolean =
-        DownloadsStore.write(
-            context, FILE_NAME, "text/plain",
-            collect(context, selectedSubId, settings).toByteArray()
-        )
 
     private fun appDetails(context: Context, settings: SettingsStore): AppDetails {
         val defaultSms = try {
@@ -219,7 +358,14 @@ object DiagnosticsReport {
             locale = Locale.getDefault().toString(),
             timeZone = TimeZone.getDefault().id,
             themeMode = settings.themeMode,
-            notificationsEnabled = settings.notificationsEnabled
+            notificationsEnabled = settings.notificationsEnabled,
+            fontFamily = settings.fontFamily,
+            sendSound = settings.sendSoundEnabled,
+            receiveSound = settings.receiveSoundEnabled,
+            privacyMode = settings.privacyModeEnabled,
+            appLock = settings.appLockEnabled,
+            drafts = settings.draftsEnabled,
+            blockedKeywords = settings.blockedKeywords.size
         )
     }
 }

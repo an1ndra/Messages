@@ -172,6 +172,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _fontState = androidx.compose.runtime.mutableStateOf(settings.fontFamily)
 
+    fun addBlockedKeyword(keyword: String) {
+        val kw = keyword.trim()
+        if (kw.isEmpty()) return
+        settings.blockedKeywords = settings.blockedKeywords + kw
+    }
+
+    fun removeBlockedKeyword(keyword: String) {
+        settings.blockedKeywords = settings.blockedKeywords - keyword
+    }
+
     fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> =
         repo.messages(conversationId, limit, offset)
 
@@ -441,21 +451,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch {
             val text = withContext(Dispatchers.IO) {
                 com.anindra.messages.diagnostics.DiagnosticsReport.collect(
-                    getApplication(), settings.simSubscriptionId, settings
+                    getApplication(),
+                    settings.simSubscriptionId,
+                    settings,
+                    repo.totalConversationCount(),
+                    repo.totalMessageCount()
                 )
             }
             onReady(text)
-        }
-    }
-
-    fun saveDiagnostics(onResult: (Boolean) -> Unit) {
-        scope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                com.anindra.messages.diagnostics.DiagnosticsReport.saveToDownloads(
-                    getApplication(), settings.simSubscriptionId, settings
-                )
-            }
-            onResult(ok)
         }
     }
 }
