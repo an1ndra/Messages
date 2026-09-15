@@ -1,10 +1,12 @@
 package com.anindra.messages.diagnostics
 
 import android.Manifest
+import android.app.role.RoleManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
 import android.os.Build
+import android.provider.Telephony
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import android.view.Display
@@ -12,9 +14,25 @@ import com.anindra.messages.crash.CrashAppInfo
 import com.anindra.messages.crash.CrashDeviceInfo
 import com.anindra.messages.crash.CrashReporter
 import com.anindra.messages.data.DownloadsStore
+import com.anindra.messages.data.SettingsStore
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
+
+data class PermissionState(
+    val name: String,
+    val granted: Boolean
+)
+
+data class AppDetails(
+    val defaultSms: Boolean,
+    val permissions: List<PermissionState>,
+    val locale: String,
+    val timeZone: String,
+    val themeMode: String,
+    val notificationsEnabled: Boolean
+)
 
 data class SimInfo(
     val subscriptionId: Int,
@@ -50,6 +68,7 @@ object DiagnosticsReport {
     fun format(
         device: CrashDeviceInfo,
         app: CrashAppInfo,
+        appDetails: AppDetails,
         selectedSubId: Int,
         phoneStateGranted: Boolean,
         multiSim: Boolean,
@@ -66,6 +85,17 @@ object DiagnosticsReport {
             appendLine("Android SDK: ${device.sdkInt}")
             appendLine("Device: ${device.manufacturer} ${device.model} (${device.brand})")
             appendLine("Fingerprint: ${device.fingerprint}")
+            appendLine()
+            appendLine("--- App ---")
+            appendLine("Default SMS handler: ${appDetails.defaultSms}")
+            appendLine("Locale: ${appDetails.locale}")
+            appendLine("Time zone: ${appDetails.timeZone}")
+            appendLine("Theme mode: ${appDetails.themeMode}")
+            appendLine("Notifications enabled: ${appDetails.notificationsEnabled}")
+            appendLine("Permissions:")
+            appDetails.permissions.forEach { p ->
+                appendLine("  ${p.name}: ${if (p.granted) "granted" else "denied"}")
+            }
             appendLine()
             appendLine("--- SIM ---")
             appendLine("READ_PHONE_STATE granted: $phoneStateGranted")
@@ -96,7 +126,7 @@ object DiagnosticsReport {
         }
     }
 
-    fun collect(context: Context, selectedSubId: Int): String {
+    fun collect(context: Context, selectedSubId: Int, settings: SettingsStore): String {
         val phoneStateGranted = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
             PackageManager.PERMISSION_GRANTED
         val tm = context.getSystemService(TelephonyManager::class.java)
@@ -145,6 +175,7 @@ object DiagnosticsReport {
         return format(
             CrashReporter.deviceInfo(),
             CrashReporter.appInfo(context),
+            appDetails(context, settings),
             selectedSubId,
             phoneStateGranted,
             phoneCount > 1,
@@ -155,6 +186,40 @@ object DiagnosticsReport {
         )
     }
 
-    fun saveToDownloads(context: Context, selectedSubId: Int): Boolean =
-        DownloadsStore.write(context, FILE_NAME, "text/plain", collect(context, selectedSubId).toByteArray())
+    fun saveToDownloads(context: Context, selectedSubId: Int, settings: SettingsStore): Boolean =
+        DownloadsStore.write(
+            context, FILE_NAME, "text/plain",
+            collect(context, selectedSubId, settings).toByteArray()
+        )
+
+    private fun appDetails(context: Context, settings: SettingsStore): AppDetails {
+        val defaultSms = try {
+            val rm = context.getSystemService(RoleManager::class.java)
+            (rm?.isRoleHeld(RoleManager.ROLE_SMS) ?: false) ||
+                Telephony.Sms.getDefaultSmsPackage(context) == context.packageName
+        } catch (_: Exception) {
+            false
+        }
+        val permissions = listOf(
+            Manifest.permission.SEND_SMS,
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.POST_NOTIFICATIONS
+        ).map {
+            PermissionState(
+                it.substringAfterLast('.'),
+                context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+            )
+        }
+        return AppDetails(
+            defaultSms = defaultSms,
+            permissions = permissions,
+            locale = Locale.getDefault().toString(),
+            timeZone = TimeZone.getDefault().id,
+            themeMode = settings.themeMode,
+            notificationsEnabled = settings.notificationsEnabled
+        )
+    }
 }

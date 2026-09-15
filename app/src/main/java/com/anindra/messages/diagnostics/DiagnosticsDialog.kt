@@ -18,7 +18,6 @@ fun DiagnosticsDialog(
     report: String,
     onSave: () -> Unit,
     onCopy: () -> Unit,
-    onShare: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -34,11 +33,11 @@ fun DiagnosticsDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onShare) { Text(stringResource(R.string.diagnostics_share)) }
+            TextButton(onClick = onSave) { Text(stringResource(R.string.diagnostics_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onSave) { Text(stringResource(R.string.diagnostics_save)) }
             TextButton(onClick = onCopy) { Text(stringResource(R.string.diagnostics_copy)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.diagnostics_close)) }
         }
     )
 }
