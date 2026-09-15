@@ -38,11 +38,9 @@ class CrashReportFormatterTest {
     }
 
     @Test
-    fun reportNamesAreStableAndDistinct() {
+    fun reportFileNameIsStable() {
         assertTrue(CrashReportFormatter.reportFileName(0L).startsWith("crash-"))
         assertTrue(CrashReportFormatter.reportFileName(0L).endsWith(".txt"))
-        assertTrue(CrashReportFormatter.zipFileName(0L).startsWith("messages-crash-"))
-        assertTrue(CrashReportFormatter.zipFileName(0L).endsWith(".zip"))
     }
 
     @Test

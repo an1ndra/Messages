@@ -1,8 +1,12 @@
 package com.anindra.messages.crash
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.OutputStream
 import java.text.SimpleDateFormat
@@ -48,9 +52,6 @@ object CrashReportFormatter {
     fun reportFileName(timestamp: Long): String =
         "crash-${stamp(timestamp)}.txt"
 
-    fun zipFileName(timestamp: Long): String =
-        "messages-crash-${stamp(timestamp)}.zip"
-
     private fun stamp(timestamp: Long): String =
         SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date(timestamp))
 }
@@ -94,21 +95,59 @@ object CrashReportStore {
         }
     }
 
-    fun exportZip(context: Context, timestamp: Long): File? = try {
-        val d = dir(context)
-        d.listFiles { f -> f.isFile && f.name.endsWith(".zip") }?.forEach { it.delete() }
-        val entries = list(context).map { it.name to it.readText() }
-        if (entries.isEmpty()) null else {
-            val zip = File(d, CrashReportFormatter.zipFileName(timestamp))
-            zip.outputStream().use { buildZip(it, entries) }
-            zip
-        }
-    } catch (_: Exception) {
-        null
-    }
-
     fun clear(context: Context) {
         dir(context).listFiles()?.forEach { it.delete() }
+    }
+
+    const val DOWNLOAD_DIR = "Messages"
+    const val REPORT_FILE = "messages-crash-report.txt"
+    const val ZIP_FILE = "messages-crash-report.zip"
+
+    /** Publishes the newest report to Downloads/Messages so it survives a
+     *  crash loop where the app never reaches its UI. Best-effort. */
+    fun saveToDownloads(context: Context, text: String): Boolean = try {
+        writeDownload(context, REPORT_FILE, "text/plain", text.toByteArray())
+        true
+    } catch (_: Exception) {
+        false
+    }
+
+    /** Bundles every stored report into a zip in Downloads/Messages (no share
+     *  chooser: on many devices application/zip has no useful share target). */
+    fun exportZipToDownloads(context: Context): Boolean = try {
+        val entries = list(context).map { it.name to it.readText() }
+        if (entries.isEmpty()) false else {
+            val out = ByteArrayOutputStream()
+            buildZip(out, entries)
+            writeDownload(context, ZIP_FILE, "application/zip", out.toByteArray())
+            true
+        }
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun writeDownload(context: Context, displayName: String, mime: String, bytes: ByteArray) {
+        val resolver = context.contentResolver
+        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        resolver.delete(
+            collection,
+            "${MediaStore.Downloads.DISPLAY_NAME}=?",
+            arrayOf(displayName)
+        )
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, displayName)
+            put(MediaStore.Downloads.MIME_TYPE, mime)
+            put(
+                MediaStore.Downloads.RELATIVE_PATH,
+                Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_DIR
+            )
+            put(MediaStore.Downloads.IS_PENDING, 1)
+        }
+        val uri = resolver.insert(collection, values) ?: return
+        resolver.openOutputStream(uri)?.use { it.write(bytes) }
+        values.clear()
+        values.put(MediaStore.Downloads.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
     }
 }
 
@@ -119,7 +158,9 @@ object CrashReporter {
             try {
                 val now = System.currentTimeMillis()
                 val text = CrashReportFormatter.format(throwable, deviceInfo(), appInfo(context), now)
-                CrashReportStore.save(context.applicationContext, text, now)
+                val app = context.applicationContext
+                CrashReportStore.save(app, text, now)
+                CrashReportStore.saveToDownloads(app, text)
             } catch (_: Throwable) {
             }
             previous?.uncaughtException(thread, throwable)
@@ -151,7 +192,8 @@ object CrashReporter {
 
     fun reportText(context: Context): String = CrashReportStore.readAll(context)
 
-    fun exportZip(context: Context): File? = CrashReportStore.exportZip(context, System.currentTimeMillis())
+    fun exportZipToDownloads(context: Context): Boolean =
+        CrashReportStore.exportZipToDownloads(context)
 
     fun clear(context: Context) = CrashReportStore.clear(context)
 }
