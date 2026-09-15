@@ -19,8 +19,8 @@ class TypeTest {
     }
 
     @Test
-    fun defaultTypographyUsesDmSans() {
-        assertEquals(DmSansFontFamily, messagesTypography().bodyLarge.fontFamily)
-        assertEquals(DmSansFontFamily, messagesTypography().headlineSmall.fontFamily)
+    fun defaultTypographyUsesSystemFamily() {
+        assertEquals(FontFamily.Default, messagesTypography().bodyLarge.fontFamily)
+        assertEquals(FontFamily.Default, messagesTypography().headlineSmall.fontFamily)
     }
 }

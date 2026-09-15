@@ -25,9 +25,6 @@ private fun variableFont(resId: Int): FontFamily = FontFamily(
 val DmSansFontFamily: FontFamily = variableFont(R.font.dm_sans)
 val InterFontFamily: FontFamily = variableFont(R.font.inter)
 val FigtreeFontFamily: FontFamily = variableFont(R.font.figtree)
-val MontserratFontFamily: FontFamily = variableFont(R.font.montserrat)
-val ManropeFontFamily: FontFamily = variableFont(R.font.manrope)
-val JostFontFamily: FontFamily = variableFont(R.font.jost)
 val PoppinsFontFamily: FontFamily = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
     Font(R.font.poppins_medium, FontWeight.Medium),
@@ -38,30 +35,24 @@ val PoppinsFontFamily: FontFamily = FontFamily(
 object AppFonts {
     /** Selectable fonts, in picker order (default first). */
     val options: List<String> = listOf(
+        SettingsStore.FONT_SYSTEM,
         SettingsStore.FONT_DM_SANS,
         SettingsStore.FONT_INTER,
         SettingsStore.FONT_FIGTREE,
-        SettingsStore.FONT_MONTSERRAT,
-        SettingsStore.FONT_MANROPE,
-        SettingsStore.FONT_JOST,
-        SettingsStore.FONT_POPPINS,
-        SettingsStore.FONT_SYSTEM
+        SettingsStore.FONT_POPPINS
     )
 
     fun familyFor(key: String): FontFamily = when (key) {
         SettingsStore.FONT_DM_SANS -> DmSansFontFamily
         SettingsStore.FONT_INTER -> InterFontFamily
         SettingsStore.FONT_FIGTREE -> FigtreeFontFamily
-        SettingsStore.FONT_MONTSERRAT -> MontserratFontFamily
-        SettingsStore.FONT_MANROPE -> ManropeFontFamily
-        SettingsStore.FONT_JOST -> JostFontFamily
         SettingsStore.FONT_POPPINS -> PoppinsFontFamily
         else -> FontFamily.Default
     }
 }
 
 fun messagesTypography(
-    family: FontFamily = DmSansFontFamily,
+    family: FontFamily = FontFamily.Default,
     base: Typography = Typography()
 ): Typography = base.copy(
     displayLarge = base.displayLarge.copy(fontFamily = family),
