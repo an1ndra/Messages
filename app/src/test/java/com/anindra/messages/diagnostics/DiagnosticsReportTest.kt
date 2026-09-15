@@ -28,7 +28,27 @@ class DiagnosticsReportTest {
         fontFamily = "dm_sans",
         blockedKeywords = 2
     )
-    private val deviceExtra = DeviceExtra(release = "15", device = "panther", product = "panther")
+    private val deviceExtra = DeviceExtra(
+        release = "15",
+        codename = "REL",
+        incremental = "123",
+        securityPatch = "2025-08-01",
+        device = "panther",
+        product = "panther",
+        hardware = "panther",
+        board = "panther",
+        id = "AP3A",
+        display = "AP3A",
+        type = "user",
+        tags = "release-keys",
+        abis = "arm64-v8a",
+        abis64 = "arm64-v8a",
+        processors = 8,
+        isEmulator = false,
+        kernel = "5.15.0",
+        vmVersion = "2.1.0",
+        fontScale = 1.0f
+    )
     private val appExtra = AppExtra(packageName = "com.anindra.messages", targetSdk = 35)
     private val system = SystemInfo(
         memoryTotalBytes = 4L * 1024 * 1024 * 1024,
@@ -95,9 +115,15 @@ class DiagnosticsReportTest {
     @Test
     fun reportIncludesDeviceSystemAndDataDetails() {
         val text = report()
-        assertTrue(text.contains("Android: 15 (SDK 35)"))
+        assertTrue(text.contains("Android: 15 (SDK 35, codename REL)"))
+        assertTrue(text.contains("Security patch: 2025-08-01"))
+        assertTrue(text.contains("Build ID: AP3A"))
+        assertTrue(text.contains("Build type: user"))
         assertTrue(text.contains("Device: panther"))
         assertTrue(text.contains("Product: panther"))
+        assertTrue(text.contains("Emulator: false"))
+        assertTrue(text.contains("Kernel: 5.15.0"))
+        assertTrue(text.contains("CPU cores: 8"))
         assertTrue(text.contains("Memory: 2048 / 4096 MB free"))
         assertTrue(text.contains("Battery: 87% (charging)"))
         assertTrue(text.contains("Conversations: 12"))
