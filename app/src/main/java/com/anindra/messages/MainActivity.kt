@@ -430,6 +430,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         com.anindra.messages.crash.CrashReporter.clear(getApplication())
         pendingCrashReports.value = emptyList()
     }
+
+    fun diagnosticsReport(onReady: (String) -> Unit) {
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                com.anindra.messages.diagnostics.DiagnosticsReport.collect(
+                    getApplication(), settings.simSubscriptionId
+                )
+            }
+            onReady(text)
+        }
+    }
+
+    fun saveDiagnostics(onResult: (Boolean) -> Unit) {
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                com.anindra.messages.diagnostics.DiagnosticsReport.saveToDownloads(
+                    getApplication(), settings.simSubscriptionId
+                )
+            }
+            onResult(ok)
+        }
+    }
 }
 
 class MainActivity : FragmentActivity() {
