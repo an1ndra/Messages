@@ -159,6 +159,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _themeState = androidx.compose.runtime.mutableStateOf(settings.themeMode)
 
+    var fontFamily: String
+        get() = _fontState.value
+        set(value) { settings.fontFamily = value; _fontState.value = value }
+
+    private val _fontState = androidx.compose.runtime.mutableStateOf(settings.fontFamily)
+
     fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> =
         repo.messages(conversationId, limit, offset)
 
@@ -500,7 +506,7 @@ class MainActivity : FragmentActivity() {
 
             if (!appUnlocked) {
                 if (lockNotAvailable) {
-                    MessagesTheme(mode = vm.themeMode) {
+                    MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
@@ -551,7 +557,7 @@ class MainActivity : FragmentActivity() {
                 return@setContent
             }
 
-            MessagesTheme(mode = vm.themeMode) {
+            MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
                 var chatId by remember { mutableStateOf(-1L) }
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
