@@ -12,12 +12,31 @@
     <string name="settings_advanced_turn_off_suffix">" first</string>
     <string name="settings_advanced_permanent_delete_on">Permanent delete is on. This conversation and its messages will be removed from your device right away — not moved to trash — and cannot be restored.</string>
 
+    <string name="settings_font_title">Font</string>
+    <string name="settings_choose_font">Choose font</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_montserrat">Montserrat</string>
+    <string name="font_manrope">Manrope</string>
+    <string name="font_jost">Jost</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">System default</string>
+
+    <string name="keywords_title">Blocked keywords</string>
+    <string name="keywords_hint">Messages containing any of these words are blocked: not received in the app and no notification sound.</string>
+    <string name="keywords_add_hint">Add keyword</string>
+    <string name="keywords_add">Add</string>
+    <string name="keywords_empty">No blocked keywords yet.</string>
+    <string name="keywords_remove">Remove keyword</string>
+    <string name="keywords_subtitle_none">None</string>
+    <string name="keywords_subtitle_count">%1$d blocked</string>
+
     <string name="diagnostics_title">Diagnostics</string>
     <string name="diagnostics_subtitle">Device and app diagnostics for troubleshooting</string>
     <string name="diagnostics_save">Save</string>
     <string name="diagnostics_copy">Copy</string>
     <string name="diagnostics_close">Close</string>
-    <string name="diagnostics_saved">Saved to Downloads/Messages</string>
     <string name="diagnostics_clip_label">Messages diagnostics</string>
     <string name="settings_sim_unknown">Unknown SIM</string>
 

@@ -8,10 +8,12 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import com.anindra.messages.data.SettingsStore
 
 /**
  * Material 3 color system (m3.material.io/styles/color/system).
@@ -122,6 +124,7 @@ val ChatMetaWeight: FontWeight = FontWeight.Medium
 @Composable
 fun MessagesTheme(
     mode: String = "system",   // system | light | dark
+    font: String = SettingsStore.FONT_DM_SANS,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (mode) {
@@ -140,8 +143,11 @@ fun MessagesTheme(
         }
     }
 
+    val typography = remember(font) { messagesTypography(AppFonts.familyFor(font)) }
+
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
+        typography = typography,
         content = content
     )
 }

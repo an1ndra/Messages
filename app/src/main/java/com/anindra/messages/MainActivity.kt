@@ -130,12 +130,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
 
             try {
-                load(android.provider.ContactsContract.CommonDataKinds.Phone.ENTERPRISE_CONTENT_URI, true)
-            } catch (_: Exception) {
+                // ENTERPRISE_CONTENT_URI is API 34+; referencing it on older
+                // devices throws NoSuchFieldError (an Error), so guard by SDK
+                // and fall back to the plain personal-profile URI. (#209)
+                if (com.anindra.messages.data.EnterpriseContacts.isSupported(Build.VERSION.SDK_INT)) {
+                    load(com.anindra.messages.data.EnterpriseContacts.phoneUri(), true)
+                } else {
+                    load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
+                }
+            } catch (_: Throwable) {
                 out.clear()
                 try {
                     load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
-                } catch (_: SecurityException) {
+                } catch (_: Throwable) {
                 }
             }
             contacts.value = out
@@ -165,6 +172,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setTheme(mode: String) { themeMode = mode }
 
     private val _themeState = androidx.compose.runtime.mutableStateOf(settings.themeMode)
+
+    var fontFamily: String
+        get() = _fontState.value
+        set(value) { settings.fontFamily = value; _fontState.value = value }
+
+    private val _fontState = androidx.compose.runtime.mutableStateOf(settings.fontFamily)
+
+    fun addBlockedKeyword(keyword: String) {
+        val kw = keyword.trim()
+        if (kw.isEmpty()) return
+        settings.blockedKeywords = settings.blockedKeywords + kw
+    }
+
+    fun removeBlockedKeyword(keyword: String) {
+        settings.blockedKeywords = settings.blockedKeywords - keyword
+    }
 
     fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> =
         repo.messages(conversationId, limit, offset)
@@ -435,21 +458,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch {
             val text = withContext(Dispatchers.IO) {
                 com.anindra.messages.diagnostics.DiagnosticsReport.collect(
-                    getApplication(), settings.simSubscriptionId, settings
+                    getApplication(),
+                    settings.simSubscriptionId,
+                    settings,
+                    repo.totalConversationCount(),
+                    repo.totalMessageCount()
                 )
             }
             onReady(text)
-        }
-    }
-
-    fun saveDiagnostics(onResult: (Boolean) -> Unit) {
-        scope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                com.anindra.messages.diagnostics.DiagnosticsReport.saveToDownloads(
-                    getApplication(), settings.simSubscriptionId, settings
-                )
-            }
-            onResult(ok)
         }
     }
 }
@@ -568,7 +584,7 @@ class MainActivity : FragmentActivity() {
 
             if (!appUnlocked) {
                 if (lockNotAvailable) {
-                    MessagesTheme(mode = vm.themeMode) {
+                    MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
@@ -619,7 +635,7 @@ class MainActivity : FragmentActivity() {
                 return@setContent
             }
 
-            MessagesTheme(mode = vm.themeMode) {
+            MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
                 var chatId by remember { mutableStateOf(-1L) }
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
