@@ -19,4 +19,4 @@ Any alternative solutions or features.
 Screenshots, references (e.g. how Google Messages does it), or anything else.
 If it is about device-specific behavior, a report from
 **Settings → Advanced → Diagnostics** (or `Downloads/Messages/messages-diagnostics.txt`)
-shares app, SIM and display details.
+Device and app diagnostics for troubleshooting

@@ -31,7 +31,7 @@ and drag the file into this issue.
   **Save ZIP** → attach `Downloads/Messages/messages-crash-report.zip`.
 - **Any other bug?** Open **Settings → Advanced → Diagnostics**, tap **Save**,
   then attach `Downloads/Messages/messages-diagnostics.txt` (or tap **Copy** and
-  paste it below). It includes app, SIM and display details.
+  paste it below). It includes device and app diagnostics for troubleshooting.
 - Prefer text? Tap **Copy** in either dialog and paste the report here.
 
 **Screenshots**
