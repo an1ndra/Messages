@@ -1,19 +1,15 @@
 package com.anindra.messages.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 
@@ -128,7 +124,11 @@ fun MessagesTheme(
     mode: String = "system",   // system | light | dark
     content: @Composable () -> Unit
 ) {
-    val darkTheme = ThemeMode.resolveDark(mode, isSystemInDarkTheme())
+    val darkTheme = when (mode) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemInDarkTheme()
+    }
 
     // Match status-bar icon appearance to the *app* theme (not just the system).
     val view = LocalView.current
@@ -140,17 +140,8 @@ fun MessagesTheme(
         }
     }
 
-    // Material You (wallpaper colors) on Android 12+, matching Google Messages;
-    // fall back to the Google Blue seed on older versions.
-    val context = LocalContext.current
-    val colorScheme = if (ThemeMode.useDynamicColor(Build.VERSION.SDK_INT)) {
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    } else {
-        if (darkTheme) DarkColors else LightColors
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = if (darkTheme) DarkColors else LightColors,
         content = content
     )
 }
