@@ -124,7 +124,7 @@ val ChatMetaWeight: FontWeight = FontWeight.Medium
 @Composable
 fun MessagesTheme(
     mode: String = "system",   // system | light | dark
-    font: String = SettingsStore.FONT_DM_SANS,
+    font: String = SettingsStore.FONT_SYSTEM,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (mode) {

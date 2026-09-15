@@ -9,10 +9,11 @@ class AppFontsTest {
 
     @Test
     fun mapsEachKeyToItsFamily() {
+        assertEquals(FontFamily.Default, AppFonts.familyFor(SettingsStore.FONT_SYSTEM))
         assertEquals(DmSansFontFamily, AppFonts.familyFor(SettingsStore.FONT_DM_SANS))
         assertEquals(InterFontFamily, AppFonts.familyFor(SettingsStore.FONT_INTER))
         assertEquals(FigtreeFontFamily, AppFonts.familyFor(SettingsStore.FONT_FIGTREE))
-        assertEquals(FontFamily.Default, AppFonts.familyFor(SettingsStore.FONT_SYSTEM))
+        assertEquals(PoppinsFontFamily, AppFonts.familyFor(SettingsStore.FONT_POPPINS))
     }
 
     @Test
@@ -21,8 +22,9 @@ class AppFontsTest {
     }
 
     @Test
-    fun optionsStartWithTheDefaultAndAreDistinct() {
-        assertEquals(SettingsStore.FONT_DM_SANS, AppFonts.options.first())
+    fun optionsStartWithSystemAndAreDistinct() {
+        assertEquals(SettingsStore.FONT_SYSTEM, AppFonts.options.first())
+        assertEquals(5, AppFonts.options.size)
         assertEquals(AppFonts.options.size, AppFonts.options.toSet().size)
     }
 }

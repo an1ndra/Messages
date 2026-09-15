@@ -60,9 +60,6 @@ class SettingsStore(context: Context) {
         const val FONT_DM_SANS = "dm_sans"
         const val FONT_INTER = "inter"
         const val FONT_FIGTREE = "figtree"
-        const val FONT_MONTSERRAT = "montserrat"
-        const val FONT_MANROPE = "manrope"
-        const val FONT_JOST = "jost"
         const val FONT_POPPINS = "poppins"
         const val KEY_BLOCKED_KEYWORDS = "blocked_keywords"
         const val DEFAULTS_NOTIFICATIONS = true
@@ -209,7 +206,7 @@ class SettingsStore(context: Context) {
         }
 
     var fontFamily: String
-        get() = prefs.getString(KEY_FONT_FAMILY, FONT_DM_SANS) ?: FONT_DM_SANS
+        get() = prefs.getString(KEY_FONT_FAMILY, FONT_SYSTEM) ?: FONT_SYSTEM
         set(v) { prefs.edit().putString(KEY_FONT_FAMILY, v).apply(); _revision.value++ }
 
     var blockedKeywords: Set<String>
