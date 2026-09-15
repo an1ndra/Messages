@@ -93,6 +93,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val contacts = kotlinx.coroutines.flow.MutableStateFlow<List<com.anindra.messages.ui.Contact>>(emptyList())
 
+    val pendingCrashReports =
+        androidx.compose.runtime.mutableStateOf<List<java.io.File>>(emptyList())
+
     init {
         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val ctx = app.applicationContext
@@ -136,6 +139,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             contacts.value = out
+        }
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            pendingCrashReports.value =
+                com.anindra.messages.crash.CrashReporter.pending(app.applicationContext)
         }
     }
 
@@ -399,6 +406,58 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             repo.deleteScheduledMessage(id)
         }
     }
+
+    fun exportCrashReports(onReady: (Boolean) -> Unit) {
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                com.anindra.messages.crash.CrashReporter.exportZipToDownloads(getApplication())
+            }
+            onReady(ok)
+        }
+    }
+
+    fun copyCrashReports() {
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                com.anindra.messages.crash.CrashReporter.reportText(getApplication())
+            }
+            val cm = getApplication<Application>()
+                .getSystemService(android.content.ClipboardManager::class.java)
+            cm?.setPrimaryClip(
+                android.content.ClipData.newPlainText(
+                    getApplication<Application>().getString(R.string.crash_report_clip_label),
+                    text
+                )
+            )
+        }
+    }
+
+    fun clearCrashReports() {
+        com.anindra.messages.crash.CrashReporter.clear(getApplication())
+        pendingCrashReports.value = emptyList()
+    }
+
+    fun diagnosticsReport(onReady: (String) -> Unit) {
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                com.anindra.messages.diagnostics.DiagnosticsReport.collect(
+                    getApplication(), settings.simSubscriptionId, settings
+                )
+            }
+            onReady(text)
+        }
+    }
+
+    fun saveDiagnostics(onResult: (Boolean) -> Unit) {
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                com.anindra.messages.diagnostics.DiagnosticsReport.saveToDownloads(
+                    getApplication(), settings.simSubscriptionId, settings
+                )
+            }
+            onResult(ok)
+        }
+    }
 }
 
 class MainActivity : FragmentActivity() {
@@ -431,11 +490,20 @@ class MainActivity : FragmentActivity() {
         requestSmsPermissions()
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            val modes = window.context.display?.supportedModes
-            val highRefresh = modes?.maxByOrNull { it.refreshRate }
-            if (highRefresh != null) {
-                window.attributes.preferredDisplayModeId = highRefresh.modeId
+            val display = window.context.display
+            val current = display?.mode?.let {
+                com.anindra.messages.diagnostics.DisplayModeInfo(
+                    it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
+                )
             }
+            val modes = display?.supportedModes?.map {
+                com.anindra.messages.diagnostics.DisplayModeInfo(
+                    it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
+                )
+            } ?: emptyList()
+            com.anindra.messages.diagnostics.DisplayModeSelector
+                .bestModeId(current, modes)
+                ?.let { window.attributes.preferredDisplayModeId = it }
         }
 
         val bootVm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
@@ -609,6 +677,23 @@ class MainActivity : FragmentActivity() {
                                 androidx.compose.material3.Text(stringResource(R.string.lock_not_now))
                             }
                         }
+                    )
+                }
+
+                if (vm.pendingCrashReports.value.isNotEmpty()) {
+                    com.anindra.messages.crash.CrashReportDialog(
+                        reportCount = vm.pendingCrashReports.value.size,
+                        onExportZip = {
+                            vm.exportCrashReports { ok ->
+                                if (ok) android.widget.Toast.makeText(
+                                    this@MainActivity,
+                                    getString(R.string.crash_report_saved),
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        },
+                        onCopy = { vm.copyCrashReports() },
+                        onDelete = { vm.clearCrashReports() }
                     )
                 }
 

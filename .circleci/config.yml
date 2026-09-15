@@ -1,15 +1,26 @@
 version: 2.1
 
-# CircleCI: run unit tests on every PR that targets `main` as a merge gate.
-# Minimal footprint: smallest resource class.
-# The job halts early for non-main PRs and non-PR pushes.
+# CircleCI: build + unit-test a pull request ONLY when it targets `main`.
+# Goal: know whether a PR still builds / produces an APK *before* it is merged.
+# Nothing runs for ordinary branch pushes or for merges to `main`.
 #
-# One-time project setup:
-#   CircleCI UI -> Project Settings -> Advanced:
-#     * enable "Build forked pull requests" for PRs from forks.
-#   GitHub UI -> Settings -> Branches -> Branch protection rules for `main`:
-#     * enable "Require status checks to pass before merging"
-#     * add `build-apk` as a required check
+# Two layers are needed because CircleCI cannot filter on a PR's *target*
+# branch in config:
+#   1. The trigger (CircleCI UI) decides whether a pipeline is created at all.
+#   2. The workflow ignores `main` so merging does not build, and the job's
+#      first step is an authoritative gate that halts unless the build is a PR
+#      whose base branch is `main`.
+#
+# One-time setup (CircleCI UI -> Project Settings):
+#   * GitHub OAuth orgs: Project Setup/Advanced -> enable
+#     "Only build pull requests". The default branch is still built by that
+#     setting, which is why the workflow below ignores `main`.
+#   * GitHub App orgs: Project Setup -> Triggers -> use a PR-only trigger, e.g.
+#     "Pushes to open non-draft PRs" (add "Non-draft PR opened" as well). This
+#     stops branch pushes from creating a pipeline.
+#   * enable "Build forked pull requests" if PRs can come from forks.
+# GitHub UI -> Settings -> Branches -> protect `main`:
+#   * require the `build-apk` status check before merging.
 
 executors:
   android:
@@ -78,4 +89,8 @@ jobs:
 workflows:
   build:
     jobs:
-      - build-apk
+      - build-apk:
+          filters:
+            branches:
+              ignore:
+                - main
