@@ -13,10 +13,10 @@
     <string name="settings_advanced_permanent_delete_on">Permanent delete is on. This conversation and its messages will be removed from your device right away — not moved to trash — and cannot be restored.</string>
 
     <string name="diagnostics_title">Diagnostics</string>
-    <string name="diagnostics_subtitle">Device, SIM and display details to share when reporting a bug</string>
-    <string name="diagnostics_share">Share</string>
+    <string name="diagnostics_subtitle">App, SIM and display details to share when reporting a bug</string>
     <string name="diagnostics_save">Save</string>
     <string name="diagnostics_copy">Copy</string>
+    <string name="diagnostics_close">Close</string>
     <string name="diagnostics_saved">Saved to Downloads/Messages</string>
     <string name="diagnostics_clip_label">Messages diagnostics</string>
     <string name="settings_sim_unknown">Unknown SIM</string>

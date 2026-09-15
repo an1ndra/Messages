@@ -435,7 +435,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch {
             val text = withContext(Dispatchers.IO) {
                 com.anindra.messages.diagnostics.DiagnosticsReport.collect(
-                    getApplication(), settings.simSubscriptionId
+                    getApplication(), settings.simSubscriptionId, settings
                 )
             }
             onReady(text)
@@ -446,7 +446,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch {
             val ok = withContext(Dispatchers.IO) {
                 com.anindra.messages.diagnostics.DiagnosticsReport.saveToDownloads(
-                    getApplication(), settings.simSubscriptionId
+                    getApplication(), settings.simSubscriptionId, settings
                 )
             }
             onResult(ok)

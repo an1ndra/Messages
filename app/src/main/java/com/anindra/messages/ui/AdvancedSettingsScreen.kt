@@ -2,7 +2,6 @@ package com.anindra.messages.ui
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -171,15 +170,6 @@ fun AdvancedSettingsScreen(
                 val cm = context.getSystemService(ClipboardManager::class.java)
                 cm?.setPrimaryClip(
                     ClipData.newPlainText(context.getString(R.string.diagnostics_clip_label), report)
-                )
-            },
-            onShare = {
-                val send = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, report)
-                }
-                context.startActivity(
-                    Intent.createChooser(send, context.getString(R.string.diagnostics_share))
                 )
             },
             onDismiss = { diagReport = null }
