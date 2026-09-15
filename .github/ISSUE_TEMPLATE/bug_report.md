@@ -29,10 +29,9 @@ and drag the file into this issue.
   `Downloads/Messages/messages-crash-report.txt`. It is written automatically,
   even if the app never opens. If the app does open, the crash dialog also has
   **Save ZIP** → attach `Downloads/Messages/messages-crash-report.zip`.
-- **Any other bug (SIM, display, notifications, sending, calls…)?** Open
-  **Settings → Advanced → Diagnostics**, tap **Save**, then attach
-  `Downloads/Messages/messages-diagnostics.txt` (or tap **Copy** and paste it
-  below). It includes app/device info, permissions, SIM and display details.
+- **Any other bug?** Open **Settings → Advanced → Diagnostics**, tap **Save**,
+  then attach `Downloads/Messages/messages-diagnostics.txt` (or tap **Copy** and
+  paste it below). It includes app, SIM and display details.
 - Prefer text? Tap **Copy** in either dialog and paste the report here.
 
 **Screenshots**
