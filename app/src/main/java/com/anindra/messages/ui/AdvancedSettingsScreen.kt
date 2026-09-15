@@ -1,5 +1,8 @@
 package com.anindra.messages.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,10 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
 import com.anindra.messages.AppViewModel
+import com.anindra.messages.diagnostics.DiagnosticsDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,12 +52,14 @@ fun AdvancedSettingsScreen(
 ) {
     BackHandler(onBack = onBack)
 
+    val context = LocalContext.current
     val revision by vm.settings.revision.collectAsState()
     var permanentDelete by remember(revision) { mutableStateOf(vm.settings.permanentDeleteEnabled) }
     var reverseSwipe by remember(revision) { mutableStateOf(vm.settings.reverseSwipeEnabled) }
     var hideLinks by remember(revision) { mutableStateOf(vm.settings.hideLinks) }
     var highlightLinks by remember(revision) { mutableStateOf(vm.settings.highlightLinks) }
     var linkWarning by remember(revision) { mutableStateOf(vm.settings.linkOpenWarningEnabled) }
+    var diagReport by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -135,7 +142,38 @@ fun AdvancedSettingsScreen(
             }
 
             Spacer(Modifier.height(8.dp))
+
+            SettingsGroup {
+                SettingsRow(
+                    title = stringResource(R.string.diagnostics_title),
+                    subtitle = stringResource(R.string.diagnostics_subtitle),
+                    onClick = { vm.diagnosticsReport { diagReport = it } }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
         }
+    }
+
+    val report = diagReport
+    if (report != null) {
+        DiagnosticsDialog(
+            report = report,
+            onSave = {
+                vm.saveDiagnostics { ok ->
+                    if (ok) Toast.makeText(
+                        context, context.getString(R.string.diagnostics_saved), Toast.LENGTH_LONG
+                    ).show()
+                }
+            },
+            onCopy = {
+                val cm = context.getSystemService(ClipboardManager::class.java)
+                cm?.setPrimaryClip(
+                    ClipData.newPlainText(context.getString(R.string.diagnostics_clip_label), report)
+                )
+            },
+            onDismiss = { diagReport = null }
+        )
     }
 }
 
