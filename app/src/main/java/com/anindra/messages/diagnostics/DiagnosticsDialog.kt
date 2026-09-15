@@ -1,5 +1,7 @@
 package com.anindra.messages.diagnostics
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -33,11 +35,11 @@ fun DiagnosticsDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onSave) { Text(stringResource(R.string.diagnostics_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onCopy) { Text(stringResource(R.string.diagnostics_copy)) }
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.diagnostics_close)) }
+            Row(horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.diagnostics_close)) }
+                TextButton(onClick = onSave) { Text(stringResource(R.string.diagnostics_save)) }
+                TextButton(onClick = onCopy) { Text(stringResource(R.string.diagnostics_copy)) }
+            }
         }
     )
 }
