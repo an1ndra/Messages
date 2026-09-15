@@ -496,6 +496,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyFakeDualSim(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
 
@@ -840,9 +841,21 @@ class MainActivity : FragmentActivity() {
         super.onPause()
     }
 
+    /** Debug builds only: `--ez fake_dual_sim true` makes the app see two fake
+     *  SIMs so the dual-SIM UI can be tested on the single-SIM emulator. */
+    private fun applyFakeDualSim(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        com.anindra.messages.data.SimCards.setDebugOverride(
+            intent.getBooleanExtra("fake_dual_sim", false),
+            debuggable
+        )
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        applyFakeDualSim(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!

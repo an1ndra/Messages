@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.ContactsContract
-import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 import android.widget.Toast
 import android.text.SpannableStringBuilder
@@ -131,6 +130,8 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
+import com.anindra.messages.data.SimCard
+import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.MessageLockCrypto
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.ui.theme.chatBar
@@ -366,7 +367,7 @@ fun ChatScreen(
     var cameraFileUri by remember { mutableStateOf<Uri?>(null) }
 
     var currentSimId by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
-    var sims by remember { mutableStateOf(emptyList<SubscriptionInfo>()) }
+    var sims by remember { mutableStateOf(emptyList<SimCard>()) }
 
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
@@ -409,16 +410,11 @@ fun ChatScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            try {
-                val sm = context.getSystemService(SubscriptionManager::class.java)
-                sims = sm?.activeSubscriptionInfoList?.filter {
-                    it.simSlotIndex >= 0
-                }?.sortedBy { it.simSlotIndex } ?: emptyList()
-                if (sims.isNotEmpty() && currentSimId == -1) {
-                    currentSimId = sims.first().subscriptionId
-                    vm.settings.simSubscriptionId = currentSimId
-                }
-            } catch (_: Exception) {}
+            sims = SimCards.load(context).filter { it.slotIndex >= 0 }.sortedBy { it.slotIndex }
+            if (sims.isNotEmpty() && currentSimId == -1) {
+                currentSimId = sims.first().subscriptionId
+                vm.settings.simSubscriptionId = currentSimId
+            }
         }
     }
 
@@ -436,30 +432,21 @@ fun ChatScreen(
         val next = sims[(idx + 1) % sims.size]
         currentSimId = next.subscriptionId
         vm.settings.simSubscriptionId = next.subscriptionId
-        val carrier = next.carrierName?.toString()?.ifBlank { null }
-        val label = if (carrier != null) String.format("%s · SIM %s", carrier, next.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), next.simSlotIndex + 1)
+        val carrier = next.carrierName?.ifBlank { null }
+        val label = if (carrier != null) String.format("%s · SIM %s", carrier, next.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), next.slotIndex + 1)
         Toast.makeText(context, context.getString(R.string.chat_sending_via, label), Toast.LENGTH_SHORT).show()
     }
 
     LaunchedEffect(Unit) {
-        try {
-            val sm = context.getSystemService(SubscriptionManager::class.java)
-            sims = sm?.activeSubscriptionInfoList?.filter {
-                it.simSlotIndex >= 0
-            }?.sortedBy { it.simSlotIndex } ?: emptyList()
-            if (sims.isNotEmpty() && currentSimId == -1) {
-                currentSimId = sims.first().subscriptionId
-                vm.settings.simSubscriptionId = currentSimId
-            }
-        } catch (_: SecurityException) {
-            if (android.os.Build.VERSION.SDK_INT >= 33) {
-                if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) !=
-                    android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
-                }
-            } else {
-                phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
-            }
+        sims = SimCards.load(context).filter { it.slotIndex >= 0 }.sortedBy { it.slotIndex }
+        if (sims.isNotEmpty() && currentSimId == -1) {
+            currentSimId = sims.first().subscriptionId
+            vm.settings.simSubscriptionId = currentSimId
+        }
+        if (sims.isEmpty() &&
+            context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
         }
     }
 
@@ -1115,7 +1102,7 @@ private fun MessageSelectionToolbar(
 private fun ChatTopBar(
     convo: com.anindra.messages.data.Conversation?,
     workProfile: Boolean,
-    sims: List<SubscriptionInfo>,
+    sims: List<SimCard>,
     currentSimId: Int,
     menuOpen: Boolean,
     numberIsBlocked: Boolean,
@@ -1200,10 +1187,10 @@ private fun ChatTopBar(
                         onClick = { onMenuDismiss(); onOpenDetails() }
                     )
                     if (sims.size > 1) {
-                        sims.sortedBy { it.simSlotIndex }.forEach { sub ->
-                            val carrier = sub.carrierName?.toString()?.ifBlank { null }
+                        sims.sortedBy { it.slotIndex }.forEach { sub ->
+                            val carrier = sub.carrierName?.ifBlank { null }
                             val simLabel = buildString {
-                                append(String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1))
+                                append(String.format(context.getString(R.string.settings_sim_label), sub.slotIndex + 1))
                                 if (carrier != null) append(String.format(" · %s", carrier))
                             }
                             DropdownMenuItem(
@@ -1258,7 +1245,7 @@ private fun ChatMessageList(
     messages: List<com.anindra.messages.data.Message>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     deliveryReports: Boolean,
-    sims: List<SubscriptionInfo>,
+    sims: List<SimCard>,
     highlightLinks: Boolean,
     linkWarningEnabled: Boolean,
     hideLinks: Boolean,
@@ -1947,7 +1934,7 @@ private fun AttachSheet(
 
 @Composable
 private fun SimPickerDialog(
-    sims: List<SubscriptionInfo>,
+    sims: List<SimCard>,
     currentSimId: Int,
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit
@@ -1960,9 +1947,9 @@ private fun SimPickerDialog(
         text = {
             Column {
                 sims.forEach { sub ->
-                    val carrier = sub.carrierName?.toString()?.ifBlank { null }
+                    val carrier = sub.carrierName?.ifBlank { null }
                     val label =
-                        if (carrier != null) String.format("%s · SIM %s", carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
+                        if (carrier != null) String.format("%s · SIM %s", carrier, sub.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.slotIndex + 1)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { selected = sub.subscriptionId }
