@@ -1,11 +1,9 @@
 package com.anindra.messages.crash
 
-import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
+import com.anindra.messages.data.DownloadsStore
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.OutputStream
@@ -99,18 +97,13 @@ object CrashReportStore {
         dir(context).listFiles()?.forEach { it.delete() }
     }
 
-    const val DOWNLOAD_DIR = "Messages"
     const val REPORT_FILE = "messages-crash-report.txt"
     const val ZIP_FILE = "messages-crash-report.zip"
 
     /** Publishes the newest report to Downloads/Messages so it survives a
      *  crash loop where the app never reaches its UI. Best-effort. */
-    fun saveToDownloads(context: Context, text: String): Boolean = try {
-        writeDownload(context, REPORT_FILE, "text/plain", text.toByteArray())
-        true
-    } catch (_: Exception) {
-        false
-    }
+    fun saveToDownloads(context: Context, text: String): Boolean =
+        DownloadsStore.write(context, REPORT_FILE, "text/plain", text.toByteArray())
 
     /** Bundles every stored report into a zip in Downloads/Messages (no share
      *  chooser: on many devices application/zip has no useful share target). */
@@ -119,35 +112,10 @@ object CrashReportStore {
         if (entries.isEmpty()) false else {
             val out = ByteArrayOutputStream()
             buildZip(out, entries)
-            writeDownload(context, ZIP_FILE, "application/zip", out.toByteArray())
-            true
+            DownloadsStore.write(context, ZIP_FILE, "application/zip", out.toByteArray())
         }
     } catch (_: Exception) {
         false
-    }
-
-    private fun writeDownload(context: Context, displayName: String, mime: String, bytes: ByteArray) {
-        val resolver = context.contentResolver
-        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        resolver.delete(
-            collection,
-            "${MediaStore.Downloads.DISPLAY_NAME}=?",
-            arrayOf(displayName)
-        )
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, displayName)
-            put(MediaStore.Downloads.MIME_TYPE, mime)
-            put(
-                MediaStore.Downloads.RELATIVE_PATH,
-                Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_DIR
-            )
-            put(MediaStore.Downloads.IS_PENDING, 1)
-        }
-        val uri = resolver.insert(collection, values) ?: return
-        resolver.openOutputStream(uri)?.use { it.write(bytes) }
-        values.clear()
-        values.put(MediaStore.Downloads.IS_PENDING, 0)
-        resolver.update(uri, values, null, null)
     }
 }
 
