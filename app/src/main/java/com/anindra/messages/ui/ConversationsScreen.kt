@@ -372,6 +372,9 @@ fun ConversationsScreen(
                                 Icon(Icons.Rounded.Archive, stringResource(R.string.conversations_archived))
                             }
                         }
+                        IconButton(onClick = { searching = true }) {
+                            Icon(Icons.Outlined.Search, stringResource(R.string.icon_search))
+                        }
                         IconButton(onClick = onOpenSettings) {
                             PersonAvatar(
                                 stringResource(R.string.conversations_me), size = 32.dp,
@@ -380,33 +383,6 @@ fun ConversationsScreen(
                             )
                         }
                     }
-                }
-            }
-
-            if (!searching && !showArchived) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 10.dp)
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .clickable { searching = true }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Outlined.Search,
-                        contentDescription = stringResource(R.string.icon_search),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        stringResource(R.string.conversations_search),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
 
