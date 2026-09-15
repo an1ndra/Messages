@@ -46,12 +46,30 @@ data class AppDetails(
 
 data class DeviceExtra(
     val release: String = "",
+    val codename: String = "",
+    val incremental: String = "",
+    val securityPatch: String = "",
+    val baseOs: String = "",
     val device: String = "",
     val product: String = "",
     val hardware: String = "",
     val board: String = "",
+    val bootloader: String = "",
+    val id: String = "",
+    val display: String = "",
+    val type: String = "",
+    val tags: String = "",
+    val host: String = "",
+    val user: String = "",
     val abis: String = "",
-    val tags: String = ""
+    val abis32: String = "",
+    val abis64: String = "",
+    val buildTime: Long = 0L,
+    val isEmulator: Boolean = false,
+    val kernel: String = "",
+    val vmVersion: String = "",
+    val processors: Int = 0,
+    val fontScale: Float = 1f
 )
 
 data class AppExtra(
@@ -154,14 +172,31 @@ object DiagnosticsReport {
             }
             appendLine()
             appendLine("--- Device ---")
-            appendLine("Android: ${data.deviceExtra.release} (SDK ${data.device.sdkInt})")
+            appendLine("Android: ${data.deviceExtra.release} (SDK ${data.device.sdkInt}, codename ${data.deviceExtra.codename})")
+            appendLine("Incremental: ${data.deviceExtra.incremental}")
+            appendLine("Security patch: ${data.deviceExtra.securityPatch}")
+            appendLine("Base OS: ${data.deviceExtra.baseOs}")
             appendLine("Model: ${data.device.manufacturer} ${data.device.model} (${data.device.brand})")
             appendLine("Device: ${data.deviceExtra.device}")
             appendLine("Product: ${data.deviceExtra.product}")
             appendLine("Hardware: ${data.deviceExtra.hardware}")
             appendLine("Board: ${data.deviceExtra.board}")
-            appendLine("ABIs: ${data.deviceExtra.abis}")
+            appendLine("Bootloader: ${data.deviceExtra.bootloader}")
+            appendLine("Build ID: ${data.deviceExtra.id}")
+            appendLine("Build display: ${data.deviceExtra.display}")
+            appendLine("Build type: ${data.deviceExtra.type}")
             appendLine("Build tags: ${data.deviceExtra.tags}")
+            appendLine("Build host: ${data.deviceExtra.host}")
+            appendLine("Build user: ${data.deviceExtra.user}")
+            appendLine("ABIs: ${data.deviceExtra.abis}")
+            appendLine("ABIs 32: ${data.deviceExtra.abis32}")
+            appendLine("ABIs 64: ${data.deviceExtra.abis64}")
+            appendLine("Build time: ${date(data.deviceExtra.buildTime)}")
+            appendLine("Emulator: ${data.deviceExtra.isEmulator}")
+            appendLine("Kernel: ${data.deviceExtra.kernel}")
+            appendLine("Java VM: ${data.deviceExtra.vmVersion}")
+            appendLine("CPU cores: ${data.deviceExtra.processors}")
+            appendLine("Font scale: ${data.deviceExtra.fontScale}")
             appendLine("Fingerprint: ${data.device.fingerprint}")
             appendLine()
             appendLine("--- System ---")
@@ -213,6 +248,17 @@ object DiagnosticsReport {
     private fun mb(bytes: Long): Long = bytes / (1024 * 1024)
 
     private fun kb(bytes: Long): Long = bytes / 1024
+
+    private fun isEmulator(): Boolean =
+        Build.FINGERPRINT.startsWith("generic") ||
+            Build.FINGERPRINT.lowercase().contains("emulator") ||
+            Build.MODEL.contains("Emulator") ||
+            Build.MODEL.contains("Android SDK built for") ||
+            Build.MANUFACTURER.contains("Genymotion") ||
+            (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")) ||
+            Build.PRODUCT == "google_sdk" ||
+            Build.HARDWARE.contains("goldfish") ||
+            Build.HARDWARE.contains("ranchu")
 
     fun collect(
         context: Context,
@@ -292,12 +338,30 @@ object DiagnosticsReport {
                 appDetails = appDetails(context, settings),
                 deviceExtra = DeviceExtra(
                     release = Build.VERSION.RELEASE ?: "",
+                    codename = Build.VERSION.CODENAME ?: "",
+                    incremental = Build.VERSION.INCREMENTAL ?: "",
+                    securityPatch = Build.VERSION.SECURITY_PATCH ?: "",
+                    baseOs = Build.VERSION.BASE_OS ?: "",
                     device = Build.DEVICE ?: "",
                     product = Build.PRODUCT ?: "",
                     hardware = Build.HARDWARE ?: "",
                     board = Build.BOARD ?: "",
+                    bootloader = Build.BOOTLOADER ?: "",
+                    id = Build.ID ?: "",
+                    display = Build.DISPLAY ?: "",
+                    type = Build.TYPE ?: "",
+                    tags = Build.TAGS ?: "",
+                    host = Build.HOST ?: "",
+                    user = Build.USER ?: "",
                     abis = Build.SUPPORTED_ABIS?.joinToString(", ") ?: "",
-                    tags = Build.TAGS ?: ""
+                    abis32 = Build.SUPPORTED_32_BIT_ABIS?.joinToString(", ") ?: "",
+                    abis64 = Build.SUPPORTED_64_BIT_ABIS?.joinToString(", ") ?: "",
+                    buildTime = Build.TIME,
+                    isEmulator = isEmulator(),
+                    kernel = System.getProperty("os.version") ?: "",
+                    vmVersion = System.getProperty("java.vm.version") ?: "",
+                    processors = Runtime.getRuntime().availableProcessors(),
+                    fontScale = context.resources.configuration.fontScale
                 ),
                 appExtra = AppExtra(
                     packageName = context.packageName,
