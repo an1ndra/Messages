@@ -401,12 +401,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun exportCrashReports(onReady: (java.io.File?) -> Unit) {
+    fun exportCrashReports(onReady: (Boolean) -> Unit) {
         scope.launch {
-            val zip = withContext(Dispatchers.IO) {
-                com.anindra.messages.crash.CrashReporter.exportZip(getApplication())
+            val ok = withContext(Dispatchers.IO) {
+                com.anindra.messages.crash.CrashReporter.exportZipToDownloads(getApplication())
             }
-            onReady(zip)
+            onReady(ok)
         }
     }
 
@@ -647,7 +647,13 @@ class MainActivity : FragmentActivity() {
                     com.anindra.messages.crash.CrashReportDialog(
                         reportCount = vm.pendingCrashReports.value.size,
                         onExportZip = {
-                            vm.exportCrashReports { zip -> if (zip != null) shareCrashZip(zip) }
+                            vm.exportCrashReports { ok ->
+                                if (ok) android.widget.Toast.makeText(
+                                    this@MainActivity,
+                                    getString(R.string.crash_report_saved),
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
                         },
                         onCopy = { vm.copyCrashReports() },
                         onDelete = { vm.clearCrashReports() }
@@ -748,19 +754,6 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
-    }
-
-    private fun shareCrashZip(file: java.io.File) {
-        val uri = androidx.core.content.FileProvider.getUriForFile(
-            this, "$packageName.fileprovider", file
-        )
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "application/zip"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            clipData = android.content.ClipData.newUri(contentResolver, "crash", uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(send, getString(R.string.crash_report_share)))
     }
 
     private fun requestSmsPermissions() {
