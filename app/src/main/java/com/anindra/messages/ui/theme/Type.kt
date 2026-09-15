@@ -1,20 +1,25 @@
+@file:OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+
 package com.anindra.messages.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.anindra.messages.R
 
 /**
- * Inter (SIL OFL, bundled in res/font) as a close, freely-licensed stand-in for
- * Google Sans, which is proprietary and cannot be redistributed.
+ * DM Sans (SIL OFL, bundled in res/font) as a close, freely-licensed stand-in
+ * for Google Sans, which is proprietary and cannot be redistributed. DM Sans
+ * ships as a variable font, so each weight maps to the same file with a `wght`
+ * variation.
  */
 val MessagesFontFamily: FontFamily = FontFamily(
-    Font(R.font.inter_regular, FontWeight.Normal),
-    Font(R.font.inter_medium, FontWeight.Medium),
-    Font(R.font.inter_semibold, FontWeight.SemiBold),
-    Font(R.font.inter_bold, FontWeight.Bold)
+    Font(R.font.dm_sans, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(R.font.dm_sans, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(R.font.dm_sans, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(R.font.dm_sans, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700)))
 )
 
 fun messagesTypography(
