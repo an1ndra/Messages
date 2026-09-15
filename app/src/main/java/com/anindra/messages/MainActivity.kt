@@ -130,12 +130,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
 
             try {
-                load(android.provider.ContactsContract.CommonDataKinds.Phone.ENTERPRISE_CONTENT_URI, true)
-            } catch (_: Exception) {
+                // ENTERPRISE_CONTENT_URI is API 34+; referencing it on older
+                // devices throws NoSuchFieldError (an Error), so guard by SDK
+                // and fall back to the plain personal-profile URI. (#209)
+                if (com.anindra.messages.data.EnterpriseContacts.isSupported(Build.VERSION.SDK_INT)) {
+                    load(com.anindra.messages.data.EnterpriseContacts.phoneUri(), true)
+                } else {
+                    load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
+                }
+            } catch (_: Throwable) {
                 out.clear()
                 try {
                     load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
-                } catch (_: SecurityException) {
+                } catch (_: Throwable) {
                 }
             }
             contacts.value = out
