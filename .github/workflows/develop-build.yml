@@ -1,14 +1,5 @@
 name: Develop Build (manual)
 
-# Manual build for testing. Produces a downloadable APK artifact and never
-# publishes a release, tag, or F-Droid update.
-#
-# Run it from: Actions -> "Develop Build (manual)" -> Run workflow -> pick any
-# branch you want to test. The APK appears under the run's "Artifacts" section.
-#
-# Note: GitHub only lists a workflow_dispatch workflow in the Actions UI once
-# this file exists on the repository's default branch (main).
-
 on:
   workflow_dispatch:
 
@@ -19,11 +10,14 @@ concurrency:
   group: develop-build-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+
 jobs:
   build:
     name: Build test APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -113,6 +107,90 @@ jobs:
           path: ${{ steps.apk.outputs.file }}
           if-no-files-found: error
           retention-days: 30
+
+      - name: Check VirusTotal API key
+        run: |
+          if [ -z "$VT_API_KEY" ]; then
+            echo "::notice::VIRUSTOTAL_API_KEY not set - skipping VirusTotal scan"
+          fi
+
+      - name: Upload to VirusTotal
+        if: env.VT_API_KEY != ''
+        id: upload
+        run: |
+          APK="${{ steps.apk.outputs.file }}"
+          echo "Uploading $APK ($(stat -c%s "$APK") bytes)"
+          RESP=$(curl -sf -H "x-apikey: $VT_API_KEY" -F "file=@$APK" \
+            https://www.virustotal.com/api/v3/files)
+          ID=$(echo "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['id'])")
+          echo "analysis_id=$ID" >> "$GITHUB_OUTPUT"
+          echo "Analysis id: $ID"
+
+      - name: Wait for analysis and extract stats
+        if: env.VT_API_KEY != ''
+        id: result
+        run: |
+          ANALY="${{ steps.upload.outputs.analysis_id }}"
+          for i in $(seq 1 60); do
+            if RESP=$(curl -sf -H "x-apikey: $VT_API_KEY" \
+              "https://www.virustotal.com/api/v3/analyses/$ANALY"); then
+              ST=$(echo "$RESP" | python3 -c \
+                "import sys,json;print(json.load(sys.stdin)['data']['attributes']['status'])")
+              if [ "$ST" = "completed" ]; then
+                echo "$RESP" > /tmp/vt/result.json
+                break
+              fi
+            fi
+            sleep 15
+          done
+          test -f /tmp/vt/result.json || { echo "::error::Analysis did not finish in time"; exit 1; }
+          python3 - "$GITHUB_OUTPUT" <<'PY'
+          import json,sys
+          d=json.load(open('/tmp/vt/result.json'))
+          attr=d['data']['attributes']
+          st=attr.get('stats',{})
+          fi=d.get('meta',{}).get('file_info',{})
+          total=sum(st.values())
+          with open(sys.argv[1],'a') as f:
+              for k in ('harmless','malicious','suspicious','undetected','timeout',
+                        'confirmed-timeout','failure','type-unsupported'):
+                  f.write(f"{k}={st.get(k,0)}\n")
+              f.write(f"total={total}\n")
+              f.write(f"sha256={fi.get('sha256','')}\n")
+          print(f"engines={total} malicious={st.get('malicious',0)} suspicious={st.get('suspicious',0)}")
+          PY
+
+      - name: Add VirusTotal report to job summary
+        if: env.VT_API_KEY != ''
+        env:
+          FILE: ${{ steps.apk.outputs.file }}
+          SHA: ${{ steps.result.outputs.sha256 }}
+          MAL: ${{ steps.result.outputs.malicious }}
+          SUS: ${{ steps.result.outputs.suspicious }}
+          GOOD: ${{ steps.result.outputs.harmless }}
+          UNDET: ${{ steps.result.outputs.undetected }}
+          TOTAL: ${{ steps.result.outputs.total }}
+        run: |
+          GUILINK="https://www.virustotal.com/gui/file/$SHA"
+          {
+            echo "### VirusTotal Scan Report"
+            echo ""
+            echo "Results for **$FILE** - [full report]($GUILINK)"
+            echo ""
+            echo "| Result | Count |"
+            echo "|---|---|"
+            echo "| Malicious | **$MAL** |"
+            echo "| Suspicious | $SUS |"
+            echo "| Harmless | $GOOD |"
+            echo "| Undetected | $UNDET |"
+            echo "| Total engines | $TOTAL |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Flag malware detections
+        if: env.VT_API_KEY != '' && steps.result.outputs.malicious != '' && steps.result.outputs.malicious != '0'
+        run: |
+          echo "::error::VirusTotal reported ${{ steps.result.outputs.malicious }} malicious detection(s) for this APK - investigate before sharing"
+          exit 1
 
       - name: Remove keystore
         if: always()
