@@ -40,19 +40,31 @@ jobs:
           name: Gate - only build PRs targeting main
           command: |
             set -eu
+            # Fail closed: anything that is not a pull request whose base branch
+            # is exactly `main` halts. If the base branch cannot be determined
+            # (API error/rate limit) we halt too, rather than build by default.
+            # NB: `circleci-agent step halt` marks the step halted but does NOT
+            # stop this shell, so every halt must be followed by `exit 0`
+            # (otherwise `set -u` aborts on the unset variable and fails the job).
             if [ -z "${CIRCLE_PULL_REQUEST:-}" ]; then
               echo "Not a pull request - nothing to build."
               circleci-agent step halt
+              exit 0
             fi
             PR="${CIRCLE_PULL_REQUEST##*/}"
-            BASE=$(curl -fsSL \
+            AUTH=()
+            if [ -n "${GITHUB_TOKEN:-}" ]; then
+              AUTH=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+            fi
+            BASE=$(curl -fsSL "${AUTH[@]}" \
               "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR}" \
               2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["base"]["ref"])' 2>/dev/null \
               || echo unknown)
             echo "PR #${PR} targets '${BASE}'"
-            if [ "${BASE}" != "main" ] && [ "${BASE}" != "unknown" ]; then
-              echo "PR does not target main - nothing to build."
+            if [ "${BASE}" != "main" ]; then
+              echo "PR base is '${BASE}', not main - nothing to build."
               circleci-agent step halt
+              exit 0
             fi
 
       - restore_cache:
