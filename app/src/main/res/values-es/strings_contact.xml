@@ -2,7 +2,7 @@
 <resources>
     <string name="contact_block">Bloquear</string>
     <string name="contact_block_confirm">%s — no recibirás llamadas ni mensajes de este número.</string>
-    <string name="contact_block_report">Bloquear y reportar spam</string>
+    <string name="contact_block_report">Bloquear número</string>
     <string name="contact_notifications">Notificaciones</string>
 
     <string name="contact_one_person">1 persona más</string>

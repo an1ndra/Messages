@@ -25,7 +25,7 @@ private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
 enum class ImportMode { REPLACE, MERGE }
 
-private const val DB_VERSION = 16
+private const val DB_VERSION = 17
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -63,6 +63,7 @@ class Db(context: Context) :
                 reactions TEXT NOT NULL DEFAULT '',
                 sys_id INTEGER NOT NULL DEFAULT 0,
                 transport TEXT NOT NULL DEFAULT 'sms',
+                delivered_at INTEGER NOT NULL DEFAULT 0,
                 locked INTEGER NOT NULL DEFAULT 0,
                 sub_id INTEGER NOT NULL DEFAULT -1,
                 deleted_at INTEGER NOT NULL DEFAULT 0)"""
@@ -186,6 +187,9 @@ class Db(context: Context) :
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_sys_id " +
                     "ON messages(transport, sys_id) WHERE sys_id>0"
             )
+        }
+        if (oldVersion < 17) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN delivered_at INTEGER NOT NULL DEFAULT 0")
         }
     }
 
@@ -417,7 +421,8 @@ class Repository(private val context: Context) {
     fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> = observe {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
-            """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id FROM messages
+            """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id,
+               transport,delivered_at FROM messages
                WHERE conversation_id=? AND deleted_at=0 ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
             arrayOf(conversationId.toString(), limit.toString(), offset.toString())
         ).use { c ->
@@ -434,7 +439,9 @@ class Repository(private val context: Context) {
                         mediaUri = c.getString(6),
                         reactions = parseReactions(c.getString(7)),
                         locked = c.getInt(8) == 1,
-                        subId = c.getInt(9)
+                        subId = c.getInt(9),
+                        transport = c.getString(10),
+                        deliveredAt = c.getLong(11)
                     )
                 )
             }
@@ -898,9 +905,16 @@ class Repository(private val context: Context) {
     }
 
     fun markMessageStatusSuspend(messageId: Long, status: String) {
-        db.writableDatabase.execSQL(
-            "UPDATE messages SET status=? WHERE id=?", arrayOf<Any?>(status, messageId)
-        )
+        if (status == "delivered") {
+            db.writableDatabase.execSQL(
+                "UPDATE messages SET status=?, delivered_at=? WHERE id=?",
+                arrayOf<Any?>(status, System.currentTimeMillis(), messageId)
+            )
+        } else {
+            db.writableDatabase.execSQL(
+                "UPDATE messages SET status=? WHERE id=?", arrayOf<Any?>(status, messageId)
+            )
+        }
         notifyChanged()
     }
 
