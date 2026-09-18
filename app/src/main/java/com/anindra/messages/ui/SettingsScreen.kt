@@ -1,11 +1,9 @@
 package com.anindra.messages.ui
 
 import android.Manifest
-import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.telephony.SubscriptionInfo
-import android.telephony.SubscriptionManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -51,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -67,6 +66,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
+import com.anindra.messages.data.SimCard
+import com.anindra.messages.data.SimCards
+import com.anindra.messages.data.SimLabel
+import com.anindra.messages.data.SimLabels
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
 import com.anindra.messages.sms.NotificationHelper
@@ -94,8 +97,6 @@ fun SettingsScreen(
     var themeDialog by remember { mutableStateOf(false) }
     var notifications by remember(revision) { mutableStateOf(vm.settings.notificationsEnabled) }
     var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
-    var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
-    var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
     var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
     val notificationSoundOptions = listOf(
         SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
@@ -111,21 +112,20 @@ fun SettingsScreen(
 
     var pinned by remember(revision) { mutableStateOf(vm.settings.pinnedEnabled) }
     var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
-    var drafts by remember(revision) { mutableStateOf(vm.settings.draftsEnabled) }
     var swipeActions by remember(revision) { mutableStateOf(vm.settings.swipeActionsEnabled) }
     var blocking by remember(revision) { mutableStateOf(vm.settings.blockingEnabled) }
+    val privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var forwarding by remember(revision) { mutableStateOf(vm.settings.forwardingEnabled) }
     var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
     var scheduledMessages by remember(revision) { mutableStateOf(vm.settings.scheduledMessagesEnabled) }
     var delayedSending by remember(revision) { mutableStateOf(vm.settings.delayedSendingEnabled) }
-    var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
-    var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
     var delaySeconds by remember(revision) { mutableIntStateOf(vm.settings.delaySeconds) }
 
     var simDialog by remember { mutableStateOf(false) }
-    var sims by remember { mutableStateOf(emptyList<SubscriptionInfo>()) }
+    var sims by remember { mutableStateOf(emptyList<SimCard>()) }
     var backingUp by remember { mutableStateOf(false) }
     var delayDialog by remember { mutableStateOf(false) }
+    var backupFolder by remember(revision) { mutableStateOf(vm.settings.backupTreeUri) }
 
     var pinMode by remember { mutableStateOf<PinDialogMode?>(null) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
@@ -140,16 +140,15 @@ fun SettingsScreen(
     var pinConfirm by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(Unit) {
+        sims = SimCards.load(context)
+    }
+
     val simPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            sims = try {
-                val sm = context.getSystemService(SubscriptionManager::class.java)
-                sm?.activeSubscriptionInfoList ?: emptyList()
-            } catch (_: Exception) {
-                emptyList()
-            }
+            sims = SimCards.load(context)
             simDialog = true
         }
     }
@@ -173,6 +172,27 @@ fun SettingsScreen(
                 pendingImportUri = it
                 pendingImportFormat = format
                 importModeDialog = true
+            }
+        }
+    }
+
+    val backupFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            // Only persist a location we can actually keep using after reboot.
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                vm.settings.backupTreeUri = uri.toString()
+                backupFolder = uri.toString()
+            } catch (_: SecurityException) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.settings_backup_location_failed),
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -206,22 +226,6 @@ fun SettingsScreen(
                     onChecked = { notifications = it; vm.settings.notificationsEnabled = it }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_send_sound_title),
-                    subtitle = stringResource(R.string.settings_send_sound_subtitle),
-                    checked = sendSound,
-                    onChecked = { sendSound = it; vm.settings.sendSoundEnabled = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_receive_sound_title),
-                    subtitle = stringResource(R.string.settings_receive_sound_subtitle),
-                    checked = receiveSound,
-                    onChecked = {
-                        receiveSound = it
-                        vm.settings.receiveSoundEnabled = it
-                        NotificationHelper.ensureChannel(context)
-                    }
-                )
-                SettingsRow(
                     title = stringResource(R.string.settings_pin_notification_sound),
                     subtitle = notificationSoundLabel(notificationSound, notificationSoundOptions, context),
                     onClick = {
@@ -253,9 +257,21 @@ fun SettingsScreen(
                     subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
                 )
-                val currentSimLabel = if (vm.settings.simSubscriptionId == -1) context.getString(R.string.sim_default)
-                else sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }?.displayName?.toString()
-                    ?: context.getString(R.string.settings_sim_label, vm.settings.simSubscriptionId)
+                val selectedSub = sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }
+                val currentSimLabel = when (val label = SimLabels.resolve(
+                    vm.settings.simSubscriptionId,
+                    selectedSub?.slotIndex,
+                    selectedSub?.carrierName
+                )) {
+                    SimLabel.Default -> context.getString(R.string.sim_default)
+                    is SimLabel.Carrier -> String.format(
+                        context.getString(R.string.settings_sim_label_format), label.carrier, label.slot
+                    )
+                    is SimLabel.Slot -> String.format(
+                        context.getString(R.string.settings_sim_label), label.slot
+                    )
+                    SimLabel.Unknown -> context.getString(R.string.settings_sim_unknown)
+                }
                 SettingsRow(
                     title = stringResource(R.string.settings_pin_sim_card),
                     subtitle = currentSimLabel,
@@ -263,12 +279,7 @@ fun SettingsScreen(
                         val hasPerm = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
                                 PackageManager.PERMISSION_GRANTED
                         if (hasPerm) {
-                            sims = try {
-                                val sm = context.getSystemService(SubscriptionManager::class.java)
-                                sm?.activeSubscriptionInfoList ?: emptyList()
-                            } catch (_: Exception) {
-                                emptyList()
-                            }
+                            sims = SimCards.load(context)
                             simDialog = true
                         } else {
                             simPermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
@@ -286,12 +297,6 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_drafts_title),
-                    subtitle = stringResource(R.string.settings_drafts_subtitle),
-                    checked = drafts,
-                    onChecked = { drafts = it; vm.settings.draftsEnabled = it }
-                )
                 SettingsRow(
                     title = stringResource(R.string.settings_archiving_title),
                     subtitle = stringResource(R.string.settings_archiving_subtitle),
@@ -355,51 +360,10 @@ fun SettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    title = stringResource(R.string.settings_advanced_title),
-                    subtitle = stringResource(R.string.settings_advanced_subtitle),
-                    onClick = onOpenAdvanced
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
-                SettingsRow(
                     title = stringResource(R.string.settings_blocking_title),
                     subtitle = stringResource(R.string.settings_blocking_subtitle),
                     checked = blocking,
                     onChecked = { blocking = it; vm.settings.blockingEnabled = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_privacy_title),
-                    subtitle = stringResource(R.string.settings_privacy_subtitle),
-                    checked = privacyMode,
-                    onChecked = {
-                        privacyMode = it
-                        (context as? Activity)?.let { act -> vm.setPrivacyMode(act, it) }
-                    }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_applock_title),
-                    subtitle = stringResource(R.string.settings_applock_subtitle),
-                    checked = appLock,
-                    onChecked = { enable ->
-                        val canAuth = androidx.biometric.BiometricManager.from(context)
-                            .canAuthenticate(
-                                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                                    androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                            )
-                        if (enable && canAuth != androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.lock_setup_needed),
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            appLock = enable
-                            vm.settings.appLockEnabled = enable
-                        }
-                    }
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_trash_title),
@@ -408,7 +372,12 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_backup_title),
-                    subtitle = if (backingUp) stringResource(R.string.settings_saving) else stringResource(R.string.settings_backup_saving),
+                    subtitle = when {
+                        privacyMode -> stringResource(R.string.settings_backup_privacy_disabled)
+                        backingUp -> stringResource(R.string.settings_saving)
+                        else -> stringResource(R.string.settings_backup_saving)
+                    },
+                    enabled = !privacyMode,
                     onClick = {
                         pinMode = PinDialogMode.SET
                         pinInput = ""
@@ -417,12 +386,32 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
+                    title = stringResource(R.string.settings_backup_location_title),
+                    subtitle = String.format(
+                        context.getString(R.string.settings_backup_location_subtitle),
+                        if (BackupLocation.isCustom(backupFolder)) BackupLocation.label(backupFolder)
+                        else context.getString(R.string.settings_backup_location_default)
+                    ),
+                    enabled = !privacyMode,
+                    onClick = { backupFolderLauncher.launch(if (backupFolder.isBlank()) null else Uri.parse(backupFolder)) }
+                )
+                SettingsRow(
                     title = stringResource(R.string.settings_import_title),
                     subtitle = stringResource(R.string.settings_import_subtitle),
                     onClick = {
                         pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
                         importLauncher.launch(arrayOf("application/octet-stream", "application/x-sqlite3"))
                     }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            SettingsGroup {
+                SettingsRow(
+                    title = stringResource(R.string.settings_advanced_title),
+                    subtitle = stringResource(R.string.settings_advanced_subtitle),
+                    onClick = onOpenAdvanced
                 )
             }
 
@@ -567,8 +556,8 @@ fun SettingsScreen(
         var selected by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
         val options = mutableListOf(-1 to context.getString(R.string.settings_sim_default))
         sims.forEach { sub ->
-            val carrier = sub.carrierName?.toString()?.ifBlank { null }
-            val label = if (carrier != null) String.format(context.getString(R.string.settings_sim_label_format), carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
+            val carrier = sub.carrierName?.ifBlank { null }
+            val label = if (carrier != null) String.format(context.getString(R.string.settings_sim_label_format), carrier, sub.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.slotIndex + 1)
             options += sub.subscriptionId to label
         }
         AlertDialog(
@@ -778,9 +767,11 @@ fun SettingsScreen(
                                 backingUp = true
                                 vm.backupDatabase(pin) { ok ->
                                     backingUp = false
+                                    val location = if (BackupLocation.isCustom(backupFolder)) BackupLocation.label(backupFolder)
+                                    else context.getString(R.string.settings_backup_location_default)
                                     Toast.makeText(
                                         context,
-                                        if (ok) context.getString(R.string.settings_backup_saved)
+                                        if (ok) String.format(context.getString(R.string.settings_backup_saved_location), location)
                                         else context.getString(R.string.settings_backup_failed),
                                         Toast.LENGTH_LONG
                                     ).show()

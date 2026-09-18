@@ -2,7 +2,7 @@
 <resources>
     <string name="contact_block">Блок</string>
     <string name="contact_block_confirm">%s — вы больше не будете получать звонки или сообщения с этого номера.</string>
-    <string name="contact_block_report">Заблокировать и сообщить о спаме</string>
+    <string name="contact_block_report">Заблокировать номер</string>
     <string name="contact_notifications">Уведомления</string>
 
     <string name="contact_one_person">1 другой участник</string>

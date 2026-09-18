@@ -79,7 +79,6 @@
     <string name="settings_restored_msg">%s Nachrichten wiederhergestellt. Bestehende Unterhaltungen beibehalten.</string>
     <string name="settings_sim_default">Standard (System)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>
-    <string name="settings_backup_saved">Sicherung mit PIN in Dokumente/Messages gespeichert</string>
     <string name="settings_backup_failed">Sicherung fehlgeschlagen</string>
     <string name="settings_save">Speichern</string>
     <string name="settings_import">Importieren</string>

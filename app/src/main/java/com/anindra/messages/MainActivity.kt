@@ -93,6 +93,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val contacts = kotlinx.coroutines.flow.MutableStateFlow<List<com.anindra.messages.ui.Contact>>(emptyList())
 
+    val pendingCrashReports =
+        androidx.compose.runtime.mutableStateOf<List<java.io.File>>(emptyList())
+
     init {
         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val ctx = app.applicationContext
@@ -127,15 +130,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
 
             try {
-                load(android.provider.ContactsContract.CommonDataKinds.Phone.ENTERPRISE_CONTENT_URI, true)
-            } catch (_: Exception) {
+                // ENTERPRISE_CONTENT_URI is API 34+; referencing it on older
+                // devices throws NoSuchFieldError (an Error), so guard by SDK
+                // and fall back to the plain personal-profile URI. (#209)
+                if (com.anindra.messages.data.EnterpriseContacts.isSupported(Build.VERSION.SDK_INT)) {
+                    load(com.anindra.messages.data.EnterpriseContacts.phoneUri(), true)
+                } else {
+                    load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
+                }
+            } catch (_: Throwable) {
                 out.clear()
                 try {
                     load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
-                } catch (_: SecurityException) {
+                } catch (_: Throwable) {
                 }
             }
             contacts.value = out
+        }
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            pendingCrashReports.value =
+                com.anindra.messages.crash.CrashReporter.pending(app.applicationContext)
         }
     }
 
@@ -158,6 +172,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setTheme(mode: String) { themeMode = mode }
 
     private val _themeState = androidx.compose.runtime.mutableStateOf(settings.themeMode)
+
+    var fontFamily: String
+        get() = _fontState.value
+        set(value) { settings.fontFamily = value; _fontState.value = value }
+
+    private val _fontState = androidx.compose.runtime.mutableStateOf(settings.fontFamily)
+
+    fun addBlockedKeyword(keyword: String) {
+        val kw = keyword.trim()
+        if (kw.isEmpty()) return
+        settings.blockedKeywords = settings.blockedKeywords + kw
+    }
+
+    fun removeBlockedKeyword(keyword: String) {
+        settings.blockedKeywords = settings.blockedKeywords - keyword
+    }
 
     fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> =
         repo.messages(conversationId, limit, offset)
@@ -393,6 +423,51 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             repo.deleteScheduledMessage(id)
         }
     }
+
+    fun exportCrashReports(onReady: (Boolean) -> Unit) {
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                com.anindra.messages.crash.CrashReporter.exportZipToDownloads(getApplication())
+            }
+            onReady(ok)
+        }
+    }
+
+    fun copyCrashReports() {
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                com.anindra.messages.crash.CrashReporter.reportText(getApplication())
+            }
+            val cm = getApplication<Application>()
+                .getSystemService(android.content.ClipboardManager::class.java)
+            cm?.setPrimaryClip(
+                android.content.ClipData.newPlainText(
+                    getApplication<Application>().getString(R.string.crash_report_clip_label),
+                    text
+                )
+            )
+        }
+    }
+
+    fun clearCrashReports() {
+        com.anindra.messages.crash.CrashReporter.clear(getApplication())
+        pendingCrashReports.value = emptyList()
+    }
+
+    fun diagnosticsReport(onReady: (String) -> Unit) {
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                com.anindra.messages.diagnostics.DiagnosticsReport.collect(
+                    getApplication(),
+                    settings.simSubscriptionId,
+                    settings,
+                    repo.totalConversationCount(),
+                    repo.totalMessageCount()
+                )
+            }
+            onReady(text)
+        }
+    }
 }
 
 class MainActivity : FragmentActivity() {
@@ -421,15 +496,25 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyFakeDualSim(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            val modes = window.context.display?.supportedModes
-            val highRefresh = modes?.maxByOrNull { it.refreshRate }
-            if (highRefresh != null) {
-                window.attributes.preferredDisplayModeId = highRefresh.modeId
+            val display = window.context.display
+            val current = display?.mode?.let {
+                com.anindra.messages.diagnostics.DisplayModeInfo(
+                    it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
+                )
             }
+            val modes = display?.supportedModes?.map {
+                com.anindra.messages.diagnostics.DisplayModeInfo(
+                    it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
+                )
+            } ?: emptyList()
+            com.anindra.messages.diagnostics.DisplayModeSelector
+                .bestModeId(current, modes)
+                ?.let { window.attributes.preferredDisplayModeId = it }
         }
 
         val bootVm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
@@ -500,7 +585,7 @@ class MainActivity : FragmentActivity() {
 
             if (!appUnlocked) {
                 if (lockNotAvailable) {
-                    MessagesTheme(mode = vm.themeMode) {
+                    MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
@@ -551,7 +636,7 @@ class MainActivity : FragmentActivity() {
                 return@setContent
             }
 
-            MessagesTheme(mode = vm.themeMode) {
+            MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
                 var chatId by remember { mutableStateOf(-1L) }
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
@@ -603,6 +688,23 @@ class MainActivity : FragmentActivity() {
                                 androidx.compose.material3.Text(stringResource(R.string.lock_not_now))
                             }
                         }
+                    )
+                }
+
+                if (vm.pendingCrashReports.value.isNotEmpty()) {
+                    com.anindra.messages.crash.CrashReportDialog(
+                        reportCount = vm.pendingCrashReports.value.size,
+                        onExportZip = {
+                            vm.exportCrashReports { ok ->
+                                if (ok) android.widget.Toast.makeText(
+                                    this@MainActivity,
+                                    getString(R.string.crash_report_saved),
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        },
+                        onCopy = { vm.copyCrashReports() },
+                        onDelete = { vm.clearCrashReports() }
                     )
                 }
 
@@ -739,9 +841,21 @@ class MainActivity : FragmentActivity() {
         super.onPause()
     }
 
+    /** Debug builds only: `--ez fake_dual_sim true` makes the app see two fake
+     *  SIMs so the dual-SIM UI can be tested on the single-SIM emulator. */
+    private fun applyFakeDualSim(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        com.anindra.messages.data.SimCards.setDebugOverride(
+            intent.getBooleanExtra("fake_dual_sim", false),
+            debuggable
+        )
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        applyFakeDualSim(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
