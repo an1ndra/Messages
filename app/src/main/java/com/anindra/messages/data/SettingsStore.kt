@@ -62,6 +62,7 @@ class SettingsStore(context: Context) {
         const val FONT_FIGTREE = "figtree"
         const val FONT_POPPINS = "poppins"
         const val KEY_BLOCKED_KEYWORDS = "blocked_keywords"
+        const val KEY_BACKUP_TREE_URI = "backup_tree_uri"
         const val DEFAULTS_NOTIFICATIONS = true
         const val DEFAULTS_SOUNDS = true
         const val DEFAULTS_DELIVERY = false
@@ -212,6 +213,11 @@ class SettingsStore(context: Context) {
     var blockedKeywords: Set<String>
         get() = prefs.getStringSet(KEY_BLOCKED_KEYWORDS, emptySet()) ?: emptySet()
         set(v) { prefs.edit().putStringSet(KEY_BLOCKED_KEYWORDS, v).apply(); _revision.value++ }
+
+    /** Persisted SAF tree URI for backups; empty means the default Documents/Messages. */
+    var backupTreeUri: String
+        get() = prefs.getString(KEY_BACKUP_TREE_URI, "") ?: ""
+        set(v) { prefs.edit().putString(KEY_BACKUP_TREE_URI, v).apply(); _revision.value++ }
 
     /** True when [body] contains any blocked keyword (case-insensitive). */
     fun isKeywordBlocked(body: String): Boolean = KeywordFilter.isBlocked(body, blockedKeywords)

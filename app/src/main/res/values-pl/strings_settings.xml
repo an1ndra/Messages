@@ -79,7 +79,6 @@
     <string name="settings_restored_msg">Przywrócono %s wiadomości. Istniejące rozmowy zachowane.</string>
     <string name="settings_sim_default">Domyślne (systemowe)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>
-    <string name="settings_backup_saved">Kopia zapasowa zapisana z PIN w Dokumenty/Messages</string>
     <string name="settings_backup_failed">Tworzenie kopii zapasowej nie powiodło się</string>
     <string name="settings_save">Zapisz</string>
     <string name="settings_import">Importuj</string>

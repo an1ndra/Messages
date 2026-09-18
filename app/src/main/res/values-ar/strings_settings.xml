@@ -79,7 +79,6 @@
     <string name="settings_restored_msg">تم استعادة %s رسائل. تم الحفاظ على المحادثات الحالية.</string>
     <string name="settings_sim_default">الافتراضي (النظام)</string>
     <string name="settings_sim_label_format">%s (شريحة %s)</string>
-    <string name="settings_backup_saved">تم حفظ النسخة الاحتياطية مع الرقم السري في Documents/الرسائل</string>
     <string name="settings_backup_failed">فشل إنشاء النسخة الاحتياطية</string>
     <string name="settings_save">حفظ</string>
     <string name="settings_import">استيراد</string>

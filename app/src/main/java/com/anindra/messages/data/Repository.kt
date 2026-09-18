@@ -1140,19 +1140,39 @@ class Repository(private val context: Context) {
 
     fun backupDatabase(context: Context, pin: String): Boolean {
         return try {
+            if (!BackupPolicy.isBackupAllowed(settings.privacyModeEnabled)) return false
             if (!BackupCrypto.isValidPin(pin)) return false
             val dbFile = context.getDatabasePath(DB_NAME)
             if (!dbFile.exists()) return false
             val resolver = context.contentResolver
-            val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, "messages_backup_${System.currentTimeMillis()}.enc")
-                put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/Messages")
+            val name = "messages_backup_${System.currentTimeMillis()}.enc"
+            val custom = settings.backupTreeUri.takeIf { it.isNotEmpty() }
+            // A user-chosen location must never silently fall back to internal
+            // storage: fail instead, so they know the backup did not go where
+            // they asked (e.g. revoked SD-card access).
+            val target = if (custom != null) {
+                val treeUri = android.net.Uri.parse(custom)
+                android.provider.DocumentsContract.createDocument(
+                    resolver,
+                    android.provider.DocumentsContract.buildDocumentUriUsingTree(
+                        treeUri, android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+                    ),
+                    "application/octet-stream",
+                    name
+                ) ?: return false
+            } else {
+                resolver.insert(
+                    MediaStore.Files.getContentUri("external"),
+                    ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                        put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/Messages")
+                    }
+                ) ?: return false
             }
-            val uri = resolver.insert(MediaStore.Files.getContentUri("external"), values) ?: return false
-            resolver.openOutputStream(uri)?.use { out ->
+            resolver.openOutputStream(target)?.use { out ->
                 dbFile.inputStream().use { inp -> BackupCrypto.encryptWithPin(inp, out, pin) }
-            }
+            } ?: return false
             true
         } catch (_: Exception) { false }
     }

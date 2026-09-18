@@ -1,13 +1,10 @@
 package com.anindra.messages.ui
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.ContactsContract
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
@@ -49,22 +45,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import android.util.LruCache
 import java.util.Locale
-
-object BitmapCache {
-    // ~24 MiB cap in bytes; prior sizeOf=1 cap actually held ~140 MB of bitmaps
-    private val maxBytes = (24 * 1024 * 1024)
-    private val cache = object : LruCache<String, Bitmap>(maxBytes) {
-        override fun sizeOf(key: String, value: Bitmap): Int = value.allocationByteCount.coerceAtLeast(1)
-        override fun entryRemoved(evicted: Boolean, key: String, oldValue: Bitmap, newValue: Bitmap?) {
-            if (evicted && !oldValue.isRecycled) oldValue.recycle()
-        }
-    }
-    fun get(key: String): Bitmap? = cache.get(key)
-    fun put(key: String, bitmap: Bitmap) { cache.put(key, bitmap) }
-    fun trimToSize(max: Int = 0) { cache.trimToSize(max) }
-}
 
 // Google Messages avatar palette
 private val avatarColors = listOf(
@@ -104,14 +85,11 @@ fun PersonAvatar(
     tint: Color? = null
 ) {
     val context = LocalContext.current
-    val cached = remember(key) { BitmapCache.get(key) }
-    val photo by produceState<Bitmap?>(initialValue = cached, key) {
-        val hit = BitmapCache.get(key)
-        if (hit != null) { value = hit; return@produceState }
+    val photoUri by produceState<String?>(initialValue = photoUriCache.get(key), key) {
+        val hit = photoUriCache.get(key)
+        if (hit != null) { value = hit.ifBlank { null }; return@produceState }
         value = withContext(Dispatchers.IO) {
-            loadContactPhoto(context, key).also { bmp ->
-                if (bmp != null) BitmapCache.put(key, bmp)
-            }
+            resolveContactPhotoUri(context, key).also { photoUriCache.put(key, it) }
         }
     }
     Box(
@@ -120,10 +98,10 @@ fun PersonAvatar(
             .background(backgroundColor ?: avatarColor(key), CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        val bmp = photo
-        if (bmp != null) {
-            Image(
-                bitmap = bmp.asImageBitmap(),
+        val uri = photoUri
+        if (uri != null) {
+            coil3.compose.AsyncImage(
+                model = uri,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(size).clip(CircleShape)
@@ -151,32 +129,6 @@ private fun resolveContactPhotoUri(context: Context, number: String): String? = 
     }
 } catch (_: Exception) {
     null
-}
-
-/** Loads the contact's profile photo thumbnail for a phone number, or null. */
-private fun loadContactPhoto(context: Context, number: String): Bitmap? {
-    return try {
-        val cached = photoUriCache.get(number)
-        val photoUri: String? = if (cached != null) {
-            cached.ifBlank { null }
-        } else {
-            resolveContactPhotoUri(context, number).also { photoUriCache.put(number, it) }
-        }
-        if (photoUri.isNullOrBlank()) return null
-        // Read the bytes once (the old code opened the stream twice: once for
-        // the bounds, once to decode), then decode at a downsampled size.
-        val bytes = context.contentResolver.openInputStream(Uri.parse(photoUri))
-            ?.use { it.readBytes() } ?: return null
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        val req = 144 * context.resources.displayMetrics.densityDpi / 160
-        val decodeOpts = BitmapFactory.Options().apply {
-            inSampleSize = PhotoDecode.sampleSize(bounds.outWidth, bounds.outHeight, req)
-        }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOpts)
-    } catch (_: Exception) {
-        null
-    }
 }
 
 /** Small briefcase glyph marking a contact that comes from the work profile. */
