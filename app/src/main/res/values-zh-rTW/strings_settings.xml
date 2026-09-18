@@ -79,7 +79,6 @@
     <string name="settings_restored_msg">已還原 %s 則訊息。現有對話已保留。</string>
     <string name="settings_sim_default">預設（系統）</string>
     <string name="settings_sim_label_format">%s（SIM %s）</string>
-    <string name="settings_backup_saved">備份已使用 PIN 碼儲存至 文件/訊息</string>
     <string name="settings_backup_failed">備份失敗</string>
     <string name="settings_save">儲存</string>
     <string name="settings_import">匯入</string>

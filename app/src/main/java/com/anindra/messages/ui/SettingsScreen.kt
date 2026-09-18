@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
@@ -113,6 +114,7 @@ fun SettingsScreen(
     var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
     var swipeActions by remember(revision) { mutableStateOf(vm.settings.swipeActionsEnabled) }
     var blocking by remember(revision) { mutableStateOf(vm.settings.blockingEnabled) }
+    val privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var forwarding by remember(revision) { mutableStateOf(vm.settings.forwardingEnabled) }
     var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
     var scheduledMessages by remember(revision) { mutableStateOf(vm.settings.scheduledMessagesEnabled) }
@@ -123,6 +125,7 @@ fun SettingsScreen(
     var sims by remember { mutableStateOf(emptyList<SimCard>()) }
     var backingUp by remember { mutableStateOf(false) }
     var delayDialog by remember { mutableStateOf(false) }
+    var backupFolder by remember(revision) { mutableStateOf(vm.settings.backupTreeUri) }
 
     var pinMode by remember { mutableStateOf<PinDialogMode?>(null) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
@@ -169,6 +172,27 @@ fun SettingsScreen(
                 pendingImportUri = it
                 pendingImportFormat = format
                 importModeDialog = true
+            }
+        }
+    }
+
+    val backupFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            // Only persist a location we can actually keep using after reboot.
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                vm.settings.backupTreeUri = uri.toString()
+                backupFolder = uri.toString()
+            } catch (_: SecurityException) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.settings_backup_location_failed),
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -348,13 +372,28 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_backup_title),
-                    subtitle = if (backingUp) stringResource(R.string.settings_saving) else stringResource(R.string.settings_backup_saving),
+                    subtitle = when {
+                        privacyMode -> stringResource(R.string.settings_backup_privacy_disabled)
+                        backingUp -> stringResource(R.string.settings_saving)
+                        else -> stringResource(R.string.settings_backup_saving)
+                    },
+                    enabled = !privacyMode,
                     onClick = {
                         pinMode = PinDialogMode.SET
                         pinInput = ""
                         pinConfirm = ""
                         pinError = null
                     }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_backup_location_title),
+                    subtitle = String.format(
+                        context.getString(R.string.settings_backup_location_subtitle),
+                        if (BackupLocation.isCustom(backupFolder)) BackupLocation.label(backupFolder)
+                        else context.getString(R.string.settings_backup_location_default)
+                    ),
+                    enabled = !privacyMode,
+                    onClick = { backupFolderLauncher.launch(if (backupFolder.isBlank()) null else Uri.parse(backupFolder)) }
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_import_title),
@@ -728,9 +767,11 @@ fun SettingsScreen(
                                 backingUp = true
                                 vm.backupDatabase(pin) { ok ->
                                     backingUp = false
+                                    val location = if (BackupLocation.isCustom(backupFolder)) BackupLocation.label(backupFolder)
+                                    else context.getString(R.string.settings_backup_location_default)
                                     Toast.makeText(
                                         context,
-                                        if (ok) context.getString(R.string.settings_backup_saved)
+                                        if (ok) String.format(context.getString(R.string.settings_backup_saved_location), location)
                                         else context.getString(R.string.settings_backup_failed),
                                         Toast.LENGTH_LONG
                                     ).show()

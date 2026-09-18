@@ -79,7 +79,6 @@
     <string name="settings_restored_msg">%s개의 메시지가 복원되었습니다. 기존 대화가 유지됩니다.</string>
     <string name="settings_sim_default">기본 (시스템)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>
-    <string name="settings_backup_saved">PIN으로 보호되어 Documents/Messages에 백업 저장됨</string>
     <string name="settings_backup_failed">백업 실패</string>
     <string name="settings_save">저장</string>
     <string name="settings_import">가져오기</string>

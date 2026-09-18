@@ -79,7 +79,6 @@
     <string name="settings_restored_msg">Восстановлено %s сообщений. Существующие переписки сохранены.</string>
     <string name="settings_sim_default">Основная (системная)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>
-    <string name="settings_backup_saved">Резервная копия сохранена с PIN в Documents/Messages</string>
     <string name="settings_backup_failed">Ошибка резервного копирования</string>
     <string name="settings_save">Сохранить</string>
     <string name="settings_import">Импорт</string>

@@ -79,7 +79,6 @@
     <string name="settings_restored_msg">%s संदेश बहाल हुए। मौजूदा संवाद रखे गए।</string>
     <string name="settings_sim_default">डिफ़ॉल्ट (सिस्टम)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>
-    <string name="settings_backup_saved">बैकअप PIN के साथ Documents/Messages में सहेजा गया</string>
     <string name="settings_backup_failed">बैकअप विफल</string>
     <string name="settings_save">सहेजें</string>
     <string name="settings_import">आयात करें</string>
