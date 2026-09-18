@@ -59,6 +59,12 @@
     <string name="settings_trash_title">Trash</string>
     <string name="settings_trash_subtitle">Deleted conversations · purged after 30 days</string>
     <string name="settings_backup_title">Backup messages</string>
+    <string name="settings_backup_privacy_disabled">Turn off Privacy mode to back up messages</string>
+    <string name="settings_backup_location_title">Backup location</string>
+    <string name="settings_backup_location_subtitle">Saved to %s</string>
+    <string name="settings_backup_location_default">the default folder</string>
+    <string name="settings_backup_location_failed">This folder can\'t be used for backups</string>
+    <string name="settings_backup_saved_location">Backup saved with PIN to %s</string>
     <string name="settings_import_title">Import messages</string>
     <string name="settings_import_subtitle">Import a backup database file</string>
     <string name="settings_import_failed">Import failed: %s</string>
@@ -79,7 +85,6 @@
     <string name="settings_restored_msg">Restored %s messages. Existing conversations kept.</string>
     <string name="settings_sim_default">Default (System)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>
-    <string name="settings_backup_saved">Backup saved with PIN to Documents/Messages</string>
     <string name="settings_backup_failed">Backup failed</string>
     <string name="settings_save">Save</string>
     <string name="settings_import">Import</string>

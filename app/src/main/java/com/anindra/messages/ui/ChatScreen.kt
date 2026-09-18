@@ -2,8 +2,6 @@ package com.anindra.messages.ui
 
 import android.Manifest
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.ContactsContract
 import android.telephony.SubscriptionManager
@@ -29,7 +27,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -118,7 +115,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -158,7 +154,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.mutableStateListOf
 
 
@@ -1866,46 +1861,15 @@ fun MessageRow(
 
 @Composable
 private fun ImageBubble(uri: String, isMe: Boolean) {
-    val context = LocalContext.current
-    val cached = remember(uri) { BitmapCache.get(uri) }
-    val bitmap by produceState<Bitmap?>(initialValue = cached, uri) {
-        val hit = BitmapCache.get(uri)
-        if (hit != null) { value = hit; return@produceState }
-        value = withContext(Dispatchers.IO) {
-            try {
-                context.contentResolver.openInputStream(Uri.parse(uri))?.use { stream ->
-                    val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeStream(stream, null, opts)
-                    val reqW = 260 * context.resources.displayMetrics.densityDpi / 160
-                    val reqH = 300 * context.resources.displayMetrics.densityDpi / 160
-                    var sample = 1
-                    while (opts.outWidth / sample > reqW * 2 || opts.outHeight / sample > reqH * 2) {
-                        sample *= 2
-                    }
-                    val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sample }
-                    context.contentResolver.openInputStream(Uri.parse(uri))?.use { s ->
-                        BitmapFactory.decodeStream(s, null, decodeOpts)
-                    }
-                }
-            } catch (_: Exception) {
-                null
-            }.also { bmp ->
-                if (bmp != null) BitmapCache.put(uri, bmp)
-            }
-        }
-    }
-    val bmp = bitmap
-    if (bmp != null) {
-        Image(
-            bitmap = bmp.asImageBitmap(),
-            contentDescription = stringResource(R.string.access_photo),
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .widthIn(max = 260.dp)
-                .heightIn(max = 300.dp)
-                .clip(RoundedCornerShape(16.dp))
-        )
-    }
+    coil3.compose.AsyncImage(
+        model = uri,
+        contentDescription = stringResource(R.string.access_photo),
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .widthIn(max = 260.dp)
+            .heightIn(max = 300.dp)
+            .clip(RoundedCornerShape(16.dp))
+    )
 }
 
 /** Google-Messages-like input bar: pill field with emoji toggle + circular send. */
@@ -1914,7 +1878,6 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
 private fun InputBar(
     draft: String,
     placeholder: String,
-    simTrailing: (@Composable () -> Unit)? = null,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
     onSchedule: () -> Unit = {},
@@ -1946,7 +1909,6 @@ private fun InputBar(
                 ),
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (simTrailing != null) simTrailing()
                         IconButton(onClick = onEmojiToggle) {
                             Icon(
                                 Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
