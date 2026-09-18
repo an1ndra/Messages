@@ -128,6 +128,7 @@ jobs:
         id: result
         run: |
           ANALY="${{ steps.upload.outputs.analysis_id }}"
+          mkdir -p /tmp/vt
           for i in $(seq 1 60); do
             if RESP=$(curl -sf -H "x-apikey: $VT_API_KEY" \
               "https://www.virustotal.com/api/v3/analyses/$ANALY"); then
