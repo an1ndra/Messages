@@ -2,7 +2,7 @@
 <resources>
     <string name="contact_block">حظر</string>
     <string name="contact_block_confirm">%s - لن تتلقى مكالمات أو رسائل من هذا الرقم.</string>
-    <string name="contact_block_report">حظر والإبلاغ عن رسائل غير مرغوبة</string>
+    <string name="contact_block_report">حظر الرقم</string>
     <string name="contact_notifications">الإشعارات</string>
 
     <string name="contact_one_person">شخص آخر واحد</string>

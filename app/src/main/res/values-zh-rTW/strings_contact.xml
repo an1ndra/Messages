@@ -2,7 +2,7 @@
 <resources>
     <string name="contact_block">封鎖</string>
     <string name="contact_block_confirm">封鎖 %s？您將不會收到來自此號碼的電話或訊息。</string>
-    <string name="contact_block_report">封鎖並檢舉垃圾訊息</string>
+    <string name="contact_block_report">封鎖號碼</string>
     <string name="contact_notifications">通知</string>
     <string name="contact_one_person">1 位其他人</string>
     <string name="contact_add_people">加入人員</string>

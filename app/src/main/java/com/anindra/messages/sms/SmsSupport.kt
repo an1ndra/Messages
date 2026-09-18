@@ -224,7 +224,7 @@ object NotificationHelper {
         // heads-up popup; the receive-sound-off case is handled by the channel
         // playing the bundled silent clip instead.
         val builder = NotificationCompat.Builder(context, channelId(context))
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_stat_message)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -264,7 +264,7 @@ object NotificationHelper {
             else String.format(context.getString(R.string.notif_send_fail), to)
 
         val notif = NotificationCompat.Builder(context, channelId(context))
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_stat_message)
             .setContentTitle(context.getString(R.string.notif_not_delivered))
             .setContentText(failText)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

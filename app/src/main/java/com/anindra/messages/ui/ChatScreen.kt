@@ -18,6 +18,9 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -112,10 +115,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -176,6 +182,8 @@ private fun ChatBubble(
     isUnlocked: Boolean,
     showSimIndicator: Boolean,
     isSelected: Boolean = false,
+    animateIn: Boolean = false,
+    onEntranceStart: () -> Unit = {},
     onLongPress: () -> Unit = {},
     onRetry: () -> Unit = {}
 ) {
@@ -184,6 +192,18 @@ private fun ChatBubble(
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
+    val slidePx = with(LocalDensity.current) { BubbleEntrance.SLIDE_DP.dp.toPx() }
+    val entrance = remember(msg.id) { Animatable(if (animateIn) 0f else 1f) }
+    LaunchedEffect(msg.id) {
+        if (animateIn) {
+            onEntranceStart()
+            android.util.Log.d("BubbleAnim", "entrance id=${msg.id} mine=${msg.isMe}")
+            entrance.animateTo(
+                1f,
+                tween(BubbleEntrance.DURATION_MS, easing = FastOutSlowInEasing)
+            )
+        }
+    }
     val bodyText = rememberLinkedText(
         displayBody,
         highlightLinks && !isLockedAndHidden,
@@ -206,7 +226,19 @@ private fun ChatBubble(
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                val p = entrance.value
+                alpha = BubbleEntrance.alpha(p)
+                scaleX = BubbleEntrance.scale(p)
+                scaleY = BubbleEntrance.scale(p)
+                translationX = BubbleEntrance.translationX(p, msg.isMe, slidePx)
+                transformOrigin = TransformOrigin(
+                    pivotFractionX = if (msg.isMe) 1f else 0f,
+                    pivotFractionY = 1f
+                )
+            },
         horizontalArrangement = if (msg.isMe) Arrangement.End else Arrangement.Start
     ) {
         Column(horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start) {
@@ -305,7 +337,7 @@ private fun ChatBubble(
                 val label = if (msg.isMe) {
                     "$time \u2022 $statusText$simLabel"
                 } else {
-                    time
+                    "$time$simLabel"
                 }
                 Text(
                     text = label,
@@ -351,6 +383,16 @@ fun ChatScreen(
         .onEach { messagesLoaded = true }
         .collectAsState(initial = emptyList())
     val totalCount by remember(conversationId) { vm.messageCountFlow(conversationId) }.collectAsState(initial = 0)
+    // Highest id already on screen when the chat was opened (or first loaded);
+    // only newer arrivals play the entrance animation, so scrolling back and
+    // forward never replays it.
+    var entranceBaseline by remember(conversationId) { mutableStateOf(-1L) }
+    val animatedIds = remember(conversationId) { mutableStateListOf<Long>() }
+    LaunchedEffect(messages, messagesLoaded) {
+        if (entranceBaseline < 0 && messagesLoaded) {
+            entranceBaseline = messages.maxOfOrNull { it.id } ?: 0L
+        }
+    }
     val showEntrySkeleton = !messagesLoaded
     val pendingEarlier = messagesLoaded && totalCount > pageLimit && pageLimit < AUTO_CAP
     val hasEarlierButton = messagesLoaded && totalCount > pageLimit && pageLimit >= AUTO_CAP
@@ -376,6 +418,8 @@ fun ChatScreen(
 
     var forwardingMessageId by remember { mutableStateOf(-1L) }
     var showForwardPicker by remember { mutableStateOf(false) }
+
+    var detailsMessage by remember { mutableStateOf<Message?>(null) }
 
     var pendingSendText by remember { mutableStateOf("") }
     var sendCountdown by remember { mutableIntStateOf(0) }
@@ -662,7 +706,10 @@ fun ChatScreen(
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
                     onShare = { shareSelection() },
-                    onViewDetails = onOpenDetails,
+                    onViewDetails = {
+                        detailsMessage = messages.firstOrNull { it.id in selectedMessageIds }
+                        clearSelection()
+                    },
                     onDelete = { deleteSelection() },
                     onLockUnlock = { lockUnlockSelection() }
                 )
@@ -853,6 +900,10 @@ fun ChatScreen(
                             isUnlocked = unlockedIds.contains(msg.id),
                             showSimIndicator = vm.settings.showSimIndicator,
                             isSelected = msg.id in selectedMessageIds,
+                            animateIn = BubbleEntrance.shouldAnimate(
+                                msg.id, entranceBaseline, msg.id in animatedIds
+                            ),
+                            onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
                             onLongPress = { toggleSelection(msg.id) },
                             onRetry = { vm.retryMessage(msg.id) }
                         )
@@ -968,6 +1019,14 @@ fun ChatScreen(
                 onBack()
             },
             onDismiss = { showPermanentDeleteDialog = false }
+        )
+    }
+
+    detailsMessage?.let { detail ->
+        MessageDetailsDialog(
+            message = detail,
+            address = convo?.address ?: "",
+            onDismiss = { detailsMessage = null }
         )
     }
 
@@ -1537,6 +1596,45 @@ private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> 
                 }) { Text(stringResource(R.string.chat_copy_link)) }
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
             }
+        }
+    )
+}
+
+@Composable
+private fun MessageDetailsDialog(
+    message: Message,
+    address: String,
+    onDismiss: () -> Unit
+) {
+    val kind = MessageDetails.kind(message.transport)
+    val toSelf = MessageDetails.direction(message.isMe) == MessageDetails.Direction.TO
+    val timeFmt = remember { SimpleDateFormat("MMM d, yyyy, h:mm a", Locale.getDefault()) }
+    val statusLabel = when (MessageDetails.status(message.status)) {
+        MessageDetails.Status.SENDING -> stringResource(R.string.message_status_sending)
+        MessageDetails.Status.DELIVERED -> stringResource(R.string.message_status_delivered)
+        MessageDetails.Status.RECEIVED -> stringResource(R.string.message_status_received)
+        MessageDetails.Status.FAILED -> stringResource(R.string.message_status_failed)
+        MessageDetails.Status.SENT -> stringResource(R.string.message_status_sent)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.message_details_title)) },
+        text = {
+            Column {
+                DetailRow(stringResource(R.string.message_detail_type), MessageDetails.kindLabel(kind))
+                DetailRow(
+                    stringResource(if (toSelf) R.string.message_detail_to else R.string.message_detail_from),
+                    formatPhoneNumber(address)
+                )
+                DetailRow(stringResource(R.string.message_detail_sent), timeFmt.format(Date(message.timestamp)))
+                MessageDetails.deliveredAt(message)?.let {
+                    DetailRow(stringResource(R.string.message_detail_delivered), timeFmt.format(Date(it)))
+                }
+                DetailRow(stringResource(R.string.message_detail_status), statusLabel)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_close)) }
         }
     )
 }
