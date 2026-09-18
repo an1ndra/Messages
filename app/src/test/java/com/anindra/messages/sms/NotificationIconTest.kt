@@ -31,8 +31,19 @@ class NotificationIconTest {
     }
 
     @Test
-    fun notificationIsASecondCopyOfTheSameArtwork() {
-        assertEquals(pathData(drawable("ic_launcher_foreground")).toSet(), pathData(drawable("ic_stat_message")).toSet())
+    fun notificationReusesTheLauncherBubbleArtwork() {
+        val bubble = pathData(drawable("ic_launcher_foreground")).first()
+        val combined = pathData(drawable("ic_stat_message")).single()
+        assertTrue(combined.startsWith(bubble))
+    }
+
+    @Test
+    fun notificationLinesAreCutOutSoTheySurviveTinting() {
+        val xml = drawable("ic_stat_message")
+        assertTrue(xml.contains("android:fillType=\"evenOdd\""))
+        assertFalse(xml.contains("strokeColor"))
+        val subpaths = Regex("M").findAll(pathData(xml).single()).count()
+        assertEquals(4, subpaths)
     }
 
     @Test
