@@ -17,3 +17,6 @@ Any alternative solutions or features.
 
 **Additional context**
 Screenshots, references (e.g. how Google Messages does it), or anything else.
+If it is about device-specific behavior, a report from
+**Settings → Advanced → Diagnostics** (or `Downloads/Messages/messages-diagnostics.txt`)
+Device and app diagnostics for troubleshooting

@@ -2,11 +2,8 @@ package com.anindra.messages.ui
 
 import android.Manifest
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.ContactsContract
-import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 import android.widget.Toast
 import android.text.SpannableStringBuilder
@@ -19,6 +16,9 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -27,7 +27,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -113,10 +112,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -131,6 +132,9 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
+import com.anindra.messages.data.SimCard
+import com.anindra.messages.data.SimCards
+import com.anindra.messages.data.MessageLockCrypto
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.ChatMetaWeight
@@ -150,7 +154,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.mutableStateListOf
 
 
@@ -174,6 +177,8 @@ private fun ChatBubble(
     isUnlocked: Boolean,
     showSimIndicator: Boolean,
     isSelected: Boolean = false,
+    animateIn: Boolean = false,
+    onEntranceStart: () -> Unit = {},
     onLongPress: () -> Unit = {},
     onRetry: () -> Unit = {}
 ) {
@@ -182,6 +187,18 @@ private fun ChatBubble(
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
+    val slidePx = with(LocalDensity.current) { BubbleEntrance.SLIDE_DP.dp.toPx() }
+    val entrance = remember(msg.id) { Animatable(if (animateIn) 0f else 1f) }
+    LaunchedEffect(msg.id) {
+        if (animateIn) {
+            onEntranceStart()
+            android.util.Log.d("BubbleAnim", "entrance id=${msg.id} mine=${msg.isMe}")
+            entrance.animateTo(
+                1f,
+                tween(BubbleEntrance.DURATION_MS, easing = FastOutSlowInEasing)
+            )
+        }
+    }
     val bodyText = rememberLinkedText(
         displayBody,
         highlightLinks && !isLockedAndHidden,
@@ -204,7 +221,19 @@ private fun ChatBubble(
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                val p = entrance.value
+                alpha = BubbleEntrance.alpha(p)
+                scaleX = BubbleEntrance.scale(p)
+                scaleY = BubbleEntrance.scale(p)
+                translationX = BubbleEntrance.translationX(p, msg.isMe, slidePx)
+                transformOrigin = TransformOrigin(
+                    pivotFractionX = if (msg.isMe) 1f else 0f,
+                    pivotFractionY = 1f
+                )
+            },
         horizontalArrangement = if (msg.isMe) Arrangement.End else Arrangement.Start
     ) {
         Column(horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start) {
@@ -303,7 +332,7 @@ private fun ChatBubble(
                 val label = if (msg.isMe) {
                     "$time \u2022 $statusText$simLabel"
                 } else {
-                    time
+                    "$time$simLabel"
                 }
                 Text(
                     text = label,
@@ -349,6 +378,16 @@ fun ChatScreen(
         .onEach { messagesLoaded = true }
         .collectAsState(initial = emptyList())
     val totalCount by remember(conversationId) { vm.messageCountFlow(conversationId) }.collectAsState(initial = 0)
+    // Highest id already on screen when the chat was opened (or first loaded);
+    // only newer arrivals play the entrance animation, so scrolling back and
+    // forward never replays it.
+    var entranceBaseline by remember(conversationId) { mutableStateOf(-1L) }
+    val animatedIds = remember(conversationId) { mutableStateListOf<Long>() }
+    LaunchedEffect(messages, messagesLoaded) {
+        if (entranceBaseline < 0 && messagesLoaded) {
+            entranceBaseline = messages.maxOfOrNull { it.id } ?: 0L
+        }
+    }
     val showEntrySkeleton = !messagesLoaded
     val pendingEarlier = messagesLoaded && totalCount > pageLimit && pageLimit < AUTO_CAP
     val hasEarlierButton = messagesLoaded && totalCount > pageLimit && pageLimit >= AUTO_CAP
@@ -365,7 +404,7 @@ fun ChatScreen(
     var cameraFileUri by remember { mutableStateOf<Uri?>(null) }
 
     var currentSimId by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
-    var sims by remember { mutableStateOf(emptyList<SubscriptionInfo>()) }
+    var sims by remember { mutableStateOf(emptyList<SimCard>()) }
 
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
@@ -374,6 +413,8 @@ fun ChatScreen(
 
     var forwardingMessageId by remember { mutableStateOf(-1L) }
     var showForwardPicker by remember { mutableStateOf(false) }
+
+    var detailsMessage by remember { mutableStateOf<Message?>(null) }
 
     var pendingSendText by remember { mutableStateOf("") }
     var sendCountdown by remember { mutableIntStateOf(0) }
@@ -408,16 +449,11 @@ fun ChatScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            try {
-                val sm = context.getSystemService(SubscriptionManager::class.java)
-                sims = sm?.activeSubscriptionInfoList?.filter {
-                    it.simSlotIndex >= 0
-                }?.sortedBy { it.simSlotIndex } ?: emptyList()
-                if (sims.isNotEmpty() && currentSimId == -1) {
-                    currentSimId = sims.first().subscriptionId
-                    vm.settings.simSubscriptionId = currentSimId
-                }
-            } catch (_: Exception) {}
+            sims = SimCards.load(context).filter { it.slotIndex >= 0 }.sortedBy { it.slotIndex }
+            if (sims.isNotEmpty() && currentSimId == -1) {
+                currentSimId = sims.first().subscriptionId
+                vm.settings.simSubscriptionId = currentSimId
+            }
         }
     }
 
@@ -435,30 +471,21 @@ fun ChatScreen(
         val next = sims[(idx + 1) % sims.size]
         currentSimId = next.subscriptionId
         vm.settings.simSubscriptionId = next.subscriptionId
-        val carrier = next.carrierName?.toString()?.ifBlank { null }
-        val label = if (carrier != null) String.format("%s · SIM %s", carrier, next.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), next.simSlotIndex + 1)
+        val carrier = next.carrierName?.ifBlank { null }
+        val label = if (carrier != null) String.format("%s · SIM %s", carrier, next.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), next.slotIndex + 1)
         Toast.makeText(context, context.getString(R.string.chat_sending_via, label), Toast.LENGTH_SHORT).show()
     }
 
     LaunchedEffect(Unit) {
-        try {
-            val sm = context.getSystemService(SubscriptionManager::class.java)
-            sims = sm?.activeSubscriptionInfoList?.filter {
-                it.simSlotIndex >= 0
-            }?.sortedBy { it.simSlotIndex } ?: emptyList()
-            if (sims.isNotEmpty() && currentSimId == -1) {
-                currentSimId = sims.first().subscriptionId
-                vm.settings.simSubscriptionId = currentSimId
-            }
-        } catch (_: SecurityException) {
-            if (android.os.Build.VERSION.SDK_INT >= 33) {
-                if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) !=
-                    android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
-                }
-            } else {
-                phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
-            }
+        sims = SimCards.load(context).filter { it.slotIndex >= 0 }.sortedBy { it.slotIndex }
+        if (sims.isNotEmpty() && currentSimId == -1) {
+            currentSimId = sims.first().subscriptionId
+            vm.settings.simSubscriptionId = currentSimId
+        }
+        if (sims.isEmpty() &&
+            context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
         }
     }
 
@@ -561,24 +588,36 @@ fun ChatScreen(
                 BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
             )
             if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                val authCipher = MessageLockCrypto.newAuthCipher()
                 val prompt = BiometricPrompt(activity, biometricExecutor,
                     object : BiometricPrompt.AuthenticationCallback() {
                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                            // Tie the unlock to the authenticated Keystore key: a
+                            // crypto operation with the CryptoObject cipher proves the
+                            // user actually authenticated, instead of trusting a
+                            // boolean that UI-hooking tools can flip.
+                            val cipher = result.cryptoObject?.cipher
+                            val authenticated = cipher == null || MessageLockCrypto.proveAuth(cipher)
                             activity.runOnUiThread {
-                                targets.forEach { vm.setLocked(it.id, false) }
-                                unlockedIds = unlockedIds + targets.map { it.id }
+                                if (authenticated) {
+                                    targets.forEach { vm.setLocked(it.id, false) }
+                                    unlockedIds = unlockedIds + targets.map { it.id }
+                                }
                             }
                         }
                     })
-                prompt.authenticate(
-                    BiometricPrompt.PromptInfo.Builder()
-                        .setTitle(context.getString(R.string.lock_unlock_title))
-                        .setSubtitle(context.getString(R.string.lock_auth_subtitle))
-                        .setAllowedAuthenticators(
-                            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                        )
-                        .build()
-                )
+                val info = BiometricPrompt.PromptInfo.Builder()
+                    .setTitle(context.getString(R.string.lock_unlock_title))
+                    .setSubtitle(context.getString(R.string.lock_auth_subtitle))
+                    .setAllowedAuthenticators(
+                        BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                    )
+                    .build()
+                if (authCipher != null) {
+                    prompt.authenticate(info, BiometricPrompt.CryptoObject(authCipher))
+                } else {
+                    prompt.authenticate(info)
+                }
             } else {
                 targets.forEach { vm.setLocked(it.id, false) }
                 unlockedIds = unlockedIds + targets.map { it.id }
@@ -662,7 +701,10 @@ fun ChatScreen(
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
                     onShare = { shareSelection() },
-                    onViewDetails = onOpenDetails,
+                    onViewDetails = {
+                        detailsMessage = messages.firstOrNull { it.id in selectedMessageIds }
+                        clearSelection()
+                    },
                     onDelete = { deleteSelection() },
                     onLockUnlock = { lockUnlockSelection() }
                 )
@@ -853,6 +895,10 @@ fun ChatScreen(
                             isUnlocked = unlockedIds.contains(msg.id),
                             showSimIndicator = vm.settings.showSimIndicator,
                             isSelected = msg.id in selectedMessageIds,
+                            animateIn = BubbleEntrance.shouldAnimate(
+                                msg.id, entranceBaseline, msg.id in animatedIds
+                            ),
+                            onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
                             onLongPress = { toggleSelection(msg.id) },
                             onRetry = { vm.retryMessage(msg.id) }
                         )
@@ -968,6 +1014,14 @@ fun ChatScreen(
                 onBack()
             },
             onDismiss = { showPermanentDeleteDialog = false }
+        )
+    }
+
+    detailsMessage?.let { detail ->
+        MessageDetailsDialog(
+            message = detail,
+            address = convo?.address ?: "",
+            onDismiss = { detailsMessage = null }
         )
     }
 
@@ -1102,7 +1156,7 @@ private fun MessageSelectionToolbar(
 private fun ChatTopBar(
     convo: com.anindra.messages.data.Conversation?,
     workProfile: Boolean,
-    sims: List<SubscriptionInfo>,
+    sims: List<SimCard>,
     currentSimId: Int,
     menuOpen: Boolean,
     numberIsBlocked: Boolean,
@@ -1187,10 +1241,10 @@ private fun ChatTopBar(
                         onClick = { onMenuDismiss(); onOpenDetails() }
                     )
                     if (sims.size > 1) {
-                        sims.sortedBy { it.simSlotIndex }.forEach { sub ->
-                            val carrier = sub.carrierName?.toString()?.ifBlank { null }
+                        sims.sortedBy { it.slotIndex }.forEach { sub ->
+                            val carrier = sub.carrierName?.ifBlank { null }
                             val simLabel = buildString {
-                                append(String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1))
+                                append(String.format(context.getString(R.string.settings_sim_label), sub.slotIndex + 1))
                                 if (carrier != null) append(String.format(" · %s", carrier))
                             }
                             DropdownMenuItem(
@@ -1245,7 +1299,7 @@ private fun ChatMessageList(
     messages: List<com.anindra.messages.data.Message>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     deliveryReports: Boolean,
-    sims: List<SubscriptionInfo>,
+    sims: List<SimCard>,
     highlightLinks: Boolean,
     linkWarningEnabled: Boolean,
     hideLinks: Boolean,
@@ -1542,6 +1596,45 @@ private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> 
 }
 
 @Composable
+private fun MessageDetailsDialog(
+    message: Message,
+    address: String,
+    onDismiss: () -> Unit
+) {
+    val kind = MessageDetails.kind(message.transport)
+    val toSelf = MessageDetails.direction(message.isMe) == MessageDetails.Direction.TO
+    val timeFmt = remember { SimpleDateFormat("MMM d, yyyy, h:mm a", Locale.getDefault()) }
+    val statusLabel = when (MessageDetails.status(message.status)) {
+        MessageDetails.Status.SENDING -> stringResource(R.string.message_status_sending)
+        MessageDetails.Status.DELIVERED -> stringResource(R.string.message_status_delivered)
+        MessageDetails.Status.RECEIVED -> stringResource(R.string.message_status_received)
+        MessageDetails.Status.FAILED -> stringResource(R.string.message_status_failed)
+        MessageDetails.Status.SENT -> stringResource(R.string.message_status_sent)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.message_details_title)) },
+        text = {
+            Column {
+                DetailRow(stringResource(R.string.message_detail_type), MessageDetails.kindLabel(kind))
+                DetailRow(
+                    stringResource(if (toSelf) R.string.message_detail_to else R.string.message_detail_from),
+                    formatPhoneNumber(address)
+                )
+                DetailRow(stringResource(R.string.message_detail_sent), timeFmt.format(Date(message.timestamp)))
+                MessageDetails.deliveredAt(message)?.let {
+                    DetailRow(stringResource(R.string.message_detail_delivered), timeFmt.format(Date(it)))
+                }
+                DetailRow(stringResource(R.string.message_detail_status), statusLabel)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_close)) }
+        }
+    )
+}
+
+@Composable
 private fun ConversationDetailsDialog(
     address: String,
     name: String?,
@@ -1768,46 +1861,15 @@ fun MessageRow(
 
 @Composable
 private fun ImageBubble(uri: String, isMe: Boolean) {
-    val context = LocalContext.current
-    val cached = remember(uri) { BitmapCache.get(uri) }
-    val bitmap by produceState<Bitmap?>(initialValue = cached, uri) {
-        val hit = BitmapCache.get(uri)
-        if (hit != null) { value = hit; return@produceState }
-        value = withContext(Dispatchers.IO) {
-            try {
-                context.contentResolver.openInputStream(Uri.parse(uri))?.use { stream ->
-                    val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeStream(stream, null, opts)
-                    val reqW = 260 * context.resources.displayMetrics.densityDpi / 160
-                    val reqH = 300 * context.resources.displayMetrics.densityDpi / 160
-                    var sample = 1
-                    while (opts.outWidth / sample > reqW * 2 || opts.outHeight / sample > reqH * 2) {
-                        sample *= 2
-                    }
-                    val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sample }
-                    context.contentResolver.openInputStream(Uri.parse(uri))?.use { s ->
-                        BitmapFactory.decodeStream(s, null, decodeOpts)
-                    }
-                }
-            } catch (_: Exception) {
-                null
-            }.also { bmp ->
-                if (bmp != null) BitmapCache.put(uri, bmp)
-            }
-        }
-    }
-    val bmp = bitmap
-    if (bmp != null) {
-        Image(
-            bitmap = bmp.asImageBitmap(),
-            contentDescription = stringResource(R.string.access_photo),
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .widthIn(max = 260.dp)
-                .heightIn(max = 300.dp)
-                .clip(RoundedCornerShape(16.dp))
-        )
-    }
+    coil3.compose.AsyncImage(
+        model = uri,
+        contentDescription = stringResource(R.string.access_photo),
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .widthIn(max = 260.dp)
+            .heightIn(max = 300.dp)
+            .clip(RoundedCornerShape(16.dp))
+    )
 }
 
 /** Google-Messages-like input bar: pill field with emoji toggle + circular send. */
@@ -1816,7 +1878,6 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
 private fun InputBar(
     draft: String,
     placeholder: String,
-    simTrailing: (@Composable () -> Unit)? = null,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
     onSchedule: () -> Unit = {},
@@ -1848,7 +1909,6 @@ private fun InputBar(
                 ),
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (simTrailing != null) simTrailing()
                         IconButton(onClick = onEmojiToggle) {
                             Icon(
                                 Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
@@ -1934,7 +1994,7 @@ private fun AttachSheet(
 
 @Composable
 private fun SimPickerDialog(
-    sims: List<SubscriptionInfo>,
+    sims: List<SimCard>,
     currentSimId: Int,
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit
@@ -1947,9 +2007,9 @@ private fun SimPickerDialog(
         text = {
             Column {
                 sims.forEach { sub ->
-                    val carrier = sub.carrierName?.toString()?.ifBlank { null }
+                    val carrier = sub.carrierName?.ifBlank { null }
                     val label =
-                        if (carrier != null) String.format("%s · SIM %s", carrier, sub.simSlotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.simSlotIndex + 1)
+                        if (carrier != null) String.format("%s · SIM %s", carrier, sub.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.slotIndex + 1)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { selected = sub.subscriptionId }

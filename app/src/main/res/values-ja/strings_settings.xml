@@ -79,7 +79,6 @@
     <string name="settings_restored_msg">%s件のメッセージを復元しました。既存の会話を保持。</string>
     <string name="settings_sim_default">既定（システム）</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>
-    <string name="settings_backup_saved">PINで保護して Documents/Messages にバックアップを保存しました</string>
     <string name="settings_backup_failed">バックアップに失敗しました</string>
     <string name="settings_save">保存</string>
     <string name="settings_import">インポート</string>
