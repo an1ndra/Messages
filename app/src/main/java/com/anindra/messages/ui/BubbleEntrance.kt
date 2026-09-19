@@ -9,9 +9,14 @@ object BubbleEntrance {
 
     /** A bubble animates only when it arrives after the screen's baseline and
      *  has not already played its entrance (LazyColumn disposes off-screen rows
-     *  and would otherwise replay on every scroll-back). */
-    fun shouldAnimate(messageId: Long, baselineId: Long, alreadyAnimated: Boolean): Boolean =
-        baselineId > 0 && messageId > baselineId && !alreadyAnimated
+     *  and would otherwise replay on every scroll-back). Accessibility mode's
+     *  reduce-motion option suppresses it entirely. */
+    fun shouldAnimate(
+        messageId: Long,
+        baselineId: Long,
+        alreadyAnimated: Boolean,
+        reduceMotion: Boolean = false
+    ): Boolean = !reduceMotion && baselineId > 0 && messageId > baselineId && !alreadyAnimated
 
     /** Outgoing bubbles slide in from the right, incoming from the left. */
     fun direction(isMe: Boolean): Float = if (isMe) 1f else -1f

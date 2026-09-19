@@ -714,6 +714,24 @@ private fun ConversationRow(
     onLongClick: () -> Unit = {}
 ) {
     val now = LocalNowTick.current
+    val senderLabel = if (convo.name == convo.address) convo.display else convo.name
+    val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
+    val draftLabel = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
+    val snippetLabel = if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
+    val previewLabel = if (hasDraft) {
+        context.getString(R.string.chat_draft_prefix) + draftLabel
+    } else if (convo.isMe && snippetLabel.isNotEmpty()) {
+        context.getString(R.string.convo_your_prefix) + snippetLabel
+    } else {
+        snippetLabel
+    }
+    val a11yLabel = A11y.describe(
+        senderLabel,
+        previewLabel,
+        formatListTime(convo.timestamp, now, context),
+        if (convo.unreadCount > 0) context.getString(R.string.access_unread, convo.unreadCount) else null,
+        if (convo.pinned && settings.pinnedEnabled) context.getString(R.string.access_pinned) else null
+    )
     Box(modifier = Modifier.fillMaxWidth()) {
         val pinnedTint = if (convo.pinned && settings.pinnedEnabled) {
             MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
@@ -725,11 +743,13 @@ private fun ConversationRow(
             modifier = Modifier
                 .fillMaxSize()
                 .combinedClickable(
+                    onClickLabel = context.getString(R.string.access_open_conversation),
                     onClick = onClick,
                     onLongClick = onLongClick
                 )
                 .background(pinnedTint)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .semantics(mergeDescendants = true) { contentDescription = a11yLabel },
             verticalAlignment = Alignment.CenterVertically
         ) {
             PersonAvatar(convo.address)
@@ -759,24 +779,17 @@ private fun ConversationRow(
                     }
                 }
                 Spacer(Modifier.height(2.dp))
-                val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
                 if (hasDraft) {
-                    val draft = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
                     Text(
-                        text = stringResource(R.string.chat_draft_prefix) + draft,
+                        text = previewLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 } else {
-                    val snippet =
-                        if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
-                    val preview =
-                        if (convo.isMe && snippet.isNotEmpty()) stringResource(R.string.convo_your_prefix) + snippet
-                        else snippet
                     Text(
-                        text = preview,
+                        text = previewLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Normal,
                         color = if (convo.unreadCount > 0) MaterialTheme.colorScheme.onSurface

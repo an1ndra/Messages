@@ -1,6 +1,7 @@
 package com.anindra.messages.ui.theme
 
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -22,5 +23,19 @@ class TypeTest {
     fun defaultTypographyUsesSystemFamily() {
         assertEquals(FontFamily.Default, messagesTypography().bodyLarge.fontFamily)
         assertEquals(FontFamily.Default, messagesTypography().headlineSmall.fontFamily)
+    }
+
+    @Test
+    fun boldTypographyUsesBoldWeightForEveryRole() {
+        val t = messagesTypography(bold = true)
+        assertEquals(FontWeight.Bold, t.bodyLarge.fontWeight)
+        assertEquals(FontWeight.Bold, t.bodyMedium.fontWeight)
+        assertEquals(FontWeight.Bold, t.labelLarge.fontWeight)
+        assertEquals(FontWeight.Bold, t.headlineSmall.fontWeight)
+    }
+
+    @Test
+    fun nonBoldTypographyKeepsBaseWeights() {
+        assertEquals(FontWeight.Normal, messagesTypography().bodyLarge.fontWeight)
     }
 }
