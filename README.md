@@ -11,8 +11,9 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 ## Features
 
-- **Real SMS**: Send/receive SMS messages, multi-SIM support
-- **Google Messages UI**: Material 3 design, dark/light themes, conversation avatars
+- **Real SMS + MMS**: Send/receive SMS with multi-SIM support; imports and displays MMS (text + photos) from the system provider
+- **Google Messages UI**: Material 3 design, dark/light themes, conversation avatars, animated message bubbles
+- **Backup & Restore**: PIN-encrypted backup/restore with a chosen save location (including external SD cards)
 - **Message Management**: Pin, archive, delete, block numbers, trash with 30-day auto-purge
 - **Drafts**: Auto-save drafts, restore on conversation open
 - **Scheduled Messages**: Long-press send to schedule messages with DatePicker + TimePicker
@@ -55,7 +56,7 @@ F-Droid builds the app from source and signs it with the F-Droid project key.
 
 - **Package**: `com.anindra.messages`
 - **Min SDK**: 29 (Android 10)
-- **Target SDK**: 35 (Android 15)
+- **Compile / Target SDK**: 36 (Android 16)
 - **Database**: SQLite with Flow-based reactive queries
 - **Architecture**: Single-Activity, Compose Navigation
 

@@ -60,10 +60,11 @@
     <string name="settings_trash_subtitle">Deleted conversations · purged after 30 days</string>
     <string name="settings_backup_title">Backup messages</string>
     <string name="settings_backup_privacy_disabled">Turn off Privacy mode to back up messages</string>
-    <string name="settings_backup_location_title">Backup location</string>
-    <string name="settings_backup_location_subtitle">Saved to %s</string>
     <string name="settings_backup_location_default">the default folder</string>
     <string name="settings_backup_location_failed">This folder can\'t be used for backups</string>
+    <string name="settings_backup_location_default_option">Default (Documents/Messages)</string>
+    <string name="settings_backup_save_to">Save to</string>
+    <string name="settings_backup_change">Change</string>
     <string name="settings_backup_saved_location">Backup saved with PIN to %s</string>
     <string name="settings_import_title">Import messages</string>
     <string name="settings_import_subtitle">Import a backup database file</string>

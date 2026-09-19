@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.VolumeUp
@@ -68,6 +69,7 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
+import com.anindra.messages.data.SimSelection
 import com.anindra.messages.data.SimLabel
 import com.anindra.messages.data.SimLabels
 import androidx.compose.ui.res.stringResource
@@ -142,6 +144,10 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         sims = SimCards.load(context)
+        // Heal a saved subscription that no longer exists (SIM removed, or the
+        // debug fake list was turned off) back to the system default.
+        val effective = SimSelection.effective(vm.settings.simSubscriptionId, sims)
+        if (effective != vm.settings.simSubscriptionId) vm.settings.simSubscriptionId = effective
     }
 
     val simPermissionLauncher = rememberLauncherForActivityResult(
@@ -258,19 +264,21 @@ fun SettingsScreen(
                     onClick = { themeDialog = true }
                 )
                 val selectedSub = sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }
-                val currentSimLabel = when (val label = SimLabels.resolve(
-                    vm.settings.simSubscriptionId,
-                    selectedSub?.slotIndex,
-                    selectedSub?.carrierName
-                )) {
-                    SimLabel.Default -> context.getString(R.string.sim_default)
-                    is SimLabel.Carrier -> String.format(
-                        context.getString(R.string.settings_sim_label_format), label.carrier, label.slot
-                    )
-                    is SimLabel.Slot -> String.format(
-                        context.getString(R.string.settings_sim_label), label.slot
-                    )
-                    SimLabel.Unknown -> context.getString(R.string.settings_sim_unknown)
+                val currentSimLabel = if (selectedSub == null) {
+                    context.getString(R.string.sim_default)
+                } else {
+                    when (val label = SimLabels.resolve(
+                        selectedSub.subscriptionId, selectedSub.slotIndex, selectedSub.carrierName
+                    )) {
+                        SimLabel.Default -> context.getString(R.string.sim_default)
+                        is SimLabel.Carrier -> String.format(
+                            context.getString(R.string.settings_sim_label_format), label.carrier, label.slot
+                        )
+                        is SimLabel.Slot -> String.format(
+                            context.getString(R.string.settings_sim_label), label.slot
+                        )
+                        SimLabel.Unknown -> context.getString(R.string.sim_default)
+                    }
                 }
                 SettingsRow(
                     title = stringResource(R.string.settings_pin_sim_card),
@@ -384,16 +392,6 @@ fun SettingsScreen(
                         pinConfirm = ""
                         pinError = null
                     }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_backup_location_title),
-                    subtitle = String.format(
-                        context.getString(R.string.settings_backup_location_subtitle),
-                        if (BackupLocation.isCustom(backupFolder)) BackupLocation.label(backupFolder)
-                        else context.getString(R.string.settings_backup_location_default)
-                    ),
-                    enabled = !privacyMode,
-                    onClick = { backupFolderLauncher.launch(if (backupFolder.isBlank()) null else Uri.parse(backupFolder)) }
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_import_title),
@@ -713,11 +711,46 @@ fun SettingsScreen(
                 Column {
                     if (mode == PinDialogMode.SET) {
                         Text(
-                            stringResource(R.string.settings_backup_pin_protection) +
-                                "restore — even after reinstalling the app or on a new phone.",
+                            stringResource(R.string.settings_backup_pin_protection),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    backupFolderLauncher.launch(
+                                        if (backupFolder.isBlank()) null else Uri.parse(backupFolder)
+                                    )
+                                }
+                                .padding(vertical = 10.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Folder,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    stringResource(R.string.settings_backup_save_to),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    if (BackupLocation.isCustom(backupFolder)) BackupLocation.label(backupFolder)
+                                    else context.getString(R.string.settings_backup_location_default_option)
+                                )
+                            }
+                            Text(
+                                stringResource(R.string.settings_backup_change),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
                     }
                     OutlinedTextField(
                         value = pinInput,

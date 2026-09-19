@@ -16,7 +16,7 @@ This guide explains how to set up and develop the Messages app locally **without
 | Tool | Version | Purpose |
 |------|---------|---------|
 | JDK | 21 LTS | Build system (Gradle) |
-| Android SDK | API 35 | Compile app |
+| Android SDK | API 36 | Compile app |
 | Android Emulator | Latest | Test app |
 | Gradle | 9.6.0 | Build automation (included via wrapper) |
 
@@ -127,11 +127,11 @@ yes | sdkmanager --licenses
 
 # Install required SDK components
 sdkmanager \
-  "platforms;android-35" \
-  "build-tools;35.0.0" \
+  "platforms;android-36" \
+  "build-tools;36.0.0" \
   "platform-tools" \
   "emulator" \
-  "system-images;android-35;google_apis;x86_64"
+  "system-images;android-36;google_apis;x86_64"
 
 # Verify installation
 sdkmanager --list_installed
@@ -158,13 +158,13 @@ rm /tmp/gradle.zip
 
 ```bash
 # List available system images
-sdkmanager --list | grep "system-images;android-35"
+sdkmanager --list | grep "system-images;android-36"
 
 # Create AVD
 # Format: avdmanager create avd -n <name> -k <system-image> -d <device>
 avdmanager create avd \
-  -n "Pixel_7_API_35" \
-  -k "system-images;android-35;google_apis;x86_64" \
+  -n "Pixel_7_API_36" \
+  -k "system-images;android-36;google_apis;x86_64" \
   -d "pixel_7"
 
 # Verify AVD creation
@@ -173,7 +173,7 @@ avdmanager list avd
 
 #### Configure AVD (Optional)
 
-Edit `~/.android/avd/Pixel_7_API_35.avd/config.ini`:
+Edit `~/.android/avd/Pixel_7_API_36.avd/config.ini`:
 
 ```ini
 # Display
@@ -198,10 +198,10 @@ hw.trackBall=no
 
 ```bash
 # Start emulator in background
-emulator -avd Pixel_7_API_35 -no-window -no-audio &
+emulator -avd Pixel_7_API_36 -no-window -no-audio &
 
 # Or start with GUI (requires display)
-emulator -avd Pixel_7_API_35
+emulator -avd Pixel_7_API_36
 
 # Wait for emulator to boot (check status)
 adb wait-for-device
@@ -277,11 +277,11 @@ export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-
 
 # Accept licenses and install SDK
 yes | sdkmanager --licenses > /dev/null 2>&1
-sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64" > /dev/null 2>&1
+sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools" "emulator" "system-images;android-36;google_apis;x86_64" > /dev/null 2>&1
 
 # Create AVD
-if ! avdmanager list avd | grep -q "Pixel_7_API_35"; then
-    avdmanager create avd -n "Pixel_7_API_35" -k "system-images;android-35;google_apis;x86_64" -d "pixel_7"
+if ! avdmanager list avd | grep -q "Pixel_7_API_36"; then
+    avdmanager create avd -n "Pixel_7_API_36" -k "system-images;android-36;google_apis;x86_64" -d "pixel_7"
 fi
 
 # Install Gradle
@@ -509,7 +509,7 @@ Follow Material 3 guidelines:
 ```bash
 # Restart emulator
 adb emu kill
-emulator -avd Pixel_7_API_35
+emulator -avd Pixel_7_API_36
 
 # Clear app data
 adb shell pm clear com.anindra.messages
@@ -536,7 +536,7 @@ scripts/reset-permissions.sh
 sdkmanager --update
 
 # Reinstall specific package
-sdkmanager --install "platforms;android-35"
+sdkmanager --install "platforms;android-36"
 
 # Check installed packages
 sdkmanager --list_installed

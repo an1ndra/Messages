@@ -1588,7 +1588,19 @@ class Repository(private val context: Context) {
         syncExecutor.execute {
             try {
                 val resolver = context.contentResolver
+                val initial = needsInitialImport
                 android.util.Log.d("RepoSync", "Starting syncFromSystem")
+                // Count first so the read phase (which can take a while on a phone
+                // with a large provider) shows a moving bar instead of an apparently
+                // frozen loading screen; the count is cheap and indexed.
+                val total = try {
+                    resolver.query(
+                        android.provider.Telephony.Sms.CONTENT_URI,
+                        arrayOf("COUNT(*)"), null, null, null
+                    )?.use { if (it.moveToFirst()) it.getInt(0) else 0 } ?: 0
+                } catch (_: Exception) { 0 }
+                if (initial && total > 0) _initialSyncProgress.value = 0f
+
                 val cursor = resolver.query(
                     android.provider.Telephony.Sms.CONTENT_URI,
                     arrayOf(
@@ -1605,6 +1617,7 @@ class Repository(private val context: Context) {
 
                 data class SysSms(val sysId: Long, val body: String, val date: Long, val type: Int, val subId: Int)
                 val byAddress = LinkedHashMap<String, MutableList<SysSms>>()
+                var read = 0
                 cursor.use { c ->
                     while (c.moveToNext()) {
                         val addr = c.getString(1)?.takeIf { it.isNotBlank() } ?: continue
@@ -1618,6 +1631,10 @@ class Repository(private val context: Context) {
                         byAddress.getOrPut(addr) { mutableListOf() }.add(
                             SysSms(c.getLong(0), body, date, type, subId)
                         )
+                        read++
+                        if (initial && total > 0) {
+                            _initialSyncProgress.value = SyncProgress.read(read, total)
+                        }
                     }
                 }
 
@@ -1633,17 +1650,24 @@ class Repository(private val context: Context) {
 
                 val pending = byAddress.values.sumOf { list -> list.count { it.sysId !in existing } }
                 android.util.Log.d("RepoSync", "Loaded ${byAddress.size} addresses, $pending pending messages")
-                if (pending > 0) _initialSyncProgress.value = 0f
+                if (pending > 0) _initialSyncProgress.value = if (initial) SyncProgress.READ_END else 0f
 
                 var changed = false
                 var done = 0
                 val batchSize = 50
                 val pendingMessages = mutableListOf<Triple<String, Long, SysSms>>()
-                byAddress.forEach { (addr, msgs) ->
-                    if (msgs.all { it.sysId in existing }) return@forEach
+                val addrsWithPending = byAddress.entries.filter { (_, msgs) ->
+                    msgs.any { it.sysId !in existing }
+                }
+                var resolved = 0
+                addrsWithPending.forEach { (addr, msgs) ->
                     val cid = getOrCreateConversationBlocking(addr)
                     msgs.filter { it.sysId !in existing }.forEach { m ->
                         pendingMessages.add(Triple(addr, cid, m))
+                    }
+                    resolved++
+                    if (initial) {
+                        _initialSyncProgress.value = SyncProgress.resolve(resolved, addrsWithPending.size)
                     }
                 }
                 pendingMessages.chunked(batchSize).forEach { batch ->
@@ -1685,7 +1709,7 @@ class Repository(private val context: Context) {
                             }
                             existing.add(m.sysId)
                             done++
-                            _initialSyncProgress.value = done.toFloat() / pending
+                            _initialSyncProgress.value = SyncProgress.import(done, pending)
                             changed = true
                         }
                         db.writableDatabase.setTransactionSuccessful()
