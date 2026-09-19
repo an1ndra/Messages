@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.anindra.messages"
-    compileSdk = 35
+    compileSdk = 36
 
     dependenciesInfo {
         includeInApk = false
@@ -15,7 +15,7 @@ android {
     defaultConfig {
         applicationId = "com.anindra.messages"
         minSdk = 29
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 28
         versionName = "1.0.25"
     }
