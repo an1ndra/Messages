@@ -57,9 +57,7 @@ body:
       label: How you installed it
       options:
         - F-Droid
-        - Play Store
-        - GitHub release
-        - Built from source
+        - GitHub
     validations:
       required: true
 
