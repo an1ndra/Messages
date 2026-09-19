@@ -6,9 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the report. Messages writes diagnostics and crash reports to
-        `Downloads/Messages/` — open that folder with any file manager (or over USB)
-        and attach the relevant file, or tap **Copy** in the dialog and paste below.
+        Thanks for the report. Messages writes logs to `Downloads/Messages/` — open
+        that folder with any file manager (or over USB) and attach the relevant file,
+        or tap **Copy** in the dialog and paste below:
+        - Diagnostics: `messages-diagnostics.txt`
+        - Crash: `messages-crash-report.txt` (or `messages-crash-report.zip` from **Save ZIP**)
+
         Device, Android version, app version and default-SMS-handler status are all
         included in the log, so you don't need to enter them separately.
 
