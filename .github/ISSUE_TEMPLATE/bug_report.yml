@@ -62,22 +62,15 @@ body:
       required: true
 
   - type: textarea
-    id: diagnostics
+    id: logs
     attributes:
-      label: Diagnostics log
+      label: Diagnostics log or crash report
       description: |
-        Open **Settings → Advanced → Diagnostics**, tap **Save** (or **Copy**) and
-        paste the contents here, or attach `Downloads/Messages/messages-diagnostics.txt`.
-    validations:
-      required: true
-
-  - type: textarea
-    id: crash_report
-    attributes:
-      label: Crash report
-      description: |
-        If the app crashed, attach or paste `Downloads/Messages/messages-crash-report.txt`
-        (or the **Save ZIP** output). If it did not crash, write "N/A".
+        Provide **at least one**:
+        - Open **Settings → Advanced → Diagnostics**, tap **Save** (or **Copy**) and
+          paste the contents here, or attach `Downloads/Messages/messages-diagnostics.txt`.
+        - If the app crashed, attach or paste `Downloads/Messages/messages-crash-report.txt`
+          (or the **Save ZIP** output).
     validations:
       required: true
 
