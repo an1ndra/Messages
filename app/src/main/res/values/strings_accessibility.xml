@@ -2,6 +2,7 @@
 <resources>
     <!-- Screen reader (TalkBack) labels -->
     <string name="access_open_conversation">Open conversation</string>
+    <string name="access_conversation_options">Conversation options</string>
     <string name="access_unread">%1$d unread</string>
 
     <!-- Accessibility mode (Advanced settings) -->

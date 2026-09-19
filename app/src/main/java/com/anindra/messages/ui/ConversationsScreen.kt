@@ -88,7 +88,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -742,14 +747,25 @@ private fun ConversationRow(
         Row(
             modifier = Modifier
                 .fillMaxSize()
+                .clearAndSetSemantics {
+                    contentDescription = a11yLabel
+                    role = Role.Button
+                    onClick(label = context.getString(R.string.access_open_conversation)) {
+                        onClick()
+                        true
+                    }
+                    onLongClick(label = context.getString(R.string.access_conversation_options)) {
+                        onLongClick()
+                        true
+                    }
+                }
                 .combinedClickable(
                     onClickLabel = context.getString(R.string.access_open_conversation),
                     onClick = onClick,
                     onLongClick = onLongClick
                 )
                 .background(pinnedTint)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .semantics(mergeDescendants = true) { contentDescription = a11yLabel },
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             PersonAvatar(convo.address)
