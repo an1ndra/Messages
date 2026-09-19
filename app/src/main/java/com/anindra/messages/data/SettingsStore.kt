@@ -63,6 +63,15 @@ class SettingsStore(context: Context) {
         const val FONT_POPPINS = "poppins"
         const val KEY_BLOCKED_KEYWORDS = "blocked_keywords"
         const val KEY_BACKUP_TREE_URI = "backup_tree_uri"
+        const val KEY_A11Y_ENABLED = "a11y_enabled"
+        const val KEY_A11Y_FONT_SCALE = "a11y_font_scale"
+        const val KEY_A11Y_BOLD = "a11y_bold"
+        const val KEY_A11Y_HIGH_CONTRAST = "a11y_high_contrast"
+        const val KEY_A11Y_REDUCE_MOTION = "a11y_reduce_motion"
+        const val KEY_A11Y_LARGE_TOUCH = "a11y_large_touch"
+        const val A11Y_FONT_DEFAULT = 100
+        const val A11Y_FONT_MIN = 85
+        const val A11Y_FONT_MAX = 130
         const val DEFAULTS_NOTIFICATIONS = true
         const val DEFAULTS_SOUNDS = true
         const val DEFAULTS_DELIVERY = false
@@ -213,6 +222,35 @@ class SettingsStore(context: Context) {
     var blockedKeywords: Set<String>
         get() = prefs.getStringSet(KEY_BLOCKED_KEYWORDS, emptySet()) ?: emptySet()
         set(v) { prefs.edit().putStringSet(KEY_BLOCKED_KEYWORDS, v).apply(); _revision.value++ }
+
+    /** Master switch for accessibility mode; when off every a11y option is ignored. */
+    var a11yEnabled: Boolean
+        get() = prefs.getBoolean(KEY_A11Y_ENABLED, false)
+        set(v) { prefs.edit().putBoolean(KEY_A11Y_ENABLED, v).apply(); _revision.value++ }
+
+    /** App-level text scale as a percentage applied on top of the system font scale. */
+    var a11yFontScalePercent: Int
+        get() = prefs.getInt(KEY_A11Y_FONT_SCALE, A11Y_FONT_DEFAULT)
+        set(v) {
+            prefs.edit().putInt(KEY_A11Y_FONT_SCALE, v.coerceIn(A11Y_FONT_MIN, A11Y_FONT_MAX)).apply()
+            _revision.value++
+        }
+
+    var a11yBold: Boolean
+        get() = prefs.getBoolean(KEY_A11Y_BOLD, false)
+        set(v) { prefs.edit().putBoolean(KEY_A11Y_BOLD, v).apply(); _revision.value++ }
+
+    var a11yHighContrast: Boolean
+        get() = prefs.getBoolean(KEY_A11Y_HIGH_CONTRAST, false)
+        set(v) { prefs.edit().putBoolean(KEY_A11Y_HIGH_CONTRAST, v).apply(); _revision.value++ }
+
+    var a11yReduceMotion: Boolean
+        get() = prefs.getBoolean(KEY_A11Y_REDUCE_MOTION, false)
+        set(v) { prefs.edit().putBoolean(KEY_A11Y_REDUCE_MOTION, v).apply(); _revision.value++ }
+
+    var a11yLargeTouch: Boolean
+        get() = prefs.getBoolean(KEY_A11Y_LARGE_TOUCH, false)
+        set(v) { prefs.edit().putBoolean(KEY_A11Y_LARGE_TOUCH, v).apply(); _revision.value++ }
 
     /** Persisted SAF tree URI for backups; empty means the default Documents/Messages. */
     var backupTreeUri: String
