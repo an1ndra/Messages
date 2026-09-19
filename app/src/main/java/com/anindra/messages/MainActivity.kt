@@ -70,8 +70,10 @@ import com.anindra.messages.ui.ContactDetailsScreen
 import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.SettingsScreen
 import com.anindra.messages.ui.AdvancedSettingsScreen
+import com.anindra.messages.ui.AccessibilityScreen
 import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.isPhoneNumber
+import com.anindra.messages.ui.theme.A11yOptions
 import com.anindra.messages.ui.theme.MessagesTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
@@ -178,6 +180,46 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         set(value) { settings.fontFamily = value; _fontState.value = value }
 
     private val _fontState = androidx.compose.runtime.mutableStateOf(settings.fontFamily)
+
+    // Observable accessibility-mode state; AccessibilityScreen updates it.
+    val a11y: A11yOptions get() = _a11yState.value
+
+    private val _a11yState = androidx.compose.runtime.mutableStateOf(readA11y())
+
+    private fun readA11y() = A11yOptions(
+        enabled = settings.a11yEnabled,
+        fontScalePercent = settings.a11yFontScalePercent,
+        bold = settings.a11yBold,
+        highContrast = settings.a11yHighContrast,
+        reduceMotion = settings.a11yReduceMotion,
+        largeTouchTargets = settings.a11yLargeTouch
+    )
+
+    private fun refreshA11y() { _a11yState.value = readA11y() }
+
+    var a11yEnabled: Boolean
+        get() = _a11yState.value.enabled
+        set(value) { settings.a11yEnabled = value; refreshA11y() }
+
+    var a11yFontScalePercent: Int
+        get() = _a11yState.value.fontScalePercent
+        set(value) { settings.a11yFontScalePercent = value; refreshA11y() }
+
+    var a11yBold: Boolean
+        get() = _a11yState.value.bold
+        set(value) { settings.a11yBold = value; refreshA11y() }
+
+    var a11yHighContrast: Boolean
+        get() = _a11yState.value.highContrast
+        set(value) { settings.a11yHighContrast = value; refreshA11y() }
+
+    var a11yReduceMotion: Boolean
+        get() = _a11yState.value.reduceMotion
+        set(value) { settings.a11yReduceMotion = value; refreshA11y() }
+
+    var a11yLargeTouch: Boolean
+        get() = _a11yState.value.largeTouchTargets
+        set(value) { settings.a11yLargeTouch = value; refreshA11y() }
 
     fun addBlockedKeyword(keyword: String) {
         val kw = keyword.trim()
@@ -585,7 +627,7 @@ class MainActivity : FragmentActivity() {
 
             if (!appUnlocked) {
                 if (lockNotAvailable) {
-                    MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
+                    MessagesTheme(mode = vm.themeMode, font = vm.fontFamily, a11y = vm.a11y) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
@@ -636,7 +678,7 @@ class MainActivity : FragmentActivity() {
                 return@setContent
             }
 
-            MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
+            MessagesTheme(mode = vm.themeMode, font = vm.fontFamily, a11y = vm.a11y) {
                 var chatId by remember { mutableStateOf(-1L) }
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
@@ -715,6 +757,7 @@ class MainActivity : FragmentActivity() {
                         "details" -> navRoute = "chat"
                         "trash" -> navRoute = "settings"
                         "advanced" -> navRoute = "settings"
+                        "accessibility" -> navRoute = "advanced"
                         else -> navRoute = "list"
                     }
                     // Clear ForegroundTracker when leaving chat
@@ -723,7 +766,7 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2)
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2, "accessibility" to 3)
                 val isList = navRoute == "list"
                 val isChat = navRoute == "chat"
 
@@ -743,14 +786,19 @@ class MainActivity : FragmentActivity() {
                     AnimatedContent(
                         targetState = navRoute,
                         transitionSpec = {
-                            val from = routeDepth[initialState] ?: 0
-                            val to = routeDepth[targetState] ?: 0
-                            when {
-                                to > from -> slideInHorizontally(tween(300)) { it } togetherWith
-                                    slideOutHorizontally(tween(300)) { -it }
-                                to < from -> slideInHorizontally(tween(300)) { -it } togetherWith
-                                    slideOutHorizontally(tween(300)) { it }
-                                else -> fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                            if (vm.a11y.reduceMotionEnabled) {
+                                androidx.compose.animation.EnterTransition.None togetherWith
+                                    androidx.compose.animation.ExitTransition.None
+                            } else {
+                                val from = routeDepth[initialState] ?: 0
+                                val to = routeDepth[targetState] ?: 0
+                                when {
+                                    to > from -> slideInHorizontally(tween(300)) { it } togetherWith
+                                        slideOutHorizontally(tween(300)) { -it }
+                                    to < from -> slideInHorizontally(tween(300)) { -it } togetherWith
+                                        slideOutHorizontally(tween(300)) { it }
+                                    else -> fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxSize(),
@@ -781,7 +829,12 @@ class MainActivity : FragmentActivity() {
                                     )
                                     "advanced" -> AdvancedSettingsScreen(
                                         vm = vm,
-                                        onBack = { navRoute = "settings" }
+                                        onBack = { navRoute = "settings" },
+                                        onOpenAccessibility = { navRoute = "accessibility" }
+                                    )
+                                    "accessibility" -> AccessibilityScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" }
                                     )
                                     "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
                                     "details" -> ContactDetailsScreen(

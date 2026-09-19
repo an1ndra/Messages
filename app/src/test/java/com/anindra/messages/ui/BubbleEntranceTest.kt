@@ -25,6 +25,13 @@ class BubbleEntranceTest {
     }
 
     @Test
+    fun reduceMotionSuppressesTheEntrance() {
+        assertFalse(
+            BubbleEntrance.shouldAnimate(11L, 10L, alreadyAnimated = false, reduceMotion = true)
+        )
+    }
+
+    @Test
     fun outgoingSlidesFromTheRightAndIncomingFromTheLeft() {
         assertTrue(BubbleEntrance.direction(isMe = true) > 0f)
         assertTrue(BubbleEntrance.direction(isMe = false) < 0f)
