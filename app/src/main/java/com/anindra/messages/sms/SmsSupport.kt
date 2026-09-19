@@ -190,10 +190,15 @@ object NotificationHelper {
 
         val remoteInput = RemoteInput.Builder("quick_reply").setLabel("Reply").build()
 
-        val replyAction = NotificationCompat.Action.Builder(
-            R.drawable.ic_reply, "Reply", replyIntent
-        ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
-            .addRemoteInput(remoteInput).build()
+        // Alphanumeric sender IDs cannot receive replies, so no reply action.
+        val replyAction = if (com.anindra.messages.data.AddressIdentity.isReplyable(from)) {
+            NotificationCompat.Action.Builder(
+                R.drawable.ic_reply, "Reply", replyIntent
+            ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+                .addRemoteInput(remoteInput).build()
+        } else {
+            null
+        }
 
         val markReadData = Intent(context, MarkReadReceiver::class.java)
         markReadData.action = MarkReadReceiver.ACTION_MARK_READ
@@ -231,8 +236,8 @@ object NotificationHelper {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
             .setContentIntent(tap)
-            .addAction(replyAction)
-            .addAction(markReadAction)
+        if (replyAction != null) builder.addAction(replyAction)
+        builder.addAction(markReadAction)
         try {
             NotificationManagerCompat.from(context).notify(notifId, builder.build())
         } catch (_: SecurityException) {
@@ -360,10 +365,12 @@ object SmsSender {
         false
     }
 
-    /** Strips formatting from stored address; keeps digits and a leading '+'. */
+    /** Strips formatting from a stored phone address; keeps digits and a
+     *  leading '+'. Non-numeric (alphanumeric sender ID) addresses are returned
+     *  trimmed rather than reduced to their digits (issue #207). */
     private fun normalizeAddress(address: String): String {
         val digits = address.filter { it.isDigit() }
-        if (digits.isEmpty()) return address
+        if (digits.isEmpty() || address.any { it.isLetter() }) return address.trim()
         return if (address.trimStart().startsWith("+")) "+$digits" else digits
     }
 
