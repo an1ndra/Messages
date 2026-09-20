@@ -41,6 +41,7 @@ class SettingsStore(context: Context) {
         const val KEY_APP_LOCK = "app_lock_enabled"
         const val KEY_FIRST_IMPORT_DONE = "first_import_done"
         const val KEY_PARTICIPANTS_MIGRATED = "participants_migrated"
+        const val KEY_ALPHANUMERIC_REPAIR_DONE = "alphanumeric_repair_done"
         const val KEY_PHONE_REGION = "phone_region"
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
@@ -96,6 +97,10 @@ class SettingsStore(context: Context) {
     var participantsMigrated: Boolean
         get() = prefs.getBoolean(KEY_PARTICIPANTS_MIGRATED, false)
         set(v) { prefs.edit().putBoolean(KEY_PARTICIPANTS_MIGRATED, v).apply() }
+
+    var alphanumericRepairDone: Boolean
+        get() = prefs.getBoolean(KEY_ALPHANUMERIC_REPAIR_DONE, false)
+        set(v) { prefs.edit().putBoolean(KEY_ALPHANUMERIC_REPAIR_DONE, v).apply() }
 
     var phoneRegion: String
         get() = prefs.getString(KEY_PHONE_REGION, "") ?: ""
