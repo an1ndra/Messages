@@ -16,6 +16,7 @@ class QuickReplyReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val address = intent.getStringExtra(EXTRA_ADDRESS) ?: return
         val from = intent.getStringExtra(EXTRA_FROM) ?: address
+        if (!com.anindra.messages.data.AddressIdentity.isReplyable(address)) return
         val replyText = extractReplyText(intent) ?: return
         // NotificationHelper passes the exact id it posted under; the hashCode
         // fallback covers stale intents from before the id scheme changed
