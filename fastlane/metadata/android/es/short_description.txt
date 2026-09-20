@@ -1,0 +1,1 @@
+Mensajería SMS sencilla y privada. Sin conexión, sin anuncios, sin rastreo.
