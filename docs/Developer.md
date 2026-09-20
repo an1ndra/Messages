@@ -361,6 +361,7 @@ Messages/
 │                                          #   git submodule update --init scripts;
 │                                          #   agent rules + task tracking live
 │                                          #   in scripts/AGENTS.md, scripts/TODO.md)
+├── docs/                                  # Development guides (this file, Development.md)
 ├── screenshots/                           # App screenshots
 └── README.md                             # Project overview
 ```
@@ -575,4 +576,4 @@ Follow existing code style and add tests where applicable.
 
 ## License
 
-This project is licensed under GPL-3.0 - see [LICENSE](LICENSE) for details.
+This project is licensed under GPL-3.0 - see [LICENSE](../LICENSE) for details.

@@ -28,11 +28,11 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 | Home (Dark) | Chat (Dark) | Settings (Dark) | Reply (Dark) |
 |---|---|---|---|
-| ![Home Dark](screenshots/fdroid/01-home-dark.png) | ![Chat Dark](screenshots/fdroid/02-chat-dark.png) | ![Settings Dark](screenshots/fdroid/06-settings-dark.png) | ![Reply Dark](screenshots/fdroid/07-reply-dark.png) |
+| ![Home Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/01-home-dark.png) | ![Chat Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat-dark.png) | ![Settings Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/06-settings-dark.png) | ![Reply Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/07-reply-dark.png) |
 
 | Home (Light) | Chat (Light) | Settings (Light) | Reply (Light) |
 |---|---|---|---|
-| ![Home Light](screenshots/fdroid/03-home-light.png) | ![Chat Light](screenshots/fdroid/04-chat-light.png) | ![Settings Light](screenshots/fdroid/05-settings-light.png) | ![Reply Light](screenshots/fdroid/08-reply-light.png) |
+| ![Home Light](fastlane/metadata/android/en-US/images/phoneScreenshots/03-home-light.png) | ![Chat Light](fastlane/metadata/android/en-US/images/phoneScreenshots/04-chat-light.png) | ![Settings Light](fastlane/metadata/android/en-US/images/phoneScreenshots/05-settings-light.png) | ![Reply Light](fastlane/metadata/android/en-US/images/phoneScreenshots/08-reply-light.png) |
 
 ## Download
 
@@ -66,4 +66,4 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Contributing
 
-See [Developer.md](Developer.md) for development setup instructions.
+See [docs/Developer.md](docs/Developer.md) for development setup instructions.
