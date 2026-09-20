@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build-release:
     name: Build release APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -114,7 +114,7 @@ jobs:
   verify-security:
     name: Verify Security Scan (incl. MobSF)
     needs: build-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
       actions: read
@@ -168,7 +168,7 @@ jobs:
   publish-release:
     name: Publish GitHub Release
     needs: [build-release, verify-security]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Download build artifacts
@@ -186,7 +186,7 @@ jobs:
   sync-fdroiddata:
     name: Update fdroiddata MR
     needs: publish-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Checkout
