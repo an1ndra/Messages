@@ -178,6 +178,7 @@ private fun ChatBubble(
     showSimIndicator: Boolean,
     isSelected: Boolean = false,
     animateIn: Boolean = false,
+    position: BubblePosition = BubblePosition.SINGLE,
     onEntranceStart: () -> Unit = {},
     onLongPress: () -> Unit = {},
     onRetry: () -> Unit = {}
@@ -206,6 +207,16 @@ private fun ChatBubble(
         onLinkClick = { pendingUrl = it },
         textColor = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface
     )
+
+    val corners = bubbleCorners(position, msg.isMe)
+    LaunchedEffect(msg.id, position) {
+        android.util.Log.d(
+            "BubbleShape",
+            "id=${msg.id} position=$position mine=${msg.isMe} " +
+                "topStart=${corners.topStart} topEnd=${corners.topEnd} " +
+                "bottomStart=${corners.bottomStart} bottomEnd=${corners.bottomEnd}"
+        )
+    }
 
     pendingUrl?.let { url ->
         if (linkWarningEnabled) {
@@ -270,11 +281,7 @@ private fun ChatBubble(
                 } else {
                     Surface(
                         color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
-                        shape = RoundedCornerShape(
-                            topStart = 18.dp, topEnd = 18.dp,
-                            bottomStart = if (msg.isMe) 18.dp else 4.dp,
-                            bottomEnd = if (msg.isMe) 4.dp else 18.dp
-                        ),
+                        shape = corners.toShape(),
                         modifier = Modifier.widthIn(max = 300.dp).combinedClickable(
                             onClick = { onTap() },
                             onLongClick = { onLongPress() }
@@ -893,6 +900,7 @@ fun ChatScreen(
                             isUnlocked = unlockedIds.contains(msg.id),
                             showSimIndicator = vm.settings.showSimIndicator,
                             isSelected = msg.id in selectedMessageIds,
+                            position = bubblePosition(messages, idx),
                             animateIn = BubbleEntrance.shouldAnimate(
                                 msg.id, entranceBaseline, msg.id in animatedIds
                             ),
