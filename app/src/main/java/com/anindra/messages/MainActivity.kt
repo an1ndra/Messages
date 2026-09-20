@@ -295,6 +295,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun send(conversationId: Long, body: String, subId: Int = settings.simSubscriptionId) {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
+            if (!isPhoneNumber(convo.address)) return@launch
             val stored = repo.sendText(conversationId, body, subId) ?: return@launch
             if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
             val handedOff = SmsSender.send(
@@ -328,6 +329,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch {
             val msg = repo.messageByIdSuspend(messageId) ?: return@launch
             val convo = repo.conversationByIdSuspend(msg.conversationId) ?: return@launch
+            if (!isPhoneNumber(convo.address)) return@launch
             repo.markMessageStatusSuspend(messageId, "sending")
             val handedOff = if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
                 SmsSender.sendMms(getApplication(), messageId, convo.address, Uri.parse(msg.mediaUri), simId)

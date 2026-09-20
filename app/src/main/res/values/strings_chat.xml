@@ -71,6 +71,7 @@
     <string name="chat_draft_prefix">Draft: </string>
     <string name="chat_sending_countdown">Sending in %d seconds...</string>
     <string name="chat_alphanumeric_error">You cannot send messages to alphanumeric senders like %s. Only phone numbers are supported.</string>
+    <string name="chat_alphanumeric_notice">%s can\'t receive replies. Only phone numbers are supported.</string>
     <string name="chat_unlock_dialog">Unlock</string>
     <string name="chat_lock_dialog">Lock</string>
     <string name="chat_message_deleted">Message deleted</string>
