@@ -413,7 +413,6 @@ fun ChatScreen(
 
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
-    var showAlphanumericDialog by remember { mutableStateOf(false) }
     var showPermanentDeleteDialog by remember { mutableStateOf(false) }
 
     var forwardingMessageId by remember { mutableStateOf(-1L) }
@@ -798,62 +797,52 @@ fun ChatScreen(
                         }
                     }
                 }
-                InputBar(
-                    draft = draft,
-                    placeholder = stringResource(R.string.text_placeholder),
-                    onDraftChange = { draft = it },
-                    onSend = {
-                        val text = draft.trim()
-                        if (text.isNotEmpty()) {
-                            val addr = convo?.address ?: ""
-                            if (vm.isNumberBlocked(addr)) {
-                                showBlockedDialog = true
-                                return@InputBar
+                val chatAddress = convo?.address ?: ""
+                if (chatAddress.isBlank() || isPhoneNumber(chatAddress)) {
+                    InputBar(
+                        draft = draft,
+                        placeholder = stringResource(R.string.text_placeholder),
+                        onDraftChange = { draft = it },
+                        onSend = {
+                            val text = draft.trim()
+                            if (text.isNotEmpty()) {
+                                val addr = convo?.address ?: ""
+                                if (vm.isNumberBlocked(addr)) {
+                                    showBlockedDialog = true
+                                    return@InputBar
+                                }
+                                if (addr.isBlank()) return@InputBar
+                                if (vm.settings.delayedSendingEnabled) {
+                                    pendingSendText = text
+                                    sendCountdown = vm.settings.delaySeconds
+                                    sendAttempt++
+                                } else {
+                                    vm.send(conversationId, text, currentSimId)
+                                    vm.saveDraft(conversationId, "")
+                                    draft = ""
+                                    showEmoji = false
+                                }
                             }
-                            if (addr.isBlank()) return@InputBar
-                            if (!isPhoneNumber(addr)) {
-                                showAlphanumericDialog = true
-                                return@InputBar
+                        },
+                        onSchedule = {
+                            val text = draft.trim()
+                            if (text.isNotEmpty()) {
+                                val addr = convo?.address ?: ""
+                                if (vm.isNumberBlocked(addr)) {
+                                    showBlockedDialog = true
+                                    return@InputBar
+                                }
+                                if (addr.isBlank()) return@InputBar
+                                scheduleStep = "date"
+                                showSchedulePicker = true
                             }
-                            if (vm.settings.delayedSendingEnabled) {
-                                pendingSendText = text
-                                sendCountdown = vm.settings.delaySeconds
-                                sendAttempt++
-                            } else {
-                                vm.send(conversationId, text, currentSimId)
-                                vm.saveDraft(conversationId, "")
-                                draft = ""
-                                showEmoji = false
-                            }
-                        }
-                    },
-                    onSchedule = {
-                        val text = draft.trim()
-                        if (text.isNotEmpty()) {
-                            val addr = convo?.address ?: ""
-                            if (vm.isNumberBlocked(addr)) {
-                                showBlockedDialog = true
-                                return@InputBar
-                            }
-                            if (addr.isBlank()) return@InputBar
-                            if (!isPhoneNumber(addr)) {
-                                showAlphanumericDialog = true
-                                return@InputBar
-                            }
-                            scheduleStep = "date"
-                            showSchedulePicker = true
-                        }
-                    },
-                    onEmojiToggle = { showEmoji = !showEmoji },
-                    onAttach = {
-                        val addr = convo?.address ?: ""
-                        if (addr.isNotEmpty() && !isPhoneNumber(addr)) {
-                            showAlphanumericDialog = true
-                        } else {
-                            attachSheet = true
-                        }
-                    }
-                )
+                        },
+                        onEmojiToggle = { showEmoji = !showEmoji },
+                        onAttach = { attachSheet = true }
+                    )
+                } else {
+                    AlphanumericNotice(address = chatAddress)
+                }
             }
         }
     ) { padding ->
@@ -991,22 +980,6 @@ fun ChatScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showBlockedDialog = false }) { Text(stringResource(R.string.chat_cancel)) }
-            }
-        )
-    }
-
-    if (showAlphanumericDialog) {
-        AlertDialog(
-            onDismissRequest = { showAlphanumericDialog = false },
-            title = { Text(stringResource(R.string.chat_cant_send)) },
-            text = {
-                Text(
-                    "You can't send messages to alphanumeric senders like " +
-                            "\u201C${convo?.address ?: ""}\u201D. Only phone numbers are supported."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showAlphanumericDialog = false }) { Text(stringResource(R.string.chat_ok)) }
             }
         )
     }
@@ -1463,16 +1436,15 @@ fun formatPhoneNumber(raw: String): String =
     com.anindra.messages.data.PhoneNumberUtils.displayFor(raw, com.anindra.messages.data.PhoneNumberUtils.region())
 
 /** Stable identity for cross-referencing a stored address against a contact
- *  number: E.164 when valid, else bare digits ("" for alphanumeric IDs). */
+ *  number: E.164 when valid, else the address unchanged (alphanumeric IDs). */
 fun phoneKey(address: String): String =
-    com.anindra.messages.data.PhoneNumberUtils.toE164(address, com.anindra.messages.data.PhoneNumberUtils.region())
-        ?: address.filter { it.isDigit() }
+    com.anindra.messages.data.AddressIdentity.canonical(
+        address, com.anindra.messages.data.PhoneNumberUtils.region()
+    )
 
 /** True for actual phone/short-code numbers; false for alphanumeric sender IDs (DK-AIRCEL, VM-HDFCBK…). */
 fun isPhoneNumber(address: String): Boolean =
-    address.count { it.isDigit() } >= 4 &&
-        address.none { it.isLetter() } &&
-        address.all { it.isDigit() || it in "+()- ." }
+    com.anindra.messages.data.AddressIdentity.isReplyable(address)
 
 fun openUrl(context: android.content.Context, url: String) {
     val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return
@@ -1878,6 +1850,30 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
 }
 
 /** Google-Messages-like input bar: pill field with emoji toggle + circular send. */
+@Composable
+private fun AlphanumericNotice(address: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Rounded.Info,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = stringResource(R.string.chat_alphanumeric_notice, address),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun InputBar(

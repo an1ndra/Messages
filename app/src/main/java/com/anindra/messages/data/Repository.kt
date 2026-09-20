@@ -485,29 +485,9 @@ class Repository(private val context: Context) {
 
     /** True when two stored addresses identify the same person despite formatting
      *  differences (e.g. "+15551234567" vs "15551234567", the issue #183 case).
-     *  Two pure-digit checks, in order: identical digit runs; and one side being
-     *  the international (E.164) spelling while the other is the same number with
-     *  the leading country/trunk code dropped — exactly 1–3 digits — e.g.
-     *  India "+919876543210"/"9876543210", China "8613812345678"/"13812345678",
-     *  Bangladesh "+8801712345678"/"01712345678", Indonesia "+628123456789"/
-     *  "08123456789", NANP "+15551234567"/"5551234567", UK "+447911234567"/
-     *  "07911234567". Deliberately no libphonenumber and no country-code table:
-     *  the shorter spelling must equal the longer one after dropping exactly
-     *  1–3 leading digits, so two genuinely different numbers can never fuse
-     *  (that would require them to be the same digit run). Runs once per
-     *  address on every lookup and _O(C²)_ inside [mergeSplitConversations] on
-     *  big phones, so it stays near-zero cost — no SIM/region/IP dependency. */
-    private fun samePerson(a: String, b: String): Boolean {
-        if (a == b) return true
-        val da = a.filter { it.isDigit() }
-        val db_ = b.filter { it.isDigit() }
-        if (da.isEmpty() || db_.isEmpty()) return false
-        if (da == db_) return true
-        val diff = da.length - db_.length
-        if (diff in 1..3 && da.drop(diff) == db_) return true
-        val rev = db_.length - da.length
-        return rev in 1..3 && db_.drop(rev) == da
-    }
+     *  Delegates to [AddressIdentity.samePerson]: digit-run comparison for
+     *  numbers, exact (case-insensitive) match for alphanumeric sender IDs. */
+    private fun samePerson(a: String, b: String): Boolean = AddressIdentity.samePerson(a, b)
 
     private fun matchConversationId(database: SQLiteDatabase, address: String, activeOnly: Boolean = false): Long? {
         if (address.isBlank()) return null
@@ -524,9 +504,10 @@ class Repository(private val context: Context) {
         matchConversationId(db.readableDatabase, address)
 
     /** Canonical identity for same-person checks: E.164 when the address is a
-     *  valid phone number, else its bare digits ("" for alphanumeric IDs). */
+     *  valid phone number, else the address unchanged (alphanumeric sender IDs
+     *  such as "A1 SRB" must never be reduced to their digits — issue #207). */
     private fun canonical(address: String): String =
-        PhoneNumberUtils.toE164(address, PhoneNumberUtils.region()) ?: address.filter { it.isDigit() }
+        AddressIdentity.canonical(address, PhoneNumberUtils.region())
 
     /** Inserts/refreshes the participant row (display form, country, SIM) for a
      *  canonical address. No-op for non-phone addresses (alphanumeric senders). */
@@ -1589,6 +1570,10 @@ class Repository(private val context: Context) {
             try {
                 val resolver = context.contentResolver
                 val initial = needsInitialImport
+                // Heal pre-fix alphanumeric sender rows before importing, so a
+                // pending message from the same sender reuses the repaired thread
+                // instead of creating a second one.
+                var changed = repairAlphanumericSenders()
                 android.util.Log.d("RepoSync", "Starting syncFromSystem")
                 // Count first so the read phase (which can take a while on a phone
                 // with a large provider) shows a moving bar instead of an apparently
@@ -1652,7 +1637,6 @@ class Repository(private val context: Context) {
                 android.util.Log.d("RepoSync", "Loaded ${byAddress.size} addresses, $pending pending messages")
                 if (pending > 0) _initialSyncProgress.value = if (initial) SyncProgress.READ_END else 0f
 
-                var changed = false
                 var done = 0
                 val batchSize = 50
                 val pendingMessages = mutableListOf<Triple<String, Long, SysSms>>()
@@ -1748,6 +1732,78 @@ class Repository(private val context: Context) {
                 syncRunning = false
             }
         }
+    }
+
+    /** One-shot heal for conversations whose stored address was reduced to bare
+     *  digits before issue #207 ("A1 SRB" → "1"). The system provider still
+     *  holds the original sender ID, so each affected conversation is
+     *  re-addressed from the `sys_id`s of its messages. Idempotent; retries on
+     *  the next sync when SMS access is still missing. Returns true when a row
+     *  was rewritten. */
+    private fun repairAlphanumericSenders(): Boolean {
+        if (settings.alphanumericRepairDone) return false
+        try {
+            val byAddress = LinkedHashMap<String, MutableList<Long>>()
+            context.contentResolver.query(
+                android.provider.Telephony.Sms.CONTENT_URI,
+                arrayOf(
+                    android.provider.Telephony.Sms._ID,
+                    android.provider.Telephony.Sms.ADDRESS
+                ),
+                null, null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val addr = c.getString(1)?.takeIf { it.isNotBlank() } ?: continue
+                    if (addr.none { it.isLetter() }) continue
+                    byAddress.getOrPut(addr) { mutableListOf() }.add(c.getLong(0))
+                }
+            }
+            if (byAddress.isEmpty()) {
+                settings.alphanumericRepairDone = true
+                return false
+            }
+            var changed = false
+            db.writableDatabase.beginTransaction()
+            try {
+                for ((addr, sysIds) in byAddress) {
+                    val convoIds = mutableSetOf<Long>()
+                    sysIds.chunked(500).forEach { chunk ->
+                        val ph = chunk.joinToString(",") { "?" }
+                        db.readableDatabase.rawQuery(
+                            "SELECT DISTINCT conversation_id FROM messages WHERE transport=? AND sys_id IN ($ph)",
+                            arrayOf(MmsSupport.TRANSPORT_SMS) + chunk.map { it.toString() }
+                        ).use { q -> while (q.moveToNext()) convoIds.add(q.getLong(0)) }
+                    }
+                    for (cid in convoIds) {
+                        val row = db.readableDatabase.rawQuery(
+                            "SELECT address, name FROM conversations WHERE id=?",
+                            arrayOf(cid.toString())
+                        ).use { q ->
+                            if (q.moveToFirst()) q.getString(0) to q.getString(1) else null
+                        } ?: continue
+                        val (oldAddr, oldName) = row
+                        if (AddressIdentity.samePerson(oldAddr, addr)) continue
+                        db.writableDatabase.execSQL(
+                            """UPDATE conversations
+                               SET address=?, name=CASE WHEN name=? THEN ? ELSE name END
+                               WHERE id=?""",
+                            arrayOf(addr, oldAddr, addr, cid.toString())
+                        )
+                        changed = true
+                    }
+                }
+                db.writableDatabase.setTransactionSuccessful()
+            } finally {
+                db.writableDatabase.endTransaction()
+            }
+            settings.alphanumericRepairDone = true
+            return changed
+        } catch (e: SecurityException) {
+            android.util.Log.e("RepoSync", "alphanumeric repair skipped: ${e.message}", e)
+        } catch (e: Exception) {
+            android.util.Log.e("RepoSync", "alphanumeric repair failed: ${e.message}", e)
+        }
+        return false
     }
 
     private fun importProviderMms(): Boolean {
