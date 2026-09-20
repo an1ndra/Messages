@@ -255,7 +255,6 @@ private val LocalShimmerTranslate = androidx.compose.runtime.compositionLocalOf 
 
 @Composable
 fun SkeletonConversationRow() {
-    val cs = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()

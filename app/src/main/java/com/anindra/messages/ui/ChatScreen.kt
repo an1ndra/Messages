@@ -389,9 +389,7 @@ fun ChatScreen(
             entranceBaseline = messages.maxOfOrNull { it.id } ?: 0L
         }
     }
-    val showEntrySkeleton = !messagesLoaded
     val pendingEarlier = messagesLoaded && totalCount > pageLimit && pageLimit < AUTO_CAP
-    val hasEarlierButton = messagesLoaded && totalCount > pageLimit && pageLimit >= AUTO_CAP
     val deliveryReports = remember { vm.deliveryReportsEnabled() }
     var draft by remember { mutableStateOf("") }
     var draftLoaded by remember { mutableStateOf(false) }
@@ -1487,7 +1485,6 @@ private fun rememberLinkedText(
     textColor: Color = MaterialTheme.colorScheme.onSurface
 ): AnnotatedString {
     val linkColor = if (highlight) textColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
-    val context = LocalContext.current
     // produceState remembers its value WITHOUT keys, so an async redaction would
     // keep painting the previous (unredacted) text and only swap it once the
     // coroutine lands — every link bubble flashes its URL when the option is

@@ -1,6 +1,7 @@
 package com.anindra.messages.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Test
 
 class SimLabelsTest {
@@ -25,5 +26,11 @@ class SimLabelsTest {
     @Test
     fun unknownInsteadOfRawSubscriptionId() {
         assertEquals(SimLabel.Unknown, SimLabels.resolve(7, null, null))
+    }
+
+    @Test
+    fun statelessLabelsAreSingletons() {
+        assertSame(SimLabel.Default, SimLabels.resolve(-1, null, null))
+        assertSame(SimLabel.Unknown, SimLabels.resolve(7, null, null))
     }
 }
