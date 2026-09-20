@@ -27,13 +27,13 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 ## Screenshots
 
-| Home (Dark) | Chat (Dark) | Settings (Dark) | Reply (Dark) |
+| Conversations | Grouped bubbles | OTP highlighting | New chat |
 |---|---|---|---|
-| ![Home Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/01-home-dark.png) | ![Chat Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat-dark.png) | ![Settings Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/06-settings-dark.png) | ![Reply Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/07-reply-dark.png) |
+| ![Conversations](fastlane/metadata/android/en-US/images/phoneScreenshots/01-conversations.png) | ![Grouped bubbles](fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat-grouped-bubbles.png) | ![OTP highlighting](fastlane/metadata/android/en-US/images/phoneScreenshots/05-chat-otp.png) | ![New chat](fastlane/metadata/android/en-US/images/phoneScreenshots/06-new-chat.png) |
 
-| Home (Light) | Chat (Light) | Settings (Light) | Reply (Light) |
-|---|---|---|---|
-| ![Home Light](fastlane/metadata/android/en-US/images/phoneScreenshots/03-home-light.png) | ![Chat Light](fastlane/metadata/android/en-US/images/phoneScreenshots/04-chat-light.png) | ![Settings Light](fastlane/metadata/android/en-US/images/phoneScreenshots/05-settings-light.png) | ![Reply Light](fastlane/metadata/android/en-US/images/phoneScreenshots/08-reply-light.png) |
+| Work chat | Alex chat | Settings |
+|---|---|---|
+| ![Work chat](fastlane/metadata/android/en-US/images/phoneScreenshots/03-chat-work.png) | ![Alex chat](fastlane/metadata/android/en-US/images/phoneScreenshots/04-chat-alex.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/07-settings.png) |
 
 ## Download
 
