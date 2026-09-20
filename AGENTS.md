@@ -13,7 +13,7 @@ Offline SMS messaging app for Android (Google Messages clone).
 
 ## Where docs live
 
-- App dev guide: [Development.md](Development.md) / [Developer.md](Developer.md)
+- App dev guide: [docs/Development.md](docs/Development.md) / [docs/Developer.md](docs/Developer.md)
 - Test scripts + agent rules + task tracker: **`scripts/` is a git submodule**
   (`git@github.com:an1ndra/Messages-scripts.git`) — read `scripts/AGENTS.md`,
   `scripts/Development.md`, `scripts/TODO.md`. If `scripts/` is empty:

@@ -314,10 +314,16 @@ object SmsSender {
         return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             sm.createForSubscriptionId(subscriptionId)
         } else {
-            @Suppress("DEPRECATION")
-            android.telephony.SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
+            legacyManagerForSubscription(subscriptionId)
         }
     }
+
+    // getSmsManagerForSubscriptionId is the only per-SIM API on 29-30 and is
+    // deprecated on S+; reflect to avoid compiling against the deprecated call.
+    private fun legacyManagerForSubscription(subscriptionId: Int): android.telephony.SmsManager =
+        android.telephony.SmsManager::class.java
+            .getMethod("getSmsManagerForSubscriptionId", Int::class.javaPrimitiveType)
+            .invoke(null, subscriptionId) as android.telephony.SmsManager
 
     /**
      * Sends via the framework with sent/delivery callbacks; SmsStatusReceiver

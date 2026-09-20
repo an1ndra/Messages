@@ -39,11 +39,8 @@ object MessageLockCrypto {
                 0,
                 KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
             )
-        } else {
-            // Still the correct call on Android 10 (per-use biometric auth).
-            @Suppress("DEPRECATION")
-            builder.setUserAuthenticationValidityDurationSeconds(-1)
         }
+        // Pre-R defaults to per-use auth (validity duration -1), so no legacy call is needed.
         generator.init(builder.build())
         return generator.generateKey()
     }

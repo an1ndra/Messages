@@ -1158,10 +1158,10 @@ class Repository(private val context: Context) {
         } catch (_: Exception) { false }
     }
 
-    sealed class ImportResult {
+    sealed interface ImportResult {
         /** [merged] is the number of messages added, non-null only for a merge import. */
-        data class Success(val merged: Int? = null) : ImportResult()
-        data class Error(val message: String) : ImportResult()
+        data class Success(val merged: Int? = null) : ImportResult
+        data class Error(val message: String) : ImportResult
     }
 
     fun importDatabase(
@@ -1657,7 +1657,7 @@ class Repository(private val context: Context) {
                 pendingMessages.chunked(batchSize).forEach { batch ->
                     db.writableDatabase.beginTransaction()
                     try {
-                        for ((addr, cid, m) in batch) {
+                        for ((_, cid, m) in batch) {
                             val isMe = m.type != android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX
                             var localId = -1L
                             db.readableDatabase.rawQuery(
@@ -2022,7 +2022,7 @@ class Repository(private val context: Context) {
                     // Primary: an already-canonical row, else the lowest id.
                     val primary = group.firstOrNull { it.second == e164 }
                         ?: group.minByOrNull { it.first }!!
-                    for ((id, addr, name) in group) {
+                    for ((id, addr, _) in group) {
                         if (id == primary.first) {
                             if (addr != e164) {
                                 db.writableDatabase.execSQL(

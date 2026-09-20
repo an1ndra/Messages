@@ -1,0 +1,91 @@
+name: Bug report
+description: Report something broken in Messages
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Messages writes logs to `Downloads/Messages/` — open
+        that folder with any file manager (or over USB) and attach the relevant file,
+        or tap **Copy** in the dialog and paste below:
+        - Diagnostics: `messages-diagnostics.txt`
+        - Crash: `messages-crash-report.txt` (or `messages-crash-report.zip` from **Save ZIP**)
+
+        Device, Android version, app version and default-SMS-handler status are all
+        included in the log, so you don't need to enter them separately.
+
+  - type: textarea
+    id: describe
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what's broken.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps so we can reproduce it.
+      placeholder: |
+        1. Open '...'
+        2. Tap on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_source
+    attributes:
+      label: How you installed it
+      options:
+        - F-Droid
+        - GitHub
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Diagnostics log or crash report
+      description: |
+        Provide **at least one**:
+        - Open **Settings → Advanced → Diagnostics**, tap **Save** (or **Copy**) and
+          paste the contents here, or attach `Downloads/Messages/messages-diagnostics.txt`.
+        - If the app crashed, attach or paste `Downloads/Messages/messages-crash-report.txt`
+          (or the **Save ZIP** output).
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain the problem.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Anything else?
+      description: Any other context about the problem.
+    validations:
+      required: false
