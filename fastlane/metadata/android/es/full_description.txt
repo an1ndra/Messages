@@ -1,0 +1,24 @@
+<p>Messages es una app de SMS sencilla para Android creada con Kotlin y Jetpack
+Compose (Material 3). Funciona totalmente sin conexión: el manifiesto no declara
+<strong>ningún permiso de INTERNET</strong>, así que tus mensajes nunca salen del
+dispositivo salvo a través de tu operador.</p>
+
+<b>Funciones</b>
+
+* Interfaz Material 3 limpia con temas claro / oscuro / del sistema
+* Lista de conversaciones con búsqueda, indicadores de no leídos y avatares
+* Fijar, archivar, papelera (+ deshacer) y eliminar conversaciones; gestos
+* Borradores guardados automáticamente por conversación
+* Mensajes programados y envío diferido opcional
+* Reenvío de mensajes y enlaces pulsables
+* Envío/recepción de imágenes MMS (como app de SMS predeterminada)
+* Compatibilidad dual-SIM con selección de SIM por mensaje
+* Estado enviado / entregado / fallido por mensaje con reintento
+* Bloqueo de números y acciones tipo reportar spam
+* Copia de seguridad y restauración de la base de datos
+* Sin anuncios, sin analíticas, sin rastreadores
+
+<b>Permisos</b>
+
+Los permisos de SMS y contactos solo se usan para enviar/recibir mensajes y
+mostrar nombres de contactos. La app no solicita ningún acceso a la red.
