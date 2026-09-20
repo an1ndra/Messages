@@ -3,6 +3,7 @@ package com.anindra.messages.diagnostics
 import com.anindra.messages.crash.CrashAppInfo
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.crash.CrashDeviceInfo
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -162,5 +163,17 @@ class DiagnosticsReportTest {
         assertTrue(text.contains("READ_PHONE_STATE granted: false"))
         assertTrue(text.contains("Active subscriptions: none"))
         assertTrue(text.contains("Messages diagnostics report"))
+    }
+
+    @Test
+    fun phoneCountUsesActiveModemsOnSdk30Plus() {
+        assertEquals(2, phoneCountForSdk(35, 2, null))
+        assertEquals(0, phoneCountForSdk(30, null, 4))
+    }
+
+    @Test
+    fun phoneCountFallsBackToMaxSubscriptionsBelowSdk30() {
+        assertEquals(2, phoneCountForSdk(29, null, 2))
+        assertEquals(0, phoneCountForSdk(29, null, null))
     }
 }

@@ -502,16 +502,16 @@ class MainActivity : FragmentActivity() {
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             val display = window.context.display
-            val current = display?.mode?.let {
+            val current = display.mode.let {
                 com.anindra.messages.diagnostics.DisplayModeInfo(
                     it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
                 )
             }
-            val modes = display?.supportedModes?.map {
+            val modes = display.supportedModes.map {
                 com.anindra.messages.diagnostics.DisplayModeInfo(
                     it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
                 )
-            } ?: emptyList()
+            }
             com.anindra.messages.diagnostics.DisplayModeSelector
                 .bestModeId(current, modes)
                 ?.let { window.attributes.preferredDisplayModeId = it }
@@ -724,8 +724,6 @@ class MainActivity : FragmentActivity() {
                 }
 
                 val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2)
-                val isList = navRoute == "list"
-                val isChat = navRoute == "chat"
 
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     ConversationsScreen(
