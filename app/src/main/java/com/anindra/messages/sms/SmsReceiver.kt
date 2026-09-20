@@ -56,7 +56,6 @@ class SmsReceiver : BroadcastReceiver() {
             if (fromSim > 0) return@run fromSim
             -1
         }
-        val appInForeground = ForegroundTracker.isAppInForeground
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
             val body = parts.joinToString("") { it.messageBody!! }
 
