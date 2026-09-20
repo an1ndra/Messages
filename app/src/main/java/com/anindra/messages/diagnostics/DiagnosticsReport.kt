@@ -294,10 +294,14 @@ object DiagnosticsReport {
         )
 
         val phoneCount = if (Build.VERSION.SDK_INT >= 30) {
-            tm?.activeModemCount ?: 0
+            phoneCountForSdk(30, tm?.activeModemCount, null)
         } else {
-            @Suppress("DEPRECATION")
-            tm?.phoneCount ?: 0
+            val subscriptionManager =
+                context.getSystemService(android.telephony.SubscriptionManager::class.java)
+            phoneCountForSdk(
+                29, null,
+                subscriptionManager?.activeSubscriptionInfoCountMax
+            )
         }
 
         val dbFile = context.getDatabasePath("messages.db")
@@ -426,3 +430,6 @@ object DiagnosticsReport {
         )
     }
 }
+
+internal fun phoneCountForSdk(sdkInt: Int, activeModemCount: Int?, maxSubscriptions: Int?): Int =
+    if (sdkInt >= 30) activeModemCount ?: 0 else maxSubscriptions ?: 0
