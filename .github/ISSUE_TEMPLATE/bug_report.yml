@@ -67,8 +67,8 @@ body:
       label: Diagnostics log or crash report
       description: |
         Provide **at least one**:
-        - Open **Settings → Advanced → Diagnostics**, tap **Save** (or **Copy**) and
-          paste the contents here, or attach `Downloads/Messages/messages-diagnostics.txt`.
+        - Open **Settings → Advanced → Diagnostics**, tap **Copy** and paste the
+          contents here, or attach `Downloads/Messages/messages-diagnostics.txt`.
         - If the app crashed, attach or paste `Downloads/Messages/messages-crash-report.txt`
           (or the **Save ZIP** output).
     validations:

@@ -23,6 +23,7 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 - **Contact Photos**: Loads real contact profile pictures
 - **Delayed Sending**: Configurable delay before sending messages
 - **Work Profile Contacts**: Search contacts in both the personal and work (managed) profile; work contacts are shown with a briefcase badge in the picker, home list, and chat header
+- **Accessibility Mode**: TalkBack descriptions, high-contrast themes, larger text and touch targets, and reduced motion
 
 ## Screenshots
 
@@ -49,8 +50,10 @@ F-Droid builds the app from source and signs it with the F-Droid project key.
 ## Requirements
 
 - Android 10 (API 29) or higher
-- SMS permissions (SEND_SMS, RECEIVE_SMS, READ_SMS)
-- Contact permissions (READ_CONTACTS)
+- SMS/MMS permissions (send, receive, read, MMS/WAP push)
+- Contact permission (READ_CONTACTS)
+- Notification permission (Android 13+), phone state (dual-SIM), and photo access (attachments)
+- No internet permission
 
 ## Technical Details
 
@@ -58,7 +61,7 @@ F-Droid builds the app from source and signs it with the F-Droid project key.
 - **Min SDK**: 29 (Android 10)
 - **Compile / Target SDK**: 36 (Android 16)
 - **Database**: SQLite with Flow-based reactive queries
-- **Architecture**: Single-Activity, Compose Navigation
+- **Architecture**: Single-Activity, manual `navRoute` state (no Navigation-Compose)
 
 ## License
 

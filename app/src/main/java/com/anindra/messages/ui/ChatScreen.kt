@@ -136,6 +136,7 @@ import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.MessageLockCrypto
 import androidx.compose.ui.res.stringResource
+import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.ChatMetaWeight
 import com.anindra.messages.ui.theme.incomingBubble
@@ -891,7 +892,8 @@ fun ChatScreen(
                             isSelected = msg.id in selectedMessageIds,
                             position = bubblePosition(messages, idx),
                             animateIn = BubbleEntrance.shouldAnimate(
-                                msg.id, entranceBaseline, msg.id in animatedIds
+                                msg.id, entranceBaseline, msg.id in animatedIds,
+                                reduceMotion = LocalReduceMotion.current
                             ),
                             onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
                             onLongPress = { toggleSelection(msg.id) },

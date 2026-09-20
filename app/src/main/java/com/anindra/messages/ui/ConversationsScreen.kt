@@ -88,7 +88,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -714,6 +719,24 @@ private fun ConversationRow(
     onLongClick: () -> Unit = {}
 ) {
     val now = LocalNowTick.current
+    val senderLabel = if (convo.name == convo.address) convo.display else convo.name
+    val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
+    val draftLabel = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
+    val snippetLabel = if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
+    val previewLabel = if (hasDraft) {
+        context.getString(R.string.chat_draft_prefix) + draftLabel
+    } else if (convo.isMe && snippetLabel.isNotEmpty()) {
+        context.getString(R.string.convo_your_prefix) + snippetLabel
+    } else {
+        snippetLabel
+    }
+    val a11yLabel = A11y.describe(
+        senderLabel,
+        previewLabel,
+        formatListTime(convo.timestamp, now, context),
+        if (convo.unreadCount > 0) context.getString(R.string.access_unread, convo.unreadCount) else null,
+        if (convo.pinned && settings.pinnedEnabled) context.getString(R.string.access_pinned) else null
+    )
     Box(modifier = Modifier.fillMaxWidth()) {
         val pinnedTint = if (convo.pinned && settings.pinnedEnabled) {
             MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
@@ -724,7 +747,20 @@ private fun ConversationRow(
         Row(
             modifier = Modifier
                 .fillMaxSize()
+                .clearAndSetSemantics {
+                    contentDescription = a11yLabel
+                    role = Role.Button
+                    onClick(label = context.getString(R.string.access_open_conversation)) {
+                        onClick()
+                        true
+                    }
+                    onLongClick(label = context.getString(R.string.access_conversation_options)) {
+                        onLongClick()
+                        true
+                    }
+                }
                 .combinedClickable(
+                    onClickLabel = context.getString(R.string.access_open_conversation),
                     onClick = onClick,
                     onLongClick = onLongClick
                 )
@@ -759,24 +795,17 @@ private fun ConversationRow(
                     }
                 }
                 Spacer(Modifier.height(2.dp))
-                val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
                 if (hasDraft) {
-                    val draft = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
                     Text(
-                        text = stringResource(R.string.chat_draft_prefix) + draft,
+                        text = previewLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 } else {
-                    val snippet =
-                        if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
-                    val preview =
-                        if (convo.isMe && snippet.isNotEmpty()) stringResource(R.string.convo_your_prefix) + snippet
-                        else snippet
                     Text(
-                        text = preview,
+                        text = previewLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Normal,
                         color = if (convo.unreadCount > 0) MaterialTheme.colorScheme.onSurface
