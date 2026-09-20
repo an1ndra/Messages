@@ -75,6 +75,7 @@ import com.anindra.messages.data.SimLabels
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
 import com.anindra.messages.sms.NotificationHelper
+import com.anindra.messages.ui.theme.LocalLargeTouchTargets
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -441,7 +442,7 @@ fun SettingsScreen(
                             }
                             IconButton(
                                 onClick = { vm.cancelScheduledMessage(sm.id) },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(A11y.touchTarget(32.dp))
                             ) {
                                 Icon(Icons.Rounded.Cancel, stringResource(R.string.icon_cancel), modifier = Modifier.size(20.dp))
                             }
@@ -916,7 +917,7 @@ fun SettingsRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 60.dp)
+            .heightIn(min = if (LocalLargeTouchTargets.current) 72.dp else 60.dp)
             .clickable(enabled = enabled && (onClick != null || checked != null)) {
                 if (checked != null && onChecked != null) onChecked(!checked) else onClick?.invoke()
             }

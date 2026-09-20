@@ -7,12 +7,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import com.anindra.messages.data.SettingsStore
 
 /**
@@ -107,6 +110,85 @@ private val DarkColors = darkColorScheme(
     surfaceContainerHighest = Color(0xFF333537)
 )
 
+// ─────────────── High-contrast schemes (accessibility mode) ───────────────
+// Same M3 roles, pushed to pure black/white text-on-background and stronger
+// outlines to meet WCAG AAA contrast in accessibility mode.
+private val LightHighContrastColors = lightColorScheme(
+    primary = Color(0xFF003C8F),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFBBD3FF),
+    onPrimaryContainer = Color(0xFF000000),
+    inversePrimary = Color(0xFF003C8F),
+    secondary = Color(0xFF3B4453),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFD7E2FF),
+    onSecondaryContainer = Color(0xFF000000),
+    tertiary = Color(0xFF1F4774),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFCFE4FF),
+    onTertiaryContainer = Color(0xFF000000),
+    error = Color(0xFF8C0009),
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF2A0000),
+    background = Color(0xFFFFFFFF),
+    onBackground = Color(0xFF000000),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF000000),
+    surfaceVariant = Color(0xFFDDE1EB),
+    onSurfaceVariant = Color(0xFF1A1C1E),
+    outline = Color(0xFF3A3D44),
+    outlineVariant = Color(0xFF5A5E66),
+    scrim = Color(0xFF000000),
+    inverseSurface = Color(0xFF2E3036),
+    inverseOnSurface = Color(0xFFFFFFFF),
+    surfaceDim = Color(0xFFD8DAE0),
+    surfaceBright = Color(0xFFFFFFFF),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF2F3F9),
+    surfaceContainer = Color(0xFFECECF3),
+    surfaceContainerHigh = Color(0xFFE6E7ED),
+    surfaceContainerHighest = Color(0xFFE1E2E8)
+)
+
+private val DarkHighContrastColors = darkColorScheme(
+    primary = Color(0xFFD6E3FF),
+    onPrimary = Color(0xFF000000),
+    primaryContainer = Color(0xFFA8C7FA),
+    onPrimaryContainer = Color(0xFF000000),
+    inversePrimary = Color(0xFFD6E3FF),
+    secondary = Color(0xFFDDE3F2),
+    onSecondary = Color(0xFF000000),
+    secondaryContainer = Color(0xFF3B4453),
+    onSecondaryContainer = Color(0xFFFFFFFF),
+    tertiary = Color(0xFFCFE4FF),
+    onTertiary = Color(0xFF000000),
+    tertiaryContainer = Color(0xFF1F4774),
+    onTertiaryContainer = Color(0xFFFFFFFF),
+    error = Color(0xFFFFDAD6),
+    onError = Color(0xFF000000),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFFFFFFF),
+    surface = Color(0xFF000000),
+    onSurface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFF44474F),
+    onSurfaceVariant = Color(0xFFE3E3E3),
+    outline = Color(0xFFB0B3BB),
+    outlineVariant = Color(0xFF8E9099),
+    scrim = Color(0xFF000000),
+    inverseSurface = Color(0xFFE3E2E6),
+    inverseOnSurface = Color(0xFF000000),
+    surfaceDim = Color(0xFF000000),
+    surfaceBright = Color(0xFF39393C),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF0E0E11),
+    surfaceContainer = Color(0xFF1B1B1D),
+    surfaceContainerHigh = Color(0xFF28292C),
+    surfaceContainerHighest = Color(0xFF333537)
+)
+
 // Semantic aliases so screens express intent, not raw colors.
 val ColorScheme.outgoingBubble: Color get() = primaryContainer          // GM blue bubble
 val ColorScheme.incomingBubble: Color get() = surfaceContainerHighest   // GM grey bubble
@@ -125,6 +207,7 @@ val ChatMetaWeight: FontWeight = FontWeight.Medium
 fun MessagesTheme(
     mode: String = "system",   // system | light | dark
     font: String = SettingsStore.FONT_SYSTEM,
+    a11y: A11yOptions = A11yOptions.DISABLED,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (mode) {
@@ -143,11 +226,32 @@ fun MessagesTheme(
         }
     }
 
-    val typography = remember(font) { messagesTypography(AppFonts.familyFor(font)) }
+    val typography = remember(font, a11y.boldEnabled) {
+        messagesTypography(AppFonts.familyFor(font), bold = a11y.boldEnabled)
+    }
 
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = typography,
-        content = content
-    )
+    val colorScheme = when {
+        a11y.highContrastEnabled && darkTheme -> DarkHighContrastColors
+        a11y.highContrastEnabled -> LightHighContrastColors
+        darkTheme -> DarkColors
+        else -> LightColors
+    }
+
+    // App text scale stacks on top of the system font scale.
+    val systemDensity = LocalDensity.current
+    val scaledDensity = remember(systemDensity, a11y.fontScale) {
+        Density(systemDensity.density, systemDensity.fontScale * a11y.fontScale)
+    }
+
+    CompositionLocalProvider(
+        LocalDensity provides scaledDensity,
+        LocalReduceMotion provides a11y.reduceMotionEnabled,
+        LocalLargeTouchTargets provides a11y.largeTouchTargetsEnabled
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+            content = content
+        )
+    }
 }

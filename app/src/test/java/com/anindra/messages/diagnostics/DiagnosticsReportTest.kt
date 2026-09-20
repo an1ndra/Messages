@@ -145,6 +145,47 @@ class DiagnosticsReportTest {
     }
 
     @Test
+    fun reportIncludesAccessibilityModeWhenEnabled() {
+        val text = DiagnosticsReport.format(
+            DiagnosticsData(
+                device = device,
+                app = app,
+                appDetails = appDetails.copy(
+                    accessibilityMode = true,
+                    a11yFontScale = 130,
+                    a11yBold = true,
+                    a11yHighContrast = true,
+                    a11yReduceMotion = true,
+                    a11yLargeTouch = true
+                ),
+                deviceExtra = deviceExtra,
+                appExtra = appExtra,
+                system = system,
+                selectedSubId = 7,
+                phoneStateGranted = true,
+                multiSim = true,
+                phoneCount = 2,
+                sims = sims,
+                display = display,
+                timestamp = 0L
+            )
+        )
+        assertTrue(text.contains("Accessibility mode: true"))
+        assertTrue(text.contains("Font scale: 130%"))
+        assertTrue(text.contains("Bold text: true"))
+        assertTrue(text.contains("High contrast: true"))
+        assertTrue(text.contains("Reduce motion: true"))
+        assertTrue(text.contains("Larger touch targets: true"))
+    }
+
+    @Test
+    fun reportOmitsAccessibilityDetailsWhenDisabled() {
+        val text = report()
+        assertTrue(text.contains("Accessibility mode: false"))
+        assertTrue(!text.contains("Font scale: 130%"))
+    }
+
+    @Test
     fun reportHandlesMissingSimPermission() {
         val text = DiagnosticsReport.format(
             DiagnosticsData(

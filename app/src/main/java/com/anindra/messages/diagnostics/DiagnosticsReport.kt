@@ -42,7 +42,13 @@ data class AppDetails(
     val privacyMode: Boolean = false,
     val appLock: Boolean = false,
     val drafts: Boolean = false,
-    val blockedKeywords: Int = 0
+    val blockedKeywords: Int = 0,
+    val accessibilityMode: Boolean = false,
+    val a11yFontScale: Int = 100,
+    val a11yBold: Boolean = false,
+    val a11yHighContrast: Boolean = false,
+    val a11yReduceMotion: Boolean = false,
+    val a11yLargeTouch: Boolean = false
 )
 
 data class DeviceExtra(
@@ -150,6 +156,14 @@ object DiagnosticsReport {
             appendLine("Time zone: ${data.appDetails.timeZone}")
             appendLine("Theme mode: ${data.appDetails.themeMode}")
             appendLine("Font: ${data.appDetails.fontFamily}")
+            appendLine("Accessibility mode: ${data.appDetails.accessibilityMode}")
+            if (data.appDetails.accessibilityMode) {
+                appendLine("  Font scale: ${data.appDetails.a11yFontScale}%")
+                appendLine("  Bold text: ${data.appDetails.a11yBold}")
+                appendLine("  High contrast: ${data.appDetails.a11yHighContrast}")
+                appendLine("  Reduce motion: ${data.appDetails.a11yReduceMotion}")
+                appendLine("  Larger touch targets: ${data.appDetails.a11yLargeTouch}")
+            }
             appendLine("Notifications enabled: ${data.appDetails.notificationsEnabled}")
             appendLine("Send sound: ${data.appDetails.sendSound}")
             appendLine("Receive sound: ${data.appDetails.receiveSound}")
@@ -406,7 +420,13 @@ object DiagnosticsReport {
             privacyMode = settings.privacyModeEnabled,
             appLock = settings.appLockEnabled,
             drafts = settings.draftsEnabled,
-            blockedKeywords = settings.blockedKeywords.size
+            blockedKeywords = settings.blockedKeywords.size,
+            accessibilityMode = settings.a11yEnabled,
+            a11yFontScale = settings.a11yFontScalePercent,
+            a11yBold = settings.a11yBold,
+            a11yHighContrast = settings.a11yHighContrast,
+            a11yReduceMotion = settings.a11yReduceMotion,
+            a11yLargeTouch = settings.a11yLargeTouch
         )
     }
 }

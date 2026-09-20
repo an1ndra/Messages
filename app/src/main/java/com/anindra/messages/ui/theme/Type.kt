@@ -3,6 +3,7 @@
 package com.anindra.messages.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
@@ -53,21 +54,26 @@ object AppFonts {
 
 fun messagesTypography(
     family: FontFamily = FontFamily.Default,
-    base: Typography = Typography()
-): Typography = base.copy(
-    displayLarge = base.displayLarge.copy(fontFamily = family),
-    displayMedium = base.displayMedium.copy(fontFamily = family),
-    displaySmall = base.displaySmall.copy(fontFamily = family),
-    headlineLarge = base.headlineLarge.copy(fontFamily = family),
-    headlineMedium = base.headlineMedium.copy(fontFamily = family),
-    headlineSmall = base.headlineSmall.copy(fontFamily = family),
-    titleLarge = base.titleLarge.copy(fontFamily = family),
-    titleMedium = base.titleMedium.copy(fontFamily = family),
-    titleSmall = base.titleSmall.copy(fontFamily = family),
-    bodyLarge = base.bodyLarge.copy(fontFamily = family),
-    bodyMedium = base.bodyMedium.copy(fontFamily = family),
-    bodySmall = base.bodySmall.copy(fontFamily = family),
-    labelLarge = base.labelLarge.copy(fontFamily = family),
-    labelMedium = base.labelMedium.copy(fontFamily = family),
-    labelSmall = base.labelSmall.copy(fontFamily = family)
-)
+    base: Typography = Typography(),
+    bold: Boolean = false
+): Typography {
+    fun style(s: TextStyle): TextStyle =
+        s.copy(fontFamily = family, fontWeight = if (bold) FontWeight.Bold else s.fontWeight)
+    return base.copy(
+        displayLarge = style(base.displayLarge),
+        displayMedium = style(base.displayMedium),
+        displaySmall = style(base.displaySmall),
+        headlineLarge = style(base.headlineLarge),
+        headlineMedium = style(base.headlineMedium),
+        headlineSmall = style(base.headlineSmall),
+        titleLarge = style(base.titleLarge),
+        titleMedium = style(base.titleMedium),
+        titleSmall = style(base.titleSmall),
+        bodyLarge = style(base.bodyLarge),
+        bodyMedium = style(base.bodyMedium),
+        bodySmall = style(base.bodySmall),
+        labelLarge = style(base.labelLarge),
+        labelMedium = style(base.labelMedium),
+        labelSmall = style(base.labelSmall)
+    )
+}

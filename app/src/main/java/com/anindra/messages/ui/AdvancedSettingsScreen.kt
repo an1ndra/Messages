@@ -54,7 +54,8 @@ import com.anindra.messages.ui.theme.AppFonts
 @Composable
 fun AdvancedSettingsScreen(
     vm: AppViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenAccessibility: () -> Unit = {}
 ) {
     BackHandler(onBack = onBack)
 
@@ -239,6 +240,25 @@ fun AdvancedSettingsScreen(
                     subtitle = fontLabel(vm.fontFamily),
                     onClick = { fontDialog = true }
                 )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Accessibility
+            SettingsGroup {
+                SettingsRow(
+                    title = stringResource(R.string.settings_accessibility_title),
+                    subtitle = stringResource(R.string.settings_accessibility_subtitle),
+                    checked = vm.a11y.enabled,
+                    onChecked = { vm.a11yEnabled = it }
+                )
+                if (vm.a11y.enabled) {
+                    SettingsRow(
+                        title = stringResource(R.string.accessibility_options_title),
+                        subtitle = stringResource(R.string.accessibility_options_subtitle),
+                        onClick = onOpenAccessibility
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))

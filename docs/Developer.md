@@ -213,7 +213,7 @@ adb shell getprop sys.boot_completed
 
 ```bash
 # Clone repository
-git clone https://github.com/anindra/Messages.git
+git clone https://github.com/an1ndra/Messages.git
 cd Messages
 
 # Make scripts executable
@@ -326,12 +326,15 @@ Messages/
 │   │   │   ├── MessagesApplication.kt     # App entry point (owns Repository singleton)
 │   │   │   ├── MainActivity.kt            # Single activity + navigation (+ AppViewModel)
 │   │   │   ├── LinkText.kt                # Linkified/OTP text rendering
-│   │   │   ├── data/                      # Database + models
-│   │   │   │   ├── Repository.kt          # SQLite + Flow queries + seed data
+│   │   │   ├── crash/                     # Crash capture + report dialog
+│   │   │   ├── diagnostics/               # Diagnostics report + display-mode pick
+│   │   │   ├── data/                      # SQLite, models, settings, SIM/MMS/backup helpers
+│   │   │   │   ├── Repository.kt          # SQLite (DB v17) + Flow queries + provider sync
 │   │   │   │   ├── Models.kt              # Data classes
 │   │   │   │   ├── SettingsStore.kt       # SharedPreferences
-│   │   │   │   ├── DemoData.kt            # Demo conversations
-│   │   │   │   └── BackupCrypto.kt        # Backup/import encryption
+│   │   │   │   ├── MmsSupport.kt / MmsProviderReader.kt
+│   │   │   │   ├── SimCard.kt / SimLabels.kt / SimSelection.kt
+│   │   │   │   └── BackupCrypto.kt / BackupPolicy.kt / KeywordFilter.kt
 │   │   │   ├── sms/                       # SMS handling
 │   │   │   │   ├── SmsReceiver.kt         # Incoming SMS
 │   │   │   │   ├── SmsSupport.kt          # Send + notifications + tones
@@ -339,21 +342,25 @@ Messages/
 │   │   │   │   ├── ScheduledMessageSender.kt
 │   │   │   │   ├── SmsStatusReceiver.kt   # Sent/delivery status
 │   │   │   │   ├── QuickReplyReceiver.kt  # Notification inline reply
+│   │   │   │   ├── MarkReadReceiver.kt    # Notification mark-as-read
 │   │   │   │   ├── NoConfirmationSmsSendService.kt
 │   │   │   │   ├── ForegroundTracker.kt   # Foreground state for notifications
 │   │   │   │   └── ReceiverWakeLock.kt    # BroadcastReceiver wakelock helper
-│   │   │   └── ui/                        # Compose screens
+│   │   │   └── ui/                        # Compose screens + helpers
 │   │   │       ├── ConversationsScreen.kt # Home list + search + archive
 │   │   │       ├── ChatScreen.kt          # Message bubbles + menu + scheduling
 │   │   │       ├── NewChatScreen.kt       # Contact picker / manual entry
 │   │   │       ├── ContactDetailsScreen.kt# Contact profile
 │   │   │       ├── SettingsScreen.kt      # App settings
 │   │   │       ├── AdvancedSettingsScreen.kt
+│   │   │       ├── AccessibilityScreen.kt # Accessibility mode options
 │   │   │       ├── TrashScreen.kt         # Trash restore/purge
 │   │   │       ├── OtpDetector.kt         # Keyword-gated OTP matcher
 │   │   │       ├── MessageGrouping.kt     # Message list grouping rules
-│   │   │       ├── Components.kt          # Shared composables
-│   │   │       └── theme/Theme.kt         # Material 3 color system
+│   │   │       ├── BubbleEntrance.kt / MessageDetails.kt / A11y.kt
+│   │   │       ├── Components.kt / BlockedKeywordsDialog.kt
+│   │   │       ├── BackupLocation.kt / PhotoDecode.kt / PhotoUriCache.kt
+│   │   │       └── theme/                 # Theme.kt, Type.kt, A11yOptions.kt
 │   │   └── res/                           # Resources
 │   └── build.gradle.kts                   # App dependencies
 ├── scripts/                               # Test automation (git submodule
@@ -362,7 +369,6 @@ Messages/
 │                                          #   agent rules + task tracking live
 │                                          #   in scripts/AGENTS.md, scripts/TODO.md)
 ├── docs/                                  # Development guides (this file, Development.md)
-├── screenshots/                           # App screenshots
 └── README.md                             # Project overview
 ```
 
@@ -370,7 +376,7 @@ Messages/
 
 ### Single-Activity Architecture
 
-The app uses a single `MainActivity` with Compose Navigation:
+The app uses a single `MainActivity` with a manual `navRoute` state (no Navigation-Compose dependency):
 
 ```kotlin
 // MainActivity.kt
@@ -379,6 +385,9 @@ setContent {
         "list" -> ConversationsScreen(...)
         "chat" -> ChatScreen(...)
         "settings" -> SettingsScreen(...)
+        "advanced" -> AdvancedSettingsScreen(...)
+        "accessibility" -> AccessibilityScreen(...)
+        // new, details, trash, opening ...
     }
 }
 ```
@@ -480,7 +489,7 @@ Without the keystore/env vars, `assembleRelease` produces an unsigned APK
 
 When modifying the database:
 
-1. Increment version in `Repository.kt` (currently v14)
+1. Increment version in `Repository.kt` (currently v17)
 2. Add migration in `onUpgrade()` (incremental per-version ALTER/CREATE/INDEX)
 3. Test with existing data (don't clear app data)
 4. Update `scripts/TODO.md` with migration notes (scripts submodule)
@@ -553,7 +562,7 @@ sdkmanager --list_installed
 ## Performance
 
 - **Database**: Use Flow for reactive updates
-- **Images**: Lazy loading with Coil (if added)
+- **Images**: Lazy loading with Coil
 - **Lists**: LazyColumn with keys for stable animations
 - **State**: Minimize recompositions
 
