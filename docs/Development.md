@@ -12,6 +12,7 @@ project task tracker live in the **scripts submodule** (`scripts/AGENTS.md`,
 | Action | Command |
 |---|---|
 | Build | `./gradlew assembleDebug` |
+| Unit tests | `./gradlew testDebugUnitTest` |
 | Install | `~/android/platform-tools/adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk` |
 | Launch | `scripts/open-app.sh` |
 | Full test sweep | `scripts/run-all-tests.sh` |
@@ -41,7 +42,8 @@ screen composes:
 list ──> new      (FAB)
 list ──> chat     (open conversation)   chatId
 chat ──> details  (contact profile)     detailsId
-list ──> settings                       settings ──> trash
+list ──> settings  settings ──> advanced ──> accessibility
+                   settings ──> trash
 ```
 
 ### The ONE rule of back handling
@@ -54,7 +56,8 @@ list ──> settings                       settings ──> trash
   | current route | back goes to |
   |---|---|
   | `details` | `chat` |
-  | `trash` | `settings` |
+  | `accessibility` | `advanced` |
+  | `advanced`, `trash` | `settings` |
   | `chat`, `new`, `settings` | `list` |
   | `list` | (disabled → screen's own double-back-to-exit guard runs) |
 
@@ -94,6 +97,7 @@ Used by test scripts; honored on cold start **and** warm start (`onNewIntent`):
 ```bash
 adb shell am start -n com.anindra.messages/.MainActivity --es set_theme dark|light|system
 adb shell am start -n com.anindra.messages/.MainActivity --ez open_settings true
+adb shell am start -n com.anindra.messages/.MainActivity --es open_conversation_address "+15551230004"
 ```
 
 Gotchas learned the hard way:
@@ -108,14 +112,14 @@ Gotchas learned the hard way:
 
 ## 4. Data layer snapshot
 
-- `Repository.kt` — SQLiteOpenHelper, currently **DB v14**; `onUpgrade`
-  applies incremental per-version migrations (ALTER/CREATE/INDEX, v4→v14).
+- `Repository.kt` — SQLiteOpenHelper, currently **DB v17**; `onUpgrade`
+  applies incremental per-version migrations (ALTER/CREATE/INDEX, v4→v17).
   Self-healing `onOpen` repairs missing columns/tables.
 - Flows observed via `AppViewModel` (AndroidViewModel), collected with
   `collectAsState`.
 - `SettingsStore.kt` — SharedPreferences (theme, SIM, toggles, privacy).
-- Fresh install seeds 10 demo conversations (`DemoData.kt`) when tables are
-  empty.
+- The app starts with no local data; `syncFromSystem` imports existing threads
+  from the system SMS/MMS provider on first launch.
 
 ## 5. Conventions (enforced)
 
