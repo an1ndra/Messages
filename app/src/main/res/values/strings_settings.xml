@@ -59,6 +59,7 @@
     <string name="blocked_numbers_empty">No blocked numbers</string>
     <string name="blocked_numbers_empty_message">Numbers you block can\'t message you.</string>
     <string name="blocked_numbers_unblock">Unblock</string>
+    <string name="settings_spam_blocked_subtitle">Blocked conversations are kept here</string>
     <string name="settings_privacy_title">Privacy mode</string>
     <string name="settings_privacy_subtitle">Hide content from screenshots and screen recording</string>
     <string name="settings_applock_title">App lock</string>
