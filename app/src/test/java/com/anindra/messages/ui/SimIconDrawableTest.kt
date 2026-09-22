@@ -1,7 +1,6 @@
 package com.anindra.messages.ui
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -12,7 +11,7 @@ class SimIconDrawableTest {
         .firstOrNull { it.isDirectory }
         ?: error("app/src/main not found")
 
-    private val icons = listOf("ic_sim_1", "ic_sim_2")
+    private val icons = listOf("ic_sim_vector")
 
     private fun drawable(name: String) = File(main, "res/drawable/$name.xml").readText()
 
@@ -22,15 +21,11 @@ class SimIconDrawableTest {
     private fun colours(xml: String): List<String> =
         Regex("#[0-9A-Fa-f]{6,8}").findAll(xml).map { it.value }.toList()
 
-    private fun subpaths(xml: String): List<String> =
-        pathData(xml).single().split("M").drop(1).map { it.trim() }
-
     @Test
-    fun simIconsStayTintable() {
+    fun simIconIsTintable() {
         icons.forEach { name ->
             val xml = drawable(name)
             assertTrue("$name must be a filled vector", xml.contains("android:fillColor=\"#FF000000\""))
-            assertTrue("$name must punch its number out", xml.contains("evenOdd"))
             assertEquals(
                 "$name must only use the tint placeholder colour",
                 listOf("#FF000000"),
@@ -40,7 +35,7 @@ class SimIconDrawableTest {
     }
 
     @Test
-    fun simIconsAreTwentyFourDp() {
+    fun simIconIsTwentyFourDp() {
         icons.forEach { name ->
             val xml = drawable(name)
             assertTrue(xml.contains("android:width=\"24dp\""))
@@ -51,28 +46,23 @@ class SimIconDrawableTest {
     }
 
     @Test
-    fun simIconsDrawOneCardWithANumber() {
+    fun simIconHasSimCardShape() {
         icons.forEach { name ->
-            assertEquals("$name should be one multi-subpath glyph", 1, pathData(drawable(name)).size)
-            assertEquals("$name should have card + number subpaths", 2, subpaths(drawable(name)).size)
-        }
-    }
-
-    @Test
-    fun cardHasTheAngledCutAtTheTopRight() {
-        icons.forEach { name ->
+            val xml = drawable(name)
+            val data = pathData(xml)
+            assertEquals("$name should have one path", 1, data.size)
             assertTrue(
-                "$name card should cut the top-right corner",
-                subpaths(drawable(name))[0].contains("L15.162,1.6 L17.658,4.102")
+                "$name card should have angled cut at top-right",
+                data[0].contains("L9.835,1.173 L3.338,6.669")
             )
         }
     }
 
     @Test
-    fun simIconsShareTheCardAndDifferOnlyInTheNumber() {
-        val one = subpaths(drawable("ic_sim_1"))
-        val two = subpaths(drawable("ic_sim_2"))
-        assertEquals(one.first(), two.first())
-        assertNotEquals(one[1], two[1])
+    fun oldIconsAreRemoved() {
+        listOf("ic_sim_1", "ic_sim_2", "ic_dual_sim").forEach { name ->
+            val file = File(main, "res/drawable/$name.xml")
+            assertTrue("$name should be deleted", !file.exists())
+        }
     }
 }
