@@ -757,8 +757,8 @@ fun ChatScreen(
                 onBlock = {
                     convo?.address?.let { addr ->
                         vm.blockNumber(addr)
-                        numberIsBlocked = true
-                        Toast.makeText(context, context.getString(R.string.chat_number_blocked), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.chat_moved_to_spam), Toast.LENGTH_SHORT).show()
+                        onBack()
                     }
                 },
                 onUnblock = {
@@ -1920,7 +1920,7 @@ private fun InputBar(
                 ),
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (sims.size > 1 && draft.isBlank()) {
+                        if (sims.size > 1) {
                             val currentIndex = sims.indexOfFirst { it.subscriptionId == currentSimId }
                             val iconRes = when (SimSwitcher.iconFor(sims.size, currentIndex)) {
                                 SimIcon.SIM_2 -> R.drawable.ic_sim_2

@@ -13,6 +13,13 @@
     <string name="new_chat_send_to">Send to “%s”</string>
     <string name="text_placeholder">Message</string>
     <string name="conversations_archived">Archived</string>
+    <string name="conversations_spam_blocked">Spam &amp; Blocked</string>
+    <string name="conversations_spam_blocked_empty">No spam or blocked conversations</string>
+    <string name="spam_tab_conversations">Conversations</string>
+    <string name="spam_tab_messages">Messages</string>
+    <string name="spam_tag_keyword">Keyword</string>
+    <string name="spam_blocked_messages_empty">No blocked messages</string>
+    <string name="spam_message_deleted">Message deleted</string>
     <string name="conversations_messages">Messages</string>
     <string name="conversations_me">Me</string>
     <string name="conversations_allow_sms_access">Allow SMS access</string>
