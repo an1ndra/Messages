@@ -60,6 +60,7 @@ import com.anindra.messages.data.Conversation
 import com.anindra.messages.R
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.data.BlockedMessage
+import com.anindra.messages.data.TrashedMessage
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.Repository
 import com.anindra.messages.sms.NotificationHelper
@@ -267,6 +268,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun emptyTrash() = scope.launch { repo.emptyTrashSuspend() }
 
     fun trashedConversations(): Flow<List<Conversation>> = repo.trashedConversations()
+
+    fun trashedMessages(): Flow<List<TrashedMessage>> = repo.trashedMessages()
+
+    fun deleteMessageForever(messageId: Long) =
+        scope.launch { repo.deleteMessageForeverSuspend(messageId) }
+
+    fun emptyMessageTrash() = scope.launch { repo.emptyMessageTrashSuspend() }
 
     fun blockedMessages(): Flow<List<BlockedMessage>> = repo.blockedMessages()
 

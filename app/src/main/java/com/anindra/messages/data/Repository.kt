@@ -606,9 +606,10 @@ class Repository(private val context: Context) {
     /** Stores a text message as 'sending'; SmsStatusReceiver confirms the final state. */
     fun sendText(conversationId: Long, body: String, subId: Int = -1): Message? {
         val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(body)
         val cv = ContentValues().apply {
             put("conversation_id", conversationId)
-            put("body", body)
+            put("body", clean)
             put("timestamp", now)
             put("is_me", 1)
             put("status", "sending")
@@ -617,15 +618,16 @@ class Repository(private val context: Context) {
             put("sub_id", subId)
         }
         val id = db.writableDatabase.insertOrThrow("messages", null, cv)
-        touchConversation(conversationId, body, now, isMe = true)
-        return Message(id, conversationId, body, now, true, "sending", subId = subId)
+        touchConversation(conversationId, clean, now, isMe = true)
+        return Message(id, conversationId, clean, now, true, "sending", subId = subId)
     }
 
     fun sendMedia(conversationId: Long, mediaType: String, uri: String, caption: String = ""): Message? {
         val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(caption)
         val cv = ContentValues().apply {
             put("conversation_id", conversationId)
-            put("body", caption)
+            put("body", clean)
             put("timestamp", now)
             put("is_me", 1)
             put("status", "sending")
@@ -635,7 +637,7 @@ class Repository(private val context: Context) {
         }
         val id = db.writableDatabase.insertOrThrow("messages", null, cv)
         touchConversation(conversationId, if (mediaType == "image") "Photo" else "Voice message", now, isMe = true)
-        return Message(id, conversationId, caption, now, true, "sending", mediaType, uri)
+        return Message(id, conversationId, clean, now, true, "sending", mediaType, uri)
     }
 
     private fun touchConversation(conversationId: Long, snippet: String, ts: Long, isMe: Boolean) {
@@ -651,17 +653,18 @@ class Repository(private val context: Context) {
      *  [subId] is the SIM subscription id for dual-SIM display. */
     fun receiveMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(body)
         val convoId = getOrCreateConversationBlocking(address, null, subId)
 
         db.writableDatabase.execSQL(
             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
                VALUES(?,?,?,?,?,?,?,?)""",
-            arrayOf<Any?>(convoId, body, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
+            arrayOf<Any?>(convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
                unread_count=unread_count+1 WHERE id=?""",
-            arrayOf<Any?>(body, now, convoId)
+            arrayOf<Any?>(clean, now, convoId)
         )
         notifyChanged()
         return convoId
@@ -672,12 +675,13 @@ class Repository(private val context: Context) {
      *  stays in the inbox; no notification and no unread badge. */
     fun receiveBlockedMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(body)
         val convoId = getOrCreateConversationBlocking(address, null, subId)
         db.writableDatabase.execSQL(
             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id,
                deleted_at,blocked_reason) VALUES(?,?,?,?,?,?,?,?,?,?)""",
             arrayOf<Any?>(
-                convoId, body, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId,
+                convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId,
                 now, TrashReason.BLOCKED_KEYWORD
             )
         )
@@ -723,21 +727,65 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
+    /** Manually deleted messages kept in Trash → Messages. Keyword-blocked rows
+     *  are excluded: they live in Spam & blocked → Messages instead. */
+    fun trashedMessages(): Flow<List<TrashedMessage>> = observe {
+        val out = mutableListOf<TrashedMessage>()
+        db.readableDatabase.rawQuery(
+            """SELECT m.id,m.conversation_id,c.address,c.name,
+               COALESCE(p.display_destination, c.address),m.body,m.timestamp,m.deleted_at
+               FROM messages m
+               JOIN conversations c ON c.id=m.conversation_id
+               LEFT JOIN participants p ON p.normalized_destination=c.address
+               WHERE m.deleted_at>0 AND m.blocked_reason=''
+               ORDER BY m.deleted_at DESC""",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    TrashedMessage(
+                        id = c.getLong(0),
+                        conversationId = c.getLong(1),
+                        address = c.getString(2),
+                        name = c.getString(4) ?: c.getString(3),
+                        body = c.getString(5),
+                        timestamp = c.getLong(6),
+                        deletedAt = c.getLong(7)
+                    )
+                )
+            }
+        }
+        out
+    }
+
+    /** Permanently removes a trashed message. */
+    fun deleteMessageForeverSuspend(messageId: Long) = runOnIo {
+        db.writableDatabase.execSQL("DELETE FROM messages WHERE id=?", arrayOf(messageId))
+        notifyChanged()
+    }
+
+    /** Permanently removes every message-level trash entry. */
+    fun emptyMessageTrashSuspend() = runOnIo {
+        db.writableDatabase.execSQL("DELETE FROM messages WHERE deleted_at>0 AND blocked_reason=''")
+        notifyChanged()
+    }
+
     /** Stores an SMS from a blocked number in the "Spam & blocked" folder:
      *  the conversation is flagged blocked, unread stays 0 and no notification
      *  is posted. Unblocking returns the conversation to the inbox. */
     fun receiveSpamMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(body)
         val convoId = getOrCreateConversationBlocking(address, null, subId)
         db.writableDatabase.execSQL(
             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
                VALUES(?,?,?,?,?,?,?,?)""",
-            arrayOf<Any?>(convoId, body, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
+            arrayOf<Any?>(convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
                unread_count=0,blocked=1 WHERE id=?""",
-            arrayOf<Any?>(body, now, convoId)
+            arrayOf<Any?>(clean, now, convoId)
         )
         notifyChanged()
         return convoId
