@@ -415,7 +415,7 @@ fun ChatScreen(
     var showBlockedDialog by remember { mutableStateOf(false) }
     var showPermanentDeleteDialog by remember { mutableStateOf(false) }
 
-    var forwardingMessageId by remember { mutableStateOf(-1L) }
+    var forwardingMessageIds by remember { mutableStateOf<List<Long>>(emptyList()) }
     var showForwardPicker by remember { mutableStateOf(false) }
 
     var detailsMessage by remember { mutableStateOf<Message?>(null) }
@@ -537,16 +537,14 @@ fun ChatScreen(
             cm.setPrimaryClip(android.content.ClipData.newPlainText(context.getString(R.string.chat_messages_label), text))
             Toast.makeText(context, context.getString(R.string.chat_copied), Toast.LENGTH_SHORT).show()
         }
-        clearSelection()
     }
 
     fun forwardSelection() {
-        val first = messages.firstOrNull { it.id in selectedMessageIds }
-        if (first != null && vm.settings.forwardingEnabled) {
-            forwardingMessageId = first.id
+        val ids = messages.filter { it.id in selectedMessageIds }.map { it.id }
+        if (ids.isNotEmpty() && vm.settings.forwardingEnabled) {
+            forwardingMessageIds = ids
             showForwardPicker = true
         }
-        clearSelection()
     }
 
     fun shareSelection() {
@@ -558,7 +556,6 @@ fun ChatScreen(
             }
             context.startActivity(Intent.createChooser(send, context.getString(R.string.chat_share)))
         }
-        clearSelection()
     }
 
     fun deleteSelection() {
@@ -1013,15 +1010,16 @@ fun ChatScreen(
             contacts = vmContacts,
             onPick = { address, name ->
                 showForwardPicker = false
+                val targets = forwardingMessageIds
                 vm.openOrCreate(address, name) { targetId ->
-                    vm.forwardMessage(forwardingMessageId, targetId)
-                    forwardingMessageId = -1
+                    targets.forEach { vm.forwardMessage(it, targetId) }
+                    forwardingMessageIds = emptyList()
                     Toast.makeText(context, context.getString(R.string.chat_forwarded), Toast.LENGTH_SHORT).show()
                 }
             },
             onDismiss = {
                 showForwardPicker = false
-                forwardingMessageId = -1
+                forwardingMessageIds = emptyList()
             }
         )
     }
@@ -1090,13 +1088,26 @@ private fun MessageSelectionToolbar(
             Text(count.toString(), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
         },
         actions = {
-            if (count == 1) {
+            if (SelectionToolbar.showCopy(count)) {
                 IconButton(onClick = onCopy) {
                     Icon(Icons.Default.ContentCopy, stringResource(R.string.icon_copy), tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, stringResource(R.string.icon_delete), tint = MaterialTheme.colorScheme.primary)
+            }
+            if (SelectionToolbar.showForward(count)) {
+                IconButton(onClick = onForward) {
+                    Icon(
+                        painterResource(R.drawable.ic_forward),
+                        stringResource(R.string.chat_forward),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
+            }
+            if (SelectionToolbar.showTrash(count)) {
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, stringResource(R.string.chat_trash), tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+            if (SelectionToolbar.showSingleMessageActions(count)) {
                 Box {
                     IconButton(onClick = { overflow = true }) {
                         Icon(Icons.Outlined.MoreVert, stringResource(R.string.icon_more_options), tint = MaterialTheme.colorScheme.primary)
@@ -1111,22 +1122,14 @@ private fun MessageSelectionToolbar(
                             onClick = { overflow = false; onShare() }
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_forward)) },
-                            onClick = { overflow = false; onForward() }
-                        )
-                        DropdownMenuItem(
                             text = { Text(stringResource(R.string.chat_view_details)) },
                             onClick = { overflow = false; onViewDetails() }
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(if (allLocked) R.string.chat_unlock_dialog else R.string.chat_lock_dialog)) },
+                            text = { Text(stringResource(SelectionToolbar.lockLabelRes(allLocked))) },
                             onClick = { overflow = false; onLockUnlock() }
                         )
                     }
-                }
-            } else {
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, stringResource(R.string.icon_delete), tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }

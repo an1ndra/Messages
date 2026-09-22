@@ -78,5 +78,6 @@
     <string name="chat_lock_dialog">Lock</string>
     <string name="chat_message_deleted">Message deleted</string>
     <string name="chat_messages_deleted">%d messages deleted</string>
+    <string name="chat_trash">Move to trash</string>
     <string name="status_not_sent">Not sent</string>
 </resources>
