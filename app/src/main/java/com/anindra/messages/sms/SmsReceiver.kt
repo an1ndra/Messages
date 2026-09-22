@@ -6,6 +6,7 @@ import android.content.Intent
 import android.provider.Telephony
 import com.anindra.messages.data.KeywordFilter
 import com.anindra.messages.data.Repository
+import com.anindra.messages.data.TrashReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,10 +61,17 @@ class SmsReceiver : BroadcastReceiver() {
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
             val body = parts.joinToString("") { it.messageBody!! }
 
-            // Blocked keyword: keep the message but move its conversation to
-            // Trash instead of dropping it, and skip the notification/sound.
-            if (KeywordFilter.route(body, repo.settings.blockedKeywords) == KeywordFilter.Route.TRASH) {
-                repo.receiveBlockedMessage(address, body, subId = subId)
+            // Blocked number or keyword: keep the message but move its
+            // conversation to Trash instead of dropping it, and skip the
+            // notification/sound.
+            val blockedReason = when {
+                repo.isAddressBlocked(address) -> TrashReason.BLOCKED_NUMBER
+                KeywordFilter.route(body, repo.settings.blockedKeywords) == KeywordFilter.Route.TRASH ->
+                    TrashReason.BLOCKED_KEYWORD
+                else -> null
+            }
+            if (blockedReason != null) {
+                repo.receiveBlockedMessage(address, body, subId = subId, reason = blockedReason)
                 continue
             }
 

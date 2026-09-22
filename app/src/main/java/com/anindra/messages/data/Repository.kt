@@ -656,10 +656,16 @@ class Repository(private val context: Context) {
         return convoId
     }
 
-    /** Stores a keyword-blocked message but moves its conversation to Trash
-     *  (soft delete) instead of dropping it, so it stays recoverable via
-     *  Trash → Restore. No notification and no unread badge. */
-    fun receiveBlockedMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
+    /** Stores a keyword-blocked or blocked-number message but moves its
+     *  conversation to Trash (soft delete) instead of dropping it, so it stays
+     *  recoverable via Trash → Restore. No notification and no unread badge. */
+    fun receiveBlockedMessage(
+        address: String,
+        body: String,
+        sysId: Long = 0L,
+        subId: Int = -1,
+        reason: String = TrashReason.BLOCKED_KEYWORD
+    ): Long {
         val now = System.currentTimeMillis()
         val convoId = getOrCreateConversationBlocking(address, null, subId)
         db.writableDatabase.execSQL(
@@ -670,7 +676,7 @@ class Repository(private val context: Context) {
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
                unread_count=0,deleted_at=?,deleted_reason=? WHERE id=?""",
-            arrayOf<Any?>(body, now, now, TrashReason.BLOCKED_KEYWORD, convoId)
+            arrayOf<Any?>(body, now, now, reason, convoId)
         )
         notifyChanged()
         return convoId
@@ -999,6 +1005,13 @@ class Repository(private val context: Context) {
 
     /** Invalidates the in-process block cache; call after [blockNumber]/[unblockNumber]. */
     private fun invalidateBlockCache(number: String) { blockedCache.remove(number) }
+
+    /** True when [address] is on the blocklist, matching canonical spellings. */
+    fun isAddressBlocked(address: String): Boolean {
+        if (isNumberBlocked(address)) return true
+        val canon = canonical(address).ifEmpty { address }
+        return canon != address && isNumberBlocked(canon)
+    }
 
     fun conversationIdForAddress(address: String): Long? = runOnIo {
         var id: Long? = null

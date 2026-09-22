@@ -14,4 +14,5 @@
     <string name="trash_deleted_on">Deleted %s</string>
     <string name="trash_reason_manual">Manually</string>
     <string name="trash_reason_blocked">Keyword</string>
+    <string name="trash_reason_number">Number</string>
 </resources>
