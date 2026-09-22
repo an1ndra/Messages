@@ -50,6 +50,17 @@ data class BlockedMessage(
     val timestamp: Long
 )
 
+/** A manually deleted message kept in Trash (message-level soft delete). */
+data class TrashedMessage(
+    val id: Long,
+    val conversationId: Long,
+    val address: String,
+    val name: String,
+    val body: String,
+    val timestamp: Long,
+    val deletedAt: Long
+)
+
 data class ScheduledMessage(
     val id: Long = 0,
     val address: String,
