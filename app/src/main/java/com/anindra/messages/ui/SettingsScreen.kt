@@ -36,8 +36,9 @@ import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -79,7 +80,7 @@ import com.anindra.messages.ui.theme.LocalLargeTouchTargets
 
 private enum class PinDialogMode { SET, ENTER }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(
     vm: AppViewModel,
@@ -844,7 +845,7 @@ fun SettingsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    CircularProgressIndicator()
+                    LoadingIndicator()
                     Spacer(Modifier.height(12.dp))
                     Text(context.getString(R.string.settings_loading_progress, importLoading), style = MaterialTheme.typography.bodyMedium)
                 }
