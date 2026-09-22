@@ -261,19 +261,16 @@ private fun formatTrashDate(ts: Long): String =
 
 @Composable
 private fun TrashReasonTag(reason: String) {
-    val blocked = TrashReason.isBlockedKeyword(reason) || TrashReason.isBlockedNumber(reason)
-    val label = when {
-        TrashReason.isBlockedNumber(reason) -> R.string.trash_reason_number
-        TrashReason.isBlockedKeyword(reason) -> R.string.trash_reason_blocked
-        else -> R.string.trash_reason_manual
-    }
+    val blocked = TrashReason.isBlockedKeyword(reason)
     Surface(
         color = if (blocked) MaterialTheme.colorScheme.tertiaryContainer
         else MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(6.dp)
     ) {
         Text(
-            text = stringResource(label),
+            text = stringResource(
+                if (blocked) R.string.trash_reason_blocked else R.string.trash_reason_manual
+            ),
             style = MaterialTheme.typography.labelSmall,
             color = if (blocked) MaterialTheme.colorScheme.onTertiaryContainer
             else MaterialTheme.colorScheme.onSurfaceVariant,

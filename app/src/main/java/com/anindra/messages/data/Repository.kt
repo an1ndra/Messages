@@ -656,16 +656,10 @@ class Repository(private val context: Context) {
         return convoId
     }
 
-    /** Stores a keyword-blocked or blocked-number message but moves its
-     *  conversation to Trash (soft delete) instead of dropping it, so it stays
-     *  recoverable via Trash → Restore. No notification and no unread badge. */
-    fun receiveBlockedMessage(
-        address: String,
-        body: String,
-        sysId: Long = 0L,
-        subId: Int = -1,
-        reason: String = TrashReason.BLOCKED_KEYWORD
-    ): Long {
+    /** Stores a keyword-blocked message but moves its conversation to Trash
+     *  (soft delete) instead of dropping it, so it stays recoverable via
+     *  Trash → Restore. No notification and no unread badge. */
+    fun receiveBlockedMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
         val convoId = getOrCreateConversationBlocking(address, null, subId)
         db.writableDatabase.execSQL(
@@ -676,7 +670,7 @@ class Repository(private val context: Context) {
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
                unread_count=0,deleted_at=?,deleted_reason=? WHERE id=?""",
-            arrayOf<Any?>(body, now, now, reason, convoId)
+            arrayOf<Any?>(body, now, now, TrashReason.BLOCKED_KEYWORD, convoId)
         )
         notifyChanged()
         return convoId
