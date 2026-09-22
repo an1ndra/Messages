@@ -278,6 +278,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun blockedMessages(): Flow<List<BlockedMessage>> = repo.blockedMessages()
 
+    fun deleteBlockedMessage(messageId: Long) {
+        scope.launch(Dispatchers.IO) { repo.deleteBlockedMessage(messageId) }
+    }
+
     fun setArchived(id: Long, archived: Boolean) =
         scope.launch { repo.setArchivedSuspend(id, archived) }
 
@@ -439,10 +443,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun unblockNumber(number: String) {
         scope.launch(Dispatchers.IO) { repo.unblockNumber(number) }
-    }
-
-    fun deleteBlockedMessage(messageId: Long) {
-        scope.launch(Dispatchers.IO) { repo.deleteBlockedMessage(messageId) }
     }
 
     fun isNumberBlocked(number: String): Boolean = repo.isNumberBlocked(number)
@@ -857,7 +857,7 @@ class MainActivity : FragmentActivity() {
                                     "spam" -> SpamBlockedScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
-                                        onOpenConversation = { id -> chatId = id; navRoute = "chat" }
+                                        onOpenConversation = { navRoute = "chat"; chatId = it }
                                     )
                                     "details" -> ContactDetailsScreen(
                                         vm = vm,

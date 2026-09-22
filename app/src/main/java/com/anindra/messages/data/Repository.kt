@@ -369,7 +369,7 @@ class Repository(private val context: Context) {
         var out: Conversation? = null
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
-               c.archived,c.blocked,c.pinned,c.draft,c.draft_date,c.deleted_at,
+               c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
                COALESCE(p.display_destination, c.address)
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
@@ -386,12 +386,11 @@ class Repository(private val context: Context) {
                     unreadCount = c.getInt(5),
                     isMe = c.getInt(6) == 1,
                     archived = c.getInt(7) == 1,
-                    blocked = c.getInt(8) == 1,
-                    pinned = c.getInt(9) == 1,
-                    draft = c.getString(10),
-                    draftDate = c.getLong(11),
-                    deletedAt = c.getLong(12),
-                    display = c.getString(13)
+                    pinned = c.getInt(8) == 1,
+                    draft = c.getString(9),
+                    draftDate = c.getLong(10),
+                    deletedAt = c.getLong(11),
+                    display = c.getString(12)
                 )
             }
         }
@@ -586,7 +585,7 @@ class Repository(private val context: Context) {
         var found: Conversation? = null
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
-               c.archived,c.blocked,c.pinned,c.draft,c.draft_date,
+               c.archived,c.pinned,c.draft,c.draft_date,
                COALESCE(p.display_destination, c.address)
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
@@ -594,10 +593,18 @@ class Repository(private val context: Context) {
             arrayOf(id.toString())
         ).use { c ->
             if (c.moveToFirst()) found = Conversation(
-                c.getLong(0), c.getString(1), c.getString(2), c.getString(3),
-                c.getLong(4), c.getInt(5), c.getInt(6) == 1, c.getInt(7) == 1,
-                c.getInt(8) == 1, c.getInt(9) == 1, c.getString(10), c.getLong(11),
-                display = c.getString(12)
+                id = c.getLong(0),
+                address = c.getString(1),
+                name = c.getString(2),
+                snippet = c.getString(3),
+                timestamp = c.getLong(4),
+                unreadCount = c.getInt(5),
+                isMe = c.getInt(6) == 1,
+                archived = c.getInt(7) == 1,
+                pinned = c.getInt(8) == 1,
+                draft = c.getString(9),
+                draftDate = c.getLong(10),
+                display = c.getString(11)
             )
         }
         found
@@ -670,9 +677,9 @@ class Repository(private val context: Context) {
         return convoId
     }
 
-    /** Stores a keyword-blocked SMS hidden in its conversation and parked in the
-     *  "Spam & blocked" folder (message-level soft delete). The conversation
-     *  stays in the inbox; no notification and no unread badge. */
+    /** Stores a keyword-blocked message but moves its conversation to Trash
+     *  (soft delete) instead of dropping it, so it stays recoverable via
+     *  Trash → Restore. No notification and no unread badge. */
     fun receiveBlockedMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
         val clean = MessageBody.normalize(body)
@@ -1209,14 +1216,6 @@ class Repository(private val context: Context) {
         db.writableDatabase.execSQL("DELETE FROM blocked_numbers WHERE number=?", arrayOf(number))
         invalidateBlockCache(number)
         setConversationBlockedForAddress(number, blocked = false)
-        notifyChanged()
-    }
-
-    fun setConversationBlocked(conversationId: Long, blocked: Boolean) {
-        db.writableDatabase.execSQL(
-            "UPDATE conversations SET blocked=? WHERE id=?",
-            arrayOf(if (blocked) 1 else 0, conversationId)
-        )
         notifyChanged()
     }
 
