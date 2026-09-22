@@ -30,6 +30,7 @@
     <string name="chat_retry">إعادة المحاولة</string>
     <string name="chat_retry_sim">إعادة المحاولة باستخدام شريحة SIM</string>
     <string name="chat_sending_via">جارٍ الإرسال عبر %s</string>
+    <string name="chat_switch_sim">تبديل شريحة SIM</string>
     <string name="chat_scheduled_for">مجدولة في %s</string>
     <string name="chat_search_contacts">البحث في جهات الاتصال</string>
     <string name="chat_add_people">إضافة أشخاص</string>

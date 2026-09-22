@@ -494,7 +494,7 @@ fun ConversationsScreen(
                     .padding(bottom = 32.dp)
             ) {
                 Text(
-                    text = if (sheetConvo.name == sheetConvo.address) sheetConvo.display else sheetConvo.name,
+                    text = if (sheetConvo.name == sheetConvo.address) BidiText.ltr(sheetConvo.display) else sheetConvo.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -719,17 +719,19 @@ private fun ConversationRow(
     onLongClick: () -> Unit = {}
 ) {
     val now = LocalNowTick.current
-    val senderLabel = if (convo.name == convo.address) convo.display else convo.name
+    val senderLabel = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name
     val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
     val draftLabel = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
     val snippetLabel = if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
-    val previewLabel = if (hasDraft) {
-        context.getString(R.string.chat_draft_prefix) + draftLabel
-    } else if (convo.isMe && snippetLabel.isNotEmpty()) {
-        context.getString(R.string.convo_your_prefix) + snippetLabel
-    } else {
-        snippetLabel
-    }
+    val previewLabel = BidiText.isolateNumberRuns(
+        if (hasDraft) {
+            context.getString(R.string.chat_draft_prefix) + draftLabel
+        } else if (convo.isMe && snippetLabel.isNotEmpty()) {
+            context.getString(R.string.convo_your_prefix) + snippetLabel
+        } else {
+            snippetLabel
+        }
+    ).text
     val a11yLabel = A11y.describe(
         senderLabel,
         previewLabel,
@@ -773,7 +775,7 @@ private fun ConversationRow(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (convo.name == convo.address) convo.display else convo.name,
+                        text = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,

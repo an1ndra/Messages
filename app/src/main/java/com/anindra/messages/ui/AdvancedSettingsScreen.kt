@@ -69,6 +69,7 @@ fun AdvancedSettingsScreen(
     var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
     var drafts by remember(revision) { mutableStateOf(vm.settings.draftsEnabled) }
+    var emojiButton by remember(revision) { mutableStateOf(vm.settings.emojiButtonEnabled) }
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
     var fontDialog by remember { mutableStateOf(false) }
@@ -239,6 +240,12 @@ fun AdvancedSettingsScreen(
                     title = stringResource(R.string.settings_font_title),
                     subtitle = fontLabel(vm.fontFamily),
                     onClick = { fontDialog = true }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_advanced_emoji_button),
+                    subtitle = stringResource(R.string.settings_advanced_emoji_button_desc),
+                    checked = emojiButton,
+                    onChecked = { emojiButton = it; vm.settings.emojiButtonEnabled = it }
                 )
             }
 

@@ -76,9 +76,6 @@ import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
 import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.ui.theme.LocalLargeTouchTargets
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 private enum class PinDialogMode { SET, ENTER }
 
@@ -418,7 +415,7 @@ fun SettingsScreen(
             if (scheduledMsgs.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 SettingsGroup {
-                    val fmt = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
+                    val is24Hour = is24HourFormat(context)
                     scheduledMsgs.forEach { sm ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -435,7 +432,7 @@ fun SettingsScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(sm.body, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                                 Text(
-                                    "To: ${formatPhoneNumber(sm.address)} · ${fmt.format(Date(sm.timestamp))}",
+                                    "To: ${formatPhoneNumber(sm.address)} · ${formatDateTime(sm.timestamp, "MMM d,", is24Hour)}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

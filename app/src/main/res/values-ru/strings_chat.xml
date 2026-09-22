@@ -30,6 +30,7 @@
     <string name="chat_retry">Повторить</string>
     <string name="chat_retry_sim">Повторить через SIM</string>
     <string name="chat_sending_via">Отправка через %s</string>
+    <string name="chat_switch_sim">Сменить SIM</string>
     <string name="chat_scheduled_for">Запланировано на %s</string>
     <string name="chat_search_contacts">Поиск контактов</string>
     <string name="chat_add_people">Добавить участников</string>

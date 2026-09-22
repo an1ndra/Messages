@@ -121,7 +121,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
@@ -134,7 +133,10 @@ import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
+import com.anindra.messages.data.SimIcon
+import com.anindra.messages.data.SimSwitcher
 import com.anindra.messages.data.MessageLockCrypto
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.chatBar
@@ -145,10 +147,7 @@ import com.anindra.messages.ui.theme.onSelectedBubble
 import com.anindra.messages.ui.theme.outgoingBubble
 import com.anindra.messages.ui.theme.selectedBubble
 import java.io.File
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.onEach
@@ -336,7 +335,7 @@ private fun ChatBubble(
                         if (slotIndex >= 0) String.format(context.getString(R.string.sim_slot_suffix), slotIndex + 1) else ""
                     } catch (_: Exception) { "" }
                 } else ""
-                val time = formatTimeOnly(msg.timestamp)
+                val time = formatTimeOnly(msg.timestamp, is24HourFormat(context))
                 val label = if (msg.isMe) {
                     "$time \u2022 $statusText$simLabel"
                 } else {
@@ -471,9 +470,7 @@ fun ChatScreen(
     }
 
     fun cycleSim() {
-        if (sims.size < 2) return
-        val idx = sims.indexOfFirst { it.subscriptionId == currentSimId }
-        val next = sims[(idx + 1) % sims.size]
+        val next = SimSwitcher.next(currentSimId, sims) ?: return
         currentSimId = next.subscriptionId
         vm.settings.simSubscriptionId = next.subscriptionId
         val carrier = next.carrierName?.ifBlank { null }
@@ -803,6 +800,9 @@ fun ChatScreen(
                     InputBar(
                         draft = draft,
                         placeholder = stringResource(R.string.text_placeholder),
+                        sims = sims,
+                        currentSimId = currentSimId,
+                        onCycleSim = { cycleSim() },
                         onDraftChange = { draft = it },
                         onSend = {
                             val text = draft.trim()
@@ -839,7 +839,8 @@ fun ChatScreen(
                             }
                         },
                         onEmojiToggle = { showEmoji = !showEmoji },
-                        onAttach = { attachSheet = true }
+                        onAttach = { attachSheet = true },
+                        showEmojiButton = vm.settings.emojiButtonEnabled
                     )
                 } else {
                     AlphanumericNotice(address = chatAddress)
@@ -868,7 +869,7 @@ fun ChatScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    formatGroupLabel(msg.timestamp),
+                                    formatGroupLabel(msg.timestamp, is24HourFormat(context)),
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = ChatMetaWeight
                                     ),
@@ -1047,8 +1048,8 @@ fun ChatScreen(
                 val text = draft.trim()
                 val addr = convo?.address ?: return@ChatSchedulePicker
                 vm.scheduleMessage(addr, text, ts, conversationId)
-                val fmt = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
-                Toast.makeText(context, context.getString(R.string.chat_scheduled_for, fmt.format(Date(ts))), Toast.LENGTH_SHORT).show()
+                val timeText = formatDateTime(ts, "MMM d,", is24HourFormat(context))
+                Toast.makeText(context, context.getString(R.string.chat_scheduled_for, timeText), Toast.LENGTH_SHORT).show()
                 vm.saveDraft(conversationId, "")
                 draft = ""
                 showEmoji = false
@@ -1177,7 +1178,7 @@ private fun ChatTopBar(
                         Text(
                             convo?.let {
                                 if (it.name != it.address) it.name
-                                else it.display
+                                else BidiText.ltr(it.display)
                             } ?: "",
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1
@@ -1388,6 +1389,7 @@ private fun ChatSchedulePicker(
     onDismiss: () -> Unit
 ) {
     if (!visible) return
+    val context = LocalContext.current
     if (step == "date") {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = scheduledDateMillis ?: System.currentTimeMillis()
@@ -1408,7 +1410,8 @@ private fun ChatSchedulePicker(
     } else if (step == "time") {
         val timePickerState = rememberTimePickerState(
             initialHour = scheduledHour,
-            initialMinute = scheduledMinute
+            initialMinute = scheduledMinute,
+            is24Hour = is24HourFormat(context)
         )
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -1434,8 +1437,13 @@ private fun ChatSchedulePicker(
     }
 }
 
+/** Locale-formatted number, LTR-isolated so RTL layouts don't reorder its groups. */
 fun formatPhoneNumber(raw: String): String =
-    com.anindra.messages.data.PhoneNumberUtils.displayFor(raw, com.anindra.messages.data.PhoneNumberUtils.region())
+    BidiText.ltr(
+        com.anindra.messages.data.PhoneNumberUtils.displayFor(
+            raw, com.anindra.messages.data.PhoneNumberUtils.region()
+        )
+    )
 
 /** Stable identity for cross-referencing a stored address against a contact
  *  number: E.164 when valid, else the address unchanged (alphanumeric IDs). */
@@ -1472,63 +1480,56 @@ private fun rememberLinkedText(
     // hideUrls memoizes, so this is a cache hit on recomposition.
     if (hide) {
         return remember(body) {
-            val stripped = hideUrls(body)
-            val builder = AnnotatedString.Builder(stripped)
-            applyOtpStyles(builder, stripped, linkColor)
-            builder.toAnnotatedString()
+            styledBody(hideUrls(body), linkColor, emptyMap(), null)
         }
     }
     return produceState(AnnotatedString(body), body, highlight, textColor, linkColor) {
         value = withContext(Dispatchers.Default) {
-            val builder = AnnotatedString.Builder(body)
-            val urlRanges = if (highlight) {
+            val urls = if (highlight) {
                 val spanned = SpannableStringBuilder(body)
                 Linkify.addLinks(spanned, Linkify.WEB_URLS)
-                val urlSpans = spanned.getSpans(0, spanned.length, URLSpan::class.java)
-                val ranges = urlSpans.map { spanned.getSpanStart(it) to spanned.getSpanEnd(it) }
-                urlSpans.forEach { span ->
-                    val start = spanned.getSpanStart(span)
-                    val end = spanned.getSpanEnd(span)
-                    builder.addLink(
-                        LinkAnnotation.Url(
-                            url = span.url,
-                            linkInteractionListener = { link ->
-                                onLinkClick((link as LinkAnnotation.Url).url)
-                            }
-                        ),
-                        start, end
-                    )
-                    builder.addStyle(SpanStyle(color = linkColor), start, end)
-                    builder.addStyle(SpanStyle(textDecoration = TextDecoration.Underline), start, end)
-                }
-                ranges
-            } else emptyList()
-            applyOtpStyles(builder, body, linkColor, urlRanges)
-            builder.toAnnotatedString()
+                spanned.getSpans(0, spanned.length, URLSpan::class.java)
+                    .associate {
+                        (spanned.getSpanStart(it)..spanned.getSpanEnd(it) - 1) to it.url
+                    }
+            } else emptyMap()
+            styledBody(body, linkColor, urls, onLinkClick)
         }
     }.value
 }
 
-private fun applyOtpStyles(
-    builder: AnnotatedString.Builder,
+/** Builds the styled bubble body, isolating number runs so they keep LTR order
+ *  inside RTL messages while links/OTP styling offsets are remapped. */
+private fun styledBody(
     body: String,
     linkColor: Color,
-    exclude: List<Pair<Int, Int>> = emptyList()
-) {
+    urls: Map<IntRange, String>,
+    onLinkClick: ((String) -> Unit)?
+): AnnotatedString {
+    val iso = BidiText.isolateNumberRuns(body, urls.keys.toList())
+    val out = AnnotatedString.Builder(iso.text)
+    urls.forEach { (original, url) ->
+        val range = iso.remap(original)
+        out.addLink(
+            LinkAnnotation.Url(
+                url = url,
+                linkInteractionListener = { link ->
+                    onLinkClick?.invoke((link as LinkAnnotation.Url).url)
+                }
+            ),
+            range.first, range.last + 1
+        )
+        out.addStyle(SpanStyle(color = linkColor), range.first, range.last + 1)
+        out.addStyle(SpanStyle(textDecoration = TextDecoration.Underline), range.first, range.last + 1)
+    }
     OtpDetector.findRanges(body)
-        .filter { r -> exclude.none { s -> r.first >= s.first && r.last + 1 <= s.second } }
+        .filter { r -> urls.keys.none { s -> r.first >= s.first && r.last <= s.last } }
         .forEach { r ->
-            builder.addStyle(
-                SpanStyle(color = linkColor),
-                r.first,
-                r.last + 1
-            )
-            builder.addStyle(
-                SpanStyle(textDecoration = TextDecoration.Underline),
-                r.first,
-                r.last + 1
-            )
+            val range = iso.remap(r)
+            out.addStyle(SpanStyle(color = linkColor), range.first, range.last + 1)
+            out.addStyle(SpanStyle(textDecoration = TextDecoration.Underline), range.first, range.last + 1)
         }
+    return out.toAnnotatedString()
 }
 
 
@@ -1582,7 +1583,8 @@ private fun MessageDetailsDialog(
 ) {
     val kind = MessageDetails.kind(message.transport)
     val toSelf = MessageDetails.direction(message.isMe) == MessageDetails.Direction.TO
-    val timeFmt = remember { SimpleDateFormat("MMM d, yyyy, h:mm a", Locale.getDefault()) }
+    val context = LocalContext.current
+    val is24Hour = is24HourFormat(context)
     val statusLabel = when (MessageDetails.status(message.status)) {
         MessageDetails.Status.SENDING -> stringResource(R.string.message_status_sending)
         MessageDetails.Status.DELIVERED -> stringResource(R.string.message_status_delivered)
@@ -1600,9 +1602,9 @@ private fun MessageDetailsDialog(
                     stringResource(if (toSelf) R.string.message_detail_to else R.string.message_detail_from),
                     formatPhoneNumber(address)
                 )
-                DetailRow(stringResource(R.string.message_detail_sent), timeFmt.format(Date(message.timestamp)))
+                DetailRow(stringResource(R.string.message_detail_sent), formatDateTime(message.timestamp, "MMM d, yyyy,", is24Hour))
                 MessageDetails.deliveredAt(message)?.let {
-                    DetailRow(stringResource(R.string.message_detail_delivered), timeFmt.format(Date(it)))
+                    DetailRow(stringResource(R.string.message_detail_delivered), formatDateTime(it, "MMM d, yyyy,", is24Hour))
                 }
                 DetailRow(stringResource(R.string.message_detail_status), statusLabel)
             }
@@ -1697,7 +1699,7 @@ fun MessageRow(
 
     // cache derived text/sim so an unlock doesn't recompute row allocations
     val dividerText = remember(msg.timestamp) { formatDividerTime(msg.timestamp, context) }
-    val timeText = remember(msg.timestamp) { formatTimeOnly(msg.timestamp) }
+    val timeText = remember(msg.timestamp) { formatTimeOnly(msg.timestamp, is24HourFormat(context)) }
     val simLabel = remember(msg.subId, showSimIndicator) {
         if (showSimIndicator && msg.subId > 0) {
             try {
@@ -1885,18 +1887,16 @@ private fun InputBar(
     onSend: () -> Unit,
     onSchedule: () -> Unit = {},
     onEmojiToggle: () -> Unit,
-    onAttach: () -> Unit
+    onAttach: () -> Unit,
+    showEmojiButton: Boolean = false,
+    sims: List<SimCard> = emptyList(),
+    currentSimId: Int = -1,
+    onCycleSim: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onAttach) {
-            Icon(
-                Icons.Rounded.AddCircleOutline, stringResource(R.string.icon_attach),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.inputPill,
@@ -1906,17 +1906,42 @@ private fun InputBar(
                 value = draft,
                 onValueChange = onDraftChange,
                 placeholder = { Text(placeholder) },
+                leadingIcon = {
+                    IconButton(onClick = onAttach) {
+                        Icon(
+                            Icons.Rounded.AddCircleOutline, stringResource(R.string.icon_attach),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Default,
                     capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
                 ),
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onEmojiToggle) {
-                            Icon(
-                                Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        if (sims.size > 1 && draft.isBlank()) {
+                            val currentIndex = sims.indexOfFirst { it.subscriptionId == currentSimId }
+                            val iconRes = when (SimSwitcher.iconFor(sims.size, currentIndex)) {
+                                SimIcon.SIM_2 -> R.drawable.ic_sim_2
+                                SimIcon.DUAL -> R.drawable.ic_dual_sim
+                                SimIcon.SIM_1 -> R.drawable.ic_sim_1
+                            }
+                            IconButton(onClick = onCycleSim, modifier = Modifier.size(40.dp)) {
+                                Icon(
+                                    painterResource(iconRes),
+                                    stringResource(R.string.chat_switch_sim),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        if (showEmojiButton) {
+                            IconButton(onClick = onEmojiToggle, modifier = Modifier.size(40.dp)) {
+                                Icon(
+                                    Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 },

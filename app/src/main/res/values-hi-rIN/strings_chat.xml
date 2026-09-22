@@ -30,6 +30,7 @@
     <string name="chat_retry">पुनः प्रयास करें</string>
     <string name="chat_retry_sim">SIM के साथ पुनः प्रयास करें</string>
     <string name="chat_sending_via">%s के माध्यम से भेजा जा रहा है</string>
+    <string name="chat_switch_sim">SIM बदलें</string>
     <string name="chat_scheduled_for">%s के लिए शीड्यूल किया गया</string>
     <string name="chat_search_contacts">संपर्क खोजें</string>
     <string name="chat_add_people">लोगों को जोड़ें</string>
