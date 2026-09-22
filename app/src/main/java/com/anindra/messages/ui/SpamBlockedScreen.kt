@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.rounded.Block
@@ -101,8 +100,8 @@ fun SpamBlockedScreen(
         Column(Modifier.padding(padding).fillMaxSize()) {
             ExpressiveTabs(
                 tabs = listOf(
-                    ExpressiveTab(R.string.spam_tab_conversations, Icons.AutoMirrored.Outlined.Chat),
-                    ExpressiveTab(R.string.spam_tab_messages, Icons.Rounded.Block)
+                    ExpressiveTab(R.string.spam_tab_conversations),
+                    ExpressiveTab(R.string.spam_tab_messages)
                 ),
                 selected = tab,
                 onSelect = { tab = it }

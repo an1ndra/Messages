@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.rounded.DeleteForever
@@ -95,8 +94,8 @@ fun TrashScreen(
         Column(Modifier.padding(padding).fillMaxSize()) {
             ExpressiveTabs(
                 tabs = listOf(
-                    ExpressiveTab(R.string.trash_tab_conversations, Icons.AutoMirrored.Outlined.Chat),
-                    ExpressiveTab(R.string.trash_tab_messages, Icons.Outlined.DeleteOutline)
+                    ExpressiveTab(R.string.trash_tab_conversations),
+                    ExpressiveTab(R.string.trash_tab_messages)
                 ),
                 selected = tab,
                 onSelect = { tab = it }
