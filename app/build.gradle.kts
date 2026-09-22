@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.anindra.messages"
-    compileSdk = 36
+    compileSdk = 37
 
     dependenciesInfo {
         includeInApk = false
