@@ -1942,7 +1942,7 @@ private fun InputBar(
                                     text = simLabel,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.align(Alignment.Center)
                                 )
                             }
