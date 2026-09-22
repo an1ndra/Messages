@@ -223,13 +223,17 @@ private fun MessagesTab(
                             contentDescription = A11y.describe(sender, msg.body)
                         }
                     )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = formatListTime(msg.timestamp, now, context),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TagChip(stringResource(R.string.spam_tag_keyword))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = formatListTime(msg.timestamp, now, context),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
                 }
                 IconButton(onClick = { onDelete(msg) }) {
                     Icon(
