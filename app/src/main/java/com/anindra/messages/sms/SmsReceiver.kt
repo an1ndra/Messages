@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import com.anindra.messages.data.KeywordFilter
 import com.anindra.messages.data.Repository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,9 +60,12 @@ class SmsReceiver : BroadcastReceiver() {
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
             val body = parts.joinToString("") { it.messageBody!! }
 
-            // Blocked keyword: drop the message entirely — not stored, no
-            // notification, no sound (the user asked for keyword blocking).
-            if (repo.settings.isKeywordBlocked(body)) continue
+            // Blocked keyword: keep the message but move its conversation to
+            // Trash instead of dropping it, and skip the notification/sound.
+            if (KeywordFilter.route(body, repo.settings.blockedKeywords) == KeywordFilter.Route.TRASH) {
+                repo.receiveBlockedMessage(address, body, subId = subId)
+                continue
+            }
 
             var sysId = 0L
             if (isDefaultHandler) {
