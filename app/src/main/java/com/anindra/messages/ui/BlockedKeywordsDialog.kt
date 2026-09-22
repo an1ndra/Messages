@@ -40,7 +40,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.R
 
-/** Manage the keyword blocklist: messages containing any keyword are dropped. */
+/** Manage the keyword blocklist: matching messages are moved to Trash. */
 @Composable
 fun BlockedKeywordsDialog(
     keywords: List<String>,
@@ -62,13 +62,6 @@ fun BlockedKeywordsDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Rounded.Block,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.keywords_title))
                 if (keywords.isNotEmpty()) {
                     Spacer(Modifier.width(8.dp))

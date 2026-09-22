@@ -13,7 +13,8 @@ data class Conversation(
     val draft: String = "",
     val draftDate: Long = 0,
     val deletedAt: Long = 0,
-    val display: String = address
+    val display: String = address,
+    val deletedReason: String = TrashReason.MANUAL
 )
 
 data class Message(

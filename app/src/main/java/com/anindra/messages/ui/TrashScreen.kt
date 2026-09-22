@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.DeleteForever
@@ -26,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.data.TrashReason
 import java.text.DateFormat
 import java.util.Date
 
@@ -218,13 +221,20 @@ private fun TrashRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    text = String.format(LocalContext.current.getString(R.string.trash_deleted_on), formatTrashDate(convo.deletedAt)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TrashReasonTag(convo.deletedReason)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = String.format(
+                            LocalContext.current.getString(R.string.trash_deleted_on),
+                            formatTrashDate(convo.deletedAt)
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             IconButton(onClick = onRestore) {
                 Icon(
@@ -248,3 +258,23 @@ private fun TrashRow(
 
 private fun formatTrashDate(ts: Long): String =
     if (ts <= 0) "" else DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(ts))
+
+@Composable
+private fun TrashReasonTag(reason: String) {
+    val blocked = TrashReason.isBlockedKeyword(reason)
+    Surface(
+        color = if (blocked) MaterialTheme.colorScheme.tertiaryContainer
+        else MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Text(
+            text = stringResource(
+                if (blocked) R.string.trash_reason_blocked else R.string.trash_reason_manual
+            ),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (blocked) MaterialTheme.colorScheme.onTertiaryContainer
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        )
+    }
+}

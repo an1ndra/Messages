@@ -86,6 +86,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenTrash: () -> Unit = {},
     onOpenAdvanced: () -> Unit = {},
+    onOpenBlockedNumbers: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
@@ -114,6 +115,7 @@ fun SettingsScreen(
     var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
     var swipeActions by remember(revision) { mutableStateOf(vm.settings.swipeActionsEnabled) }
     var blocking by remember(revision) { mutableStateOf(vm.settings.blockingEnabled) }
+    val blockedNumbers by vm.blockedNumbers().collectAsState(initial = emptyList())
     val privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var forwarding by remember(revision) { mutableStateOf(vm.settings.forwardingEnabled) }
     var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
@@ -370,6 +372,15 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_blocking_subtitle),
                     checked = blocking,
                     onChecked = { blocking = it; vm.settings.blockingEnabled = it }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_blocked_numbers_title),
+                    subtitle = blockedNumbersSubtitle(
+                        stringResource(R.string.settings_blocked_numbers_none),
+                        stringResource(R.string.settings_blocked_numbers_count),
+                        blockedNumbers.size
+                    ),
+                    onClick = onOpenBlockedNumbers
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_trash_title),

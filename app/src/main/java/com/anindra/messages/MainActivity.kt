@@ -71,6 +71,7 @@ import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.SettingsScreen
 import com.anindra.messages.ui.AdvancedSettingsScreen
 import com.anindra.messages.ui.AccessibilityScreen
+import com.anindra.messages.ui.BlockedNumbersScreen
 import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.A11yOptions
@@ -266,6 +267,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun emptyTrash() = scope.launch { repo.emptyTrashSuspend() }
 
     fun trashedConversations(): Flow<List<Conversation>> = repo.trashedConversations()
+
+    fun blockedNumbers(): Flow<List<BlockedNumber>> = repo.blockedNumbers()
 
     fun setArchived(id: Long, archived: Boolean) =
         scope.launch { repo.setArchivedSuspend(id, archived) }
@@ -760,6 +763,7 @@ class MainActivity : FragmentActivity() {
                         "trash" -> navRoute = "settings"
                         "advanced" -> navRoute = "settings"
                         "accessibility" -> navRoute = "advanced"
+                        "blocked" -> navRoute = "settings"
                         else -> navRoute = "list"
                     }
                     // Clear ForegroundTracker when leaving chat
@@ -825,6 +829,7 @@ class MainActivity : FragmentActivity() {
                                         onBack = { navRoute = "list" },
                                         onOpenTrash = { navRoute = "trash" },
                                         onOpenAdvanced = { navRoute = "advanced" },
+                                        onOpenBlockedNumbers = { navRoute = "blocked" },
                                         scrollState = settingsScroll
                                     )
                                     "advanced" -> AdvancedSettingsScreen(
@@ -837,6 +842,7 @@ class MainActivity : FragmentActivity() {
                                         onBack = { navRoute = "advanced" }
                                     )
                                     "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
+                                    "blocked" -> BlockedNumbersScreen(vm = vm, onBack = { navRoute = "settings" })
                                     "details" -> ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
