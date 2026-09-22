@@ -25,7 +25,7 @@ private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
 enum class ImportMode { REPLACE, MERGE }
 
-private const val DB_VERSION = 17
+private const val DB_VERSION = 18
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -48,7 +48,8 @@ class Db(context: Context) :
                 pinned INTEGER NOT NULL DEFAULT 0,
                 draft TEXT NOT NULL DEFAULT '',
                 draft_date INTEGER NOT NULL DEFAULT 0,
-                deleted_at INTEGER NOT NULL DEFAULT 0)"""
+                deleted_at INTEGER NOT NULL DEFAULT 0,
+                deleted_reason TEXT NOT NULL DEFAULT 'manual')"""
         )
         db.execSQL(
             """CREATE TABLE messages(
@@ -190,6 +191,9 @@ class Db(context: Context) :
         }
         if (oldVersion < 17) {
             db.execSQL("ALTER TABLE messages ADD COLUMN delivered_at INTEGER NOT NULL DEFAULT 0")
+        }
+        if (oldVersion < 18) {
+            db.execSQL("ALTER TABLE conversations ADD COLUMN deleted_reason TEXT NOT NULL DEFAULT 'manual'")
         }
     }
 
@@ -389,7 +393,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address)
+               COALESCE(p.display_destination, c.address),c.deleted_reason
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.deleted_at>0 ORDER BY c.deleted_at DESC""",
@@ -410,7 +414,8 @@ class Repository(private val context: Context) {
                         draft = c.getString(9),
                         draftDate = c.getLong(10),
                         deletedAt = c.getLong(11),
-                        display = c.getString(12)
+                        display = c.getString(12),
+                        deletedReason = c.getString(13) ?: TrashReason.MANUAL
                     )
                 )
             }
@@ -651,6 +656,26 @@ class Repository(private val context: Context) {
         return convoId
     }
 
+    /** Stores a keyword-blocked message but moves its conversation to Trash
+     *  (soft delete) instead of dropping it, so it stays recoverable via
+     *  Trash → Restore. No notification and no unread badge. */
+    fun receiveBlockedMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
+        val now = System.currentTimeMillis()
+        val convoId = getOrCreateConversationBlocking(address, null, subId)
+        db.writableDatabase.execSQL(
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
+               VALUES(?,?,?,?,?,?,?,?)""",
+            arrayOf<Any?>(convoId, body, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
+        )
+        db.writableDatabase.execSQL(
+            """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
+               unread_count=0,deleted_at=?,deleted_reason=? WHERE id=?""",
+            arrayOf<Any?>(body, now, now, TrashReason.BLOCKED_KEYWORD, convoId)
+        )
+        notifyChanged()
+        return convoId
+    }
+
     fun markReadSuspend(conversationId: Long) {
         db.writableDatabase.execSQL(
             "UPDATE conversations SET unread_count=0 WHERE id=?", arrayOf(conversationId)
@@ -764,8 +789,8 @@ class Repository(private val context: Context) {
     /** Moves a conversation to trash (soft delete); messages are kept for restore. */
     fun trashConversationSuspend(conversationId: Long) {
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET deleted_at=? WHERE id=?",
-            arrayOf(System.currentTimeMillis().toString(), conversationId.toString())
+            "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
+            arrayOf(System.currentTimeMillis().toString(), TrashReason.MANUAL, conversationId.toString())
         )
         notifyChanged()
     }
@@ -790,8 +815,8 @@ class Repository(private val context: Context) {
         val draftKeepsIt = settings.draftsEnabled && draft.isNotBlank()
         if (remaining > 0 || draftKeepsIt) return
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET deleted_at=? WHERE id=?",
-            arrayOf(System.currentTimeMillis().toString(), conversationId.toString())
+            "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
+            arrayOf(System.currentTimeMillis().toString(), TrashReason.MANUAL, conversationId.toString())
         )
         notifyChanged()
     }
