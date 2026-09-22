@@ -72,6 +72,3 @@ git add scripts && git commit -m "chore: bump scripts submodule"
    not "done" until both exist and pass.
 6. Don't take screenshots without the user's permission (AI readback is slow).
 7. Never create GitHub issues unless explicitly asked.
-8. **Never close a GitHub issue until the fix is merged to `main` and shipped
-   in a release.** Merging to `Develop` (or a feature branch) is not enough —
-   comment with the PR/commit and leave it open.

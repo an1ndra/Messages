@@ -5,6 +5,7 @@
     <string name="chat_block">Block</string>
     <string name="chat_block_report">Block &amp; report spam</string>
     <string name="chat_unblock">Unblock</string>
+    <string name="chat_moved_to_spam">Moved to Spam &amp; blocked</string>
     <string name="chat_block_number">Block number</string>
     <string name="chat_unblock_number">Unblock number</string>
     <string name="chat_forward">Forward</string>
@@ -26,7 +27,6 @@
     <string name="chat_blocked_send">This number is blocked. Unblock to send?</string>
     <string name="chat_number_blocked">Number blocked</string>
     <string name="chat_number_unblocked">Number unblocked</string>
-    <string name="chat_moved_to_spam">Moved to Spam &amp; blocked</string>
     <string name="chat_loading_earlier">Load earlier messages</string>
     <string name="chat_retry">Retry</string>
     <string name="chat_retry_sim">Retry with SIM</string>
