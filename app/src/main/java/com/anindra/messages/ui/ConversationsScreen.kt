@@ -279,7 +279,8 @@ fun ConversationsScreen(
 
     val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks) {
         conversations.filter { convo ->
-            if (showArchived) convo.archived
+            if (convo.blocked) false
+            else if (showArchived) convo.archived
             else !convo.archived
         }.let { list ->
             if (query.isBlank()) list

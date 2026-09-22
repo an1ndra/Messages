@@ -5,11 +5,14 @@
     <string name="trash_emptied">Корзина очищена</string>
     <string name="toast_trash_deleted">Переписка удалена</string>
     <string name="trash_delete_conversation">Удалить переписку</string>
-    <string name="trash_conversation_deleted">Переписка удалена</string>
-
     <string name="trash_empty_is_empty">Корзина пуста</string>
     <string name="trash_empty_message">Удалённые переписки безвозвратно удаляются через 30 дней</string>
     <string name="trash_empty_confirm">Удалить все %d переписок из корзины? Это действие нельзя отменить.</string>
     <string name="trash_delete_forever_confirm">Удалить %s безвозвратно? Это нельзя отменить.</string>
     <string name="trash_deleted_on">Удалено %s</string>
+    <string name="trash_delete_message">Удалить сообщение</string>
+    <string name="trash_tab_conversations">Беседы</string>
+    <string name="trash_tab_messages">Сообщения</string>
+    <string name="trash_messages_empty">Нет удалённых сообщений</string>
+    <string name="trash_messages_empty_message">Удалённые сообщения хранятся здесь, пока вы их не удалите</string>
 </resources>
