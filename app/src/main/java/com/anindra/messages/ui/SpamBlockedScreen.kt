@@ -21,7 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.rounded.Block
-import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +44,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,20 +100,22 @@ fun SpamBlockedScreen(
                     text = { Text(stringResource(R.string.spam_tab_messages)) }
                 )
             }
-            if (tab == 0) {
-                ConversationsTab(
-                    blocked = blockedConversations,
-                    onOpenConversation = onOpenConversation,
-                    onUnblock = { convo ->
-                        vm.unblockNumber(convo.address)
-                        Toast.makeText(context, context.getString(R.string.chat_number_unblocked), Toast.LENGTH_SHORT).show()
-                    }
-                )
-            } else {
-                MessagesTab(
-                    messages = blockedMessages,
-                    onDelete = { vm.deleteBlockedMessage(it.id) }
-                )
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                if (tab == 0) {
+                    ConversationsTab(
+                        blocked = blockedConversations,
+                        onOpenConversation = onOpenConversation,
+                        onUnblock = { convo ->
+                            vm.unblockNumber(convo.address)
+                            Toast.makeText(context, context.getString(R.string.chat_number_unblocked), Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                } else {
+                    MessagesTab(
+                        messages = blockedMessages,
+                        onDelete = { vm.deleteBlockedMessage(it.id) }
+                    )
+                }
             }
         }
     }
@@ -121,29 +128,52 @@ private fun ConversationsTab(
     onUnblock: (Conversation) -> Unit
 ) {
     if (blocked.isEmpty()) {
-        EmptyFolder(stringResource(R.string.conversations_spam_blocked_empty))
+        EmptyFolder(Icons.Rounded.Block, stringResource(R.string.conversations_spam_blocked_empty))
         return
     }
+    val context = LocalContext.current
+    val now = LocalNowTick.current
     LazyColumn(Modifier.fillMaxSize()) {
         items(blocked, key = { it.id }) { convo ->
+            val sender = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name
+            val blockedLabel = stringResource(R.string.access_blocked)
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = A11y.describe(
+                            sender, blockedLabel, formatListTime(convo.timestamp, now, context)
+                        )
+                        role = Role.Button
+                        onClick(label = context.getString(R.string.access_open_conversation)) {
+                            onOpenConversation(convo.id)
+                            true
+                        }
+                    }
                     .clickable { onOpenConversation(convo.id) }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 PersonAvatar(convo.address)
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name,
+                        text = sender,
                         style = MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.height(2.dp))
-                    TagChip(stringResource(R.string.access_blocked))
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TagChip(blockedLabel)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = formatListTime(convo.timestamp, now, context),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
                 }
                 TextButton(onClick = { onUnblock(convo) }) {
                     Text(stringResource(R.string.chat_unblock))
@@ -159,22 +189,25 @@ private fun MessagesTab(
     onDelete: (BlockedMessage) -> Unit
 ) {
     if (messages.isEmpty()) {
-        EmptyFolder(stringResource(R.string.spam_blocked_messages_empty))
+        EmptyFolder(Icons.Outlined.DeleteOutline, stringResource(R.string.spam_blocked_messages_empty))
         return
     }
+    val context = LocalContext.current
+    val now = LocalNowTick.current
     LazyColumn(Modifier.fillMaxSize()) {
         items(messages, key = { it.id }) { msg ->
+            val sender = if (msg.name == msg.address) BidiText.ltr(formatPhoneNumber(msg.address)) else msg.name
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+                    .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 PersonAvatar(msg.address)
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = if (msg.name == msg.address) BidiText.ltr(formatPhoneNumber(msg.address)) else msg.name,
+                        text = sender,
                         style = MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -185,12 +218,22 @@ private fun MessagesTab(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.semantics(mergeDescendants = true) {
+                            contentDescription = A11y.describe(sender, msg.body)
+                        }
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = formatListTime(msg.timestamp, now, context),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
                 IconButton(onClick = { onDelete(msg) }) {
                     Icon(
-                        Icons.Rounded.Close,
+                        Icons.Rounded.Delete,
                         contentDescription = stringResource(R.string.common_delete),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -201,7 +244,7 @@ private fun MessagesTab(
 }
 
 @Composable
-private fun EmptyFolder(text: String) {
+private fun EmptyFolder(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
     Column(
         Modifier
             .fillMaxSize()
@@ -210,7 +253,7 @@ private fun EmptyFolder(text: String) {
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            Icons.Outlined.DeleteOutline,
+            icon,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
