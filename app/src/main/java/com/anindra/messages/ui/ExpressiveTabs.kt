@@ -28,7 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /** A single option in an [ExpressiveTabs] row. */
-data class ExpressiveTab(val labelRes: Int, val icon: ImageVector)
+data class ExpressiveTab(val labelRes: Int, val icon: ImageVector? = null)
 
 /**
  * M3 Expressive single-select tab row built on a connected [ButtonGroup]: the
@@ -57,7 +57,11 @@ fun ExpressiveTabs(
             val icon = tab.icon
             customItem(
                 buttonGroupContent = {
-                    val contentPadding = ButtonDefaults.ButtonWithIconContentPadding
+                    val contentPadding = if (icon != null) {
+                        ButtonDefaults.ButtonWithIconContentPadding
+                    } else {
+                        ButtonDefaults.ContentPadding
+                    }
                     val layoutDirection = LocalLayoutDirection.current
                     ToggleButton(
                         checked = selected == index,
@@ -77,8 +81,10 @@ fun ExpressiveTabs(
                         contentPadding = contentPadding,
                         interactionSource = interactions[index]
                     ) {
-                        Icon(icon, contentDescription = null)
-                        Spacer(Modifier.size(ToggleButtonDefaults.IconSpacing))
+                        if (icon != null) {
+                            Icon(icon, contentDescription = null)
+                            Spacer(Modifier.size(ToggleButtonDefaults.IconSpacing))
+                        }
                         Text(
                             text = labels[index],
                             softWrap = false,
@@ -89,7 +95,7 @@ fun ExpressiveTabs(
                 },
                 menuContent = {
                     DropdownMenuItem(
-                        leadingIcon = { Icon(icon, contentDescription = null) },
+                        leadingIcon = icon?.let { { Icon(it, contentDescription = null) } },
                         text = { Text(labels[index]) },
                         onClick = { onSelect(index) }
                     )
