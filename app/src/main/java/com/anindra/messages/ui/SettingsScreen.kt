@@ -86,7 +86,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenTrash: () -> Unit = {},
     onOpenAdvanced: () -> Unit = {},
-    onOpenBlockedNumbers: () -> Unit = {},
+    onOpenSpamBlocked: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
@@ -115,7 +115,6 @@ fun SettingsScreen(
     var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
     var swipeActions by remember(revision) { mutableStateOf(vm.settings.swipeActionsEnabled) }
     var blocking by remember(revision) { mutableStateOf(vm.settings.blockingEnabled) }
-    val blockedNumbers by vm.blockedNumbers().collectAsState(initial = emptyList())
     val privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var forwarding by remember(revision) { mutableStateOf(vm.settings.forwardingEnabled) }
     var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
@@ -374,18 +373,14 @@ fun SettingsScreen(
                     onChecked = { blocking = it; vm.settings.blockingEnabled = it }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_blocked_numbers_title),
-                    subtitle = blockedNumbersSubtitle(
-                        stringResource(R.string.settings_blocked_numbers_none),
-                        stringResource(R.string.settings_blocked_numbers_count),
-                        blockedNumbers.size
-                    ),
-                    onClick = onOpenBlockedNumbers
-                )
-                SettingsRow(
                     title = stringResource(R.string.settings_trash_title),
                     subtitle = stringResource(R.string.settings_trash_subtitle),
                     onClick = onOpenTrash
+                )
+                SettingsRow(
+                    title = stringResource(R.string.conversations_spam_blocked),
+                    subtitle = stringResource(R.string.settings_spam_blocked_subtitle),
+                    onClick = onOpenSpamBlocked
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_backup_title),

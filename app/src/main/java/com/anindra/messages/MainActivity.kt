@@ -59,7 +59,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.R
 import androidx.compose.ui.res.stringResource
-import com.anindra.messages.data.BlockedNumber
+import com.anindra.messages.data.BlockedMessage
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.Repository
 import com.anindra.messages.sms.NotificationHelper
@@ -71,7 +71,7 @@ import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.SettingsScreen
 import com.anindra.messages.ui.AdvancedSettingsScreen
 import com.anindra.messages.ui.AccessibilityScreen
-import com.anindra.messages.ui.BlockedNumbersScreen
+import com.anindra.messages.ui.SpamBlockedScreen
 import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.A11yOptions
@@ -268,7 +268,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun trashedConversations(): Flow<List<Conversation>> = repo.trashedConversations()
 
-    fun blockedNumbers(): Flow<List<BlockedNumber>> = repo.blockedNumbers()
+    fun blockedMessages(): Flow<List<BlockedMessage>> = repo.blockedMessages()
 
     fun setArchived(id: Long, archived: Boolean) =
         scope.launch { repo.setArchivedSuspend(id, archived) }
@@ -431,6 +431,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun unblockNumber(number: String) {
         scope.launch(Dispatchers.IO) { repo.unblockNumber(number) }
+    }
+
+    fun deleteBlockedMessage(messageId: Long) {
+        scope.launch(Dispatchers.IO) { repo.deleteBlockedMessage(messageId) }
     }
 
     fun isNumberBlocked(number: String): Boolean = repo.isNumberBlocked(number)
@@ -763,7 +767,7 @@ class MainActivity : FragmentActivity() {
                         "trash" -> navRoute = "settings"
                         "advanced" -> navRoute = "settings"
                         "accessibility" -> navRoute = "advanced"
-                        "blocked" -> navRoute = "settings"
+                        "spam" -> navRoute = "settings"
                         else -> navRoute = "list"
                     }
                     // Clear ForegroundTracker when leaving chat
@@ -772,7 +776,7 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2, "accessibility" to 3)
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "advanced" to 2, "accessibility" to 3)
 
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     ConversationsScreen(
@@ -829,7 +833,7 @@ class MainActivity : FragmentActivity() {
                                         onBack = { navRoute = "list" },
                                         onOpenTrash = { navRoute = "trash" },
                                         onOpenAdvanced = { navRoute = "advanced" },
-                                        onOpenBlockedNumbers = { navRoute = "blocked" },
+                                        onOpenSpamBlocked = { navRoute = "spam" },
                                         scrollState = settingsScroll
                                     )
                                     "advanced" -> AdvancedSettingsScreen(
@@ -842,7 +846,11 @@ class MainActivity : FragmentActivity() {
                                         onBack = { navRoute = "advanced" }
                                     )
                                     "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
-                                    "blocked" -> BlockedNumbersScreen(vm = vm, onBack = { navRoute = "settings" })
+                                    "spam" -> SpamBlockedScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" },
+                                        onOpenConversation = { id -> chatId = id; navRoute = "chat" }
+                                    )
                                     "details" -> ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
