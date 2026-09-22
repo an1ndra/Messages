@@ -13,6 +13,8 @@
     <string name="settings_advanced_permanent_delete_on">Permanent delete is on. This conversation and its messages will be removed from your device right away — not moved to trash — and cannot be restored.</string>
 
     <string name="settings_font_title">Font</string>
+    <string name="settings_advanced_emoji_button">Emoji button</string>
+    <string name="settings_advanced_emoji_button_desc">Show the emoji button in the message field</string>
     <string name="settings_choose_font">Choose font</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

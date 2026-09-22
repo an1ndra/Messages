@@ -30,6 +30,7 @@
     <string name="chat_retry">다시 시도</string>
     <string name="chat_retry_sim">SIM으로 다시 시도</string>
     <string name="chat_sending_via">%s(으)로 보내는 중</string>
+    <string name="chat_switch_sim">SIM 전환</string>
     <string name="chat_scheduled_for">%s에 예약됨</string>
     <string name="chat_search_contacts">연락처 검색</string>
     <string name="chat_add_people">사람 추가</string>

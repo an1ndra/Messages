@@ -144,7 +144,6 @@ fun WorkProfileBadge(modifier: Modifier = Modifier) {
     )
 }
 
-private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
 private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
 private val dividerFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())
 
@@ -161,7 +160,7 @@ fun formatListTime(ts: Long, now: Long = System.currentTimeMillis(), ctx: androi
     return when {
         now - ts < 60_000L -> ctx.getString(R.string.time_now)
         now - ts < 3_600_000L -> String.format(ctx.getString(R.string.time_minutes), (now - ts) / 60_000)
-        sameDay(ts, now) -> timeFmt.format(zoned(ts))
+        sameDay(ts, now) -> timeOnlyFormatter(is24HourFormat(ctx)).format(zoned(ts))
         isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
         else -> dayFmt.format(zoned(ts))
     }
@@ -175,7 +174,8 @@ fun formatDividerTime(ts: Long, ctx: android.content.Context): String {
     }
 }
 
-fun formatTimeOnly(ts: Long): String = timeFmt.format(zoned(ts))
+fun formatTimeOnly(ts: Long, is24Hour: Boolean): String =
+    timeOnlyFormatter(is24Hour).format(zoned(ts))
 
 private fun epochDay(ts: Long): Long {
     val offset = zone.rules.getOffset(Instant.ofEpochMilli(ts))

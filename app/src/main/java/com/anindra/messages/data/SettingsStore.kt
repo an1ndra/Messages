@@ -52,6 +52,7 @@ class SettingsStore(context: Context) {
         const val NOTIFY_SOUND_UNIVERSFIELD_09 = "universfield_09"
         const val NOTIFY_SOUND_UNIVERSFIELD_062 = "universfield_062"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
+        const val KEY_EMOJI_BUTTON = "emoji_button_enabled"
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
         const val KEY_PERMANENT_DELETE_WARN = "permanent_delete_warn"
         const val KEY_REVERSE_SWIPE = "reverse_swipe_enabled"
@@ -77,6 +78,7 @@ class SettingsStore(context: Context) {
         const val DEFAULTS_SOUNDS = true
         const val DEFAULTS_DELIVERY = false
         const val DEFAULTS_SIM_SUBSCRIPTION_ID = -1
+        const val DEFAULTS_EMOJI_BUTTON = false
     }
 
     var themeMode: String
@@ -199,6 +201,10 @@ class SettingsStore(context: Context) {
     var showSimIndicator: Boolean
         get() = prefs.getBoolean(KEY_SHOW_SIM_INDICATOR, true)
         set(v) { prefs.edit().putBoolean(KEY_SHOW_SIM_INDICATOR, v).apply(); _revision.value++ }
+
+    var emojiButtonEnabled: Boolean
+        get() = prefs.getBoolean(KEY_EMOJI_BUTTON, DEFAULTS_EMOJI_BUTTON)
+        set(v) { prefs.edit().putBoolean(KEY_EMOJI_BUTTON, v).apply(); _revision.value++ }
 
     var permanentDeleteEnabled: Boolean
         get() = prefs.getBoolean(KEY_PERMANENT_DELETE, false)

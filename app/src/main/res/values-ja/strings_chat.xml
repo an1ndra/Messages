@@ -30,6 +30,7 @@
     <string name="chat_retry">再試行</string>
     <string name="chat_retry_sim">SIMで再試行</string>
     <string name="chat_sending_via">%s 経由で送信中</string>
+    <string name="chat_switch_sim">SIM を切り替え</string>
     <string name="chat_scheduled_for">%s にスケジュールされました</string>
     <string name="chat_search_contacts">連絡先を検索</string>
     <string name="chat_add_people">人を追加</string>

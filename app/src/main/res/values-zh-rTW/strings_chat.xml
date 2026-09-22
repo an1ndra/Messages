@@ -27,6 +27,7 @@
     <string name="chat_retry">重試</string>
     <string name="chat_retry_sim">重試使用 SIM 卡</string>
     <string name="chat_sending_via">透過 %s 傳送</string>
+    <string name="chat_switch_sim">切換 SIM 卡</string>
     <string name="chat_scheduled_for">已排定於 %s 傳送</string>
     <string name="chat_search_contacts">搜尋通訊錄</string>
     <string name="chat_add_people">加入人員</string>

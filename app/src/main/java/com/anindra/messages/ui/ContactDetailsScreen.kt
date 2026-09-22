@@ -82,7 +82,7 @@ fun ContactDetailsScreen(
     }
     val address = convo!!.address
     val name = convo!!.name
-    val display = convo!!.display
+    val display = BidiText.ltr(convo!!.display)
     val isKnownContact = name != address
     val workProfile = phoneKey(address).let { it.isNotEmpty() && it in workNums }
 
