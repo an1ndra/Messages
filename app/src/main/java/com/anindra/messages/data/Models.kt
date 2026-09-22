@@ -9,6 +9,7 @@ data class Conversation(
     val unreadCount: Int,
     val isMe: Boolean,
     val archived: Boolean = false,
+    val blocked: Boolean = false,
     val pinned: Boolean = false,
     val draft: String = "",
     val draftDate: Long = 0,

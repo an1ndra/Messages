@@ -72,6 +72,7 @@ import com.anindra.messages.ui.SettingsScreen
 import com.anindra.messages.ui.AdvancedSettingsScreen
 import com.anindra.messages.ui.AccessibilityScreen
 import com.anindra.messages.ui.BlockedNumbersScreen
+import com.anindra.messages.ui.SpamBlockedScreen
 import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.A11yOptions
@@ -764,6 +765,7 @@ class MainActivity : FragmentActivity() {
                         "advanced" -> navRoute = "settings"
                         "accessibility" -> navRoute = "advanced"
                         "blocked" -> navRoute = "settings"
+                        "spam" -> navRoute = "settings"
                         else -> navRoute = "list"
                     }
                     // Clear ForegroundTracker when leaving chat
@@ -772,7 +774,7 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2, "accessibility" to 3)
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "blocked" to 2, "spam" to 2, "advanced" to 2, "accessibility" to 3)
 
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     ConversationsScreen(
@@ -830,6 +832,7 @@ class MainActivity : FragmentActivity() {
                                         onOpenTrash = { navRoute = "trash" },
                                         onOpenAdvanced = { navRoute = "advanced" },
                                         onOpenBlockedNumbers = { navRoute = "blocked" },
+                                        onOpenSpamBlocked = { navRoute = "spam" },
                                         scrollState = settingsScroll
                                     )
                                     "advanced" -> AdvancedSettingsScreen(
@@ -843,6 +846,11 @@ class MainActivity : FragmentActivity() {
                                     )
                                     "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
                                     "blocked" -> BlockedNumbersScreen(vm = vm, onBack = { navRoute = "settings" })
+                                    "spam" -> SpamBlockedScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" },
+                                        onOpenConversation = { id -> chatId = id; navRoute = "chat" }
+                                    )
                                     "details" -> ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,

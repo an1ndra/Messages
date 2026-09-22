@@ -757,8 +757,8 @@ fun ChatScreen(
                 onBlock = {
                     convo?.address?.let { addr ->
                         vm.blockNumber(addr)
-                        numberIsBlocked = true
-                        Toast.makeText(context, context.getString(R.string.chat_number_blocked), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.chat_moved_to_spam), Toast.LENGTH_SHORT).show()
+                        onBack()
                     }
                 },
                 onUnblock = {
