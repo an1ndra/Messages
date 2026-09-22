@@ -11,13 +11,17 @@ class TrashReasonTest {
     fun keysAreStable() {
         assertEquals("manual", TrashReason.MANUAL)
         assertEquals("blocked_keyword", TrashReason.BLOCKED_KEYWORD)
+        assertEquals("blocked_number", TrashReason.BLOCKED_NUMBER)
     }
 
     @Test
-    fun onlyTheBlockedReasonIsFlagged() {
+    fun blockedReasonsAreDistinct() {
         assertTrue(TrashReason.isBlockedKeyword(TrashReason.BLOCKED_KEYWORD))
+        assertTrue(TrashReason.isBlockedNumber(TrashReason.BLOCKED_NUMBER))
+        assertFalse(TrashReason.isBlockedKeyword(TrashReason.BLOCKED_NUMBER))
+        assertFalse(TrashReason.isBlockedNumber(TrashReason.BLOCKED_KEYWORD))
         assertFalse(TrashReason.isBlockedKeyword(TrashReason.MANUAL))
-        assertFalse(TrashReason.isBlockedKeyword(""))
+        assertFalse(TrashReason.isBlockedNumber(""))
     }
 
     @Test

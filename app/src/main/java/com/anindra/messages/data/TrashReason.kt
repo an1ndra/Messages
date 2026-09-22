@@ -4,6 +4,8 @@ package com.anindra.messages.data
 object TrashReason {
     const val MANUAL = "manual"
     const val BLOCKED_KEYWORD = "blocked_keyword"
+    const val BLOCKED_NUMBER = "blocked_number"
 
     fun isBlockedKeyword(reason: String): Boolean = reason == BLOCKED_KEYWORD
+    fun isBlockedNumber(reason: String): Boolean = reason == BLOCKED_NUMBER
 }
