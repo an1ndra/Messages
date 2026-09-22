@@ -27,6 +27,7 @@
     <string name="chat_retry">重试</string>
     <string name="chat_retry_sim">重试使用 SIM 卡</string>
     <string name="chat_sending_via">通过 %s 发送</string>
+    <string name="chat_switch_sim">切换 SIM 卡</string>
     <string name="chat_scheduled_for">已计划于 %s 发送</string>
     <string name="chat_search_contacts">搜索联系人</string>
     <string name="chat_add_people">添加人员</string>

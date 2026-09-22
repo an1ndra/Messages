@@ -30,6 +30,7 @@
     <string name="chat_retry">Retry</string>
     <string name="chat_retry_sim">Retry with SIM</string>
     <string name="chat_sending_via">Sending via %s</string>
+    <string name="chat_switch_sim">Switch SIM</string>
     <string name="chat_scheduled_for">Scheduled for %s</string>
     <string name="chat_search_contacts">Search contacts</string>
     <string name="chat_add_people">Add people</string>

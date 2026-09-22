@@ -84,8 +84,6 @@ fun BubbleCorners.toShape(): RoundedCornerShape = RoundedCornerShape(
     bottomEnd = bottomEnd.dp
 )
 
-private val groupTimeFmt: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
 private val groupDayFmt: DateTimeFormatter =
     DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault())
 private val groupDayYearFmt: DateTimeFormatter =
@@ -104,11 +102,12 @@ private fun isYesterday(ts: Long, now: Long): Boolean =
  *  - same year  -> "Sunday, Aug 2 • 3:15 PM"
  *  - older      -> "Sunday, Aug 2, 2024 • 3:15 PM"
  */
-fun formatGroupLabel(ts: Long, now: Long = System.currentTimeMillis()): String {
+fun formatGroupLabel(ts: Long, is24Hour: Boolean, now: Long = System.currentTimeMillis()): String {
     val t = at(ts)
-    val dateAndTime = { date: String -> "$date \u2022 ${groupTimeFmt.format(t)}" }
+    val timeFmt = timeOnlyFormatter(is24Hour)
+    val dateAndTime = { date: String -> "$date \u2022 ${timeFmt.format(t)}" }
     return when {
-        sameDay(ts, now) -> groupTimeFmt.format(t)
+        sameDay(ts, now) -> timeFmt.format(t)
         isYesterday(ts, now) -> dateAndTime("Yesterday")
         t.year == at(now).year -> dateAndTime(groupDayFmt.format(t))
         else -> dateAndTime(groupDayYearFmt.format(t))
