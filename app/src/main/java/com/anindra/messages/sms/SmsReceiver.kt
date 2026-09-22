@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import com.anindra.messages.data.KeywordFilter
+import com.anindra.messages.data.MessageBody
 import com.anindra.messages.data.Repository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,11 +59,14 @@ class SmsReceiver : BroadcastReceiver() {
             -1
         }
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
-            val body = parts.joinToString("") { it.messageBody!! }
+            val body = MessageBody.normalize(parts.joinToString("") { it.messageBody!! })
 
-            // Blocked sender: drop the message entirely — not stored, no
-            // notification, no sound (blocking a number hides it everywhere).
-            if (repo.isAddressBlocked(address)) continue
+            // Blocked sender: keep the message in the "Spam & blocked" folder
+            // (no notification, no sound) instead of dropping it.
+            if (repo.isAddressBlocked(address)) {
+                repo.receiveSpamMessage(address, body, subId = subId)
+                continue
+            }
 
             // Blocked keyword: keep the message but move its conversation to
             // Trash instead of dropping it, and skip the notification/sound.
