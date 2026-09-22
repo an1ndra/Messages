@@ -11,6 +11,23 @@ Offline SMS messaging app for Android (Google Messages clone).
 ~/android/platform-tools/adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+### Start the emulator (`emulator-5554`)
+
+Launch the **GUI** emulator (drop `-no-window` for headless; the regression
+scripts need `emulator-5554` booted), then wait for `sys.boot_completed`:
+
+```bash
+~/android/emulator/emulator -avd Pixel_7_AOSP_35 -no-audio -no-boot-anim \
+    -gpu swiftshader_indirect -no-snapshot &
+~/android/platform-tools/adb wait-for-device
+until [ "$(~/android/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 5; done
+```
+
+Available AVDs (`~/android/emulator/emulator -list-avds`): `Pixel_7_AOSP_35`
+(default, 1080x2400 @ 420dpi), `Pixel_7_AOSP_36`, `AOSP_17`, `Pixel_7_G34`,
+`Pixel_Android12`, `android31`. Stop it with
+`~/android/platform-tools/adb -s emulator-5554 emu kill`.
+
 ## Where docs live
 
 - App dev guide: [docs/Development.md](docs/Development.md) / [docs/Developer.md](docs/Developer.md)

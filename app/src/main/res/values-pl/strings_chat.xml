@@ -30,6 +30,7 @@
     <string name="chat_retry">Ponów</string>
     <string name="chat_retry_sim">Ponów z SIM</string>
     <string name="chat_sending_via">Wysyłanie przez %s</string>
+    <string name="chat_switch_sim">Przełącz SIM</string>
     <string name="chat_scheduled_for">Zaplanowane na %s</string>
     <string name="chat_search_contacts">Szukaj w kontaktach</string>
     <string name="chat_add_people">Dodaj osoby</string>

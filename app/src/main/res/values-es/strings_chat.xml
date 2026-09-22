@@ -30,6 +30,7 @@
     <string name="chat_retry">Reintentar</string>
     <string name="chat_retry_sim">Reintentar con SIM</string>
     <string name="chat_sending_via">Enviando a través de %s</string>
+    <string name="chat_switch_sim">Cambiar SIM</string>
     <string name="chat_scheduled_for">Programado para %s</string>
     <string name="chat_search_contacts">Buscar contactos</string>
     <string name="chat_add_people">Agregar personas</string>
