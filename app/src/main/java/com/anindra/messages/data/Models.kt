@@ -40,6 +40,16 @@ data class BlockedNumber(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+/** A keyword-blocked SMS parked in the "Spam & blocked" folder. */
+data class BlockedMessage(
+    val id: Long,
+    val conversationId: Long,
+    val address: String,
+    val name: String,
+    val body: String,
+    val timestamp: Long
+)
+
 data class ScheduledMessage(
     val id: Long = 0,
     val address: String,
