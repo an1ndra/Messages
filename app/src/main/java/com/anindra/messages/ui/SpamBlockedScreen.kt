@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,20 +19,27 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -42,9 +50,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
+import com.anindra.messages.data.BlockedMessage
+import com.anindra.messages.data.Conversation
 
-/** Google-Messages-style "Spam & blocked" folder: blocked conversations live
- *  here instead of the inbox. Unblock restores them. */
+/** Google-Messages-style "Spam & blocked" folder. Two tabs: blocked
+ *  conversations (blocked numbers) and blocked messages (keyword blocks). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpamBlockedScreen(
@@ -54,7 +64,9 @@ fun SpamBlockedScreen(
 ) {
     BackHandler(onBack = onBack)
     val conversations by vm.conversations.collectAsState(initial = emptyList())
-    val blocked = remember(conversations) { conversations.filter { it.blocked } }
+    val blockedConversations = remember(conversations) { conversations.filter { it.blocked } }
+    val blockedMessages by vm.blockedMessages().collectAsState(initial = emptyList())
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     val context = LocalContext.current
 
     Scaffold(
@@ -70,77 +82,160 @@ fun SpamBlockedScreen(
             )
         }
     ) { padding ->
-        if (blocked.isEmpty()) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    Icons.Rounded.Block,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            PrimaryTabRow(selectedTabIndex = tab) {
+                Tab(
+                    selected = tab == 0,
+                    onClick = { tab = 0 },
+                    text = { Text(stringResource(R.string.spam_tab_conversations)) }
                 )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    stringResource(R.string.conversations_spam_blocked_empty),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                Tab(
+                    selected = tab == 1,
+                    onClick = { tab = 1 },
+                    text = { Text(stringResource(R.string.spam_tab_messages)) }
                 )
             }
-        } else {
-            LazyColumn(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                items(blocked, key = { it.id }) { convo ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpenConversation(convo.id) }
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        PersonAvatar(convo.address)
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Surface(
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.access_blocked),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                        TextButton(onClick = {
-                            vm.unblockNumber(convo.address)
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.chat_number_unblocked),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }) {
-                            Text(stringResource(R.string.chat_unblock))
-                        }
+            if (tab == 0) {
+                ConversationsTab(
+                    blocked = blockedConversations,
+                    onOpenConversation = onOpenConversation,
+                    onUnblock = { convo ->
+                        vm.unblockNumber(convo.address)
+                        Toast.makeText(context, context.getString(R.string.chat_number_unblocked), Toast.LENGTH_SHORT).show()
                     }
+                )
+            } else {
+                MessagesTab(
+                    messages = blockedMessages,
+                    onDelete = { vm.deleteBlockedMessage(it.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConversationsTab(
+    blocked: List<Conversation>,
+    onOpenConversation: (Long) -> Unit,
+    onUnblock: (Conversation) -> Unit
+) {
+    if (blocked.isEmpty()) {
+        EmptyFolder(stringResource(R.string.conversations_spam_blocked_empty))
+        return
+    }
+    LazyColumn(Modifier.fillMaxSize()) {
+        items(blocked, key = { it.id }) { convo ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenConversation(convo.id) }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PersonAvatar(convo.address)
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    TagChip(stringResource(R.string.access_blocked))
+                }
+                TextButton(onClick = { onUnblock(convo) }) {
+                    Text(stringResource(R.string.chat_unblock))
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MessagesTab(
+    messages: List<BlockedMessage>,
+    onDelete: (BlockedMessage) -> Unit
+) {
+    if (messages.isEmpty()) {
+        EmptyFolder(stringResource(R.string.spam_blocked_messages_empty))
+        return
+    }
+    LazyColumn(Modifier.fillMaxSize()) {
+        items(messages, key = { it.id }) { msg ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PersonAvatar(msg.address)
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = if (msg.name == msg.address) BidiText.ltr(formatPhoneNumber(msg.address)) else msg.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = msg.body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                IconButton(onClick = { onDelete(msg) }) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.common_delete),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyFolder(text: String) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Outlined.DeleteOutline,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun TagChip(text: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        )
     }
 }

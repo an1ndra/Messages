@@ -25,7 +25,7 @@ private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
 enum class ImportMode { REPLACE, MERGE }
 
-private const val DB_VERSION = 19
+private const val DB_VERSION = 20
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -68,7 +68,8 @@ class Db(context: Context) :
                 delivered_at INTEGER NOT NULL DEFAULT 0,
                 locked INTEGER NOT NULL DEFAULT 0,
                 sub_id INTEGER NOT NULL DEFAULT -1,
-                deleted_at INTEGER NOT NULL DEFAULT 0)"""
+                deleted_at INTEGER NOT NULL DEFAULT 0,
+                blocked_reason TEXT NOT NULL DEFAULT '')"""
         )
         db.execSQL("CREATE INDEX idx_messages_conversation ON messages(conversation_id)")
         db.execSQL("CREATE INDEX idx_messages_conv_ts ON messages(conversation_id, timestamp)")
@@ -198,6 +199,9 @@ class Db(context: Context) :
         }
         if (oldVersion < 19) {
             db.execSQL("ALTER TABLE conversations ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0")
+        }
+        if (oldVersion < 20) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN blocked_reason TEXT NOT NULL DEFAULT ''")
         }
     }
 
@@ -663,24 +667,60 @@ class Repository(private val context: Context) {
         return convoId
     }
 
-    /** Stores a keyword-blocked message but moves its conversation to Trash
-     *  (soft delete) instead of dropping it, so it stays recoverable via
-     *  Trash → Restore. No notification and no unread badge. */
+    /** Stores a keyword-blocked SMS hidden in its conversation and parked in the
+     *  "Spam & blocked" folder (message-level soft delete). The conversation
+     *  stays in the inbox; no notification and no unread badge. */
     fun receiveBlockedMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
         val convoId = getOrCreateConversationBlocking(address, null, subId)
         db.writableDatabase.execSQL(
-            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
-               VALUES(?,?,?,?,?,?,?,?)""",
-            arrayOf<Any?>(convoId, body, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id,
+               deleted_at,blocked_reason) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+            arrayOf<Any?>(
+                convoId, body, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId,
+                now, TrashReason.BLOCKED_KEYWORD
+            )
         )
-        db.writableDatabase.execSQL(
-            """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
-               unread_count=0,deleted_at=?,deleted_reason=? WHERE id=?""",
-            arrayOf<Any?>(body, now, now, TrashReason.BLOCKED_KEYWORD, convoId)
-        )
+        refreshConversationSnippetFor(convoId)
         notifyChanged()
         return convoId
+    }
+
+    /** Keyword-blocked messages shown under Spam & blocked → Messages. */
+    fun blockedMessages(): Flow<List<BlockedMessage>> = observe {
+        val out = mutableListOf<BlockedMessage>()
+        db.readableDatabase.rawQuery(
+            """SELECT m.id,m.conversation_id,c.address,c.name,
+               COALESCE(p.display_destination, c.address),m.body,m.timestamp
+               FROM messages m
+               JOIN conversations c ON c.id=m.conversation_id
+               LEFT JOIN participants p ON p.normalized_destination=c.address
+               WHERE m.blocked_reason!='' AND m.deleted_at>0
+               ORDER BY m.timestamp DESC""",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    BlockedMessage(
+                        id = c.getLong(0),
+                        conversationId = c.getLong(1),
+                        address = c.getString(2),
+                        name = c.getString(4) ?: c.getString(3),
+                        body = c.getString(5),
+                        timestamp = c.getLong(6)
+                    )
+                )
+            }
+        }
+        out
+    }
+
+    fun deleteBlockedMessage(messageId: Long) {
+        db.writableDatabase.execSQL(
+            "DELETE FROM messages WHERE id=? AND blocked_reason!=''",
+            arrayOf(messageId)
+        )
+        notifyChanged()
     }
 
     /** Stores an SMS from a blocked number in the "Spam & blocked" folder:
