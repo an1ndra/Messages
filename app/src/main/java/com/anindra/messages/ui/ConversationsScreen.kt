@@ -142,7 +142,6 @@ fun ConversationsScreen(
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var showArchived by remember { mutableStateOf(false) }
-    val view = if (showArchived) ConversationView.ARCHIVED else ConversationView.INBOX
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -278,8 +277,11 @@ fun ConversationsScreen(
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
-    val displayed = remember(conversations, view, query, unreadAtTop, rowSettings.hideLinks) {
-        conversations.filter { matchesView(it, view) }.let { list ->
+    val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks) {
+        conversations.filter { convo ->
+            if (showArchived) convo.archived
+            else !convo.archived
+        }.let { list ->
             if (query.isBlank()) list
             else list.filter {
                 val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
@@ -289,7 +291,7 @@ fun ConversationsScreen(
         }.let { list ->
             // Unread-at-top: stable reorder — pinned stays on top, then unread
             // conversations above read ones, timestamp order preserved within a tier.
-            if (unreadAtTop && view == ConversationView.INBOX) {
+            if (unreadAtTop && !showArchived) {
                 list.sortedWith(
                     compareBy({ !it.pinned }, { if (it.unreadCount > 0) 0 else 1 }, { -it.timestamp })
                 )
@@ -301,7 +303,7 @@ fun ConversationsScreen(
 
     // Reveal a new unread only while the user is still at the top.
     LaunchedEffect(displayed) {
-        if (view != ConversationView.INBOX || query.isNotBlank()) {
+        if (showArchived || query.isNotBlank()) {
             surfacedUnread = displayed.associate { it.id to it.unreadCount }
             unreadSeeded = true
             return@LaunchedEffect
@@ -322,7 +324,7 @@ fun ConversationsScreen(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            if (view == ConversationView.INBOX) {
+            if (!showArchived) {
                 StartChatFab(expanded = fabExpanded, onClick = onNewChat)
             }
         }
@@ -461,7 +463,7 @@ fun ConversationsScreen(
                             SwipeableConversationItem(
                                 context,
                                 settings = rowSettings,
-                                swipeEnabled = rowSettings.swipeEnabled && view == ConversationView.INBOX,
+                                swipeEnabled = rowSettings.swipeEnabled && !showArchived,
                                 convo = convo,
                                 workProfile = workNums.contains(phoneKey(convo.address)),
                                 showArchived = showArchived,
@@ -525,9 +527,7 @@ fun ConversationsScreen(
                     }
                     if (rowSettings.blockingEnabled) {
                         SheetActionRow(Icons.Rounded.Block, stringResource(R.string.sheet_block), MaterialTheme.colorScheme.error) {
-                            sheetConvoId = -1L
-                            vm.blockNumber(sheetConvo.address)
-                            Toast.makeText(context, context.getString(R.string.chat_moved_to_spam), Toast.LENGTH_SHORT).show()
+                            sheetConvoId = -1L; vm.blockNumber(sheetConvo.address)
                         }
                     }
                 }
@@ -737,8 +737,7 @@ private fun ConversationRow(
         previewLabel,
         formatListTime(convo.timestamp, now, context),
         if (convo.unreadCount > 0) context.getString(R.string.access_unread, convo.unreadCount) else null,
-        if (convo.pinned && settings.pinnedEnabled) context.getString(R.string.access_pinned) else null,
-        if (convo.blocked) context.getString(R.string.access_blocked) else null
+        if (convo.pinned && settings.pinnedEnabled) context.getString(R.string.access_pinned) else null
     )
     Box(modifier = Modifier.fillMaxWidth()) {
         val pinnedTint = if (convo.pinned && settings.pinnedEnabled) {
@@ -795,15 +794,6 @@ private fun ConversationRow(
                     if (workProfile) {
                         Spacer(Modifier.width(4.dp))
                         WorkProfileBadge()
-                    }
-                    if (convo.blocked) {
-                        Spacer(Modifier.width(4.dp))
-                        Icon(
-                            Icons.Rounded.Block,
-                            contentDescription = stringResource(R.string.access_blocked),
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
                 Spacer(Modifier.height(2.dp))
