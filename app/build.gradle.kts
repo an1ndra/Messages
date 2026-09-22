@@ -5,7 +5,14 @@ plugins {
 
 android {
     namespace = "com.anindra.messages"
-    compileSdk = 37
+    // API 37 is published as `android-37.0`; pinning the minor level keeps the
+    // target hash stable across SDK installs (F-Droid / CI otherwise look for
+    // `android-37` and fail).
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 0
+        }
+    }
 
     dependenciesInfo {
         includeInApk = false
