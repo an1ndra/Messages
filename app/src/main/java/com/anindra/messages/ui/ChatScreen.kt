@@ -1935,13 +1935,15 @@ private fun InputBar(
                                 Icon(
                                     painterResource(R.drawable.ic_sim_vector),
                                     stringResource(R.string.chat_switch_sim),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(24.dp)
                                 )
                                 Text(
                                     text = simLabel,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = Color.White,
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
                         }

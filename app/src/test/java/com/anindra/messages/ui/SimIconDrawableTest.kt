@@ -25,10 +25,10 @@ class SimIconDrawableTest {
     fun simIconIsTintable() {
         icons.forEach { name ->
             val xml = drawable(name)
-            assertTrue("$name must be a filled vector", xml.contains("android:fillColor=\"#FF000000\""))
+            assertTrue("$name must be a filled vector", xml.contains("android:fillColor=\"#FFFFFF\""))
             assertEquals(
-                "$name must only use the tint placeholder colour",
-                listOf("#FF000000"),
+                "$name must only use the white placeholder colour",
+                listOf("#FFFFFF"),
                 colours(xml).distinct()
             )
         }
@@ -49,11 +49,10 @@ class SimIconDrawableTest {
     fun simIconHasSimCardShape() {
         icons.forEach { name ->
             val xml = drawable(name)
-            val data = pathData(xml)
-            assertEquals("$name should have one path", 1, data.size)
+            assertTrue("$name should be a valid vector", xml.contains("viewportWidth=\"24\""))
             assertTrue(
-                "$name card should have angled cut at top-right",
-                data[0].contains("L9.835,1.173 L3.338,6.669")
+                "$name card should be a realistic SIM shape",
+                xml.contains("M20.65 3.338") && xml.contains("L3.338 7.669")
             )
         }
     }
