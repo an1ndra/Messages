@@ -2,4 +2,5 @@
 <paths>
     <cache-path name="camera" path="camera/" />
     <cache-path name="mms" path="." />
+    <files-path name="mms-import" path="mms-import/" />
 </paths>

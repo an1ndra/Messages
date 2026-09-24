@@ -1314,6 +1314,78 @@ class Repository(private val context: Context) {
         data class Error(val message: String) : ImportResult
     }
 
+    /**
+     * Imports an SMS Import / Export (sms-ie) backup. Messages are matched to
+     * existing conversations by canonical address; MMS attachments are copied
+     * into app storage so they survive the backup file going away.
+     */
+    fun importSmsIe(messages: List<SmsIeBackup.Message>): Int {
+        if (messages.isEmpty()) return 0
+        val database = db.writableDatabase
+        var added = 0
+        database.beginTransaction()
+        try {
+            for (msg in messages.sortedBy { it.timestamp }) {
+                val address = canonical(msg.address).ifEmpty { msg.address }
+                val cid = matchConversationId(database, address) ?: database.insertOrThrow(
+                    "conversations", null, ContentValues().apply {
+                        put("address", address)
+                        put("name", contactNameFor(address) ?: address)
+                    }
+                )
+                val image = msg.imageBytes
+                database.insertOrThrow("messages", null, ContentValues().apply {
+                    put("conversation_id", cid)
+                    put("body", msg.body)
+                    put("timestamp", msg.timestamp)
+                    put("is_me", if (msg.isMe) 1 else 0)
+                    put("status", msg.status)
+                    put("transport", if (msg.isMms) MmsSupport.TRANSPORT_MMS else MmsSupport.TRANSPORT_SMS)
+                    put("media_type", if (image != null) "image" else "text")
+                    put("media_uri", if (image != null) storeImportedImage(image, msg) else "")
+                })
+                if (!msg.isMe && !msg.read) {
+                    database.execSQL(
+                        "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
+                    )
+                }
+                upsertParticipant(database, address)
+                added++
+            }
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+        refreshConversationSnippets()
+        reMigrateParticipants()
+        notifyChanged()
+        return added
+    }
+
+    /** Copies an imported MMS attachment into app storage and returns its URI. */
+    private fun storeImportedImage(bytes: ByteArray, msg: SmsIeBackup.Message): String {
+        return try {
+            val dir = File(context.filesDir, "mms-import").apply { mkdirs() }
+            val safeName = msg.imageName.ifBlank { "image.${SmsIeBackup.extensionFor(msg.imageMime)}" }
+                .replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val file = File(dir, "${msg.timestamp}_$safeName")
+            file.writeBytes(bytes)
+            "content://${context.packageName}.fileprovider/mms/${file.name}"
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    fun importSmsIeFrom(context: Context, uri: android.net.Uri): ImportResult {
+        val loaded = SmsIeReader.load(context, uri)
+            ?: return ImportResult.Error("Cannot read that backup file")
+        if (loaded.parsed.messages.isEmpty()) {
+            return ImportResult.Error("No messages found in that backup")
+        }
+        val added = importSmsIe(loaded.parsed.messages)
+        return ImportResult.Success(added)
+    }
+
     fun importDatabase(
         context: Context,
         sourceUri: android.net.Uri,

@@ -76,6 +76,9 @@
     <string name="settings_backup_saved_location">Backup saved with PIN to %s</string>
     <string name="settings_import_title">Import messages</string>
     <string name="settings_import_subtitle">Import a backup database file</string>
+    <string name="settings_import_sms_ie_title">Import from SMS Backup &amp; Restore</string>
+    <string name="settings_import_sms_ie_subtitle">Read an SMS Import / Export (.zip or .json) backup</string>
+    <string name="settings_import_sms_ie_done">Imported %1$d messages</string>
     <string name="settings_import_failed">Import failed: %s</string>
     <string name="settings_merge_title">Merge with existing messages</string>
     <string name="settings_merge_subtitle">Keep current messages and add the backup data</string>
