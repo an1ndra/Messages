@@ -331,7 +331,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (!isPhoneNumber(convo.address)) return@launch
             val stored = repo.sendMedia(conversationId, "image", uri.toString()) ?: return@launch
             val handedOff = SmsSender.sendMms(
-                getApplication(), stored.id, convo.address, uri, settings.simSubscriptionId
+                getApplication(), stored.id, convo.address, uri, settings.simSubscriptionId,
+                stored.body
             )
             if (!handedOff) {
                 repo.markMessageStatusSuspend(stored.id, "failed")
@@ -904,6 +905,9 @@ class MainActivity : FragmentActivity() {
             repo.refreshContactNames()
             lastResumeTime = now
         }
+        // Catch MMS whose WAP push was missed (e.g. the app was not the default
+        // handler at the time); they stay announced in the provider until fetched.
+        com.anindra.messages.sms.MmsDownloader.requestPending(this)
     }
 
     override fun onPause() {
@@ -922,10 +926,24 @@ class MainActivity : FragmentActivity() {
         )
     }
 
+    /** Debug builds only: `--es mms_probe <media uri> --es mms_probe_to <number>`
+     *  sends a single MMS so the PDU/outbox hand-off can be asserted on an
+     *  emulator, which has no MMSC to actually deliver to. */
+    private fun applyMmsProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val media = intent.getStringExtra("mms_probe") ?: return
+        val to = intent.getStringExtra("mms_probe_to") ?: return
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
+        vm.openOrCreate(to, null) { id -> vm.sendMediaMessage(id, android.net.Uri.parse(media)) }
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         applyFakeDualSim(intent)
+        applyMmsProbe(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
