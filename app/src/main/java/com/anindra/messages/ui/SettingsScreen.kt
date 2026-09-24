@@ -181,6 +181,20 @@ fun SettingsScreen(
         }
     }
 
+    val smsIeLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            vm.importSmsIe(it) { count ->
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.settings_import_sms_ie_done, count),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
     val backupFolderLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -403,6 +417,20 @@ fun SettingsScreen(
                     onClick = {
                         pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
                         importLauncher.launch(arrayOf("application/octet-stream", "application/x-sqlite3"))
+                    }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_import_sms_ie_title),
+                    subtitle = stringResource(R.string.settings_import_sms_ie_subtitle),
+                    onClick = {
+                        smsIeLauncher.launch(
+                            arrayOf(
+                                "application/zip",
+                                "application/json",
+                                "application/octet-stream",
+                                "*/*"
+                            )
+                        )
                     }
                 )
             }

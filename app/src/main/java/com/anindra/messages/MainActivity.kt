@@ -440,8 +440,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun peekBackupFormat(uri: Uri, onResult: (com.anindra.messages.data.BackupFormat) -> Unit) {
+    /** Imports an SMS Import / Export (sms-ie) backup file. */
+    fun importSmsIe(uri: Uri, onResult: (Int) -> Unit) {
+        importLoading.value = 0
         scope.launch {
+            val added = withContext(Dispatchers.IO) {
+                runCatching {
+                    repo.importSmsIeFrom(getApplication(), uri)
+                }.getOrNull()
+            }
+            importLoading.value = null
+            when (added) {
+                is com.anindra.messages.data.Repository.ImportResult.Success -> onResult(added.merged ?: 0)
+                is com.anindra.messages.data.Repository.ImportResult.Error ->
+                    onResult(-1)
+                null -> onResult(-1)
+            }
+        }
+    }
+
+    fun peekBackupFormat(uri: Uri, onResult: (com.anindra.messages.data.BackupFormat) -> Unit) {        scope.launch {
             val format = withContext(Dispatchers.IO) {
                 repo.peekBackupFormat(getApplication(), uri)
             }
@@ -593,6 +611,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyFakeDualSim(intent)
+        applySmsIeProbe(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
 
@@ -975,11 +994,26 @@ class MainActivity : FragmentActivity() {
         vm.openOrCreate(to, null) { id -> vm.sendMediaMessage(id, android.net.Uri.parse(media)) }
     }
 
+    /** Debug builds only: `--es sms_ie_probe <uri>` runs the sms-ie import so
+     *  the end-to-end path can be asserted on an emulator (the SAF picker is
+     *  not scriptable). */
+    private fun applySmsIeProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val uri = intent.getStringExtra("sms_ie_probe") ?: return
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
+        vm.importSmsIe(Uri.parse(uri)) { count ->
+            android.util.Log.i("SmsIeImport", "probe imported count=$count")
+        }
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         applyFakeDualSim(intent)
         applyMmsProbe(intent)
+        applySmsIeProbe(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
