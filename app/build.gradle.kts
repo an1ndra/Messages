@@ -61,6 +61,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":android-smsmms"))
     implementation(libs.androidx.core.ktx)
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
