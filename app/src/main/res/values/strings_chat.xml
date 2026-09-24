@@ -17,6 +17,11 @@
     <string name="chat_select_time">Select time</string>
     <string name="chat_media_camera">Camera</string>
     <string name="chat_media_gallery">Gallery</string>
+    <string name="chat_select_all">Select all</string>
+    <string name="chat_select_text">Select text</string>
+    <string name="chat_save_image">Save image</string>
+    <string name="chat_image_saved">Image saved to Pictures/Messages</string>
+    <string name="chat_image_save_failed">Could not save the image</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Can\'t send message</string>

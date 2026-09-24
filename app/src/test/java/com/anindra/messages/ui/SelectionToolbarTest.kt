@@ -67,4 +67,24 @@ class SelectionToolbarTest {
         assertTrue(SelectionToolbar.clearsSelection(SelectionToolbar.Action.TRASH))
         assertTrue(SelectionToolbar.clearsSelection(SelectionToolbar.Action.LOCK))
     }
+
+    @Test
+    fun moreMenuStaysReachableWhileSeveralAreSelected() {
+        assertFalse(SelectionToolbar.showMore(0))
+        assertTrue(SelectionToolbar.showMore(1))
+        assertTrue(SelectionToolbar.showMore(4))
+    }
+
+    @Test
+    fun selectAllSkipsLockedMessages() {
+        assertEquals(
+            listOf(1L, 3L),
+            SelectionToolbar.selectAllCandidates(listOf(1L, 2L, 3L, 4L), setOf(2L, 4L))
+        )
+        assertEquals(
+            listOf(1L, 2L),
+            SelectionToolbar.selectAllCandidates(listOf(1L, 2L), emptySet())
+        )
+        assertTrue(SelectionToolbar.selectAllCandidates(listOf(5L), setOf(5L)).isEmpty())
+    }
 }

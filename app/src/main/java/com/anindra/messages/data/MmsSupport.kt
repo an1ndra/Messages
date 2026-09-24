@@ -54,7 +54,6 @@ object MmsSupport {
     private val AUDIO_EXTENSIONS = listOf(".m4a", ".mp3", ".amr", ".ogg", ".aac")
 
     data class OutgoingPart(val name: String, val mimeType: String, val isText: Boolean)
-
     /** Attachment first, then an optional text part. A SMIL part is prepended
      *  separately because several carriers reject an MMS without one. */
     fun outgoingParts(attachmentMime: String, caption: String): List<OutgoingPart> = buildList {
@@ -120,5 +119,30 @@ object MmsSupport {
         TRANSPORT_SMS -> "content://sms"
         TRANSPORT_MMS -> "content://mms"
         else -> null
+    }
+
+    private val EXTENSIONS = mapOf(
+        "image/jpeg" to "jpg", "image/jpg" to "jpg", "image/png" to "png",
+        "image/gif" to "gif", "image/webp" to "webp", "image/bmp" to "bmp",
+        "image/heic" to "heic", "image/heif" to "heif", "video/mp4" to "mp4"
+    )
+
+    /** Fallback mime for a saved attachment when the resolver reports none. */
+    fun mimeForSavedAttachment(uri: String, resolved: String?): String {
+        if (!resolved.isNullOrBlank()) return resolved.substringBefore(';').trim()
+        val lower = uri.lowercase()
+        return EXTENSIONS.entries.firstOrNull { lower.endsWith(".${it.value}") }?.key ?: "image/jpeg"
+    }
+
+    /** Filename for a saved attachment: "<contact>_<timestamp>.<ext>". Spaces are
+     *  kept (the gallery shows them); only path-unsafe characters are dropped. */
+    fun savedAttachmentName(contactName: String, timestamp: Long, mime: String): String {
+        val safe = contactName.trim()
+            .replace(Regex("[/\\\\:*?\"<>|\\x00-\\x1F]"), "_")
+            .trim('_', ' ')
+            .take(32)
+            .ifBlank { "message" }
+        val ext = EXTENSIONS[mime.substringBefore(';').trim()] ?: "jpg"
+        return "${safe}_$timestamp.$ext"
     }
 }

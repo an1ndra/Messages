@@ -27,4 +27,27 @@ object DownloadsStore {
     } catch (_: Exception) {
         false
     }
+
+    /** Saves a message attachment (e.g. an MMS picture) into the shared
+     *  gallery under Pictures/Messages so it outlives the provider row (#235). */
+    fun writeImage(context: Context, displayName: String, mime: String, bytes: ByteArray): Boolean {
+        return try {
+            val resolver = context.contentResolver
+            val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+                put(MediaStore.Images.Media.MIME_TYPE, mime)
+                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/" + DIR)
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+            val uri = resolver.insert(collection, values) ?: return false
+            resolver.openOutputStream(uri)?.use { it.write(bytes) } ?: return false
+            values.clear()
+            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
 }
