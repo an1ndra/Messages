@@ -60,6 +60,34 @@ class MmsSupportTest {
     }
 
     @Test
+    fun namesSavedAttachmentsSafely() {
+        assertEquals(
+            "Marek Nowak_1700000000000.jpg",
+            MmsSupport.savedAttachmentName("Marek Nowak", 1_700_000_000_000L, "image/jpeg")
+        )
+        assertEquals(
+            "message_1700000000000.png",
+            MmsSupport.savedAttachmentName("   ", 1_700_000_000_000L, "image/png")
+        )
+        assertEquals(
+            "a_b_1700000000000.jpg",
+            MmsSupport.savedAttachmentName("a/b", 1_700_000_000_000L, "image/jpeg")
+        )
+        assertEquals(
+            "Sara_1700000000000.jpg",
+            MmsSupport.savedAttachmentName("Sara", 1_700_000_000_000L, "application/octet-stream")
+        )
+    }
+
+    @Test
+    fun resolvesSavedAttachmentMimeByExtension() {
+        assertEquals("image/png", MmsSupport.mimeForSavedAttachment("content://mms/part/9", "image/png"))
+        assertEquals("image/png", MmsSupport.mimeForSavedAttachment("content://x/a.PNG", null))
+        assertEquals("video/mp4", MmsSupport.mimeForSavedAttachment("content://x/clip.mp4", null))
+        assertEquals("image/jpeg", MmsSupport.mimeForSavedAttachment("content://mms/part/9", null))
+    }
+
+    @Test
     fun convertsSecondsWithoutOverflow() {
         assertEquals(1_700_000_000_000L, MmsSupport.milliseconds(1_700_000_000L))
         assertNull(MmsSupport.milliseconds(-1))
