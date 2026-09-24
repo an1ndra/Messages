@@ -466,7 +466,10 @@ fun ChatScreen(
     val activity = context as? androidx.fragment.app.FragmentActivity
     val biometricExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
     DisposableEffect(Unit) {
-        onDispose { biometricExecutor.shutdown() }
+        onDispose {
+            biometricExecutor.shutdown()
+            com.anindra.messages.sms.ForegroundTracker.setOpenConversation(null)
+        }
     }
 
     fun cycleSim() {

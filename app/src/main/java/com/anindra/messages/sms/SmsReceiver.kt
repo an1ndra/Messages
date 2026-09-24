@@ -93,10 +93,12 @@ class SmsReceiver : BroadcastReceiver() {
             }
 
             repo.receiveMessage(address, body, sysId, subId)
-            // Skip notification when user is actively reading this thread.
-            // Check in-memory state first, then SharedPreferences (survives process death).
-            if (ForegroundTracker.isConversationOpen(address)) continue
-            if (ForegroundTracker.isConversationOpenFromPrefs(context, address)) continue
+            // Skip notification only while the user is actually on this thread.
+            if (NotificationPolicy.skipForOpenThread(
+                    ForegroundTracker.isAppInForeground,
+                    ForegroundTracker.isConversationOpen(address)
+                )
+            ) continue
             NotificationHelper.show(context, address, body)
         }
     }
