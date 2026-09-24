@@ -1,6 +1,7 @@
 package com.anindra.messages.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -144,5 +145,11 @@ class SmsIeBackupTest {
         assertEquals("png", SmsIeBackup.extensionFor("image/png"))
         assertEquals("jpg", SmsIeBackup.extensionFor("image/jpeg"))
         assertEquals("mp4", SmsIeBackup.extensionFor("video/mp4"))
+    }
+
+    @Test
+    fun onlyRestoreClearsExistingMessages() {
+        assertTrue(SmsIeBackupPolicy.clearsExisting(ImportMode.REPLACE))
+        assertFalse(SmsIeBackupPolicy.clearsExisting(ImportMode.MERGE))
     }
 }

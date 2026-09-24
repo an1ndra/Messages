@@ -1376,14 +1376,34 @@ class Repository(private val context: Context) {
         }
     }
 
-    fun importSmsIeFrom(context: Context, uri: android.net.Uri): ImportResult {
+    fun importSmsIeFrom(
+        context: Context,
+        uri: android.net.Uri,
+        mode: ImportMode = ImportMode.MERGE
+    ): ImportResult {
         val loaded = SmsIeReader.load(context, uri)
             ?: return ImportResult.Error("Cannot read that backup file")
         if (loaded.parsed.messages.isEmpty()) {
             return ImportResult.Error("No messages found in that backup")
         }
+        if (SmsIeBackupPolicy.clearsExisting(mode)) clearAllMessages()
         val added = importSmsIe(loaded.parsed.messages)
         return ImportResult.Success(added)
+    }
+
+    /** Drops every stored message and conversation, leaving settings intact. */
+    fun clearAllMessages() {
+        val database = db.writableDatabase
+        database.beginTransaction()
+        try {
+            database.execSQL("DELETE FROM messages")
+            database.execSQL("DELETE FROM conversations")
+            database.execSQL("DELETE FROM participants")
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+        notifyChanged()
     }
 
     fun importDatabase(
