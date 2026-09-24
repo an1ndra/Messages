@@ -440,20 +440,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Imports an SMS Import / Export (sms-ie) backup file. */
-    fun importSmsIe(uri: Uri, onResult: (Int) -> Unit) {
+    /** Imports an SMS Import / Export (sms-ie) backup file. [mode] REPLACE wipes
+     *  the current history first, matching the Restore option. */
+    fun importSmsIe(
+        uri: Uri,
+        mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
+        onResult: (Int) -> Unit
+    ) {
         importLoading.value = 0
         scope.launch {
-            val added = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    repo.importSmsIeFrom(getApplication(), uri)
+                    repo.importSmsIeFrom(getApplication(), uri, mode)
                 }.getOrNull()
             }
             importLoading.value = null
-            when (added) {
-                is com.anindra.messages.data.Repository.ImportResult.Success -> onResult(added.merged ?: 0)
-                is com.anindra.messages.data.Repository.ImportResult.Error ->
-                    onResult(-1)
+            when (result) {
+                is com.anindra.messages.data.Repository.ImportResult.Success -> onResult(result.merged ?: 0)
+                is com.anindra.messages.data.Repository.ImportResult.Error -> onResult(-1)
                 null -> onResult(-1)
             }
         }
@@ -1002,8 +1006,13 @@ class MainActivity : FragmentActivity() {
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (!debuggable) return
         val uri = intent.getStringExtra("sms_ie_probe") ?: return
-        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
-        vm.importSmsIe(Uri.parse(uri)) { count ->
+        val mode = if (intent.getStringExtra("sms_ie_probe_mode") == "replace") {
+            com.anindra.messages.data.ImportMode.REPLACE
+        } else {
+            com.anindra.messages.data.ImportMode.MERGE
+        }
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
+        vm.importSmsIe(Uri.parse(uri), mode) { count ->
             android.util.Log.i("SmsIeImport", "probe imported count=$count")
         }
     }

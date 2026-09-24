@@ -79,6 +79,9 @@ import com.anindra.messages.ui.theme.LocalLargeTouchTargets
 
 private enum class PinDialogMode { SET, ENTER }
 
+/** Which backup format the picked file belongs to. */
+private enum class ImportSource { OWN_BACKUP, SMS_IE }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -137,6 +140,8 @@ fun SettingsScreen(
         mutableStateOf(com.anindra.messages.data.BackupFormat.LEGACY)
     }
     var importModeDialog by remember { mutableStateOf(false) }
+    var importSourceDialog by remember { mutableStateOf(false) }
+    var pendingImportSource by remember { mutableStateOf(ImportSource.OWN_BACKUP) }
     var pinInput by remember { mutableStateOf("") }
     var pinConfirm by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
@@ -176,6 +181,7 @@ fun SettingsScreen(
             vm.peekBackupFormat(it) { format ->
                 pendingImportUri = it
                 pendingImportFormat = format
+                pendingImportSource = ImportSource.OWN_BACKUP
                 importModeDialog = true
             }
         }
@@ -185,13 +191,9 @@ fun SettingsScreen(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            vm.importSmsIe(it) { count ->
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.settings_import_sms_ie_done, count),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
+            pendingImportUri = it
+            pendingImportSource = ImportSource.SMS_IE
+            importModeDialog = true
         }
     }
 
@@ -414,24 +416,7 @@ fun SettingsScreen(
                 SettingsRow(
                     title = stringResource(R.string.settings_import_title),
                     subtitle = stringResource(R.string.settings_import_subtitle),
-                    onClick = {
-                        pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
-                        importLauncher.launch(arrayOf("application/octet-stream", "application/x-sqlite3"))
-                    }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_import_sms_ie_title),
-                    subtitle = stringResource(R.string.settings_import_sms_ie_subtitle),
-                    onClick = {
-                        smsIeLauncher.launch(
-                            arrayOf(
-                                "application/zip",
-                                "application/json",
-                                "application/octet-stream",
-                                "*/*"
-                            )
-                        )
-                    }
+                    onClick = { importSourceDialog = true }
                 )
             }
 
@@ -669,8 +654,81 @@ fun SettingsScreen(
         )
     }
 
+    if (importSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { importSourceDialog = false },
+            title = { Text(stringResource(R.string.settings_import_source_title)) },
+            text = {
+                Column {
+                    Text(
+                        stringResource(R.string.settings_import_source_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    ImportChoiceRow(
+                        title = stringResource(R.string.settings_import_source_own_title),
+                        subtitle = stringResource(R.string.settings_import_source_own_subtitle),
+                        onClick = {
+                            importSourceDialog = false
+                            importLauncher.launch(
+                                arrayOf("application/octet-stream", "application/x-sqlite3")
+                            )
+                        }
+                    )
+                    ImportChoiceRow(
+                        title = stringResource(R.string.settings_import_source_sms_ie_title),
+                        subtitle = stringResource(R.string.settings_import_source_sms_ie_subtitle),
+                        onClick = {
+                            importSourceDialog = false
+                            smsIeLauncher.launch(
+                                arrayOf(
+                                    "application/zip",
+                                    "application/json",
+                                    "application/octet-stream",
+                                    "*/*"
+                                )
+                            )
+                        }
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { importSourceDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
     if (importModeDialog) {
         val uri = pendingImportUri
+        fun applyImport() {
+            val target = uri ?: return
+            if (pendingImportSource == ImportSource.SMS_IE) {
+                vm.importSmsIe(target, pendingImportMode) { count ->
+                    showImportResult(
+                        if (count < 0) {
+                            com.anindra.messages.data.Repository.ImportResult.Error(
+                                context.getString(R.string.settings_import_sms_ie_failed)
+                            )
+                        } else {
+                            com.anindra.messages.data.Repository.ImportResult.Success(count)
+                        }
+                    )
+                }
+                return
+            }
+            when {
+                pendingImportFormat == com.anindra.messages.data.BackupFormat.PIN -> {
+                    pinInput = ""
+                    pinError = null
+                    pinMode = PinDialogMode.ENTER
+                }
+                else -> vm.importDatabase(target, null, pendingImportMode, showImportResult)
+            }
+        }
         AlertDialog(
             onDismissRequest = {
                 importModeDialog = false
@@ -691,13 +749,7 @@ fun SettingsScreen(
                         onClick = {
                             importModeDialog = false
                             pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
-                            if (pendingImportFormat == com.anindra.messages.data.BackupFormat.PIN) {
-                                pinInput = ""
-                                pinError = null
-                                pinMode = PinDialogMode.ENTER
-                            } else if (uri != null) {
-                                vm.importDatabase(uri, null, pendingImportMode, showImportResult)
-                            }
+                            applyImport()
                         }
                     )
                     ImportChoiceRow(
@@ -706,13 +758,7 @@ fun SettingsScreen(
                         onClick = {
                             importModeDialog = false
                             pendingImportMode = com.anindra.messages.data.ImportMode.REPLACE
-                            if (pendingImportFormat == com.anindra.messages.data.BackupFormat.PIN) {
-                                pinInput = ""
-                                pinError = null
-                                pinMode = PinDialogMode.ENTER
-                            } else if (uri != null) {
-                                vm.importDatabase(uri, null, pendingImportMode, showImportResult)
-                            }
+                            applyImport()
                         }
                     )
                 }

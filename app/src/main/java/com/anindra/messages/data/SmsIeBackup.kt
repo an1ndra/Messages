@@ -188,3 +188,9 @@ object SmsIeBackup {
         else -> "jpg"
     }
 }
+
+/** Decides whether an sms-ie import replaces the existing history or adds to it. */
+object SmsIeBackupPolicy {
+    /** Restore (REPLACE) wipes the current messages first; Merge keeps them. */
+    fun clearsExisting(mode: ImportMode): Boolean = mode == ImportMode.REPLACE
+}
