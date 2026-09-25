@@ -980,24 +980,42 @@ class Repository(private val context: Context) {
             android.util.Log.w("RepoSync", "Provider purge skipped: ${e.message}")
         }
     }
+    /** Hard-deletes anything filed away more than [days] ago: trashed threads,
+     *  keyword-blocked messages and blocked senders. */
+    fun purgeOldTrashSuspend(days: Int = RetentionPolicy.DEFAULT_DAYS) {
+        val cutoff = RetentionPolicy.cutoff(System.currentTimeMillis(), days)
+        val arg = arrayOf(cutoff.toString())
 
-    /** Hard-deletes conversations trashed more than [days] ago. */
-    fun purgeOldTrashSuspend(days: Int = 30) {
-        val cutoff = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
         val stale = mutableListOf<Long>()
         db.readableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE deleted_at>0 AND deleted_at<?",
-            arrayOf(cutoff.toString())
+            "SELECT id FROM conversations WHERE ${RetentionPolicy.TRASHED_SQL}", arg
+        ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM conversations WHERE ${RetentionPolicy.BLOCKED_CONVERSATION_SQL}", arg
         ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
         purgeProviderMessages(stale)
+
         db.writableDatabase.execSQL(
             "DELETE FROM messages WHERE conversation_id IN " +
-                "(SELECT id FROM conversations WHERE deleted_at>0 AND deleted_at<?)",
-            arrayOf(cutoff.toString())
+                "(SELECT id FROM conversations WHERE ${RetentionPolicy.TRASHED_SQL})",
+            arg
         )
         db.writableDatabase.execSQL(
-            "DELETE FROM conversations WHERE deleted_at>0 AND deleted_at<?",
-            arrayOf(cutoff.toString())
+            "DELETE FROM messages WHERE conversation_id IN " +
+                "(SELECT id FROM conversations WHERE ${RetentionPolicy.BLOCKED_CONVERSATION_SQL})",
+            arg
+        )
+        db.writableDatabase.execSQL(
+            "DELETE FROM messages WHERE ${RetentionPolicy.KEYWORD_BLOCKED_SQL}",
+            arg
+        )
+        db.writableDatabase.execSQL(
+            "DELETE FROM conversations WHERE ${RetentionPolicy.TRASHED_SQL}",
+            arg
+        )
+        db.writableDatabase.execSQL(
+            "DELETE FROM conversations WHERE ${RetentionPolicy.BLOCKED_CONVERSATION_SQL}",
+            arg
         )
     }
 
