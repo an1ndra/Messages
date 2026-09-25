@@ -463,6 +463,30 @@ class Repository(private val context: Context) {
         out.reversed()
     }
 
+    /** Recent messages for the grouped notification, oldest first. Unlike
+     *  [messages] this is a plain blocking read: the notification is built on a
+     *  receiver thread, not from a Flow. */
+    fun recentMessageLines(conversationId: Long, limit: Int): List<com.anindra.messages.sms.NotificationLine> =
+        runOnIo {
+            val out = mutableListOf<com.anindra.messages.sms.NotificationLine>()
+            db.readableDatabase.rawQuery(
+                "SELECT body,timestamp,is_me FROM messages WHERE conversation_id=? AND deleted_at=0" +
+                    " ORDER BY timestamp DESC, id DESC LIMIT ?",
+                arrayOf(conversationId.toString(), limit.toString())
+            ).use { c ->
+                while (c.moveToNext()) {
+                    out.add(
+                        com.anindra.messages.sms.NotificationLine(
+                            text = c.getString(0),
+                            timestamp = c.getLong(1),
+                            fromMe = c.getInt(2) == 1
+                        )
+                    )
+                }
+            }
+            out.reversed()
+        }
+
     fun messageCount(conversationId: Long): Int = runOnIo {
         var count = 0
         db.readableDatabase.rawQuery(
