@@ -240,6 +240,8 @@ object NotificationHelper {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
+            // Launchers that render a count read this field.
+            .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
         if (replyAction != null) builder.addAction(replyAction)
         builder.addAction(markReadAction)
@@ -286,6 +288,17 @@ object NotificationHelper {
             NotificationManagerCompat.from(context).notify("failed", failId, notif)
         } catch (_: SecurityException) {
         }
+    }
+
+    fun clearConversationNotification(
+        context: Context,
+        conversationId: Long?,
+        address: String? = null
+    ) {
+        val ids = BadgePolicy.idsToDismiss(conversationId, address?.hashCode()) ?: return
+        val nm = NotificationManagerCompat.from(context)
+        nm.cancel(ids.first)
+        nm.cancel("failed", ids.second)
     }
 
     fun playSentSound(context: Context) = playSound(context)

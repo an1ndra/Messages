@@ -724,8 +724,9 @@ fun ChatScreen(
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)
-        // Dismiss all app notifications when user opens a chat
-        NotificationManagerCompat.from(context).cancelAll()
+        com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+            context, conversationId
+        )
         draftLoaded = false
     }
     LaunchedEffect(convo?.address) {
