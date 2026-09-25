@@ -769,7 +769,6 @@ class MainActivity : FragmentActivity() {
 
                 // Single back dispatcher for all routes; child screen BackHandlers win.
                 androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
-                    val wasChat = navRoute == "chat"
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "trash" -> navRoute = "settings"
@@ -777,10 +776,6 @@ class MainActivity : FragmentActivity() {
                         "accessibility" -> navRoute = "advanced"
                         "spam" -> navRoute = "settings"
                         else -> navRoute = "list"
-                    }
-                    // Clear ForegroundTracker when leaving chat
-                    if (wasChat) {
-                        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(null)
                     }
                 }
 
