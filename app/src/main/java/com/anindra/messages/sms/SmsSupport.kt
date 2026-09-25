@@ -11,7 +11,9 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.Person
 import androidx.core.app.RemoteInput
+import androidx.core.graphics.drawable.IconCompat
 import com.anindra.messages.MainActivity
 import com.anindra.messages.R
 import com.anindra.messages.data.SettingsStore
@@ -104,6 +106,45 @@ object NotificationHelper {
      * every post and reflects live setting changes (the sound must be set
      * EXPLICITLY, or an update leaves a legacy custom tone in place).
      */
+    /** Grouped per conversation, so expanding shows the recent messages from
+     *  this sender rather than one long body. notify() replaces the record, so
+     *  the history is re-read every time rather than appended to. */
+    private fun groupedStyle(
+        context: Context,
+        app: com.anindra.messages.MessagesApplication,
+        convoId: Long?,
+        senderName: String,
+        fallbackText: String
+    ): NotificationCompat.Style {
+        val hideLinks = app.repository.settings.hideLinks
+        val person = Person.Builder().setName(senderName)
+            .setIcon(IconCompat.createWithResource(context, R.drawable.ic_stat_message))
+            .build()
+        val me = Person.Builder().setName(context.getString(R.string.notif_you))
+            .setIcon(IconCompat.createWithResource(context, R.drawable.ic_stat_message))
+            .build()
+        val style = NotificationCompat.MessagingStyle(me)
+            .setConversationTitle(senderName)
+
+        val history = convoId
+            ?.let { app.repository.recentMessageLines(it, NotificationHistory.MAX_LINES) }
+            .orEmpty()
+        val lines = NotificationHistory.window(
+            if (history.isEmpty()) listOf(NotificationLine(fallbackText, System.currentTimeMillis(), false))
+            else history.map {
+                NotificationLine(
+                    if (hideLinks) hideUrls(it.text) else it.text,
+                    it.timestamp,
+                    it.fromMe
+                )
+            }
+        )
+        lines.forEach {
+            style.addMessage(it.text, it.timestamp, if (it.fromMe) me else person)
+        }
+        return style
+    }
+
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
@@ -237,12 +278,12 @@ object NotificationHelper {
             .setSmallIcon(R.drawable.ic_stat_message)
             .setContentTitle(title)
             .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
             // Launchers that render a count read this field.
             .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
+            .setStyle(groupedStyle(context, app, convoId, senderName, text))
         if (replyAction != null) builder.addAction(replyAction)
         builder.addAction(markReadAction)
         try {

@@ -49,6 +49,7 @@
     <string name="notification_channel_desc">New message notifications</string>
     <string name="notif_title_private">New message</string>
     <string name="notif_body_private">You have a new message</string>
+    <string name="notif_you">You</string>
     <string name="notif_send_fail_private">Couldn\'t send message. Tap to retry.</string>
     <string name="notif_send_fail">Couldn\'t send message to %s. Tap to retry.</string>
     <string name="notif_not_delivered">Message not delivered</string>
