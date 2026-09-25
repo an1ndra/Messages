@@ -21,7 +21,7 @@ class MessagesApplication : Application() {
         repository = Repository(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             repository.migrateParticipants()
-            repository.purgeOldTrashSuspend()
+            repository.purgeOldTrashSuspend(repository.settings.retentionDays)
             // skip until SMS access is granted; MainActivity re-imports then
             if (checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
                 repository.syncFromSystem()

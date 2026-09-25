@@ -64,8 +64,12 @@
     <string name="settings_applock_title">App lock</string>
     <string name="settings_applock_subtitle">Require fingerprint or PIN to open app</string>
     <string name="settings_trash_title">Trash</string>
-    <string name="settings_trash_subtitle">Deleted conversations · purged after 30 days</string>
+    <string name="settings_trash_subtitle">Deleted conversations are kept here</string>
     <string name="settings_spam_blocked_subtitle">Blocked conversations are kept here</string>
+    <string name="settings_retention_title">Auto-delete after</string>
+    <string name="settings_retention_subtitle">Trash, blocked messages and blocked senders are purged after %d days</string>
+    <string name="settings_choose_retention">Applies to Trash, blocked messages and blocked senders:</string>
+    <string name="settings_retention_days">%d days</string>
     <string name="settings_backup_title">Backup messages</string>
     <string name="settings_backup_privacy_disabled">Turn off Privacy mode to back up messages</string>
     <string name="settings_backup_location_default">the default folder</string>
