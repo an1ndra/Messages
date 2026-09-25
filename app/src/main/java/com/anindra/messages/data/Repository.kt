@@ -1164,20 +1164,6 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
-    /**
-     * Total unread across the conversations that are actually visible in the
-     * inbox. This is what the launcher badge shows, so archived, trashed and
-     * blocked threads must not contribute to it.
-     */
-    fun unreadTotalBlocking(): Int =
-        db.readableDatabase.rawQuery(
-            """SELECT COALESCE(SUM(unread_count),0) FROM conversations
-               WHERE deleted_at=0 AND archived=0 AND blocked=0""",
-            null
-        ).use { c ->
-            if (c.moveToFirst()) c.getInt(0) else 0
-        }
-
     fun blockedNumbers(): Flow<List<BlockedNumber>> = observe {
         val out = mutableListOf<BlockedNumber>()
         db.readableDatabase.rawQuery(

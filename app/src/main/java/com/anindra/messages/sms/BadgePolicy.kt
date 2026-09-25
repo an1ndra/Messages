@@ -1,21 +1,23 @@
 package com.anindra.messages.sms
 
 /**
- * The launcher icon badge is the total unread count. Two things drive it: the
- * number carried on the notification, and whether other conversations'
- * notifications survive when one chat is opened. Kept pure so it is unit
- * tested.
+ * The launcher icon badge. Kept pure so it is unit tested.
  */
 object BadgePolicy {
     /**
-     * The count to publish on a notification. Android launchers render this as
-     * the app-icon badge, and a number of them show nothing at all when it is
-     * absent. Never publish a negative count.
+     * The number carried by one conversation's notification.
+     *
+     * It has to be **1**, not the unread total. Launchers that render a count
+     * *aggregate across the app's active notifications* - Lawnchair sums them,
+     * and the badge was observed rendering 45 for three notifications that each
+     * carried a total of 15. Publishing 1 per conversation makes that sum the
+     * number of unread conversations, which is both correct and what messaging
+     * apps conventionally show.
      */
-    fun badgeCount(totalUnread: Int): Int = totalUnread.coerceAtLeast(0)
+    const val PER_NOTIFICATION = 1
 
-    /** A notification should carry a number only when something is unread. */
-    fun publishesNumber(totalUnread: Int): Boolean = totalUnread > 0
+    /** Never publish a negative or non-positive count: launchers treat 0 as "no badge". */
+    fun badgeCount(conversations: Int): Int = conversations.coerceAtLeast(PER_NOTIFICATION)
 
     /**
      * Ids to dismiss when a conversation is opened, as (untagged, "failed"-
