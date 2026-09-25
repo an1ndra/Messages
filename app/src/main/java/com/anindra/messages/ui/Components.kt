@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.anindra.messages.ui.theme.Motion
 import com.anindra.messages.R
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import androidx.compose.material3.MaterialTheme
@@ -237,8 +238,8 @@ fun ProvideShimmer(content: @Composable () -> Unit) {
             targetValue = 1200f,
             animationSpec = androidx.compose.animation.core.infiniteRepeatable(
                 animation = androidx.compose.animation.core.tween(
-                    1100,
-                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                    Motion.SHIMMER_DURATION_MS,
+                    easing = Motion.emphasized(reduceMotion)
                 ),
                 repeatMode = androidx.compose.animation.core.RepeatMode.Restart
             )

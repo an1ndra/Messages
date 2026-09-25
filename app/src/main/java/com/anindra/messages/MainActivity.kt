@@ -40,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -58,6 +59,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.ui.theme.Motion
+import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.R
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.data.BlockedMessage
@@ -840,6 +843,9 @@ class MainActivity : FragmentActivity() {
                 }
 
                 val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "advanced" to 2, "accessibility" to 3)
+                val reduceMotion = vm.a11y.reduceMotionEnabled
+                val navSlide = motionTween<IntOffset>(reduceMotion, Motion.DURATION_MEDIUM2)
+                val navFade = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
 
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     ConversationsScreen(
@@ -864,11 +870,13 @@ class MainActivity : FragmentActivity() {
                                 val from = routeDepth[initialState] ?: 0
                                 val to = routeDepth[targetState] ?: 0
                                 when {
-                                    to > from -> slideInHorizontally(tween(300)) { it } togetherWith
-                                        slideOutHorizontally(tween(300)) { -it }
-                                    to < from -> slideInHorizontally(tween(300)) { -it } togetherWith
-                                        slideOutHorizontally(tween(300)) { it }
-                                    else -> fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                                    to > from ->
+                                        slideInHorizontally(navSlide) { it } togetherWith
+                                            slideOutHorizontally(navSlide) { -it }
+                                    to < from ->
+                                        slideInHorizontally(navSlide) { -it } togetherWith
+                                            slideOutHorizontally(navSlide) { it }
+                                    else -> fadeIn(navFade) togetherWith fadeOut(navFade)
                                 }
                             }
                         },
