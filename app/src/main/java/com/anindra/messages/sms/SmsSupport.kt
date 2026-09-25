@@ -240,12 +240,7 @@ object NotificationHelper {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
-            // The launcher icon badge is driven by this number. Without it,
-            // launchers that render a count (rather than a plain dot) show
-            // nothing at all, which is what a user reported. It is 1 per
-            // conversation, not the unread total: launchers aggregate these
-            // across active notifications, so a total would be summed once per
-            // notification and show nonsense.
+            // Launchers that render a count read this field.
             .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
         if (replyAction != null) builder.addAction(replyAction)
@@ -295,12 +290,6 @@ object NotificationHelper {
         }
     }
 
-    /**
-     * Dismisses only the notifications belonging to one conversation, so
-     * opening a chat leaves every other unread conversation's notification (and
-     * therefore the launcher badge) intact. [conversationId] is preferred; the
-     * address fallback reproduces the same id that [show] would have used.
-     */
     fun clearConversationNotification(
         context: Context,
         conversationId: Long?,
