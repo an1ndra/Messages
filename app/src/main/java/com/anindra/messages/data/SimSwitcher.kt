@@ -10,4 +10,9 @@ object SimSwitcher {
         val idx = sims.indexOfFirst { it.subscriptionId == currentSubId }
         return sims[(idx + 1) % sims.size]
     }
+
+    /** Stays visible for the whole draft, not just while it is empty: a typed
+     *  message often changes which SIM you want to send it from, and the
+     *  keyboard hides the control exactly when that choice is made. */
+    fun shouldShowSwitch(simCount: Int): Boolean = simCount > 1
 }

@@ -547,7 +547,12 @@ class Repository(private val context: Context) {
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =
         getOrCreateConversationBlocking(address, displayName)
 
-    fun getOrCreateConversationBlocking(address: String, displayName: String? = null, subId: Int = -1): Long = runOnIo {
+    fun getOrCreateConversationBlocking(
+        address: String,
+        displayName: String? = null,
+        subId: Int = -1,
+        kind: InboundKind = InboundKind.NORMAL
+    ): Long = runOnIo {
         // Store one canonical spelling per person: every incoming spelling
         // (E.164, national, formatted) maps to the same conversation row.
         val target = canonical(address).ifEmpty { address }
@@ -566,7 +571,7 @@ class Repository(private val context: Context) {
             convoId = db.writableDatabase.insert("conversations", null, cv)
             upsertParticipant(db.writableDatabase, target, subId)
             notifyChanged()
-        } else {
+        } else if (InboundIngest.restoresTrashedConversation(kind)) {
             // A trashed thread addressed by a new chat / incoming message must be
             // restored, or ChatScreen (which filters deleted_at=0) shows a blank
             // header and sends are rejected.
@@ -677,13 +682,14 @@ class Repository(private val context: Context) {
         return convoId
     }
 
-    /** Stores a keyword-blocked message but moves its conversation to Trash
-     *  (soft delete) instead of dropping it, so it stays recoverable via
-     *  Trash → Restore. No notification and no unread badge. */
+    /** Stores a keyword-blocked message soft-deleted, so it is listed under
+     *  Spam & blocked → Messages rather than the conversation. No notification
+     *  and no unread badge, and a trashed conversation stays trashed. */
     fun receiveBlockedMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
         val clean = MessageBody.normalize(body)
-        val convoId = getOrCreateConversationBlocking(address, null, subId)
+        val convoId =
+            getOrCreateConversationBlocking(address, null, subId, InboundKind.BLOCKED_KEYWORD)
         db.writableDatabase.execSQL(
             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id,
                deleted_at,blocked_reason) VALUES(?,?,?,?,?,?,?,?,?,?)""",
@@ -761,11 +767,12 @@ class Repository(private val context: Context) {
 
     /** Stores an SMS from a blocked number in the "Spam & blocked" folder:
      *  the conversation is flagged blocked, unread stays 0 and no notification
-     *  is posted. Unblocking returns the conversation to the inbox. */
+     *  is posted. Unblocking returns the conversation to the inbox. A trashed
+     *  conversation stays trashed, as for a blocked keyword. */
     fun receiveSpamMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
         val now = System.currentTimeMillis()
         val clean = MessageBody.normalize(body)
-        val convoId = getOrCreateConversationBlocking(address, null, subId)
+        val convoId = getOrCreateConversationBlocking(address, null, subId, InboundKind.BLOCKED_NUMBER)
         db.writableDatabase.execSQL(
             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
                VALUES(?,?,?,?,?,?,?,?)""",
