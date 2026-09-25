@@ -68,8 +68,8 @@ class SmsReceiver : BroadcastReceiver() {
                 continue
             }
 
-            // Blocked keyword: keep the message but move its conversation to
-            // Trash instead of dropping it, and skip the notification/sound.
+            // Blocked keyword: store it soft-deleted for Spam & blocked and skip
+            // the notification/sound. It does not go to Trash.
             if (KeywordFilter.route(body, repo.settings.blockedKeywords) == KeywordFilter.Route.TRASH) {
                 repo.receiveBlockedMessage(address, body, subId = subId)
                 continue

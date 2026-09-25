@@ -1347,7 +1347,7 @@ private fun ChatTopBar(
                         text = { Text(stringResource(R.string.chat_details)) },
                         onClick = { onMenuDismiss(); onOpenDetails() }
                     )
-                    if (sims.size > 1) {
+                    if (SimSwitcher.shouldShowSwitch(sims.size)) {
                         sims.sortedBy { it.slotIndex }.forEach { sub ->
                             val carrier = sub.carrierName?.ifBlank { null }
                             val simLabel = buildString {
@@ -2045,7 +2045,7 @@ private fun InputBar(
                 ),
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (sims.size > 1 && draft.isBlank()) {
+                        if (SimSwitcher.shouldShowSwitch(sims.size)) {
                             val currentIndex = sims.indexOfFirst { it.subscriptionId == currentSimId }
                             val simLabel = when {
                                 sims.size >= 3 -> "D"
