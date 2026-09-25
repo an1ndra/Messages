@@ -9,6 +9,7 @@
 .cxx
 local.properties
 /app/build
+/android-smsmms/build
 .kotlin
 screenshots/*
 release.keystore

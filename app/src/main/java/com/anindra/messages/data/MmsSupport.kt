@@ -9,15 +9,58 @@ object MmsSupport {
     const val PROVIDER_SELECTION = "(msg_box=1 AND m_type=132) OR (msg_box=2 AND m_type=128)"
     const val MAX_TEXT_BYTES = 1_048_576
 
+    /** Inbox/outbox PDU types. 130 is an incoming MMS the carrier has only
+     *  announced; it has no parts until the default SMS app downloads it. */
+    const val PDU_SEND_REQ = 128
+    const val PDU_NOTIFICATION_IND = 130
+    const val PDU_RETRIEVE_CONF = 132
+    const val PENDING_DOWNLOAD_SELECTION = "msg_box=1 AND m_type=$PDU_NOTIFICATION_IND"
+    const val DOWNLOAD_RETRY_COOLDOWN_MS = 5 * 60_000L
+
     fun acceptsTextChunk(currentBytes: Int, nextBytes: Int): Boolean =
         currentBytes in 0..MAX_TEXT_BYTES && nextBytes in 0..(MAX_TEXT_BYTES - currentBytes)
 
     data class Address(val type: Int, val value: String)
     data class Part(val id: Long, val mime: String, val text: String? = null)
     data class Content(val body: String, val imageId: Long?, val omittedParts: Int)
+    data class InboundMms(val address: String, val body: String, val timestamp: Long)
 
     fun isImportable(box: Int, pduType: Int): Boolean =
-        (box == 1 && pduType == 132) || (box == 2 && pduType == 128)
+        (box == 1 && pduType == PDU_RETRIEVE_CONF) || (box == 2 && pduType == PDU_SEND_REQ)
+
+    /** An announced-but-undownloaded incoming MMS: the platform hands the row
+     *  to the default SMS app, which must download it before it can be read. */
+    fun isPendingDownload(box: Int, pduType: Int): Boolean =
+        box == 1 && pduType == PDU_NOTIFICATION_IND
+
+    fun shouldRetryDownload(lastAttemptAt: Long, now: Long): Boolean =
+        lastAttemptAt <= 0L || now - lastAttemptAt >= DOWNLOAD_RETRY_COOLDOWN_MS
+
+    fun messageContentUri(id: Long): String = "content://mms/$id"
+
+    /** ContentResolver often reports no type for FileProvider URIs; MMS still
+     *  needs a concrete content type on the wire. */
+    fun defaultAttachmentMime(contentType: String?, uri: String): String {
+        if (!contentType.isNullOrBlank()) return contentType.substringBefore(';').trim()
+        val lower = uri.lowercase()
+        return when {
+            lower.contains("video") || VIDEO_EXTENSIONS.any { lower.endsWith(it) } -> "video/mp4"
+            lower.contains("audio") || AUDIO_EXTENSIONS.any { lower.endsWith(it) } -> "audio/mp4"
+            else -> "image/jpeg"
+        }
+    }
+
+    private val VIDEO_EXTENSIONS = listOf(".mp4", ".3gp", ".mkv", ".webm")
+    private val AUDIO_EXTENSIONS = listOf(".m4a", ".mp3", ".amr", ".ogg", ".aac")
+
+    data class OutgoingPart(val name: String, val mimeType: String, val isText: Boolean)
+
+    /** Attachment first, then an optional text part. A SMIL part is prepended
+     *  separately because several carriers reject an MMS without one. */
+    fun outgoingParts(attachmentMime: String, caption: String): List<OutgoingPart> = buildList {
+        add(OutgoingPart("image", attachmentMime, false))
+        if (caption.isNotBlank()) add(OutgoingPart("text", "text/plain", true))
+    }
 
     fun milliseconds(seconds: Long): Long? =
         seconds.takeIf { it in 0..Long.MAX_VALUE / 1000 }?.times(1000)
