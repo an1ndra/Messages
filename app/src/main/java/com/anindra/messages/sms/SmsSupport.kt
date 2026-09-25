@@ -240,6 +240,10 @@ object NotificationHelper {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
+            // The launcher icon badge is driven by this number. Without it,
+            // launchers that render a count (rather than a plain dot) show
+            // nothing at all, which is what a user reported.
+            .setNumber(BadgePolicy.badgeCount(app.repository.unreadTotalBlocking()))
             .setContentIntent(tap)
         if (replyAction != null) builder.addAction(replyAction)
         builder.addAction(markReadAction)
@@ -286,6 +290,23 @@ object NotificationHelper {
             NotificationManagerCompat.from(context).notify("failed", failId, notif)
         } catch (_: SecurityException) {
         }
+    }
+
+    /**
+     * Dismisses only the notifications belonging to one conversation, so
+     * opening a chat leaves every other unread conversation's notification (and
+     * therefore the launcher badge) intact. [conversationId] is preferred; the
+     * address fallback reproduces the same id that [show] would have used.
+     */
+    fun clearConversationNotification(
+        context: Context,
+        conversationId: Long?,
+        address: String? = null
+    ) {
+        val ids = BadgePolicy.idsToDismiss(conversationId, address?.hashCode()) ?: return
+        val nm = NotificationManagerCompat.from(context)
+        nm.cancel(ids.first)
+        nm.cancel("failed", ids.second)
     }
 
     fun playSentSound(context: Context) = playSound(context)
