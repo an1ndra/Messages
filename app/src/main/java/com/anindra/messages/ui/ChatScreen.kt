@@ -490,7 +490,7 @@ fun ChatScreen(
     ) { granted ->
         if (granted) {
             sims = SimCards.load(context).filter { it.slotIndex >= 0 }.sortedBy { it.slotIndex }
-            if (sims.isNotEmpty() && currentSimId == -1) {
+            if (sims.isNotEmpty() && sims.none { it.subscriptionId == currentSimId }) {
                 currentSimId = sims.first().subscriptionId
                 vm.settings.simSubscriptionId = currentSimId
             }
@@ -519,7 +519,7 @@ fun ChatScreen(
 
     LaunchedEffect(Unit) {
         sims = SimCards.load(context).filter { it.slotIndex >= 0 }.sortedBy { it.slotIndex }
-        if (sims.isNotEmpty() && currentSimId == -1) {
+        if (sims.isNotEmpty() && sims.none { it.subscriptionId == currentSimId }) {
             currentSimId = sims.first().subscriptionId
             vm.settings.simSubscriptionId = currentSimId
         }
@@ -2046,10 +2046,9 @@ private fun InputBar(
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (SimSwitcher.shouldShowSwitch(sims.size)) {
-                            val currentIndex = sims.indexOfFirst { it.subscriptionId == currentSimId }
                             val simLabel = when {
                                 sims.size >= 3 -> "D"
-                                else -> "${currentIndex + 1}"
+                                else -> "${SimSwitcher.selectedIndex(currentSimId, sims) + 1}"
                             }
                             Box(
                                 modifier = Modifier.size(40.dp).clickable { onCycleSim() },

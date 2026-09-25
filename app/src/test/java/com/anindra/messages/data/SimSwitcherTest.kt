@@ -37,4 +37,23 @@ class SimSwitcherTest {
         assertTrue(SimSwitcher.shouldShowSwitch(2))
         assertTrue(SimSwitcher.shouldShowSwitch(3))
     }
+
+    @Test
+    fun selectedIndexResolvesAKnownSim() {
+        val sims = listOf(sim(1, 0, "T-Mobile"), sim(7, 1, "Vodafone"))
+        assertEquals(0, SimSwitcher.selectedIndex(1, sims))
+        assertEquals(1, SimSwitcher.selectedIndex(7, sims))
+    }
+
+    @Test
+    fun staleSimFallsBackToTheFirstSlotInsteadOfRenderingZero() {
+        val sims = listOf(sim(1, 0, "T-Mobile"), sim(7, 1, "Vodafone"))
+        assertEquals(0, SimSwitcher.selectedIndex(99, sims))
+        assertEquals(0, SimSwitcher.selectedIndex(-1, sims))
+    }
+
+    @Test
+    fun selectedIndexWithNoSims() {
+        assertEquals(0, SimSwitcher.selectedIndex(1, emptyList()))
+    }
 }
