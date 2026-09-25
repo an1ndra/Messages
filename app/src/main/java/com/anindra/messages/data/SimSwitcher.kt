@@ -15,4 +15,13 @@ object SimSwitcher {
      *  message often changes which SIM you want to send it from, and the
      *  keyboard hides the control exactly when that choice is made. */
     fun shouldShowSwitch(simCount: Int): Boolean = simCount > 1
+
+    /** Position of [currentSubId] in [sims], falling back to 0 the same way
+     *  [next] does. A saved id that no longer matches any SIM would otherwise
+     *  yield -1 and render as slot "0". */
+    fun selectedIndex(currentSubId: Int, sims: List<SimCard>): Int {
+        if (sims.isEmpty()) return 0
+        val idx = sims.indexOfFirst { it.subscriptionId == currentSubId }
+        return if (idx >= 0) idx else 0
+    }
 }
