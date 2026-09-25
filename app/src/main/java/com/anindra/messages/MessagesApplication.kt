@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.pm.PackageManager
 import com.anindra.messages.data.PhoneNumberUtils
 import com.anindra.messages.data.Repository
+import com.anindra.messages.data.RetentionPolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,7 +22,17 @@ class MessagesApplication : Application() {
         repository = Repository(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             repository.migrateParticipants()
-            repository.purgeOldTrashSuspend(repository.settings.retentionDays)
+            val s = repository.settings
+            repository.purgeRetainedSuspend(
+                buckets = RetentionPolicy.activeBuckets(
+                    enabled = s.retentionEnabled,
+                    trash = s.retentionTrash,
+                    keywordMessages = s.retentionKeywordMessages,
+                    blockedSenders = s.retentionBlockedSenders
+                ),
+                trashDays = s.retentionTrashDays,
+                spamDays = s.retentionSpamDays
+            )
             // skip until SMS access is granted; MainActivity re-imports then
             if (checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
                 repository.syncFromSystem()

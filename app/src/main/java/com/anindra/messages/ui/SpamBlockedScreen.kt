@@ -38,6 +38,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
@@ -82,6 +83,7 @@ fun SpamBlockedScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val pendingDelete = remember { mutableStateListOf<Long>() }
+    var spamDays by remember(vm.settings.revision) { mutableStateOf(vm.settings.retentionSpamDays) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -93,6 +95,14 @@ fun SpamBlockedScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
                     }
+                },
+                actions = {
+                    AutoDeleteDurationAction(
+                        days = spamDays,
+                        active = vm.settings.retentionEnabled &&
+                            (vm.settings.retentionKeywordMessages || vm.settings.retentionBlockedSenders),
+                        onPick = { vm.settings.retentionSpamDays = it; spamDays = it }
+                    )
                 }
             )
         }

@@ -30,7 +30,12 @@ class SettingsStore(context: Context) {
         const val KEY_DRAFTS_ENABLED = "drafts_enabled"
         const val KEY_SWIPE_ACTIONS_ENABLED = "swipe_actions_enabled"
         const val KEY_BLOCKING_ENABLED = "blocking_enabled"
-        const val KEY_RETENTION_DAYS = "retention_days"
+        const val KEY_RETENTION_TRASH_DAYS = "retention_trash_days"
+        const val KEY_RETENTION_SPAM_DAYS = "retention_spam_days"
+        const val KEY_RETENTION_ENABLED = "retention_enabled"
+        const val KEY_RETENTION_TRASH = "retention_trash"
+        const val KEY_RETENTION_KEYWORD = "retention_keyword_messages"
+        const val KEY_RETENTION_BLOCKED = "retention_blocked_senders"
         const val KEY_FORWARDING_ENABLED = "forwarding_enabled"
         const val KEY_UNREAD_AT_TOP_ENABLED = "unread_at_top_enabled"
         const val KEY_SCHEDULED_MESSAGES_ENABLED = "scheduled_messages_enabled"
@@ -138,14 +143,40 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_BLOCKING_ENABLED, true)
         set(v) { prefs.edit().putBoolean(KEY_BLOCKING_ENABLED, v).apply(); _revision.value++ }
 
-    var retentionDays: Int
+    var retentionTrashDays: Int
         get() = RetentionPolicy.normalizedDays(
-            prefs.getInt(KEY_RETENTION_DAYS, RetentionPolicy.DEFAULT_DAYS)
+            prefs.getInt(KEY_RETENTION_TRASH_DAYS, RetentionPolicy.DEFAULT_DAYS)
         )
         set(v) {
-            prefs.edit().putInt(KEY_RETENTION_DAYS, RetentionPolicy.normalizedDays(v)).apply()
+            prefs.edit().putInt(KEY_RETENTION_TRASH_DAYS, RetentionPolicy.normalizedDays(v)).apply()
             _revision.value++
         }
+
+    /** Covers both Spam & Blocked buckets, which are one folder. */
+    var retentionSpamDays: Int
+        get() = RetentionPolicy.normalizedDays(
+            prefs.getInt(KEY_RETENTION_SPAM_DAYS, RetentionPolicy.DEFAULT_DAYS)
+        )
+        set(v) {
+            prefs.edit().putInt(KEY_RETENTION_SPAM_DAYS, RetentionPolicy.normalizedDays(v)).apply()
+            _revision.value++
+        }
+
+    var retentionEnabled: Boolean
+        get() = prefs.getBoolean(KEY_RETENTION_ENABLED, true)
+        set(v) { prefs.edit().putBoolean(KEY_RETENTION_ENABLED, v).apply(); _revision.value++ }
+
+    var retentionTrash: Boolean
+        get() = prefs.getBoolean(KEY_RETENTION_TRASH, true)
+        set(v) { prefs.edit().putBoolean(KEY_RETENTION_TRASH, v).apply(); _revision.value++ }
+
+    var retentionKeywordMessages: Boolean
+        get() = prefs.getBoolean(KEY_RETENTION_KEYWORD, true)
+        set(v) { prefs.edit().putBoolean(KEY_RETENTION_KEYWORD, v).apply(); _revision.value++ }
+
+    var retentionBlockedSenders: Boolean
+        get() = prefs.getBoolean(KEY_RETENTION_BLOCKED, true)
+        set(v) { prefs.edit().putBoolean(KEY_RETENTION_BLOCKED, v).apply(); _revision.value++ }
 
     var forwardingEnabled: Boolean
         get() = prefs.getBoolean(KEY_FORWARDING_ENABLED, true)

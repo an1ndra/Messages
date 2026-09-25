@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
+import com.anindra.messages.data.RetentionPolicy
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.diagnostics.DiagnosticsDialog
 import com.anindra.messages.sms.NotificationHelper
@@ -72,6 +73,14 @@ fun AdvancedSettingsScreen(
     var emojiButton by remember(revision) { mutableStateOf(vm.settings.emojiButtonEnabled) }
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
+    var retentionDaysDialog by remember { mutableStateOf(false) }
+    var daysTarget by remember { mutableStateOf("") }
+    var retentionOn by remember(revision) { mutableStateOf(vm.settings.retentionEnabled) }
+    var retentionTrash by remember(revision) { mutableStateOf(vm.settings.retentionTrash) }
+    var retentionKeyword by remember(revision) { mutableStateOf(vm.settings.retentionKeywordMessages) }
+    var retentionBlocked by remember(revision) { mutableStateOf(vm.settings.retentionBlockedSenders) }
+    var retentionTrashDays by remember(revision) { mutableStateOf(vm.settings.retentionTrashDays) }
+    var retentionSpamDays by remember(revision) { mutableStateOf(vm.settings.retentionSpamDays) }
     var fontDialog by remember { mutableStateOf(false) }
     var keywordsDialog by remember { mutableStateOf(false) }
     var diagReport by remember { mutableStateOf<String?>(null) }
@@ -270,6 +279,55 @@ fun AdvancedSettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
+            // Auto-delete
+            SettingsGroup {
+                SettingsRow(
+                    title = stringResource(R.string.settings_retention_title),
+                    subtitle = stringResource(R.string.settings_retention_subtitle),
+                    checked = retentionOn,
+                    onChecked = { retentionOn = it; vm.settings.retentionEnabled = it }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_retention_trash),
+                    subtitle = stringResource(R.string.settings_retention_trash_desc),
+                    checked = retentionTrash,
+                    enabled = retentionOn,
+                    onChecked = { retentionTrash = it; vm.settings.retentionTrash = it }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_retention_keep_trash),
+                    subtitle = context.getString(
+                        R.string.settings_retention_days, retentionTrashDays
+                    ),
+                    enabled = retentionOn && retentionTrash,
+                    onClick = { retentionDaysDialog = true; daysTarget = DAYS_TRASH }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_retention_keyword),
+                    subtitle = stringResource(R.string.settings_retention_keyword_desc),
+                    checked = retentionKeyword,
+                    enabled = retentionOn,
+                    onChecked = { retentionKeyword = it; vm.settings.retentionKeywordMessages = it }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_retention_blocked),
+                    subtitle = stringResource(R.string.settings_retention_blocked_desc),
+                    checked = retentionBlocked,
+                    enabled = retentionOn,
+                    onChecked = { retentionBlocked = it; vm.settings.retentionBlockedSenders = it }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_retention_keep_spam),
+                    subtitle = context.getString(
+                        R.string.settings_retention_days, retentionSpamDays
+                    ),
+                    enabled = retentionOn && (retentionKeyword || retentionBlocked),
+                    onClick = { retentionDaysDialog = true; daysTarget = DAYS_SPAM }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             // Support
             SettingsGroup {
                 SettingsRow(
@@ -281,6 +339,62 @@ fun AdvancedSettingsScreen(
 
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    if (retentionDaysDialog) {
+        val editingTrash = daysTarget == DAYS_TRASH
+        val currentDays = if (editingTrash) retentionTrashDays else retentionSpamDays
+        AlertDialog(
+            onDismissRequest = { retentionDaysDialog = false },
+            title = { Text(stringResource(R.string.settings_retention_after)) },
+            text = {
+                Column {
+                    Text(
+                        stringResource(R.string.settings_choose_retention),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    RetentionPolicy.DAY_OPTIONS.forEach { days ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (editingTrash) {
+                                        retentionTrashDays = days
+                                        vm.settings.retentionTrashDays = days
+                                    } else {
+                                        retentionSpamDays = days
+                                        vm.settings.retentionSpamDays = days
+                                    }
+                                    retentionDaysDialog = false
+                                }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            RadioButton(
+                                selected = currentDays == days,
+                                onClick = {
+                                    if (editingTrash) {
+                                        retentionTrashDays = days
+                                        vm.settings.retentionTrashDays = days
+                                    } else {
+                                        retentionSpamDays = days
+                                        vm.settings.retentionSpamDays = days
+                                    }
+                                    retentionDaysDialog = false
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.settings_retention_days, days))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { retentionDaysDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 
     if (fontDialog) {
@@ -393,3 +507,6 @@ fun PermanentDeleteConfirmDialog(
         }
     )
 }
+
+private const val DAYS_TRASH = "trash"
+private const val DAYS_SPAM = "spam"

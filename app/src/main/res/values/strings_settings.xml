@@ -66,10 +66,23 @@
     <string name="settings_trash_title">Trash</string>
     <string name="settings_trash_subtitle">Deleted conversations are kept here</string>
     <string name="settings_spam_blocked_subtitle">Blocked conversations are kept here</string>
-    <string name="settings_retention_title">Auto-delete after</string>
-    <string name="settings_retention_subtitle">Trash, blocked messages and blocked senders are purged after %d days</string>
+    <string name="settings_retention_title">Auto-delete</string>
+
     <string name="settings_choose_retention">Applies to Trash, blocked messages and blocked senders:</string>
+    <string name="settings_retention_subtitle">Trash, blocked messages and blocked senders are deleted automatically</string>
     <string name="settings_retention_days">%d days</string>
+    <string name="settings_retention_trash">Deleted chats</string>
+    <string name="settings_retention_trash_desc">Chats you moved to Trash</string>
+    <string name="settings_retention_keyword">Blocked messages</string>
+    <string name="settings_retention_keyword_desc">Messages set aside by a blocked word</string>
+    <string name="settings_retention_blocked">Blocked senders</string>
+    <string name="settings_retention_blocked_desc">Chats from numbers you blocked</string>
+    <string name="settings_retention_after">Delete after</string>
+    <string name="settings_retention_turned_off">Auto-delete is off for this folder</string>
+    <string name="settings_retention_action_active">Auto-delete after %d days</string>
+    <string name="settings_retention_action_off">Auto-delete is off for this folder</string>
+    <string name="settings_retention_keep_trash">Keep deleted chats for</string>
+    <string name="settings_retention_keep_spam">Keep blocked messages &amp; senders for</string>
     <string name="settings_backup_title">Backup messages</string>
     <string name="settings_backup_privacy_disabled">Turn off Privacy mode to back up messages</string>
     <string name="settings_backup_location_default">the default folder</string>
