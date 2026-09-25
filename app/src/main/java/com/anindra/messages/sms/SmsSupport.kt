@@ -242,8 +242,11 @@ object NotificationHelper {
             .setAutoCancel(true)
             // The launcher icon badge is driven by this number. Without it,
             // launchers that render a count (rather than a plain dot) show
-            // nothing at all, which is what a user reported.
-            .setNumber(BadgePolicy.badgeCount(app.repository.unreadTotalBlocking()))
+            // nothing at all, which is what a user reported. It is 1 per
+            // conversation, not the unread total: launchers aggregate these
+            // across active notifications, so a total would be summed once per
+            // notification and show nonsense.
+            .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
         if (replyAction != null) builder.addAction(replyAction)
         builder.addAction(markReadAction)

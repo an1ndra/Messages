@@ -1,27 +1,24 @@
 package com.anindra.messages.sms
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BadgePolicyTest {
     @Test
-    fun publishesTheUnreadTotal() {
-        assertEquals(7, BadgePolicy.badgeCount(7))
+    fun oneNotificationContributesExactlyOneToTheBadge() {
+        // Launchers sum these across active notifications, so every value must
+        // be 1 - a per-conversation total renders as nonsense once there is more
+        // than one active notification.
+        assertEquals(1, BadgePolicy.PER_NOTIFICATION)
+        assertEquals(1, BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
     }
 
     @Test
-    fun neverPublishesANegativeCount() {
-        assertEquals(0, BadgePolicy.badgeCount(-3))
-    }
-
-    @Test
-    fun onlyPublishesANumberWhenSomethingIsUnread() {
-        assertTrue(BadgePolicy.publishesNumber(1))
-        assertTrue(BadgePolicy.publishesNumber(42))
-        assertFalse(BadgePolicy.publishesNumber(0))
+    fun neverPublishesANonPositiveCount() {
+        // 0 is read by launchers as "no badge", so it is never published.
+        assertEquals(1, BadgePolicy.badgeCount(0))
+        assertEquals(1, BadgePolicy.badgeCount(-3))
     }
 
     @Test
