@@ -70,7 +70,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
-import com.anindra.messages.data.RetentionPolicy
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimSelection
@@ -133,8 +132,6 @@ fun SettingsScreen(
     var sims by remember { mutableStateOf(emptyList<SimCard>()) }
     var backingUp by remember { mutableStateOf(false) }
     var delayDialog by remember { mutableStateOf(false) }
-    var retentionDialog by remember { mutableStateOf(false) }
-    var retentionDays by remember(revision) { mutableStateOf(vm.settings.retentionDays) }
     var backupFolder by remember(revision) { mutableStateOf(vm.settings.backupTreeUri) }
 
     var pinMode by remember { mutableStateOf<PinDialogMode?>(null) }
@@ -405,13 +402,6 @@ fun SettingsScreen(
                     onClick = onOpenSpamBlocked
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_retention_title),
-                    subtitle = context.getString(
-                        R.string.settings_retention_subtitle, retentionDays
-                    ),
-                    onClick = { retentionDialog = true }
-                )
-                SettingsRow(
                     title = stringResource(R.string.settings_backup_title),
                     subtitle = when {
                         privacyMode -> stringResource(R.string.settings_backup_privacy_disabled)
@@ -619,53 +609,6 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { simDialog = false }) { Text(stringResource(R.string.common_cancel)) }
-            }
-        )
-    }
-
-    if (retentionDialog) {
-        AlertDialog(
-            onDismissRequest = { retentionDialog = false },
-            title = { Text(stringResource(R.string.settings_retention_title)) },
-            text = {
-                Column {
-                    Text(
-                        stringResource(R.string.settings_choose_retention),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    RetentionPolicy.DAY_OPTIONS.forEach { days ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    retentionDays = days
-                                    vm.settings.retentionDays = days
-                                    retentionDialog = false
-                                }
-                                .padding(vertical = 4.dp)
-                        ) {
-                            RadioButton(
-                                selected = retentionDays == days,
-                                onClick = {
-                                    retentionDays = days
-                                    vm.settings.retentionDays = days
-                                    retentionDialog = false
-                                }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                context.getString(R.string.settings_retention_days, days)
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { retentionDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
             }
         )
     }

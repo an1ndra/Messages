@@ -1004,44 +1004,62 @@ class Repository(private val context: Context) {
             android.util.Log.w("RepoSync", "Provider purge skipped: ${e.message}")
         }
     }
-    /** Hard-deletes anything filed away more than [days] ago: trashed threads,
-     *  keyword-blocked messages and blocked senders. */
-    fun purgeOldTrashSuspend(days: Int = RetentionPolicy.DEFAULT_DAYS) {
-        val cutoff = RetentionPolicy.cutoff(System.currentTimeMillis(), days)
-        val arg = arrayOf(cutoff.toString())
-
+    /** Hard-deletes the selected [buckets] once they are older than their own
+     *  window. Blocked senders and deleted chats are the only buckets that
+     *  remove a conversation row; a keyword-blocked message is removed on its
+     *  own, so a chat the user is not looking at is never taken away by the
+     *  cleanup. */
+    fun purgeRetainedSuspend(
+        buckets: Set<RetentionBucket>,
+        trashDays: Int,
+        spamDays: Int
+    ) {
+        if (buckets.isEmpty()) return
+        val now = System.currentTimeMillis()
         val stale = mutableListOf<Long>()
-        db.readableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE ${RetentionPolicy.TRASHED_SQL}", arg
-        ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
-        db.readableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE ${RetentionPolicy.BLOCKED_CONVERSATION_SQL}", arg
-        ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
-        purgeProviderMessages(stale)
 
-        db.writableDatabase.execSQL(
-            "DELETE FROM messages WHERE conversation_id IN " +
-                "(SELECT id FROM conversations WHERE ${RetentionPolicy.TRASHED_SQL})",
-            arg
-        )
-        db.writableDatabase.execSQL(
-            "DELETE FROM messages WHERE conversation_id IN " +
-                "(SELECT id FROM conversations WHERE ${RetentionPolicy.BLOCKED_CONVERSATION_SQL})",
-            arg
-        )
-        db.writableDatabase.execSQL(
-            "DELETE FROM messages WHERE ${RetentionPolicy.KEYWORD_BLOCKED_SQL}",
-            arg
-        )
-        db.writableDatabase.execSQL(
-            "DELETE FROM conversations WHERE ${RetentionPolicy.TRASHED_SQL}",
-            arg
-        )
-        db.writableDatabase.execSQL(
-            "DELETE FROM conversations WHERE ${RetentionPolicy.BLOCKED_CONVERSATION_SQL}",
-            arg
-        )
+        if (RetentionBucket.TRASH in buckets) {
+            val arg = argFor(RetentionBucket.TRASH, now, trashDays, spamDays)
+            val sql = RetentionPolicy.sql(RetentionBucket.TRASH)
+            db.readableDatabase.rawQuery(
+                "SELECT id FROM conversations WHERE $sql", arg
+            ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
+            db.writableDatabase.execSQL(
+                "DELETE FROM messages WHERE conversation_id IN " +
+                    "(SELECT id FROM conversations WHERE $sql)",
+                arg
+            )
+            db.writableDatabase.execSQL("DELETE FROM conversations WHERE $sql", arg)
+        }
+        if (RetentionBucket.BLOCKED_SENDERS in buckets) {
+            val arg = argFor(RetentionBucket.BLOCKED_SENDERS, now, trashDays, spamDays)
+            val sql = RetentionPolicy.sql(RetentionBucket.BLOCKED_SENDERS)
+            db.readableDatabase.rawQuery(
+                "SELECT id FROM conversations WHERE $sql", arg
+            ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
+            db.writableDatabase.execSQL(
+                "DELETE FROM messages WHERE conversation_id IN " +
+                    "(SELECT id FROM conversations WHERE $sql)",
+                arg
+            )
+            db.writableDatabase.execSQL("DELETE FROM conversations WHERE $sql", arg)
+        }
+        if (RetentionBucket.KEYWORD_MESSAGES in buckets) {
+            db.writableDatabase.execSQL(
+                "DELETE FROM messages WHERE ${RetentionPolicy.KEYWORD_BLOCKED_SQL}",
+                argFor(RetentionBucket.KEYWORD_MESSAGES, now, trashDays, spamDays)
+            )
+        }
+        purgeProviderMessages(stale)
     }
+
+    private fun argFor(
+        bucket: RetentionBucket,
+        now: Long,
+        trashDays: Int,
+        spamDays: Int
+    ): Array<String> =
+        arrayOf(RetentionPolicy.cutoffFor(bucket, now, trashDays, spamDays).toString())
 
     /** Permanently deletes a conversation and its messages. */
     fun deleteConversationSuspend(conversationId: Long) {

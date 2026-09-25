@@ -24,18 +24,40 @@ class RetentionPolicyTest {
     }
 
     @Test
-    fun cutoffIsNowMinusTheWindow() {
+    fun eachFolderKeepsItsOwnWindow() {
+        assertEquals(7, RetentionPolicy.daysFor(RetentionBucket.TRASH, 7, 90))
+        assertEquals(90, RetentionPolicy.daysFor(RetentionBucket.KEYWORD_MESSAGES, 7, 90))
+        assertEquals(90, RetentionPolicy.daysFor(RetentionBucket.BLOCKED_SENDERS, 7, 90))
+    }
+
+    @Test
+    fun bothSpamBucketsShareTheSpamWindow() {
+        // They are one folder, so one number has to describe it.
+        assertEquals(
+            RetentionPolicy.daysFor(RetentionBucket.KEYWORD_MESSAGES, 7, 90),
+            RetentionPolicy.daysFor(RetentionBucket.BLOCKED_SENDERS, 7, 90)
+        )
+    }
+
+    @Test
+    fun eachBucketCutsOffAtItsOwnWindow() {
         val now = 1_700_000_000_000L
-        assertEquals(now - 30 * day, RetentionPolicy.cutoff(now, 30))
-        assertEquals(now - 7 * day, RetentionPolicy.cutoff(now, 7))
+        assertEquals(
+            now - 7 * day,
+            RetentionPolicy.cutoffFor(RetentionBucket.TRASH, now, 7, 90)
+        )
+        assertEquals(
+            now - 90 * day,
+            RetentionPolicy.cutoffFor(RetentionBucket.BLOCKED_SENDERS, now, 7, 90)
+        )
     }
 
     @Test
     fun cutoffIgnoresAnUnsupportedWindow() {
         val now = 1_700_000_000_000L
         assertEquals(
-            RetentionPolicy.cutoff(now, 30),
-            RetentionPolicy.cutoff(now, 999)
+            RetentionPolicy.cutoffFor(RetentionBucket.TRASH, now, 999, 30),
+            RetentionPolicy.cutoffFor(RetentionBucket.TRASH, now, 30, 30)
         )
     }
 
@@ -73,5 +95,61 @@ class RetentionPolicyTest {
             assertTrue("\"$sql\" must not qualify columns: Android's SQLite rejects " +
                 "DELETE FROM <table> <alias>", !Regex("\\b\\w+\\.").containsMatchIn(sql))
         }
+    }
+
+    @Test
+    fun masterSwitchOffPurgesNothing() {
+        assertTrue(
+            RetentionPolicy.activeBuckets(
+                enabled = false, trash = true, keywordMessages = true, blockedSenders = true
+            ).isEmpty()
+        )
+    }
+
+    @Test
+    fun everyBucketCanBeSelectedOnItsOwn() {
+        val all = setOf(
+            RetentionBucket.TRASH,
+            RetentionBucket.KEYWORD_MESSAGES,
+            RetentionBucket.BLOCKED_SENDERS
+        )
+        assertEquals(
+            setOf(RetentionBucket.TRASH),
+            RetentionPolicy.activeBuckets(true, trash = true, keywordMessages = false, blockedSenders = false)
+        )
+        assertEquals(
+            setOf(RetentionBucket.KEYWORD_MESSAGES),
+            RetentionPolicy.activeBuckets(true, trash = false, keywordMessages = true, blockedSenders = false)
+        )
+        assertEquals(
+            setOf(RetentionBucket.BLOCKED_SENDERS),
+            RetentionPolicy.activeBuckets(true, trash = false, keywordMessages = false, blockedSenders = true)
+        )
+        assertEquals(
+            all,
+            RetentionPolicy.activeBuckets(true, trash = true, keywordMessages = true, blockedSenders = true)
+        )
+    }
+
+    @Test
+    fun nothingSelectedPurgesNothing() {
+        assertTrue(
+            RetentionPolicy.activeBuckets(
+                enabled = true, trash = false, keywordMessages = false, blockedSenders = false
+            ).isEmpty()
+        )
+    }
+
+    @Test
+    fun eachBucketMapsToItsOwnPredicate() {
+        assertEquals(RetentionPolicy.TRASHED_SQL, RetentionPolicy.sql(RetentionBucket.TRASH))
+        assertEquals(
+            RetentionPolicy.KEYWORD_BLOCKED_SQL,
+            RetentionPolicy.sql(RetentionBucket.KEYWORD_MESSAGES)
+        )
+        assertEquals(
+            RetentionPolicy.BLOCKED_CONVERSATION_SQL,
+            RetentionPolicy.sql(RetentionBucket.BLOCKED_SENDERS)
+        )
     }
 }
