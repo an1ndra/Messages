@@ -30,6 +30,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -163,6 +164,31 @@ private const val INITIAL_CHUNK = 40
 private const val AUTO_CHUNK = 40
 private const val AUTO_CAP = 400
 private const val LOAD_EARLIER_STEP = 200
+
+/** Partial-text copy (#231). The message text is shown in a dialog inside a
+ *  SelectionContainer: the system handles and the Copy/Share toolbar then work
+ *  normally, and the chat keeps its own long-press behaviour instead of losing
+ *  every contextual option. */
+@Composable
+private fun TextCopyDialog(
+    body: String,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.chat_select_text)) },
+        text = {
+            // Plain selectable text, no outlined-field chrome: the platform
+            // still raises its own handles/Copy toolbar inside the dialog.
+            SelectionContainer {
+                Text(body, style = MaterialTheme.typography.bodyLarge)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_close)) }
+        }
+    )
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -404,6 +430,7 @@ fun ChatScreen(
     var attachSheet by remember { mutableStateOf(false) }
 
     val selectedMessageIds = remember { mutableStateListOf<Long>() }
+    var textCopyMessage by remember { mutableStateOf<Message?>(null) }
     val selectionActive = selectedMessageIds.isNotEmpty()
 
     var cameraFileUri by remember { mutableStateOf<Uri?>(null) }
@@ -518,6 +545,31 @@ fun ChatScreen(
     }
 
     fun clearSelection() = selectedMessageIds.clear()
+
+    /** Select every unlocked message so bulk actions cannot trash locked ones. */
+    fun selectAllMessages() {
+        val locked = messages.filter { it.locked }.map { it.id }.toSet()
+        selectedMessageIds.clear()
+        selectedMessageIds.addAll(SelectionToolbar.selectAllCandidates(messages.map { it.id }, locked))
+    }
+
+    /** Partial-text copy (#231). A dialog is used instead of turning the bubble
+     *  into a selection surface: that mode swallowed the long-press and left the
+     *  user with no visible way back. Opening is deferred a frame so the
+     *  dropdown's dismiss click cannot land on the new dialog's scrim. */
+    fun startTextSelection(id: Long) {
+        val msg = messages.firstOrNull { it.id == id } ?: return
+        clearSelection()
+        scope.launch {
+            delay(150)
+            textCopyMessage = msg
+        }
+    }
+
+    fun saveMessageImage(id: Long) {
+        vm.saveMessageImage(id)
+        clearSelection()
+    }
 
     fun selectedText(): String {
         val byId = messages.associateBy { it.id }
@@ -691,7 +743,7 @@ fun ChatScreen(
                 targetState = selectionActive,
                 transitionSpec = {
                     (fadeIn() + slideInVertically { -it / 4 }) togetherWith
-                        (fadeOut() + slideOutVertically { -it / 4 })
+                        (fadeOut() + slideOutVertically { it / 4 })
                 },
                 label = stringResource(R.string.access_chat_top_bar)
             ) { selecting ->
@@ -699,6 +751,13 @@ fun ChatScreen(
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
+                    onSelectAll = { selectAllMessages() },
+                    onSelectText = messages.firstOrNull { it.id in selectedMessageIds }
+                        ?.takeIf { it.body.isNotBlank() }
+                        ?.let { m -> { startTextSelection(m.id) } },
+                    onSaveImage = messages.firstOrNull { it.id in selectedMessageIds }
+                        ?.takeIf { it.mediaUri.isNotBlank() }
+                        ?.let { m -> { saveMessageImage(m.id) } },
                     onClose = { clearSelection() },
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
@@ -1059,6 +1118,12 @@ fun ChatScreen(
             onDismiss = { showSchedulePicker = false }
         )
     }
+    textCopyMessage?.let { msg ->
+        TextCopyDialog(
+            body = msg.body,
+            onDismiss = { textCopyMessage = null }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1066,6 +1131,9 @@ fun ChatScreen(
 private fun MessageSelectionToolbar(
     count: Int,
     allLocked: Boolean,
+    onSelectAll: () -> Unit,
+    onSelectText: (() -> Unit)?,
+    onSaveImage: (() -> Unit)?,
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
@@ -1110,7 +1178,7 @@ private fun MessageSelectionToolbar(
                     Icon(Icons.Default.Delete, stringResource(R.string.chat_trash), tint = MaterialTheme.colorScheme.primary)
                 }
             }
-            if (SelectionToolbar.showSingleMessageActions(count)) {
+            if (SelectionToolbar.showMore(count)) {
                 Box {
                     IconButton(onClick = { overflow = true }) {
                         Icon(Icons.Outlined.MoreVert, stringResource(R.string.icon_more_options), tint = MaterialTheme.colorScheme.primary)
@@ -1121,17 +1189,36 @@ private fun MessageSelectionToolbar(
                         containerColor = MaterialTheme.colorScheme.surface
                     ) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_share)) },
-                            onClick = { overflow = false; onShare() }
+                            text = { Text(stringResource(R.string.chat_select_all)) },
+                            onClick = { overflow = false; onSelectAll() }
                         )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_view_details)) },
-                            onClick = { overflow = false; onViewDetails() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(SelectionToolbar.lockLabelRes(allLocked))) },
-                            onClick = { overflow = false; onLockUnlock() }
-                        )
+                        if (onSelectText != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chat_select_text)) },
+                                onClick = { overflow = false; onSelectText() }
+                            )
+                        }
+                        if (onSaveImage != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chat_save_image)) },
+                                onClick = { overflow = false; onSaveImage() }
+                            )
+                        }
+                        if (SelectionToolbar.showSingleMessageActions(count)) {
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chat_share)) },
+                                onClick = { overflow = false; onShare() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chat_view_details)) },
+                                onClick = { overflow = false; onViewDetails() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(SelectionToolbar.lockLabelRes(allLocked))) },
+                                onClick = { overflow = false; onLockUnlock() }
+                            )
+                        }
                     }
                 }
             }
