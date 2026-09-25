@@ -1852,7 +1852,7 @@ class Repository(private val context: Context) {
                     }
                 }
 
-                if (importProviderMms()) changed = true
+                if (importProviderMms().isNotEmpty()) changed = true
 
                 val stale = db.readableDatabase.rawQuery(
                     """SELECT COUNT(*) FROM conversations
@@ -1956,11 +1956,11 @@ class Repository(private val context: Context) {
         return false
     }
 
-    private fun importProviderMms(): Boolean {
+    private fun importProviderMms(): List<MmsSupport.InboundMms> {
         val existing = mutableSetOf<Long>()
         db.readableDatabase.rawQuery("SELECT sys_id FROM messages WHERE transport='mms' AND sys_id>0", null)
             .use { cursor -> while (cursor.moveToNext()) existing.add(cursor.getLong(0)) }
-        var changed = false
+        val imported = mutableListOf<MmsSupport.InboundMms>()
         try {
             MmsProviderReader(context.contentResolver).read(existing) { message ->
                 runOnIo {
@@ -1995,7 +1995,9 @@ class Repository(private val context: Context) {
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
                             )
                             upsertParticipant(database, address, message.subId)
-                            changed = true
+                            if (!message.isMe) imported.add(
+                                MmsSupport.InboundMms(address, message.content.body, message.timestamp)
+                            )
                         }
                         database.setTransactionSuccessful()
                     } finally {
@@ -2006,8 +2008,13 @@ class Repository(private val context: Context) {
         } catch (_: Exception) {
             android.util.Log.w("RepoSync", "MMS import incomplete; retry on next sync")
         }
-        return changed
+        return imported
     }
+
+    /** Imports MMS that finished downloading and returns the inbound messages
+     *  that were new, so the caller can notify. Not wrapped in [runOnIo]:
+     *  [importProviderMms] already serializes its writes on the same executor. */
+    fun importDownloadedMms(): List<MmsSupport.InboundMms> = importProviderMms()
 
     /** Re-runs [syncFromSystem] with the loading UI active. */
     fun requeryFromSystem() {
