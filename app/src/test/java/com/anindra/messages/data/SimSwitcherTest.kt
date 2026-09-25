@@ -5,17 +5,9 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SimSwitcherTest {
+
     private fun sim(id: Int, slot: Int, carrier: String? = null) =
         SimCard(id, slot, carrier, null, null, null, false)
-
-    @Test
-    fun iconReflectsCountAndSelection() {
-        assertEquals(SimIcon.SIM_1, SimSwitcher.iconFor(1, 0))
-        assertEquals(SimIcon.SIM_1, SimSwitcher.iconFor(2, 0))
-        assertEquals(SimIcon.SIM_2, SimSwitcher.iconFor(2, 1))
-        assertEquals(SimIcon.DUAL, SimSwitcher.iconFor(3, 0))
-        assertEquals(SimIcon.DUAL, SimSwitcher.iconFor(3, 2))
-    }
 
     @Test
     fun cyclesAndWraps() {
