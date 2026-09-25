@@ -13,6 +13,12 @@
     <string name="new_chat_send_to">「%s」に送信</string>
     <string name="text_placeholder">テキストメッセージ</string>
     <string name="conversations_archived">アーカイブ</string>
+    <string name="conversations_spam_blocked">迷惑メールとブロック</string>
+    <string name="conversations_spam_blocked_empty">迷惑メールまたはブロックされた会話はありません</string>
+    <string name="spam_tab_conversations">会話</string>
+    <string name="spam_tab_messages">メッセージ</string>
+    <string name="spam_blocked_messages_empty">ブロックされたメッセージはありません</string>
+    <string name="spam_message_deleted">メッセージを削除しました</string>
     <string name="conversations_messages">メッセージ</string>
     <string name="conversations_me">自分</string>
     <string name="conversations_allow_sms_access">SMSアクセスを許可</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">検索を閉じる</string>
     <string name="convo_back_to_inbox">受信トレイに戻る</string>
+    <string name="spam_empty">空にする</string>
+    <string name="spam_empty_confirm">このタブのすべての %d 項目が削除されます。元に戻せません。</string>
+    <string name="spam_conversation_deleted">ブロックした会話を削除しました</string>
+    <string name="spam_conversations_cleared">ブロックした会話を空にしました</string>
+    <string name="spam_messages_cleared">ブロックしたメッセージを空にしました</string>
 </resources>

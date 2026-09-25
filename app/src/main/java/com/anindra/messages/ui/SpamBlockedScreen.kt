@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -82,7 +83,7 @@ fun SpamBlockedScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val pendingDelete = remember { mutableStateListOf<Long>() }
+    var showEmptyDialog by remember { mutableStateOf(false) }
     var spamDays by remember(vm.settings.revision) { mutableStateOf(vm.settings.retentionSpamDays) }
 
     Scaffold(
@@ -103,6 +104,16 @@ fun SpamBlockedScreen(
                             (vm.settings.retentionKeywordMessages || vm.settings.retentionBlockedSenders),
                         onPick = { vm.settings.retentionSpamDays = it; spamDays = it }
                     )
+                    val canEmpty = if (tab == 0) {
+                        blockedConversations.isNotEmpty()
+                    } else {
+                        blockedMessages.isNotEmpty()
+                    }
+                    if (canEmpty) {
+                        TextButton(onClick = { showEmptyDialog = true }) {
+                            Text(stringResource(R.string.spam_empty), color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 }
             )
         }
@@ -124,13 +135,17 @@ fun SpamBlockedScreen(
                         onUnblock = { convo ->
                             vm.unblockNumber(convo.address)
                             Toast.makeText(context, context.getString(R.string.chat_number_unblocked), Toast.LENGTH_SHORT).show()
+                        },
+                        onDelete = { convo ->
+                            vm.deleteBlockedConversation(convo.id, convo.address)
+                            Toast.makeText(context, context.getString(R.string.spam_conversation_deleted), Toast.LENGTH_SHORT).show()
                         }
                     )
                 } else {
                     MessagesTab(
-                        messages = blockedMessages.filter { it.id !in pendingDelete },
+                        messages = blockedMessages,
                         onDelete = { msg ->
-                            pendingDelete.add(msg.id)
+                            vm.deleteBlockedMessage(msg.id)
                             scope.launch {
                                 val result = snackbarHostState.showSnackbar(
                                     message = context.getString(R.string.spam_message_deleted),
@@ -138,10 +153,9 @@ fun SpamBlockedScreen(
                                     duration = SnackbarDuration.Long
                                 )
                                 if (result == SnackbarResult.ActionPerformed) {
-                                    pendingDelete.remove(msg.id)
-                                } else {
-                                    vm.deleteBlockedMessage(msg.id)
-                                    pendingDelete.remove(msg.id)
+                                    vm.restoreBlockedMessage(
+                                        msg.conversationId, msg.body, msg.timestamp, msg.blockedReason
+                                    )
                                 }
                             }
                         }
@@ -150,13 +164,42 @@ fun SpamBlockedScreen(
             }
         }
     }
+
+    if (showEmptyDialog) {
+        val count = if (tab == 0) blockedConversations.size else blockedMessages.size
+        AlertDialog(
+            onDismissRequest = { showEmptyDialog = false },
+            title = { Text(stringResource(R.string.spam_empty)) },
+            text = { Text(String.format(context.getString(R.string.spam_empty_confirm), count)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (tab == 0) {
+                        vm.unblockAllNumbers()
+                        Toast.makeText(context, context.getString(R.string.spam_conversations_cleared), Toast.LENGTH_SHORT).show()
+                    } else {
+                        vm.deleteAllBlockedMessages()
+                        Toast.makeText(context, context.getString(R.string.spam_messages_cleared), Toast.LENGTH_SHORT).show()
+                    }
+                    showEmptyDialog = false
+                }) {
+                    Text(stringResource(R.string.spam_empty), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEmptyDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun ConversationsTab(
     blocked: List<Conversation>,
     onOpenConversation: (Long) -> Unit,
-    onUnblock: (Conversation) -> Unit
+    onUnblock: (Conversation) -> Unit,
+    onDelete: (Conversation) -> Unit
 ) {
     if (blocked.isEmpty()) {
         EmptyFolder(Icons.Rounded.Block, stringResource(R.string.conversations_spam_blocked_empty))
@@ -201,6 +244,9 @@ private fun ConversationsTab(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
+                }
+                TextButton(onClick = { onDelete(convo) }) {
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
                 TextButton(onClick = { onUnblock(convo) }) {
                     Text(stringResource(R.string.chat_unblock))

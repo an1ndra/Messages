@@ -13,6 +13,12 @@
     <string name="new_chat_send_to">\"%s\"(으)로 보내기</string>
     <string name="text_placeholder">문자 메시지</string>
     <string name="conversations_archived">보관됨</string>
+    <string name="conversations_spam_blocked">스팸 및 차단됨</string>
+    <string name="conversations_spam_blocked_empty">스팸 또는 차단된 대화가 없습니다</string>
+    <string name="spam_tab_conversations">대화</string>
+    <string name="spam_tab_messages">메시지</string>
+    <string name="spam_blocked_messages_empty">차단된 메시지가 없습니다</string>
+    <string name="spam_message_deleted">메시지가 삭제되었습니다</string>
     <string name="conversations_messages">메시지</string>
     <string name="conversations_me">나</string>
     <string name="conversations_allow_sms_access">SMS 접근 허용</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">검색 닫기</string>
     <string name="convo_back_to_inbox">받은 편지함으로 돌아가기</string>
+    <string name="spam_empty">비우기</string>
+    <string name="spam_empty_confirm">이 탭의 모든 %d개 항목이 삭제되며, 이 작업은 취소할 수 없습니다.</string>
+    <string name="spam_conversation_deleted">차단된 대화 삭제됨</string>
+    <string name="spam_conversations_cleared">차단된 대화가 모두 삭제됨</string>
+    <string name="spam_messages_cleared">차단된 메시지가 모두 삭제됨</string>
 </resources>

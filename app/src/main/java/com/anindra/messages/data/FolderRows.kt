@@ -16,10 +16,11 @@ internal object FolderRows {
     const val COL_NAME = 3
     const val COL_BODY = 4
     const val COL_TIMESTAMP = 5
+    const val COL_BLOCKED_REASON = 6
     const val COL_DELETED_AT = 6
 
     const val BLOCKED_SELECT =
-        "SELECT m.id,m.conversation_id,c.address,c.name,m.body,m.timestamp " +
+        "SELECT m.id,m.conversation_id,c.address,c.name,m.body,m.timestamp,m.blocked_reason " +
             "FROM messages m JOIN conversations c ON c.id=m.conversation_id " +
             "WHERE m.blocked_reason!='' AND m.deleted_at>0 ORDER BY m.timestamp DESC"
 
@@ -34,8 +35,9 @@ internal object FolderRows {
         address: String,
         name: String,
         body: String,
-        timestamp: Long
-    ): BlockedMessage = BlockedMessage(id, conversationId, address, name, body, timestamp)
+        timestamp: Long,
+        blockedReason: String
+    ): BlockedMessage = BlockedMessage(id, conversationId, address, name, body, timestamp, blockedReason)
 
     fun trashedMessage(
         id: Long,
