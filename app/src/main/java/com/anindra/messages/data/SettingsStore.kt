@@ -30,6 +30,7 @@ class SettingsStore(context: Context) {
         const val KEY_DRAFTS_ENABLED = "drafts_enabled"
         const val KEY_SWIPE_ACTIONS_ENABLED = "swipe_actions_enabled"
         const val KEY_BLOCKING_ENABLED = "blocking_enabled"
+        const val KEY_RETENTION_DAYS = "retention_days"
         const val KEY_FORWARDING_ENABLED = "forwarding_enabled"
         const val KEY_UNREAD_AT_TOP_ENABLED = "unread_at_top_enabled"
         const val KEY_SCHEDULED_MESSAGES_ENABLED = "scheduled_messages_enabled"
@@ -136,6 +137,15 @@ class SettingsStore(context: Context) {
     var blockingEnabled: Boolean
         get() = prefs.getBoolean(KEY_BLOCKING_ENABLED, true)
         set(v) { prefs.edit().putBoolean(KEY_BLOCKING_ENABLED, v).apply(); _revision.value++ }
+
+    var retentionDays: Int
+        get() = RetentionPolicy.normalizedDays(
+            prefs.getInt(KEY_RETENTION_DAYS, RetentionPolicy.DEFAULT_DAYS)
+        )
+        set(v) {
+            prefs.edit().putInt(KEY_RETENTION_DAYS, RetentionPolicy.normalizedDays(v)).apply()
+            _revision.value++
+        }
 
     var forwardingEnabled: Boolean
         get() = prefs.getBoolean(KEY_FORWARDING_ENABLED, true)
