@@ -127,7 +127,7 @@ object NotificationHelper {
             .setConversationTitle(senderName)
 
         val history = convoId
-            ?.let { app.repository.recentMessageLines(it, NotificationHistory.MAX_LINES) }
+            ?.let { app.repository.notificationHistory(it, NotificationHistory.MAX_LINES) }
             .orEmpty()
         val lines = NotificationHistory.window(
             if (history.isEmpty()) listOf(NotificationLine(fallbackText, System.currentTimeMillis(), false))
@@ -135,7 +135,7 @@ object NotificationHelper {
                 NotificationLine(
                     if (hideLinks) hideUrls(it.text) else it.text,
                     it.timestamp,
-                    it.fromMe
+                    fromMe = false
                 )
             }
         )
