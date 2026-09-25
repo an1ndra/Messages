@@ -92,13 +92,14 @@ class SmsReceiver : BroadcastReceiver() {
                 }
             }
 
-            repo.receiveMessage(address, body, sysId, subId)
-            // Skip notification only while the user is actually on this thread.
-            if (NotificationPolicy.skipForOpenThread(
-                    ForegroundTracker.isAppInForeground,
-                    ForegroundTracker.isConversationOpen(address)
-                )
-            ) continue
+            // A thread the user is already looking at is read on arrival: the
+            // badge must not climb for a message that is visible on screen, and
+            // the notification is redundant with the open chat.
+            val inForeground = ForegroundTracker.isAppInForeground
+            val threadOpen = ForegroundTracker.isConversationOpen(address)
+            val counts = NotificationPolicy.countsAsUnread(inForeground, threadOpen)
+            repo.receiveMessage(address, body, sysId, subId, markUnread = counts)
+            if (NotificationPolicy.skipForOpenThread(inForeground, threadOpen)) continue
             NotificationHelper.show(context, address, body)
         }
     }
