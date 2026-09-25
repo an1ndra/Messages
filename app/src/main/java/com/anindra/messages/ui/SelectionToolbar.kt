@@ -30,6 +30,16 @@ object SelectionToolbar {
 
     fun isSelectionActive(count: Int): Boolean = count > 0
 
+    /** The overflow is reachable for any non-empty selection: it carries
+     *  "Select all" even once several messages are picked, so the user can still
+     *  extend a multi-message selection in one tap (#232). */
+    fun showMore(count: Int): Boolean = count >= 1
+
+    /** "Select all" takes every message that is not locked; a locked message
+     *  must never end up in a bulk delete/trash. */
+    fun selectAllCandidates(allIds: List<Long>, lockedIds: Set<Long>): List<Long> =
+        allIds.filter { it !in lockedIds }
+
     /** Whether an action dismisses the selection afterwards. Non-destructive
      *  actions (copy, share, forward) leave the selection in place so the user
      *  can chain actions; destructive/state-changing ones (trash, lock) clear it. */

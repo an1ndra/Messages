@@ -5,6 +5,7 @@ import android.app.Application
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -60,6 +61,8 @@ import com.anindra.messages.data.Conversation
 import com.anindra.messages.R
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.data.BlockedMessage
+import com.anindra.messages.data.DownloadsStore
+import com.anindra.messages.data.MmsSupport
 import com.anindra.messages.data.TrashedMessage
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.Repository
@@ -337,6 +340,39 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (!handedOff) {
                 repo.markMessageStatusSuspend(stored.id, "failed")
                 NotificationHelper.showSendFailed(getApplication(), convo.address)
+            }
+        }
+    }
+
+    /** Saves a message attachment (e.g. an MMS picture) to the gallery (#235).
+     *  Reads the bytes through the resolver so provider-backed
+     *  `content://mms/part/...` URIs and our own cache URIs both work. */
+    fun saveMessageImage(messageId: Long) {
+        scope.launch {
+            val app = getApplication<Application>()
+            val resolver = app.contentResolver
+            val msg = repo.messageByIdSuspend(messageId)
+            if (msg == null || msg.mediaUri.isBlank()) {
+                Toast.makeText(app, R.string.chat_image_save_failed, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val uri = Uri.parse(msg.mediaUri)
+            val bytes = runCatching { resolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+            val mime = MmsSupport.mimeForSavedAttachment(
+                msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
+            )
+            val convo = repo.conversationByIdSuspend(msg.conversationId)
+            val name = MmsSupport.savedAttachmentName(
+                convo?.name ?: convo?.address ?: "message", msg.timestamp, mime
+            )
+            val ok = bytes != null && bytes.isNotEmpty() &&
+                DownloadsStore.writeImage(app, name, mime, bytes)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    app,
+                    if (ok) R.string.chat_image_saved else R.string.chat_image_save_failed,
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
