@@ -724,8 +724,12 @@ fun ChatScreen(
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)
-        // Dismiss all app notifications when user opens a chat
-        NotificationManagerCompat.from(context).cancelAll()
+        // Dismiss only this conversation's notification. cancelAll() here wiped
+        // the other unread conversations' notifications, which is what drives
+        // the launcher badge, so the count vanished as soon as any chat opened.
+        com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+            context, conversationId
+        )
         draftLoaded = false
     }
     LaunchedEffect(convo?.address) {

@@ -653,8 +653,11 @@ class MainActivity : FragmentActivity() {
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            // Dismiss all notifications when opening a chat from notification
-            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+            // Dismiss just this conversation's notification; the others must stay
+            // so the launcher badge still reflects them.
+            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+                this@MainActivity, null, it
+            )
         }
         recipientFromIntent(intent)?.let { pendingOpenAddress = it }
         // Opening straight from an external sms:/smsto: launch: hold on a neutral
@@ -851,8 +854,9 @@ class MainActivity : FragmentActivity() {
                     ConversationsScreen(
                         vm = vm,
                         onOpenConversation = { id ->
-                            // Dismiss notifications when opening chat from conversation list
-                            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+                            // Dismiss only this conversation's notification
+                            com.anindra.messages.sms.NotificationHelper
+                                .clearConversationNotification(this@MainActivity, id)
                             chatId = id
                             navRoute = "chat"
                         },
@@ -1038,8 +1042,11 @@ class MainActivity : FragmentActivity() {
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            // Dismiss all notifications when opening a chat from notification
-            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+            // Dismiss just this conversation's notification; the others must stay
+            // so the launcher badge still reflects them.
+            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+                this@MainActivity, null, it
+            )
         }
         recipientFromIntent(intent)?.let { pendingOpenAddress = it }
         // Warm external launch: hide whatever is on screen (usually the list)
