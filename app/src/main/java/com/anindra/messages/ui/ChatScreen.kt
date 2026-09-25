@@ -137,7 +137,6 @@ import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
-import com.anindra.messages.data.SimIcon
 import com.anindra.messages.data.SimSwitcher
 import com.anindra.messages.data.MessageLockCrypto
 import androidx.compose.ui.res.painterResource
@@ -2047,16 +2046,26 @@ private fun InputBar(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (sims.size > 1 && draft.isBlank()) {
                             val currentIndex = sims.indexOfFirst { it.subscriptionId == currentSimId }
-                            val iconRes = when (SimSwitcher.iconFor(sims.size, currentIndex)) {
-                                SimIcon.SIM_2 -> R.drawable.ic_sim_2
-                                SimIcon.DUAL -> R.drawable.ic_dual_sim
-                                SimIcon.SIM_1 -> R.drawable.ic_sim_1
+                            val simLabel = when {
+                                sims.size >= 3 -> "D"
+                                else -> "${currentIndex + 1}"
                             }
-                            IconButton(onClick = onCycleSim, modifier = Modifier.size(40.dp)) {
+                            Box(
+                                modifier = Modifier.size(40.dp).clickable { onCycleSim() },
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(
-                                    painterResource(iconRes),
+                                    painterResource(R.drawable.ic_sim_vector),
                                     stringResource(R.string.chat_switch_sim),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = simLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.surface,
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
                         }
