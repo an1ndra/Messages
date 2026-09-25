@@ -80,4 +80,6 @@ dependencies {
     implementation(libs.coil.compose)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation("junit:junit:4.13.2")
+    // Real org.json on the unit-test classpath; the android.jar stubs throw.
+    testImplementation("org.json:json:20240303")
 }

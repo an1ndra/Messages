@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -62,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -78,6 +81,9 @@ import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.ui.theme.LocalLargeTouchTargets
 
 private enum class PinDialogMode { SET, ENTER }
+
+/** Which backup format the picked file belongs to. */
+private enum class ImportSource { OWN_BACKUP, SMS_IE }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,6 +143,8 @@ fun SettingsScreen(
         mutableStateOf(com.anindra.messages.data.BackupFormat.LEGACY)
     }
     var importModeDialog by remember { mutableStateOf(false) }
+    var importSourceDialog by remember { mutableStateOf(false) }
+    var pendingImportSource by remember { mutableStateOf(ImportSource.OWN_BACKUP) }
     var pinInput by remember { mutableStateOf("") }
     var pinConfirm by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
@@ -176,8 +184,19 @@ fun SettingsScreen(
             vm.peekBackupFormat(it) { format ->
                 pendingImportUri = it
                 pendingImportFormat = format
+                pendingImportSource = ImportSource.OWN_BACKUP
                 importModeDialog = true
             }
+        }
+    }
+
+    val smsIeLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            pendingImportUri = it
+            pendingImportSource = ImportSource.SMS_IE
+            importModeDialog = true
         }
     }
 
@@ -400,10 +419,7 @@ fun SettingsScreen(
                 SettingsRow(
                     title = stringResource(R.string.settings_import_title),
                     subtitle = stringResource(R.string.settings_import_subtitle),
-                    onClick = {
-                        pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
-                        importLauncher.launch(arrayOf("application/octet-stream", "application/x-sqlite3"))
-                    }
+                    onClick = { importSourceDialog = true }
                 )
             }
 
@@ -641,8 +657,83 @@ fun SettingsScreen(
         )
     }
 
+    if (importSourceDialog) {
+        var source by remember { mutableStateOf(ImportSource.OWN_BACKUP) }
+        fun launchPicker() {
+            importSourceDialog = false
+            if (source == ImportSource.OWN_BACKUP) {
+                importLauncher.launch(
+                    arrayOf("application/octet-stream", "application/x-sqlite3")
+                )
+            } else {
+                smsIeLauncher.launch(
+                    arrayOf(
+                        "application/zip",
+                        "application/json",
+                        "application/octet-stream",
+                        "*/*"
+                    )
+                )
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { importSourceDialog = false },
+            title = { Text(stringResource(R.string.settings_import_source_title)) },
+            text = {
+                ImportRadioGroup(
+                    options = listOf(
+                        stringResource(R.string.settings_import_source_own_title) to "",
+                        stringResource(R.string.settings_import_source_sms_ie_title) to ""
+                    ),
+                    selectedIndex = if (source == ImportSource.OWN_BACKUP) 0 else 1,
+                    onSelect = {
+                        source = if (it == 0) ImportSource.OWN_BACKUP else ImportSource.SMS_IE
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { launchPicker() }) {
+                    Text(stringResource(R.string.common_continue))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { importSourceDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
     if (importModeDialog) {
         val uri = pendingImportUri
+        var mode by remember {
+            mutableStateOf(com.anindra.messages.data.ImportMode.MERGE)
+        }
+        fun applyImport() {
+            val target = uri ?: return
+            if (pendingImportSource == ImportSource.SMS_IE) {
+                vm.importSmsIe(target, mode) { count ->
+                    showImportResult(
+                        if (count < 0) {
+                            com.anindra.messages.data.Repository.ImportResult.Error(
+                                context.getString(R.string.settings_import_sms_ie_failed)
+                            )
+                        } else {
+                            com.anindra.messages.data.Repository.ImportResult.Success(count)
+                        }
+                    )
+                }
+                return
+            }
+            when {
+                pendingImportFormat == com.anindra.messages.data.BackupFormat.PIN -> {
+                    pinInput = ""
+                    pinError = null
+                    pinMode = PinDialogMode.ENTER
+                }
+                else -> vm.importDatabase(target, null, mode, showImportResult)
+            }
+        }
         AlertDialog(
             onDismissRequest = {
                 importModeDialog = false
@@ -657,39 +748,31 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    ImportChoiceRow(
-                        title = stringResource(R.string.settings_merge_title),
-                        subtitle = stringResource(R.string.settings_merge_subtitle),
-                        onClick = {
-                            importModeDialog = false
-                            pendingImportMode = com.anindra.messages.data.ImportMode.MERGE
-                            if (pendingImportFormat == com.anindra.messages.data.BackupFormat.PIN) {
-                                pinInput = ""
-                                pinError = null
-                                pinMode = PinDialogMode.ENTER
-                            } else if (uri != null) {
-                                vm.importDatabase(uri, null, pendingImportMode, showImportResult)
-                            }
-                        }
-                    )
-                    ImportChoiceRow(
-                        title = stringResource(R.string.settings_restore_title),
-                        subtitle = stringResource(R.string.settings_restore_subtitle),
-                        onClick = {
-                            importModeDialog = false
-                            pendingImportMode = com.anindra.messages.data.ImportMode.REPLACE
-                            if (pendingImportFormat == com.anindra.messages.data.BackupFormat.PIN) {
-                                pinInput = ""
-                                pinError = null
-                                pinMode = PinDialogMode.ENTER
-                            } else if (uri != null) {
-                                vm.importDatabase(uri, null, pendingImportMode, showImportResult)
+                    ImportRadioGroup(
+                        options = listOf(
+                            stringResource(R.string.settings_merge_title) to
+                                stringResource(R.string.settings_merge_subtitle),
+                            stringResource(R.string.settings_restore_title) to
+                                stringResource(R.string.settings_restore_subtitle)
+                        ),
+                        selectedIndex = if (mode == com.anindra.messages.data.ImportMode.MERGE) 0 else 1,
+                        onSelect = {
+                            mode = if (it == 0) {
+                                com.anindra.messages.data.ImportMode.MERGE
+                            } else {
+                                com.anindra.messages.data.ImportMode.REPLACE
                             }
                         }
                     )
                 }
             },
-            confirmButton = {},
+            confirmButton = {
+                TextButton(onClick = {
+                    importModeDialog = false
+                    pendingImportMode = mode
+                    applyImport()
+                }) { Text(stringResource(R.string.settings_import)) }
+            },
             dismissButton = {
                 TextButton(onClick = {
                     importModeDialog = false
@@ -879,29 +962,37 @@ private fun themeLabel(mode: String, context: android.content.Context) = when (m
 private fun notificationSoundLabel(value: String, options: List<Pair<String, String>>, context: android.content.Context) =
     options.firstOrNull { it.first == value }?.second ?: context.getString(R.string.settings_sound_default)
 
+/**
+ * A single-choice group of [options] (label to optional supporting text),
+ * following the Material 3 radio button guidelines: stacked vertically, one
+ * option always selected, and the whole row is the tap target so either the
+ * radio or its label selects. Selection does not act on its own - the dialog's
+ * confirm button does.
+ */
 @Composable
-private fun ImportChoiceRow(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
+private fun ImportRadioGroup(
+    options: List<Pair<String, String>>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-    ) {
-        RadioButton(selected = false, onClick = onClick)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+    Column(Modifier.selectableGroup()) {
+        options.forEachIndexed { index, (label, supporting) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .selectable(
+                        selected = selectedIndex == index,
+                        onClick = { onSelect(index) },
+                        role = Role.RadioButton
+                    )
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                RadioButton(selected = selectedIndex == index, onClick = null)
+                Spacer(Modifier.width(12.dp))
+                Text(label, style = MaterialTheme.typography.bodyLarge)
+            }
         }
     }
 }
