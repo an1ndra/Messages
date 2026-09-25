@@ -700,25 +700,16 @@ class Repository(private val context: Context) {
     /** Keyword-blocked messages shown under Spam & blocked → Messages. */
     fun blockedMessages(): Flow<List<BlockedMessage>> = observe {
         val out = mutableListOf<BlockedMessage>()
-        db.readableDatabase.rawQuery(
-            """SELECT m.id,m.conversation_id,c.address,c.name,
-               COALESCE(p.display_destination, c.address),m.body,m.timestamp
-               FROM messages m
-               JOIN conversations c ON c.id=m.conversation_id
-               LEFT JOIN participants p ON p.normalized_destination=c.address
-               WHERE m.blocked_reason!='' AND m.deleted_at>0
-               ORDER BY m.timestamp DESC""",
-            null
-        ).use { c ->
+        db.readableDatabase.rawQuery(FolderRows.BLOCKED_SELECT, null).use { c ->
             while (c.moveToNext()) {
                 out.add(
-                    BlockedMessage(
-                        id = c.getLong(0),
-                        conversationId = c.getLong(1),
-                        address = c.getString(2),
-                        name = c.getString(4) ?: c.getString(3),
-                        body = c.getString(5),
-                        timestamp = c.getLong(6)
+                    FolderRows.blockedMessage(
+                        id = c.getLong(FolderRows.COL_ID),
+                        conversationId = c.getLong(FolderRows.COL_CONVERSATION_ID),
+                        address = c.getString(FolderRows.COL_ADDRESS),
+                        name = c.getString(FolderRows.COL_NAME),
+                        body = c.getString(FolderRows.COL_BODY),
+                        timestamp = c.getLong(FolderRows.COL_TIMESTAMP)
                     )
                 )
             }
@@ -738,26 +729,17 @@ class Repository(private val context: Context) {
      *  are excluded: they live in Spam & blocked → Messages instead. */
     fun trashedMessages(): Flow<List<TrashedMessage>> = observe {
         val out = mutableListOf<TrashedMessage>()
-        db.readableDatabase.rawQuery(
-            """SELECT m.id,m.conversation_id,c.address,c.name,
-               COALESCE(p.display_destination, c.address),m.body,m.timestamp,m.deleted_at
-               FROM messages m
-               JOIN conversations c ON c.id=m.conversation_id
-               LEFT JOIN participants p ON p.normalized_destination=c.address
-               WHERE m.deleted_at>0 AND m.blocked_reason=''
-               ORDER BY m.deleted_at DESC""",
-            null
-        ).use { c ->
+        db.readableDatabase.rawQuery(FolderRows.TRASHED_SELECT, null).use { c ->
             while (c.moveToNext()) {
                 out.add(
-                    TrashedMessage(
-                        id = c.getLong(0),
-                        conversationId = c.getLong(1),
-                        address = c.getString(2),
-                        name = c.getString(4) ?: c.getString(3),
-                        body = c.getString(5),
-                        timestamp = c.getLong(6),
-                        deletedAt = c.getLong(7)
+                    FolderRows.trashedMessage(
+                        id = c.getLong(FolderRows.COL_ID),
+                        conversationId = c.getLong(FolderRows.COL_CONVERSATION_ID),
+                        address = c.getString(FolderRows.COL_ADDRESS),
+                        name = c.getString(FolderRows.COL_NAME),
+                        body = c.getString(FolderRows.COL_BODY),
+                        timestamp = c.getLong(FolderRows.COL_TIMESTAMP),
+                        deletedAt = c.getLong(FolderRows.COL_DELETED_AT)
                     )
                 )
             }
