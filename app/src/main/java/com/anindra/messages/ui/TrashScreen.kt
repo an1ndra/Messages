@@ -66,6 +66,7 @@ fun TrashScreen(
     val context = LocalContext.current
 
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var trashDays by remember(vm.settings.revision) { mutableStateOf(vm.settings.retentionTrashDays) }
     var showEmptyTrashDialog by remember { mutableStateOf(false) }
     var showDeleteForeverDialog by remember { mutableStateOf(false) }
     var deleteConversationTarget by remember { mutableStateOf<Long?>(null) }
@@ -82,6 +83,11 @@ fun TrashScreen(
                     }
                 },
                 actions = {
+                    AutoDeleteDurationAction(
+                        days = trashDays,
+                        active = vm.settings.retentionEnabled && vm.settings.retentionTrash,
+                        onPick = { vm.settings.retentionTrashDays = it; trashDays = it }
+                    )
                     if (conversations.isNotEmpty() || messages.isNotEmpty()) {
                         TextButton(onClick = { showEmptyTrashDialog = true }) {
                             Text(stringResource(R.string.trash_empty), color = MaterialTheme.colorScheme.error)
