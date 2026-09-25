@@ -21,6 +21,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -125,6 +127,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -140,6 +143,9 @@ import com.anindra.messages.data.MessageLockCrypto
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.ui.theme.LocalReduceMotion
+import com.anindra.messages.ui.theme.Motion
+import com.anindra.messages.ui.theme.motionSpring
+import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.ChatMetaWeight
 import com.anindra.messages.ui.theme.incomingBubble
@@ -215,6 +221,7 @@ private fun ChatBubble(
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
     val slidePx = with(LocalDensity.current) { BubbleEntrance.SLIDE_DP.dp.toPx() }
+    val bubbleReduceMotion = LocalReduceMotion.current
     val entrance = remember(msg.id) { Animatable(if (animateIn) 0f else 1f) }
     LaunchedEffect(msg.id) {
         if (animateIn) {
@@ -222,7 +229,7 @@ private fun ChatBubble(
             android.util.Log.d("BubbleAnim", "entrance id=${msg.id} mine=${msg.isMe}")
             entrance.animateTo(
                 1f,
-                tween(BubbleEntrance.DURATION_MS, easing = FastOutSlowInEasing)
+                tween(BubbleEntrance.DURATION_MS, easing = Motion.emphasized(bubbleReduceMotion))
             )
         }
     }
@@ -395,6 +402,9 @@ fun ChatScreen(
     onOpenDetails: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val reduceMotion = LocalReduceMotion.current
+    val toolbarFade = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
+    val toolbarSlide = motionSpring<IntOffset>(reduceMotion)
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val convo by remember(conversationId) { vm.conversationById(conversationId) }.collectAsState(initial = null)
@@ -742,8 +752,16 @@ fun ChatScreen(
             AnimatedContent(
                 targetState = selectionActive,
                 transitionSpec = {
-                    (fadeIn() + slideInVertically { -it / 4 }) togetherWith
-                        (fadeOut() + slideOutVertically { it / 4 })
+                    (fadeIn(toolbarFade) +
+                        slideInVertically(
+                            animationSpec = toolbarSlide,
+                            initialOffsetY = { -it / 4 }
+                        )) togetherWith
+                        (fadeOut(toolbarFade) +
+                            slideOutVertically(
+                                animationSpec = toolbarSlide,
+                                targetOffsetY = { it / 4 }
+                            ))
                 },
                 label = stringResource(R.string.access_chat_top_bar)
             ) { selecting ->
@@ -838,7 +856,21 @@ fun ChatScreen(
                     .background(MaterialTheme.colorScheme.chatBar)
                     .navigationBarsPadding()
             ) {
-                AnimatedVisibility(showEmoji && !selectionActive) {
+                AnimatedVisibility(
+                    visible = showEmoji && !selectionActive,
+                    enter = if (reduceMotion) fadeIn(tween(0))
+                    else fadeIn(motionTween(false, Motion.DURATION_SHORT4)) +
+                        expandVertically(
+                            animationSpec = motionSpring(false),
+                            expandFrom = Alignment.Top
+                        ),
+                    exit = if (reduceMotion) fadeOut(tween(0))
+                    else fadeOut(motionTween(false, Motion.DURATION_SHORT4)) +
+                        shrinkVertically(
+                            animationSpec = motionSpring(false),
+                            shrinkTowards = Alignment.Top
+                        )
+                ) {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly

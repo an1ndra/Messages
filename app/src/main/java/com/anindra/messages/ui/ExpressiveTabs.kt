@@ -3,6 +3,7 @@ package com.anindra.messages.ui
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.ripple
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +37,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.anindra.messages.ui.theme.LocalReduceMotion
+import com.anindra.messages.ui.theme.Motion
+import com.anindra.messages.ui.theme.motionTween
 /** A single option in an [ExpressiveTabs] row. */
 data class ExpressiveTab(val labelRes: Int, val icon: ImageVector? = null)
 
@@ -80,24 +85,25 @@ private fun RowScope.ConnectedTab(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.96f else 1f,
-        animationSpec = spring(
+        animationSpec = if (reduceMotion) snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            stiffness = Motion.SPATIAL_STIFFNESS_MEDIUM
         ),
         label = "tabScale"
     )
     val container by animateColorAsState(
         targetValue = if (selected) MaterialTheme.colorScheme.primary
         else MaterialTheme.colorScheme.surfaceContainerLow,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
         label = "tabContainer"
     )
     val content by animateColorAsState(
         targetValue = if (selected) MaterialTheme.colorScheme.onPrimary
         else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
         label = "tabContent"
     )
     Surface(
@@ -111,7 +117,7 @@ private fun RowScope.ConnectedTab(
                 selected = selected,
                 role = Role.Tab,
                 interactionSource = interaction,
-                indication = null,
+                indication = ripple(),
                 onClick = onClick
             ),
         shape = shape,
