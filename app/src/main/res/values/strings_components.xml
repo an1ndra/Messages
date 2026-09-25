@@ -2,6 +2,7 @@
 <resources>
     <!-- Shared action labels -->
     <string name="common_cancel">Cancel</string>
+    <string name="common_continue">Continue</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">Delete</string>
     <string name="common_open">Open</string>
