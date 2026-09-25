@@ -653,8 +653,6 @@ class MainActivity : FragmentActivity() {
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            // Dismiss just this conversation's notification; the others must stay
-            // so the launcher badge still reflects them.
             com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
                 this@MainActivity, null, it
             )
@@ -854,7 +852,6 @@ class MainActivity : FragmentActivity() {
                     ConversationsScreen(
                         vm = vm,
                         onOpenConversation = { id ->
-                            // Dismiss only this conversation's notification
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
                             chatId = id
@@ -1042,8 +1039,6 @@ class MainActivity : FragmentActivity() {
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            // Dismiss just this conversation's notification; the others must stay
-            // so the launcher badge still reflects them.
             com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
                 this@MainActivity, null, it
             )
