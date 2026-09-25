@@ -13,6 +13,12 @@
     <string name="new_chat_send_to">Envoyer à « %s »</string>
     <string name="text_placeholder">Message texte</string>
     <string name="conversations_archived">Archivées</string>
+    <string name="conversations_spam_blocked">Spams et conversations bloquées</string>
+    <string name="conversations_spam_blocked_empty">Aucune conversation spam ou bloquée</string>
+    <string name="spam_tab_conversations">Conversations</string>
+    <string name="spam_tab_messages">Messages</string>
+    <string name="spam_blocked_messages_empty">Aucun message bloqué</string>
+    <string name="spam_message_deleted">Message supprimé</string>
     <string name="conversations_messages">Messages</string>
     <string name="conversations_me">Moi</string>
     <string name="conversations_allow_sms_access">Autoriser l\'accès SMS</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">Fermer la recherche</string>
     <string name="convo_back_to_inbox">Retour à la boîte de réception</string>
+    <string name="spam_empty">Vider</string>
+    <string name="spam_empty_confirm">Cela supprimera les %d éléments de cet onglet. Cette action est irréversible.</string>
+    <string name="spam_conversation_deleted">Conversation bloquée supprimée</string>
+    <string name="spam_conversations_cleared">Conversations bloquées vidées</string>
+    <string name="spam_messages_cleared">Messages bloqués vidés</string>
 </resources>

@@ -5,18 +5,29 @@
     <string name="conversations_allow_access">允許存取</string>
     <string name="conversations_open_settings">開啟設定</string>
     <string name="conversations_press_back_exit">再按一次返回以退出</string>
+
     <string name="new_chat_title">新對話</string>
     <string name="new_chat_hint">輸入姓名或電話號碼</string>
     <string name="new_chat_only_phone">僅能傳送訊息給電話號碼</string>
     <string name="new_chat_send_to">傳送至「%s」</string>
     <string name="text_placeholder">輸入訊息</string>
     <string name="conversations_archived">已封存</string>
+    <string name="conversations_spam_blocked">垃圾郵件與已封鎖</string>
+    <string name="conversations_spam_blocked_empty">沒有垃圾郵件或已封鎖的對話</string>
+    <string name="spam_tab_conversations">對話</string>
+    <string name="spam_tab_messages">訊息</string>
+    <string name="spam_blocked_messages_empty">沒有已封鎖的訊息</string>
+    <string name="spam_message_deleted">訊息已刪除</string>
     <string name="conversations_messages">訊息</string>
     <string name="conversations_me">我</string>
     <string name="conversations_allow_sms_access">允許 SMS 存取</string>
     <string name="conversations_sms_permission">訊息需要權限來讀取您的 SMS，以便在此顯示您的對話。</string>
-    <string name="convo_archived">對話已封存</string>
-    <string name="convo_moved_to_trash">對話已移至垃圾桶</string>
+
     <string name="convo_close_search">关闭搜索</string>
     <string name="convo_back_to_inbox">返回收件匣</string>
+    <string name="spam_empty">清空</string>
+    <string name="spam_empty_confirm">這將從此分頁中刪除全部 %d 個項目。此操作無法復原。</string>
+    <string name="spam_conversation_deleted">已刪除已封鎖的對話</string>
+    <string name="spam_conversations_cleared">已清空已封鎖的對話</string>
+    <string name="spam_messages_cleared">已清空已封鎖的訊息</string>
 </resources>

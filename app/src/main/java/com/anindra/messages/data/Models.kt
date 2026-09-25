@@ -47,7 +47,8 @@ data class BlockedMessage(
     val address: String,
     val name: String,
     val body: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val blockedReason: String
 )
 
 /** A manually deleted message kept in Trash (message-level soft delete). */

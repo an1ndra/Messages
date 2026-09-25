@@ -721,12 +721,59 @@ class Repository(private val context: Context) {
                         address = c.getString(FolderRows.COL_ADDRESS),
                         name = c.getString(FolderRows.COL_NAME),
                         body = c.getString(FolderRows.COL_BODY),
-                        timestamp = c.getLong(FolderRows.COL_TIMESTAMP)
+                        timestamp = c.getLong(FolderRows.COL_TIMESTAMP),
+                        blockedReason = c.getString(FolderRows.COL_BLOCKED_REASON)
                     )
                 )
             }
         }
         out
+    }
+
+    /** Re-insert a blocked message the user undid a delete on. The row has to come
+     *  back soft-deleted with its original reason, or it would surface in the
+     *  normal conversation instead of the blocked folder. */
+    fun restoreBlockedMessage(
+        conversationId: Long,
+        body: String,
+        timestamp: Long,
+        blockedReason: String
+    ) {
+        db.writableDatabase.execSQL(
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,deleted_at,blocked_reason)
+               VALUES(?,?,?,0,'received',?,?)""",
+            arrayOf(conversationId, body, timestamp, System.currentTimeMillis(), blockedReason)
+        )
+        notifyChanged()
+    }
+
+    /** Delete a blocked conversation and the blocked messages in it, and drop the
+     *  block so later mail from that sender is no longer diverted. */
+    fun deleteBlockedConversation(conversationId: Long, address: String) {
+        db.writableDatabase.execSQL(
+            "DELETE FROM messages WHERE conversation_id=? AND blocked_reason!=''",
+            arrayOf(conversationId)
+        )
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET blocked=0,unread_count=0 WHERE id=?",
+            arrayOf(conversationId)
+        )
+        if (isNumberBlocked(address)) unblockNumber(address)
+        notifyChanged()
+    }
+
+    fun deleteAllBlockedMessages() {
+        db.writableDatabase.execSQL("DELETE FROM messages WHERE blocked_reason!=''")
+        notifyChanged()
+    }
+
+    /** Drop every blocked sender, emptying the Conversations tab. */
+    fun unblockAllNumbers() {
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET blocked=0,unread_count=0 WHERE blocked=1"
+        )
+        db.writableDatabase.execSQL("DELETE FROM blocked_numbers")
+        notifyChanged()
     }
 
     fun deleteBlockedMessage(messageId: Long) {

@@ -40,9 +40,15 @@ class FolderRowsTest {
     fun blockedMessageKeepsSavedContactName() {
         val msg = FolderRows.blockedMessage(
             id = 7, conversationId = 2, address = "+15551230010", name = "Sarah",
-            body = "kw probe", timestamp = 1_700_000_000_000L
+            body = "kw probe", timestamp = 1_700_000_000_000L, blockedReason = "keyword"
         )
         assertEquals("Sarah", msg.name)
+        assertEquals("keyword", msg.blockedReason)
+    }
+
+    @Test
+    fun blockedSelectCarriesTheReasonSoAnUndoneDeleteCanBeReinserted() {
+        assertTrue(FolderRows.BLOCKED_SELECT.contains("m.blocked_reason"))
     }
 
     @Test
