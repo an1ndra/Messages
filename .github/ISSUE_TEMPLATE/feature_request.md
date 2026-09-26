@@ -1,3 +1,10 @@
+---
+name: Feature request
+about: Suggest an idea or improvement for Messages
+title: "[Feature]: "
+labels: ["enhancement"]
+---
+
 <!-- Short on purpose. -->
 
 **What you'd like**

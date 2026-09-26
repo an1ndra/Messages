@@ -1,3 +1,10 @@
+---
+name: Bug report
+about: Report something broken in Messages
+title: "[Bug]: "
+labels: ["bug"]
+---
+
 <!-- Short on purpose. A long form is a form people abandon. -->
 
 **What happened**
