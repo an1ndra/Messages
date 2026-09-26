@@ -27,13 +27,17 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 ## Screenshots
 
-| Conversations | Grouped bubbles | OTP highlighting | New chat |
+| Conversations | Chat | Contact details | New chat |
 |---|---|---|---|
-| ![Conversations](fastlane/metadata/android/en-US/images/phoneScreenshots/01-conversations.png) | ![Grouped bubbles](fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat-grouped-bubbles.png) | ![OTP highlighting](fastlane/metadata/android/en-US/images/phoneScreenshots/05-chat-otp.png) | ![New chat](fastlane/metadata/android/en-US/images/phoneScreenshots/06-new-chat.png) |
+| ![Conversations](fastlane/metadata/android/en-US/images/phoneScreenshots/01-conversations.png) | ![Chat](fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat.png) | ![Contact details](fastlane/metadata/android/en-US/images/phoneScreenshots/03-contact-details.png) | ![New chat](fastlane/metadata/android/en-US/images/phoneScreenshots/05-new-chat.png) |
 
-| Work chat | Alex chat | Settings |
-|---|---|---|
-| ![Work chat](fastlane/metadata/android/en-US/images/phoneScreenshots/03-chat-work.png) | ![Alex chat](fastlane/metadata/android/en-US/images/phoneScreenshots/04-chat-alex.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/07-settings.png) |
+| Group chat | Spam &amp; Blocked | Trash | Schedule send |
+|---|---|---|---|
+| ![Group chat](fastlane/metadata/android/en-US/images/phoneScreenshots/04-group-chat.png) | ![Spam & Blocked](fastlane/metadata/android/en-US/images/phoneScreenshots/06-spam-blocked.png) | ![Trash](fastlane/metadata/android/en-US/images/phoneScreenshots/08-trash.png) | ![Schedule send](fastlane/metadata/android/en-US/images/phoneScreenshots/09-schedule-send.png) |
+
+| Auto-delete | Notifications | Settings | Dark mode |
+|---|---|---|---|
+| ![Auto-delete](fastlane/metadata/android/en-US/images/phoneScreenshots/10-auto-delete.png) | ![Notifications](fastlane/metadata/android/en-US/images/phoneScreenshots/12-notification-grouped.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/11-settings.png) | ![Dark mode](fastlane/metadata/android/en-US/images/phoneScreenshots/13-conversations-dark.png) |
 
 ## Download
 
