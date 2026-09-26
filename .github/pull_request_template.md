@@ -1,3 +1,10 @@
+---
+name: Messages
+about: Kotlin + Compose SMS app. Every change needs a JUnit test and a scripts/test-*.sh run.
+title: ""
+labels: []
+---
+
 **What changed**
 
 **Why**
