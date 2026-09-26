@@ -26,4 +26,9 @@
 
     <string name="convo_close_search">Close search</string>
     <string name="convo_back_to_inbox">Back to inbox</string>
+    <string name="spam_empty">Empty</string>
+    <string name="spam_empty_confirm">This removes all %d items from this tab. This cannot be undone.</string>
+    <string name="spam_conversation_deleted">Blocked conversation deleted</string>
+    <string name="spam_conversations_cleared">Blocked conversations cleared</string>
+    <string name="spam_messages_cleared">Blocked messages cleared</string>
 </resources>

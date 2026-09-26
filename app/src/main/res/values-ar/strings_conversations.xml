@@ -13,6 +13,12 @@
     <string name="new_chat_send_to">إرسال إلى \"%s\"</string>
     <string name="text_placeholder">رسالة نصية</string>
     <string name="conversations_archived">المؤرشفة</string>
+    <string name="conversations_spam_blocked">الرسائل غير المرغوبة والمحظورة</string>
+    <string name="conversations_spam_blocked_empty">لا توجد محادثات غير مرغوبة أو محظورة</string>
+    <string name="spam_tab_conversations">المحادثات</string>
+    <string name="spam_tab_messages">الرسائل</string>
+    <string name="spam_blocked_messages_empty">لا توجد رسائل محظورة</string>
+    <string name="spam_message_deleted">تم حذف الرسالة</string>
     <string name="conversations_messages">الرسائل</string>
     <string name="conversations_me">أنا</string>
     <string name="conversations_allow_sms_access">السماح بالوصول إلى الرسائل القصيرة</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">إغلاق البحث</string>
     <string name="convo_back_to_inbox">العودة إلى صندوق الوارد</string>
+    <string name="spam_empty">تفريغ</string>
+    <string name="spam_empty_confirm">سيؤدي هذا إلى إزالة كل العناصر (%d) من علامة التبويب هذه. لا يمكن التراجع عن ذلك.</string>
+    <string name="spam_conversation_deleted">تم حذف المحادثة المحظورة</string>
+    <string name="spam_conversations_cleared">تم مسح المحادثات المحظورة</string>
+    <string name="spam_messages_cleared">تم مسح الرسائل المحظورة</string>
 </resources>

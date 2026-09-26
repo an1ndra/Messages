@@ -13,6 +13,12 @@
     <string name="new_chat_send_to">Enviar para \"%s\"</string>
     <string name="text_placeholder">Mensagem de texto</string>
     <string name="conversations_archived">Arquivadas</string>
+    <string name="conversations_spam_blocked">Spam e bloqueadas</string>
+    <string name="conversations_spam_blocked_empty">Nenhuma conversa de spam ou bloqueada</string>
+    <string name="spam_tab_conversations">Conversas</string>
+    <string name="spam_tab_messages">Mensagens</string>
+    <string name="spam_blocked_messages_empty">Nenhuma mensagem bloqueada</string>
+    <string name="spam_message_deleted">Mensagem excluída</string>
     <string name="conversations_messages">Mensagens</string>
     <string name="conversations_me">Eu</string>
     <string name="conversations_allow_sms_access">Permitir acesso SMS</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">Fechar pesquisa</string>
     <string name="convo_back_to_inbox">Voltar à caixa de entrada</string>
+    <string name="spam_empty">Esvaziar</string>
+    <string name="spam_empty_confirm">Isso removerá todos os %d itens desta guia. Não pode ser desfeito.</string>
+    <string name="spam_conversation_deleted">Conversa bloqueada excluída</string>
+    <string name="spam_conversations_cleared">Conversas bloqueadas limpas</string>
+    <string name="spam_messages_cleared">Mensagens bloqueadas limpas</string>
 </resources>

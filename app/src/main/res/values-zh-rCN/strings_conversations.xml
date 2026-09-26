@@ -5,18 +5,29 @@
     <string name="conversations_allow_access">允许访问</string>
     <string name="conversations_open_settings">打开设置</string>
     <string name="conversations_press_back_exit">再按一次返回以退出</string>
+
     <string name="new_chat_title">新对话</string>
     <string name="new_chat_hint">输入姓名或电话号码</string>
     <string name="new_chat_only_phone">只能向电话号码发送消息</string>
     <string name="new_chat_send_to">发送至「%s」</string>
     <string name="text_placeholder">输入消息</string>
     <string name="conversations_archived">已归档</string>
+    <string name="conversations_spam_blocked">垃圾邮件和已阻止</string>
+    <string name="conversations_spam_blocked_empty">没有垃圾邮件或已阻止的对话</string>
+    <string name="spam_tab_conversations">对话</string>
+    <string name="spam_tab_messages">消息</string>
+    <string name="spam_blocked_messages_empty">没有已阻止的消息</string>
+    <string name="spam_message_deleted">消息已删除</string>
     <string name="conversations_messages">消息</string>
     <string name="conversations_me">我</string>
     <string name="conversations_allow_sms_access">允许短信访问</string>
     <string name="conversations_sms_permission">消息需要权限来读取您的短信，以便在此显示您的对话。</string>
-    <string name="convo_archived">对话已归档</string>
-    <string name="convo_moved_to_trash">对话已移至回收站</string>
+
     <string name="convo_close_search">关闭搜索</string>
     <string name="convo_back_to_inbox">返回收件箱</string>
+    <string name="spam_empty">清空</string>
+    <string name="spam_empty_confirm">这将从此标签页中删除全部 %d 个项目。此操作无法撤销。</string>
+    <string name="spam_conversation_deleted">已删除已屏蔽的对话</string>
+    <string name="spam_conversations_cleared">已清空已屏蔽的对话</string>
+    <string name="spam_messages_cleared">已清空已屏蔽的消息</string>
 </resources>
