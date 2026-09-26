@@ -288,6 +288,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch(Dispatchers.IO) { repo.deleteBlockedMessage(messageId) }
     }
 
+    fun restoreBlockedMessage(
+        conversationId: Long,
+        body: String,
+        timestamp: Long,
+        blockedReason: String
+    ) = scope.launch(Dispatchers.IO) {
+        repo.restoreBlockedMessage(conversationId, body, timestamp, blockedReason)
+    }
+
+    fun deleteBlockedConversation(conversationId: Long, address: String) =
+        scope.launch(Dispatchers.IO) { repo.deleteBlockedConversation(conversationId, address) }
+
+    fun deleteAllBlockedMessages() = scope.launch(Dispatchers.IO) { repo.deleteAllBlockedMessages() }
+
+    fun unblockAllNumbers() = scope.launch(Dispatchers.IO) { repo.unblockAllNumbers() }
+
     fun setArchived(id: Long, archived: Boolean) =
         scope.launch { repo.setArchivedSuspend(id, archived) }
 
