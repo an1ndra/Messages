@@ -64,11 +64,13 @@ class VectorDrawableTest {
         // VectorDrawable's clip shaves it, and any scale under 1 leaves a
         // transparent margin that reads as padding around the icon.
         assertEquals("no transform group", 0, root.getElementsByTagName("group").length)
+        // Measured ink bounds of the source are x 80..438, y 10..506, i.e.
+        // 358x496, plus a 1-unit margin on each side.
         assertEquals(
             "viewport must match the traced artwork bounds",
-            "357", root.getAttribute("android:viewportWidth")
+            "360", root.getAttribute("android:viewportWidth")
         )
-        assertEquals("370", root.getAttribute("android:viewportHeight"))
+        assertEquals("498", root.getAttribute("android:viewportHeight"))
     }
 
     @Test
@@ -76,11 +78,13 @@ class VectorDrawableTest {
         val root = parse("ic_padlock")
         fun dp(name: String) =
             root.getAttribute(name).removeSuffix("dp").toDouble()
-        // Icons.Rounded.Delete puts ~16.5dp of ink on screen at size(22.dp).
-        // Too big reads as chunky next to the bin; too small reads as undersized.
+        // Sized by eye against the bin on a device screenshot, then deliberately
+        // nudged above the Material glyph's own ink height for visual weight, so
+        // this no longer tracks Icons.Rounded.Delete exactly. The band is tight
+        // around the chosen value so an edit cannot quietly undo that.
         val h = dp("android:height")
-        assertTrue("height ${h}dp is out of the optical range", h in 14.0..18.0)
+        assertTrue("height ${h}dp is out of the chosen range", h in 18.0..19.0)
         val w = dp("android:width")
-        assertTrue("width ${w}dp is out of the optical range", w in 12.0..18.0)
+        assertTrue("width ${w}dp is out of the chosen range", w in 13.0..14.0)
     }
 }
