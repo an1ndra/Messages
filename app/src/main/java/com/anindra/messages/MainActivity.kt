@@ -354,7 +354,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
-            val stored = repo.sendMedia(conversationId, "image", uri.toString()) ?: return@launch
+            val stored = repo.sendMedia(conversationId, attachmentType(uri), uri.toString())
+                ?: return@launch
             val handedOff = SmsSender.sendMms(
                 getApplication(), stored.id, convo.address, uri, settings.simSubscriptionId,
                 stored.body
@@ -363,6 +364,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 repo.markMessageStatusSuspend(stored.id, "failed")
                 NotificationHelper.showSendFailed(getApplication(), convo.address)
             }
+        }
+    }
+
+    /**
+     * Every attachment was stored as "image", so a video or audio MMS was
+     * transmitted correctly but shown as a Photo in the thread and conversation
+     * list. The stored type drives the bubble label, not the PDU.
+     */
+    private fun attachmentType(uri: Uri): String {
+        val mime = MmsSupport.defaultAttachmentMime(
+            getApplication<Application>().contentResolver.getType(uri), uri.toString()
+        )
+        return when {
+            mime.startsWith("audio/") -> "audio"
+            mime.startsWith("video/") -> "video"
+            else -> "image"
         }
     }
 
