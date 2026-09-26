@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,7 +56,10 @@ fun AutoDeleteDurationAction(
             tint = if (active) {
                 MaterialTheme.colorScheme.onSurfaceVariant
             } else {
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                IconTint.disabled(
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    isSystemInDarkTheme()
+                )
             }
         )
     }
