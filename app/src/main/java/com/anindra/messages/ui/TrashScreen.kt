@@ -18,8 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.rounded.DeleteForever
-import androidx.compose.material.icons.rounded.RestoreFromTrash
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -89,8 +90,16 @@ fun TrashScreen(
                         onPick = { vm.settings.retentionTrashDays = it; trashDays = it }
                     )
                     if (conversations.isNotEmpty() || messages.isNotEmpty()) {
-                        TextButton(onClick = { showEmptyTrashDialog = true }) {
-                            Text(stringResource(R.string.trash_empty), color = MaterialTheme.colorScheme.error)
+                        // Icon only, matching the Empty action in Spam & Blocked. The
+                        // label has to live on the icon or TalkBack has nothing to
+                        // announce; left at its natural size to match the auto-delete
+                        // clock beside it.
+                        IconButton(onClick = { showEmptyTrashDialog = true }) {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = stringResource(R.string.trash_empty),
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 }
@@ -305,15 +314,15 @@ private fun TrashRow(
         }
         IconButton(onClick = onRestore) {
             Icon(
-                Icons.Rounded.RestoreFromTrash,
+                Icons.Rounded.Undo,
                 contentDescription = stringResource(R.string.access_restore),
                 modifier = Modifier.size(22.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.primary
             )
         }
         IconButton(onClick = onDeleteForever) {
             Icon(
-                Icons.Rounded.DeleteForever,
+                Icons.Rounded.Close,
                 contentDescription = stringResource(R.string.access_delete_forever),
                 modifier = Modifier.size(22.dp),
                 tint = MaterialTheme.colorScheme.error
@@ -365,15 +374,15 @@ private fun TrashMessageRow(
         }
         IconButton(onClick = onRestore) {
             Icon(
-                Icons.Rounded.RestoreFromTrash,
+                Icons.Rounded.Undo,
                 contentDescription = stringResource(R.string.access_restore),
                 modifier = Modifier.size(22.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.primary
             )
         }
         IconButton(onClick = onDeleteForever) {
             Icon(
-                Icons.Rounded.DeleteForever,
+                Icons.Rounded.Close,
                 contentDescription = stringResource(R.string.access_delete_forever),
                 modifier = Modifier.size(22.dp),
                 tint = MaterialTheme.colorScheme.error
