@@ -663,7 +663,13 @@ class Repository(private val context: Context) {
     /** Store an incoming SMS. Returns conversation id. [sysId] links the row to
      *  its system-provider copy so the next sync skips it instead of duplicating.
      *  [subId] is the SIM subscription id for dual-SIM display. */
-    fun receiveMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
+    fun receiveMessage(
+        address: String,
+        body: String,
+        sysId: Long = 0L,
+        subId: Int = -1,
+        markUnread: Boolean = true
+    ): Long {
         val now = System.currentTimeMillis()
         val clean = MessageBody.normalize(body)
         val convoId = getOrCreateConversationBlocking(address, null, subId)
@@ -675,8 +681,8 @@ class Repository(private val context: Context) {
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
-               unread_count=unread_count+1 WHERE id=?""",
-            arrayOf<Any?>(clean, now, convoId)
+               unread_count=unread_count+? WHERE id=?""",
+            arrayOf<Any?>(clean, now, if (markUnread) 1 else 0, convoId)
         )
         notifyChanged()
         return convoId
