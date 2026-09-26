@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen reader (TalkBack) labels -->
+    <string name="access_open_conversation">Otwórz rozmowę</string>
+    <string name="access_conversation_options">Opcje rozmowy</string>
+    <string name="access_unread">%1$d nieprzeczytanych</string>
+
+    <!-- Accessibility mode (Advanced settings) -->
+    <string name="settings_accessibility_title">Tryb ułatwień dostępu</string>
+    <string name="settings_accessibility_subtitle">Większy tekst, większy kontrast i ograniczone animacje</string>
+    <string name="accessibility_options_title">Opcje ułatwień dostępu</string>
+    <string name="accessibility_options_subtitle">Dostosuj tekst, kontrast i animacje</string>
+    <string name="accessibility_title">Ułatwienia dostępu</string>
+
+    <!-- Text -->
+    <string name="a11y_font_size_title">Rozmiar czcionki</string>
+    <string name="a11y_font_size_desc">Skaluj tekst w aplikacji niezależnie od rozmiaru systemowego</string>
+    <string name="a11y_choose_font_size">Wybierz rozmiar czcionki</string>
+    <string name="a11y_font_85">Mały (85%)</string>
+    <string name="a11y_font_100">Domyślny (100%)</string>
+    <string name="a11y_font_115">Duży (115%)</string>
+    <string name="a11y_font_130">Największy (130%)</string>
+    <string name="a11y_bold_title">Pogrubiony tekst</string>
+    <string name="a11y_bold_desc">Używaj grubszych wag czcionek</string>
+
+    <!-- Display -->
+    <string name="a11y_high_contrast_title">Wysoki kontrast</string>
+    <string name="a11y_high_contrast_desc">Mocniejsze kolory i obrysy</string>
+    <string name="a11y_large_touch_title">Większe obszary dotykowe</string>
+    <string name="a11y_large_touch_desc">Większe miejsca dotknięcia przycisków i wierszy</string>
+
+    <!-- Motion -->
+    <string name="a11y_reduce_motion_title">Ogranicz animacje</string>
+    <string name="a11y_reduce_motion_desc">Wyłącz animacje i przejścia</string>
+</resources>

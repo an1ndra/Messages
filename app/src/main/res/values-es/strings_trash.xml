@@ -5,14 +5,16 @@
     <string name="trash_emptied">Papelera vaciada</string>
     <string name="toast_trash_deleted">Conversación eliminada</string>
     <string name="trash_delete_conversation">Eliminar conversación</string>
-    <string name="trash_empty_is_empty">La papelera está vacía</string>
-    <string name="trash_empty_message">Las conversaciones eliminadas se eliminan permanentemente después de 30 días</string>
-    <string name="trash_empty_confirm">¿Eliminar todas las %d conversaciones de la papelera? Esta acción no se puede deshacer.</string>
-    <string name="trash_delete_forever_confirm">¿Eliminar %s permanentemente? Esta acción no se puede deshacer.</string>
-    <string name="trash_deleted_on">Eliminado el %s</string>
     <string name="trash_delete_message">Eliminar mensaje</string>
     <string name="trash_tab_conversations">Conversaciones</string>
     <string name="trash_tab_messages">Mensajes</string>
     <string name="trash_messages_empty">No hay mensajes eliminados</string>
     <string name="trash_messages_empty_message">Los mensajes que elimines se guardan aquí hasta que los borres</string>
+
+    <string name="trash_empty_is_empty">La papelera está vacía</string>
+    <string name="trash_empty_message">Las conversaciones eliminadas se eliminan permanentemente después de 30 días</string>
+    <string name="trash_empty_confirm">¿Eliminar todas las %d conversaciones de la papelera? Esta acción no se puede deshacer.</string>
+    <string name="trash_delete_forever_confirm">¿Eliminar %s permanentemente? Esta acción no se puede deshacer.</string>
+    <string name="trash_deleted_on">Eliminado el %s</string>
+    <string name="trash_reason_blocked">Palabra clave</string>
 </resources>

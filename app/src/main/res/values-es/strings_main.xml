@@ -49,7 +49,18 @@
     <string name="notification_channel_desc">Notificaciones de mensajes nuevos</string>
     <string name="notif_title_private">Mensaje nuevo</string>
     <string name="notif_body_private">Tienes un mensaje nuevo</string>
+    <string name="notif_you">Tú</string>
     <string name="notif_send_fail_private">No se pudo enviar el mensaje. Toca para reintentar.</string>
     <string name="notif_send_fail">No se pudo enviar el mensaje a %s. Toca para reintentar.</string>
     <string name="notif_not_delivered">Mensaje no entregado</string>
+
+    <!-- Crash reports -->
+    <string name="crash_report_title">Informe de error</string>
+    <string name="crash_report_message">La app se bloqueó la última vez. El registro se guardó en Downloads/Messages: adjúntalo a un issue de GitHub para ayudar a solucionarlo.</string>
+    <string name="crash_report_message_many">La app se bloqueó %1$d veces. Los registros se guardaron en Downloads/Messages: adjúntalos a un issue de GitHub para ayudar a solucionarlo.</string>
+    <string name="crash_report_export">Guardar ZIP</string>
+    <string name="crash_report_copy">Copiar</string>
+    <string name="crash_report_delete">Eliminar</string>
+    <string name="crash_report_saved">Guardado en Downloads/Messages</string>
+    <string name="crash_report_clip_label">Informe de errores de Messages</string>
 </resources>

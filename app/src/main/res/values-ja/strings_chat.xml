@@ -5,6 +5,7 @@
     <string name="chat_block">ブロック</string>
     <string name="chat_block_report">ブロック &amp; スパムとして報告</string>
     <string name="chat_unblock">ブロック解除</string>
+    <string name="chat_moved_to_spam">迷惑メールに移動してブロックしました</string>
     <string name="chat_block_number">番号をブロック</string>
     <string name="chat_unblock_number">ブロック解除</string>
     <string name="chat_forward">転送</string>
@@ -16,6 +17,11 @@
     <string name="chat_select_time">時間を選択</string>
     <string name="chat_media_camera">カメラ</string>
     <string name="chat_media_gallery">ギャラリー</string>
+    <string name="chat_select_all">すべて選択</string>
+    <string name="chat_select_text">テキストを選択</string>
+    <string name="chat_save_image">画像を保存</string>
+    <string name="chat_image_saved">画像を Pictures/Messages に保存しました</string>
+    <string name="chat_image_save_failed">画像を保存できませんでした</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">メッセージを送信できません</string>
@@ -54,15 +60,29 @@
     <string name="chat_cancel">キャンセル</string>
     <string name="chat_delete">削除</string>
     <string name="chat_details_title">会話の詳細</string>
+    <string name="message_details_title">メッセージの詳細</string>
+    <string name="message_detail_type">種類</string>
+    <string name="message_detail_to">宛先</string>
+    <string name="message_detail_from">送信元</string>
+    <string name="message_detail_sent">送信済み</string>
+    <string name="message_detail_delivered">配信済み</string>
+    <string name="message_detail_status">ステータス</string>
+    <string name="message_status_sending">送信中…</string>
+    <string name="message_status_sent">送信済み</string>
+    <string name="message_status_delivered">配信済み</string>
+    <string name="message_status_received">受信済み</string>
+    <string name="message_status_failed">未送信</string>
 
     <string name="chat_status_not_sent">未送信</string>
     <string name="chat_status_retry">タップして再試行</string>
     <string name="chat_draft_prefix">下書き: </string>
     <string name="chat_sending_countdown">%d秒後に送信...</string>
     <string name="chat_alphanumeric_error">%s のような英数字送信者にはメッセージを送信できません。電話番号のみがサポートされています。</string>
+    <string name="chat_alphanumeric_notice">%s は返信を受け取れません。電話番号のみ対応しています。</string>
     <string name="chat_unlock_dialog">ロック解除</string>
     <string name="chat_lock_dialog">ロック</string>
     <string name="chat_message_deleted">メッセージが削除されました</string>
     <string name="chat_messages_deleted">%d件のメッセージが削除されました</string>
+    <string name="chat_trash">ゴミ箱に移動</string>
     <string name="status_not_sent">未送信</string>
 </resources>

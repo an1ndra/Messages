@@ -2,6 +2,7 @@
 <resources>
     <!-- Shared action labels -->
     <string name="common_cancel">Отмена</string>
+    <string name="common_continue">Продолжить</string>
     <string name="common_ok">ОК</string>
     <string name="common_delete">Удалить</string>
     <string name="common_open">Открыть</string>
@@ -25,6 +26,7 @@
     <string name="access_delete">Удалить</string>
     <string name="access_archive">Архив</string>
     <string name="access_pinned">Закреплено</string>
+    <string name="access_blocked">Заблокировано</string>
     <string name="access_start_chat">Начать чат</string>
     <string name="access_loading_messages">Загрузка сообщений</string>
     <string name="access_photo">Фото</string>

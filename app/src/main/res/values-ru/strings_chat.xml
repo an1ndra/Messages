@@ -5,6 +5,7 @@
     <string name="chat_block">Блок</string>
     <string name="chat_block_report">Заблокировать и сообщить о спаме</string>
     <string name="chat_unblock">Разблокировать</string>
+    <string name="chat_moved_to_spam">Перемещено в спам и заблокировано</string>
     <string name="chat_block_number">Заблокировать номер</string>
     <string name="chat_unblock_number">Разблокировать номер</string>
     <string name="chat_forward">Переслать</string>
@@ -16,6 +17,11 @@
     <string name="chat_select_time">Выбрать время</string>
     <string name="chat_media_camera">Камера</string>
     <string name="chat_media_gallery">Галерея</string>
+    <string name="chat_select_all">Выбрать все</string>
+    <string name="chat_select_text">Выделить текст</string>
+    <string name="chat_save_image">Сохранить изображение</string>
+    <string name="chat_image_saved">Изображение сохранено в Pictures/Messages</string>
+    <string name="chat_image_save_failed">Не удалось сохранить изображение</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Не удалось отправить сообщение</string>
@@ -54,15 +60,29 @@
     <string name="chat_cancel">Отмена</string>
     <string name="chat_delete">Удалить</string>
     <string name="chat_details_title">Подробности переписки</string>
+    <string name="message_details_title">Сведения о сообщении</string>
+    <string name="message_detail_type">Тип</string>
+    <string name="message_detail_to">Кому</string>
+    <string name="message_detail_from">От кого</string>
+    <string name="message_detail_sent">Отправлено</string>
+    <string name="message_detail_delivered">Доставлено</string>
+    <string name="message_detail_status">Статус</string>
+    <string name="message_status_sending">Отправка…</string>
+    <string name="message_status_sent">Отправлено</string>
+    <string name="message_status_delivered">Доставлено</string>
+    <string name="message_status_received">Получено</string>
+    <string name="message_status_failed">Не отправлено</string>
 
     <string name="chat_status_not_sent">Не отправлено</string>
     <string name="chat_status_retry">Нажмите для повтора</string>
     <string name="chat_draft_prefix">Черновик: </string>
     <string name="chat_sending_countdown">Отправка через %d сек…</string>
     <string name="chat_alphanumeric_error">Вы не можете отправлять сообщения алфавитно-цифровым отправителям, таким как %s. Поддерживаются только номера телефонов.</string>
+    <string name="chat_alphanumeric_notice">%s не может получать ответы. Поддерживаются только номера телефонов.</string>
     <string name="chat_unlock_dialog">Разблокировать</string>
     <string name="chat_lock_dialog">Заблокировать</string>
     <string name="chat_message_deleted">Сообщение удалено</string>
     <string name="chat_messages_deleted">Удалено сообщений: %d</string>
+    <string name="chat_trash">Переместить в корзину</string>
     <string name="status_not_sent">Не отправлено</string>
 </resources>

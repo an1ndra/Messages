@@ -2,6 +2,7 @@
 <resources>
     <!-- Shared action labels -->
     <string name="common_cancel">रद्द करें</string>
+    <string name="common_continue">जारी रखें</string>
     <string name="common_ok">ठीक है</string>
     <string name="common_delete">हटाएं</string>
     <string name="common_open">खोलें</string>
@@ -25,6 +26,7 @@
     <string name="access_delete">हटाएं</string>
     <string name="access_archive">संग्रहित करें</string>
     <string name="access_pinned">पिन किया गया</string>
+    <string name="access_blocked">ब्लॉक किया गया</string>
     <string name="access_start_chat">चैट शुरू करें</string>
     <string name="access_loading_messages">संदेश लोड हो रहे हैं</string>
     <string name="access_photo">फ़ोटो</string>

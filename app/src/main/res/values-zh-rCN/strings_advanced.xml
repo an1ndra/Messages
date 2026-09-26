@@ -11,5 +11,31 @@
     <string name="settings_advanced_turn_off">关闭「</string>
     <string name="settings_advanced_turn_off_suffix">」</string>
     <string name="settings_advanced_permanent_delete_on">永久删除已开启。此对话及其消息将立即从您的设备上移除 — 不会移至回收站 — 且无法恢复。</string>
-    <string name="link_warning_confirm">打开外部链接前确认</string>
+
+    <string name="settings_font_title">字体</string>
+    <string name="settings_advanced_emoji_button">表情符号按钮</string>
+    <string name="settings_advanced_emoji_button_desc">在消息输入框中显示表情符号按钮</string>
+    <string name="settings_choose_font">选择字体</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">系统默认</string>
+
+    <string name="keywords_title">已屏蔽的关键词</string>
+    <string name="keywords_hint">含有其中任一关键词的消息会移入回收站：不会显示在收件箱中，也不会发出通知提示音。</string>
+    <string name="keywords_add_hint">添加关键词</string>
+    <string name="keywords_add">添加</string>
+    <string name="keywords_empty">尚无已屏蔽的关键词。</string>
+    <string name="keywords_remove">移除关键词</string>
+    <string name="keywords_subtitle_none">无</string>
+    <string name="keywords_subtitle_count">已屏蔽 %1$d 个</string>
+
+    <string name="diagnostics_title">诊断</string>
+    <string name="diagnostics_subtitle">用于排查问题的设备和应用诊断信息</string>
+    <string name="diagnostics_save">保存</string>
+    <string name="diagnostics_copy">复制</string>
+    <string name="diagnostics_close">关闭</string>
+    <string name="diagnostics_clip_label">Messages 诊断信息</string>
+    <string name="settings_sim_unknown">未知 SIM 卡</string>
 </resources>

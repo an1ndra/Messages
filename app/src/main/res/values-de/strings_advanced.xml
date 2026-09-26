@@ -12,4 +12,30 @@
     <string name="settings_advanced_turn_off_suffix">" "aktivieren zuerst</string>
     <string name="settings_advanced_permanent_delete_on">Endgültiges Löschen ist aktiviert. Diese Unterhaltung und ihre Nachrichten werden sofort von Ihrem Gerät entfernt — nicht in den Papierkorb verschoben — und können nicht wiederhergestellt werden.</string>
 
+    <string name="settings_font_title">Schriftart</string>
+    <string name="settings_advanced_emoji_button">Emoji-Schaltfläche</string>
+    <string name="settings_advanced_emoji_button_desc">Emoji-Schaltfläche im Nachrichtenfeld anzeigen</string>
+    <string name="settings_choose_font">Schriftart wählen</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">Systemstandard</string>
+
+    <string name="keywords_title">Blockierte Stichwörter</string>
+    <string name="keywords_hint">Nachrichten, die eines dieser Wörter enthalten, werden in den Papierkorb verschoben: Sie erscheinen nicht im Posteingang und es ertönt kein Benachrichtigungston.</string>
+    <string name="keywords_add_hint">Stichwort hinzufügen</string>
+    <string name="keywords_add">Hinzufügen</string>
+    <string name="keywords_empty">Noch keine blockierten Stichwörter.</string>
+    <string name="keywords_remove">Stichwort entfernen</string>
+    <string name="keywords_subtitle_none">Keine</string>
+    <string name="keywords_subtitle_count">%1$d blockiert</string>
+
+    <string name="diagnostics_title">Diagnose</string>
+    <string name="diagnostics_subtitle">Geräte- und App-Diagnose zur Fehlersuche</string>
+    <string name="diagnostics_save">Speichern</string>
+    <string name="diagnostics_copy">Kopieren</string>
+    <string name="diagnostics_close">Schließen</string>
+    <string name="diagnostics_clip_label">Messages-Diagnose</string>
+    <string name="settings_sim_unknown">Unbekannte SIM</string>
 </resources>

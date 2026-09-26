@@ -2,6 +2,7 @@
 <resources>
     <!-- Shared action labels -->
     <string name="common_cancel">Cancelar</string>
+    <string name="common_continue">Continuar</string>
     <string name="common_ok">Aceptar</string>
     <string name="common_delete">Eliminar</string>
     <string name="common_open">Abrir</string>
@@ -25,6 +26,7 @@
     <string name="access_delete">Eliminar</string>
     <string name="access_archive">Archivar</string>
     <string name="access_pinned">Fijada</string>
+    <string name="access_blocked">Bloqueado</string>
     <string name="access_start_chat">Iniciar chat</string>
     <string name="access_loading_messages">Cargando mensajes</string>
     <string name="access_photo">Foto</string>

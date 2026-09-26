@@ -12,4 +12,30 @@
     <string name="settings_advanced_turn_off_suffix">"</string>
     <string name="settings_advanced_permanent_delete_on">Trwałe usuwanie jest włączone. Ta rozmowa i jej wiadomości zostaną natychmiast usunięte z urządzenia — nie przeniesione do kosza — i nie mogą zostać przywrócone.</string>
 
+    <string name="settings_font_title">Czcionka</string>
+    <string name="settings_advanced_emoji_button">Przycisk emoji</string>
+    <string name="settings_advanced_emoji_button_desc">Pokaż przycisk emoji w polu wiadomości</string>
+    <string name="settings_choose_font">Wybierz czcionkę</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">Domyślna systemowa</string>
+
+    <string name="keywords_title">Zablokowane słowa kluczowe</string>
+    <string name="keywords_hint">Wiadomości zawierające którekolwiek z tych słów trafiają do Kosza: nie są widoczne w skrzynce odbiorczej i nie wydają dźwięku powiadomienia.</string>
+    <string name="keywords_add_hint">Dodaj słowo kluczowe</string>
+    <string name="keywords_add">Dodaj</string>
+    <string name="keywords_empty">Brak zablokowanych słów kluczowych.</string>
+    <string name="keywords_remove">Usuń słowo kluczowe</string>
+    <string name="keywords_subtitle_none">Brak</string>
+    <string name="keywords_subtitle_count">%1$d zablokowanych</string>
+
+    <string name="diagnostics_title">Diagnostyka</string>
+    <string name="diagnostics_subtitle">Diagnostyka urządzenia i aplikacji do rozwiązywania problemów</string>
+    <string name="diagnostics_save">Zapisz</string>
+    <string name="diagnostics_copy">Kopiuj</string>
+    <string name="diagnostics_close">Zamknij</string>
+    <string name="diagnostics_clip_label">Diagnostyka Messages</string>
+    <string name="settings_sim_unknown">Nieznana karta SIM</string>
 </resources>

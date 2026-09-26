@@ -5,14 +5,16 @@
     <string name="trash_emptied">ゴミ箱を空にしました</string>
     <string name="toast_trash_deleted">会話が削除されました</string>
     <string name="trash_delete_conversation">会話を削除</string>
-    <string name="trash_empty_is_empty">ゴミ箱は空です</string>
-    <string name="trash_empty_message">削除された会話は30日後に完全に削除されます</string>
-    <string name="trash_empty_confirm">%d件の会話をゴミ箱から完全に削除しますか？この操作は元に戻せません。</string>
-    <string name="trash_delete_forever_confirm">%s を完全に削除しますか？この操作は元に戻せません。</string>
-    <string name="trash_deleted_on">%s に削除</string>
     <string name="trash_delete_message">メッセージを削除</string>
     <string name="trash_tab_conversations">会話</string>
     <string name="trash_tab_messages">メッセージ</string>
     <string name="trash_messages_empty">削除したメッセージはありません</string>
     <string name="trash_messages_empty_message">削除したメッセージは、削除するまでここに保存されます</string>
+
+    <string name="trash_empty_is_empty">ゴミ箱は空です</string>
+    <string name="trash_empty_message">削除された会話は30日後に完全に削除されます</string>
+    <string name="trash_empty_confirm">%d件の会話をゴミ箱から完全に削除しますか？この操作は元に戻せません。</string>
+    <string name="trash_delete_forever_confirm">%s を完全に削除しますか？この操作は元に戻せません。</string>
+    <string name="trash_deleted_on">%s に削除</string>
+    <string name="trash_reason_blocked">キーワード</string>
 </resources>

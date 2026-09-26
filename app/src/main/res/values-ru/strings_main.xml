@@ -49,7 +49,18 @@
     <string name="notification_channel_desc">Уведомления о новых сообщениях</string>
     <string name="notif_title_private">Новое сообщение</string>
     <string name="notif_body_private">У вас новое сообщение</string>
+    <string name="notif_you">Вы</string>
     <string name="notif_send_fail_private">Не удалось отправить сообщение. Нажмите для повтора.</string>
     <string name="notif_send_fail">Не удалось отправить сообщение адресату %s. Нажмите для повтора.</string>
     <string name="notif_not_delivered">Сообщение не доставлено</string>
+
+    <!-- Crash reports -->
+    <string name="crash_report_title">Отчёт о сбое</string>
+    <string name="crash_report_message">В прошлый раз приложение завершилось со сбоем. Журнал сохранён в Downloads/Messages — приложите его к задаче на GitHub, чтобы помочь с исправлением.</string>
+    <string name="crash_report_message_many">Приложение завершилось со сбоем %1$d раз. Журналы сохранены в Downloads/Messages — приложите их к задаче на GitHub, чтобы помочь с исправлением.</string>
+    <string name="crash_report_export">Сохранить ZIP</string>
+    <string name="crash_report_copy">Копировать</string>
+    <string name="crash_report_delete">Удалить</string>
+    <string name="crash_report_saved">Сохранено в Downloads/Messages</string>
+    <string name="crash_report_clip_label">Отчёт о сбое Messages</string>
 </resources>
