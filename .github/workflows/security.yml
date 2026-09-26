@@ -57,8 +57,12 @@ jobs:
           # the handful of findings that are actually ours. The app uses 11 classes
           # from it (the MMS PDU compose/persist layer), so it stays a real
           # dependency - it is just not code we should be fixing linter warnings in.
-          paths-ignore:
-            - android-smsmms
+          #
+          # Path exclusion must go through `config`; `init` has no paths-ignore
+          # input and passing one fails the run at startup.
+          config: |
+            paths-ignore:
+              - android-smsmms
 
       # --no-build-cache forces kotlinc to run under the CodeQL build tracer
       - name: Build for CodeQL
