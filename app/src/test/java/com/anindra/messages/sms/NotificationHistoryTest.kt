@@ -43,6 +43,26 @@ class NotificationHistoryTest {
     }
 
     @Test
+    fun takeCountIsBoundedByWhatIsUnread() {
+        assertEquals(2, NotificationHistory.takeCount(unread = 2, maxLines = 5))
+        assertEquals(3, NotificationHistory.takeCount(unread = 3, maxLines = 5))
+    }
+
+    @Test
+    fun takeCountNeverExceedsTheCap() {
+        assertEquals(5, NotificationHistory.takeCount(unread = 40, maxLines = 5))
+        assertEquals(5, NotificationHistory.takeCount(unread = 5, maxLines = 5))
+    }
+
+    @Test
+    fun takeCountAlwaysCarriesTheMessageThatTriggeredThePost() {
+        // unread can already be 0 if the chat is on screen, but the notification
+        // still has to show the line that caused it.
+        assertEquals(1, NotificationHistory.takeCount(unread = 0, maxLines = 5))
+        assertEquals(1, NotificationHistory.takeCount(unread = -1, maxLines = 5))
+    }
+
+    @Test
     fun summaryCountsUpFromTwo() {
         assertEquals("A", NotificationHistory.summary(1, "A"))
         assertEquals("3 new messages", NotificationHistory.summary(3, "A"))
