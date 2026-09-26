@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -84,6 +85,7 @@ fun SpamBlockedScreen(
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val blockedKeywords = remember(vm.settings.revision) { vm.settings.blockedKeywords }
     val scope = rememberCoroutineScope()
     var showEmptyDialog by remember { mutableStateOf(false) }
     var spamDays by remember(vm.settings.revision) { mutableStateOf(vm.settings.retentionSpamDays) }
@@ -153,6 +155,9 @@ fun SpamBlockedScreen(
                 } else {
                     MessagesTab(
                         messages = blockedMessages,
+                        restorable = { msg ->
+                            SpamRestore.canReturnToChat(msg.body, blockedKeywords)
+                        },
                         onDelete = { msg ->
                             vm.deleteBlockedMessage(msg.id)
                             scope.launch {
@@ -167,7 +172,8 @@ fun SpamBlockedScreen(
                                     )
                                 }
                             }
-                        }
+                        },
+                        onRestore = { msg -> vm.returnBlockedMessageToChat(msg.id) }
                     )
                 }
             }
@@ -254,21 +260,22 @@ private fun ConversationsTab(
                         maxLines = 1
                     )
                 }
+                // Same two ideas as everywhere else: undo puts the conversation
+                // back in the inbox, X removes it for good.
+                IconButton(onClick = { onUnblock(convo) }) {
+                    Icon(
+                        Icons.Rounded.Undo,
+                        contentDescription = stringResource(R.string.chat_unblock),
+                        modifier = Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
                 IconButton(onClick = { onDelete(convo) }) {
                     Icon(
-                        Icons.Rounded.Delete,
+                        Icons.Rounded.Close,
                         contentDescription = stringResource(R.string.common_delete),
                         modifier = Modifier.size(22.dp),
                         tint = MaterialTheme.colorScheme.error
-                    )
-                }
-                IconButton(onClick = { onUnblock(convo) }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_padlock),
-                        contentDescription = stringResource(R.string.chat_unblock),
-                        // No size modifier: the drawable declares the dp size that
-                        // matches the bin's optical weight. See ic_padlock.xml.
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -279,7 +286,9 @@ private fun ConversationsTab(
 @Composable
 private fun MessagesTab(
     messages: List<BlockedMessage>,
-    onDelete: (BlockedMessage) -> Unit
+    restorable: (BlockedMessage) -> Boolean,
+    onDelete: (BlockedMessage) -> Unit,
+    onRestore: (BlockedMessage) -> Unit
 ) {
     if (messages.isEmpty()) {
         EmptyFolder(Icons.Outlined.DeleteOutline, stringResource(R.string.spam_blocked_messages_empty))
@@ -324,12 +333,32 @@ private fun MessagesTab(
                         maxLines = 1
                     )
                 }
+                // X removes the message for good. The undo arrow puts it back in its
+                // conversation, which only makes sense once the keyword that caught
+                // it is off the block list - otherwise it would just be caught again,
+                // so the control stays disabled until then.
+                val canRestore = restorable(msg)
+                IconButton(onClick = { onRestore(msg) }, enabled = canRestore) {
+                    Icon(
+                        Icons.Rounded.Undo,
+                        contentDescription = stringResource(R.string.action_undo),
+                        modifier = Modifier.size(22.dp),
+                        tint = if (canRestore) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            IconTint.disabled(
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                isSystemInDarkTheme()
+                            )
+                        }
+                    )
+                }
                 IconButton(onClick = { onDelete(msg) }) {
                     Icon(
                         Icons.Rounded.Close,
                         contentDescription = stringResource(R.string.common_delete),
                         modifier = Modifier.size(22.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
             }

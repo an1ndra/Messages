@@ -302,6 +302,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteAllBlockedMessages() = scope.launch(Dispatchers.IO) { repo.deleteAllBlockedMessages() }
 
+    fun returnBlockedMessageToChat(messageId: Long) =
+        scope.launch(Dispatchers.IO) { repo.returnBlockedMessageToChat(messageId) }
+
     fun unblockAllNumbers() = scope.launch(Dispatchers.IO) { repo.unblockAllNumbers() }
 
     fun setArchived(id: Long, archived: Boolean) =

@@ -770,6 +770,17 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
+    /** Put a caught message back into its conversation. Clearing blocked_reason is
+     *  what makes it visible again, since the folder lists only rows that still
+     *  carry one. */
+    fun returnBlockedMessageToChat(messageId: Long) {
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET deleted_at=0,blocked_reason='' WHERE id=? AND blocked_reason!=''",
+            arrayOf(messageId)
+        )
+        notifyChanged()
+    }
+
     fun deleteAllBlockedMessages() {
         db.writableDatabase.execSQL("DELETE FROM messages WHERE blocked_reason!=''")
         notifyChanged()
