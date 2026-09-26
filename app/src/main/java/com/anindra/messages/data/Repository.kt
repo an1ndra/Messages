@@ -25,7 +25,7 @@ private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
 enum class ImportMode { REPLACE, MERGE }
 
-private const val DB_VERSION = 17
+private const val DB_VERSION = 21
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -45,10 +45,13 @@ class Db(context: Context) :
                 unread_count INTEGER NOT NULL DEFAULT 0,
                 last_is_me INTEGER NOT NULL DEFAULT 0,
                 archived INTEGER NOT NULL DEFAULT 0,
+                blocked INTEGER NOT NULL DEFAULT 0,
+                blocked_at INTEGER NOT NULL DEFAULT 0,
                 pinned INTEGER NOT NULL DEFAULT 0,
                 draft TEXT NOT NULL DEFAULT '',
                 draft_date INTEGER NOT NULL DEFAULT 0,
-                deleted_at INTEGER NOT NULL DEFAULT 0)"""
+                deleted_at INTEGER NOT NULL DEFAULT 0,
+                deleted_reason TEXT NOT NULL DEFAULT 'manual')"""
         )
         db.execSQL(
             """CREATE TABLE messages(
@@ -66,7 +69,8 @@ class Db(context: Context) :
                 delivered_at INTEGER NOT NULL DEFAULT 0,
                 locked INTEGER NOT NULL DEFAULT 0,
                 sub_id INTEGER NOT NULL DEFAULT -1,
-                deleted_at INTEGER NOT NULL DEFAULT 0)"""
+                deleted_at INTEGER NOT NULL DEFAULT 0,
+                blocked_reason TEXT NOT NULL DEFAULT '')"""
         )
         db.execSQL("CREATE INDEX idx_messages_conversation ON messages(conversation_id)")
         db.execSQL("CREATE INDEX idx_messages_conv_ts ON messages(conversation_id, timestamp)")
@@ -190,6 +194,22 @@ class Db(context: Context) :
         }
         if (oldVersion < 17) {
             db.execSQL("ALTER TABLE messages ADD COLUMN delivered_at INTEGER NOT NULL DEFAULT 0")
+        }
+        if (oldVersion < 18) {
+            db.execSQL("ALTER TABLE conversations ADD COLUMN deleted_reason TEXT NOT NULL DEFAULT 'manual'")
+        }
+        if (oldVersion < 19) {
+            db.execSQL("ALTER TABLE conversations ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0")
+        }
+        if (oldVersion < 20) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN blocked_reason TEXT NOT NULL DEFAULT ''")
+        }
+        if (oldVersion < 21) {
+            db.execSQL("ALTER TABLE conversations ADD COLUMN blocked_at INTEGER NOT NULL DEFAULT 0")
+            // Seed from the conversation's own activity so an already-blocked
+            // sender gets a full window from the upgrade rather than being
+            // purged the moment it is first seen.
+            db.execSQL("UPDATE conversations SET blocked_at=timestamp WHERE blocked=1 AND blocked_at=0")
         }
     }
 
@@ -322,7 +342,7 @@ class Repository(private val context: Context) {
         val out = mutableListOf<Conversation>()
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
-               c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
+               c.archived,c.blocked,c.pinned,c.draft,c.draft_date,c.deleted_at,
                COALESCE(p.display_destination, c.address)
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
@@ -340,11 +360,12 @@ class Repository(private val context: Context) {
                         unreadCount = c.getInt(5),
                         isMe = c.getInt(6) == 1,
                         archived = c.getInt(7) == 1,
-                        pinned = c.getInt(8) == 1,
-                        draft = c.getString(9),
-                        draftDate = c.getLong(10),
-                        deletedAt = c.getLong(11),
-                        display = c.getString(12)
+                        blocked = c.getInt(8) == 1,
+                        pinned = c.getInt(9) == 1,
+                        draft = c.getString(10),
+                        draftDate = c.getLong(11),
+                        deletedAt = c.getLong(12),
+                        display = c.getString(13)
                     )
                 )
             }
@@ -389,7 +410,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address)
+               COALESCE(p.display_destination, c.address),c.deleted_reason
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.deleted_at>0 ORDER BY c.deleted_at DESC""",
@@ -410,7 +431,8 @@ class Repository(private val context: Context) {
                         draft = c.getString(9),
                         draftDate = c.getLong(10),
                         deletedAt = c.getLong(11),
-                        display = c.getString(12)
+                        display = c.getString(12),
+                        deletedReason = c.getString(13) ?: TrashReason.MANUAL
                     )
                 )
             }
@@ -485,29 +507,9 @@ class Repository(private val context: Context) {
 
     /** True when two stored addresses identify the same person despite formatting
      *  differences (e.g. "+15551234567" vs "15551234567", the issue #183 case).
-     *  Two pure-digit checks, in order: identical digit runs; and one side being
-     *  the international (E.164) spelling while the other is the same number with
-     *  the leading country/trunk code dropped — exactly 1–3 digits — e.g.
-     *  India "+919876543210"/"9876543210", China "8613812345678"/"13812345678",
-     *  Bangladesh "+8801712345678"/"01712345678", Indonesia "+628123456789"/
-     *  "08123456789", NANP "+15551234567"/"5551234567", UK "+447911234567"/
-     *  "07911234567". Deliberately no libphonenumber and no country-code table:
-     *  the shorter spelling must equal the longer one after dropping exactly
-     *  1–3 leading digits, so two genuinely different numbers can never fuse
-     *  (that would require them to be the same digit run). Runs once per
-     *  address on every lookup and _O(C²)_ inside [mergeSplitConversations] on
-     *  big phones, so it stays near-zero cost — no SIM/region/IP dependency. */
-    private fun samePerson(a: String, b: String): Boolean {
-        if (a == b) return true
-        val da = a.filter { it.isDigit() }
-        val db_ = b.filter { it.isDigit() }
-        if (da.isEmpty() || db_.isEmpty()) return false
-        if (da == db_) return true
-        val diff = da.length - db_.length
-        if (diff in 1..3 && da.drop(diff) == db_) return true
-        val rev = db_.length - da.length
-        return rev in 1..3 && db_.drop(rev) == da
-    }
+     *  Delegates to [AddressIdentity.samePerson]: digit-run comparison for
+     *  numbers, exact (case-insensitive) match for alphanumeric sender IDs. */
+    private fun samePerson(a: String, b: String): Boolean = AddressIdentity.samePerson(a, b)
 
     private fun matchConversationId(database: SQLiteDatabase, address: String, activeOnly: Boolean = false): Long? {
         if (address.isBlank()) return null
@@ -524,9 +526,10 @@ class Repository(private val context: Context) {
         matchConversationId(db.readableDatabase, address)
 
     /** Canonical identity for same-person checks: E.164 when the address is a
-     *  valid phone number, else its bare digits ("" for alphanumeric IDs). */
+     *  valid phone number, else the address unchanged (alphanumeric sender IDs
+     *  such as "A1 SRB" must never be reduced to their digits — issue #207). */
     private fun canonical(address: String): String =
-        PhoneNumberUtils.toE164(address, PhoneNumberUtils.region()) ?: address.filter { it.isDigit() }
+        AddressIdentity.canonical(address, PhoneNumberUtils.region())
 
     /** Inserts/refreshes the participant row (display form, country, SIM) for a
      *  canonical address. No-op for non-phone addresses (alphanumeric senders). */
@@ -552,7 +555,12 @@ class Repository(private val context: Context) {
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =
         getOrCreateConversationBlocking(address, displayName)
 
-    fun getOrCreateConversationBlocking(address: String, displayName: String? = null, subId: Int = -1): Long = runOnIo {
+    fun getOrCreateConversationBlocking(
+        address: String,
+        displayName: String? = null,
+        subId: Int = -1,
+        kind: InboundKind = InboundKind.NORMAL
+    ): Long = runOnIo {
         // Store one canonical spelling per person: every incoming spelling
         // (E.164, national, formatted) maps to the same conversation row.
         val target = canonical(address).ifEmpty { address }
@@ -571,7 +579,7 @@ class Repository(private val context: Context) {
             convoId = db.writableDatabase.insert("conversations", null, cv)
             upsertParticipant(db.writableDatabase, target, subId)
             notifyChanged()
-        } else {
+        } else if (InboundIngest.restoresTrashedConversation(kind)) {
             // A trashed thread addressed by a new chat / incoming message must be
             // restored, or ChatScreen (which filters deleted_at=0) shows a blank
             // header and sends are rejected.
@@ -598,9 +606,18 @@ class Repository(private val context: Context) {
             arrayOf(id.toString())
         ).use { c ->
             if (c.moveToFirst()) found = Conversation(
-                c.getLong(0), c.getString(1), c.getString(2), c.getString(3),
-                c.getLong(4), c.getInt(5), c.getInt(6) == 1, c.getInt(7) == 1,
-                c.getInt(8) == 1, c.getString(9), c.getLong(10), display = c.getString(11)
+                id = c.getLong(0),
+                address = c.getString(1),
+                name = c.getString(2),
+                snippet = c.getString(3),
+                timestamp = c.getLong(4),
+                unreadCount = c.getInt(5),
+                isMe = c.getInt(6) == 1,
+                archived = c.getInt(7) == 1,
+                pinned = c.getInt(8) == 1,
+                draft = c.getString(9),
+                draftDate = c.getLong(10),
+                display = c.getString(11)
             )
         }
         found
@@ -609,9 +626,10 @@ class Repository(private val context: Context) {
     /** Stores a text message as 'sending'; SmsStatusReceiver confirms the final state. */
     fun sendText(conversationId: Long, body: String, subId: Int = -1): Message? {
         val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(body)
         val cv = ContentValues().apply {
             put("conversation_id", conversationId)
-            put("body", body)
+            put("body", clean)
             put("timestamp", now)
             put("is_me", 1)
             put("status", "sending")
@@ -620,15 +638,16 @@ class Repository(private val context: Context) {
             put("sub_id", subId)
         }
         val id = db.writableDatabase.insertOrThrow("messages", null, cv)
-        touchConversation(conversationId, body, now, isMe = true)
-        return Message(id, conversationId, body, now, true, "sending", subId = subId)
+        touchConversation(conversationId, clean, now, isMe = true)
+        return Message(id, conversationId, clean, now, true, "sending", subId = subId)
     }
 
     fun sendMedia(conversationId: Long, mediaType: String, uri: String, caption: String = ""): Message? {
         val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(caption)
         val cv = ContentValues().apply {
             put("conversation_id", conversationId)
-            put("body", caption)
+            put("body", clean)
             put("timestamp", now)
             put("is_me", 1)
             put("status", "sending")
@@ -638,7 +657,7 @@ class Repository(private val context: Context) {
         }
         val id = db.writableDatabase.insertOrThrow("messages", null, cv)
         touchConversation(conversationId, if (mediaType == "image") "Photo" else "Voice message", now, isMe = true)
-        return Message(id, conversationId, caption, now, true, "sending", mediaType, uri)
+        return Message(id, conversationId, clean, now, true, "sending", mediaType, uri)
     }
 
     private fun touchConversation(conversationId: Long, snippet: String, ts: Long, isMe: Boolean) {
@@ -652,19 +671,190 @@ class Repository(private val context: Context) {
     /** Store an incoming SMS. Returns conversation id. [sysId] links the row to
      *  its system-provider copy so the next sync skips it instead of duplicating.
      *  [subId] is the SIM subscription id for dual-SIM display. */
-    fun receiveMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
+    fun receiveMessage(
+        address: String,
+        body: String,
+        sysId: Long = 0L,
+        subId: Int = -1,
+        markUnread: Boolean = true
+    ): Long {
         val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(body)
         val convoId = getOrCreateConversationBlocking(address, null, subId)
 
         db.writableDatabase.execSQL(
             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
                VALUES(?,?,?,?,?,?,?,?)""",
-            arrayOf<Any?>(convoId, body, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
+            arrayOf<Any?>(convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
-               unread_count=unread_count+1 WHERE id=?""",
-            arrayOf<Any?>(body, now, convoId)
+               unread_count=unread_count+? WHERE id=?""",
+            arrayOf<Any?>(clean, now, if (markUnread) 1 else 0, convoId)
+        )
+        notifyChanged()
+        return convoId
+    }
+
+    /** Stores a keyword-blocked message soft-deleted, so it is listed under
+     *  Spam & blocked → Messages rather than the conversation. No notification
+     *  and no unread badge, and a trashed conversation stays trashed. */
+    fun receiveBlockedMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
+        val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(body)
+        val convoId =
+            getOrCreateConversationBlocking(address, null, subId, InboundKind.BLOCKED_KEYWORD)
+        db.writableDatabase.execSQL(
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id,
+               deleted_at,blocked_reason) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+            arrayOf<Any?>(
+                convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId,
+                now, TrashReason.BLOCKED_KEYWORD
+            )
+        )
+        refreshConversationSnippetFor(convoId)
+        notifyChanged()
+        return convoId
+    }
+
+    /** Keyword-blocked messages shown under Spam & blocked → Messages. */
+    fun blockedMessages(): Flow<List<BlockedMessage>> = observe {
+        val out = mutableListOf<BlockedMessage>()
+        db.readableDatabase.rawQuery(FolderRows.BLOCKED_SELECT, null).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    FolderRows.blockedMessage(
+                        id = c.getLong(FolderRows.COL_ID),
+                        conversationId = c.getLong(FolderRows.COL_CONVERSATION_ID),
+                        address = c.getString(FolderRows.COL_ADDRESS),
+                        name = c.getString(FolderRows.COL_NAME),
+                        body = c.getString(FolderRows.COL_BODY),
+                        timestamp = c.getLong(FolderRows.COL_TIMESTAMP),
+                        blockedReason = c.getString(FolderRows.COL_BLOCKED_REASON)
+                    )
+                )
+            }
+        }
+        out
+    }
+
+    /** Re-insert a blocked message the user undid a delete on. The row has to come
+     *  back soft-deleted with its original reason, or it would surface in the
+     *  normal conversation instead of the blocked folder. */
+    fun restoreBlockedMessage(
+        conversationId: Long,
+        body: String,
+        timestamp: Long,
+        blockedReason: String
+    ) {
+        db.writableDatabase.execSQL(
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,deleted_at,blocked_reason)
+               VALUES(?,?,?,0,'received',?,?)""",
+            arrayOf(conversationId, body, timestamp, System.currentTimeMillis(), blockedReason)
+        )
+        notifyChanged()
+    }
+
+    /** Delete a blocked conversation and the blocked messages in it, and drop the
+     *  block so later mail from that sender is no longer diverted. */
+    fun deleteBlockedConversation(conversationId: Long, address: String) {
+        db.writableDatabase.execSQL(
+            "DELETE FROM messages WHERE conversation_id=? AND blocked_reason!=''",
+            arrayOf(conversationId)
+        )
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET blocked=0,blocked_at=0,unread_count=0 WHERE id=?",
+            arrayOf(conversationId)
+        )
+        if (isNumberBlocked(address)) unblockNumber(address)
+        notifyChanged()
+    }
+
+    /** Put a caught message back into its conversation. Clearing blocked_reason is
+     *  what makes it visible again, since the folder lists only rows that still
+     *  carry one. */
+    fun returnBlockedMessageToChat(messageId: Long) {
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET deleted_at=0,blocked_reason='' WHERE id=? AND blocked_reason!=''",
+            arrayOf(messageId)
+        )
+        notifyChanged()
+    }
+
+    fun deleteAllBlockedMessages() {
+        db.writableDatabase.execSQL("DELETE FROM messages WHERE blocked_reason!=''")
+        notifyChanged()
+    }
+
+    /** Drop every blocked sender, emptying the Conversations tab. */
+    fun unblockAllNumbers() {
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET blocked=0,blocked_at=0,unread_count=0 WHERE blocked=1"
+        )
+        db.writableDatabase.execSQL("DELETE FROM blocked_numbers")
+        notifyChanged()
+    }
+
+    fun deleteBlockedMessage(messageId: Long) {
+        db.writableDatabase.execSQL(
+            "DELETE FROM messages WHERE id=? AND blocked_reason!=''",
+            arrayOf(messageId)
+        )
+        notifyChanged()
+    }
+
+    /** Manually deleted messages kept in Trash → Messages. Keyword-blocked rows
+     *  are excluded: they live in Spam & blocked → Messages instead. */
+    fun trashedMessages(): Flow<List<TrashedMessage>> = observe {
+        val out = mutableListOf<TrashedMessage>()
+        db.readableDatabase.rawQuery(FolderRows.TRASHED_SELECT, null).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    FolderRows.trashedMessage(
+                        id = c.getLong(FolderRows.COL_ID),
+                        conversationId = c.getLong(FolderRows.COL_CONVERSATION_ID),
+                        address = c.getString(FolderRows.COL_ADDRESS),
+                        name = c.getString(FolderRows.COL_NAME),
+                        body = c.getString(FolderRows.COL_BODY),
+                        timestamp = c.getLong(FolderRows.COL_TIMESTAMP),
+                        deletedAt = c.getLong(FolderRows.COL_DELETED_AT)
+                    )
+                )
+            }
+        }
+        out
+    }
+
+    /** Permanently removes a trashed message. */
+    fun deleteMessageForeverSuspend(messageId: Long) = runOnIo {
+        db.writableDatabase.execSQL("DELETE FROM messages WHERE id=?", arrayOf(messageId))
+        notifyChanged()
+    }
+
+    /** Permanently removes every message-level trash entry. */
+    fun emptyMessageTrashSuspend() = runOnIo {
+        db.writableDatabase.execSQL("DELETE FROM messages WHERE deleted_at>0 AND blocked_reason=''")
+        notifyChanged()
+    }
+
+    /** Stores an SMS from a blocked number in the "Spam & blocked" folder:
+     *  the conversation is flagged blocked, unread stays 0 and no notification
+     *  is posted. Unblocking returns the conversation to the inbox. A trashed
+     *  conversation stays trashed, as for a blocked keyword. */
+    fun receiveSpamMessage(address: String, body: String, sysId: Long = 0L, subId: Int = -1): Long {
+        val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(body)
+        val convoId = getOrCreateConversationBlocking(address, null, subId, InboundKind.BLOCKED_NUMBER)
+        db.writableDatabase.execSQL(
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
+               VALUES(?,?,?,?,?,?,?,?)""",
+            arrayOf<Any?>(convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
+        )
+        db.writableDatabase.execSQL(
+            """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
+               unread_count=0,blocked=1,
+               blocked_at=CASE WHEN blocked_at>0 THEN blocked_at ELSE ? END WHERE id=?""",
+            arrayOf<Any?>(clean, now, now, convoId)
         )
         notifyChanged()
         return convoId
@@ -783,8 +973,8 @@ class Repository(private val context: Context) {
     /** Moves a conversation to trash (soft delete); messages are kept for restore. */
     fun trashConversationSuspend(conversationId: Long) {
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET deleted_at=? WHERE id=?",
-            arrayOf(System.currentTimeMillis().toString(), conversationId.toString())
+            "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
+            arrayOf(System.currentTimeMillis().toString(), TrashReason.MANUAL, conversationId.toString())
         )
         notifyChanged()
     }
@@ -809,8 +999,8 @@ class Repository(private val context: Context) {
         val draftKeepsIt = settings.draftsEnabled && draft.isNotBlank()
         if (remaining > 0 || draftKeepsIt) return
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET deleted_at=? WHERE id=?",
-            arrayOf(System.currentTimeMillis().toString(), conversationId.toString())
+            "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
+            arrayOf(System.currentTimeMillis().toString(), TrashReason.MANUAL, conversationId.toString())
         )
         notifyChanged()
     }
@@ -863,26 +1053,97 @@ class Repository(private val context: Context) {
             android.util.Log.w("RepoSync", "Provider purge skipped: ${e.message}")
         }
     }
-
-    /** Hard-deletes conversations trashed more than [days] ago. */
-    fun purgeOldTrashSuspend(days: Int = 30) {
-        val cutoff = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
+    /** Hard-deletes the selected [buckets] once they are older than their own
+     *  window. Blocked senders and deleted chats are the only buckets that
+     *  remove a conversation row; a keyword-blocked message is removed on its
+     *  own, so a chat the user is not looking at is never taken away by the
+     *  cleanup. */
+    fun purgeRetainedSuspend(
+        buckets: Set<RetentionBucket>,
+        trashDays: Int,
+        spamDays: Int
+    ) {
+        if (buckets.isEmpty()) return
+        val now = System.currentTimeMillis()
         val stale = mutableListOf<Long>()
-        db.readableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE deleted_at>0 AND deleted_at<?",
-            arrayOf(cutoff.toString())
-        ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
+
+        if (RetentionBucket.TRASH in buckets) {
+            val arg = argFor(RetentionBucket.TRASH, now, trashDays, spamDays)
+            val sql = RetentionPolicy.sql(RetentionBucket.TRASH)
+            db.readableDatabase.rawQuery(
+                "SELECT id FROM conversations WHERE $sql", arg
+            ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
+            db.writableDatabase.execSQL(
+                "DELETE FROM messages WHERE conversation_id IN " +
+                    "(SELECT id FROM conversations WHERE $sql)",
+                arg
+            )
+            db.writableDatabase.execSQL("DELETE FROM conversations WHERE $sql", arg)
+        }
+        if (RetentionBucket.BLOCKED_SENDERS in buckets) {
+            val arg = argFor(RetentionBucket.BLOCKED_SENDERS, now, trashDays, spamDays)
+            val sql = RetentionPolicy.sql(RetentionBucket.BLOCKED_SENDERS)
+            db.readableDatabase.rawQuery(
+                "SELECT id FROM conversations WHERE $sql", arg
+            ).use { c -> while (c.moveToNext()) stale.add(c.getLong(0)) }
+            db.writableDatabase.execSQL(
+                "DELETE FROM messages WHERE conversation_id IN " +
+                    "(SELECT id FROM conversations WHERE $sql)",
+                arg
+            )
+            db.writableDatabase.execSQL("DELETE FROM conversations WHERE $sql", arg)
+        }
+        if (RetentionBucket.KEYWORD_MESSAGES in buckets) {
+            db.writableDatabase.execSQL(
+                "DELETE FROM messages WHERE ${RetentionPolicy.KEYWORD_BLOCKED_SQL}",
+                argFor(RetentionBucket.KEYWORD_MESSAGES, now, trashDays, spamDays)
+            )
+        }
         purgeProviderMessages(stale)
-        db.writableDatabase.execSQL(
-            "DELETE FROM messages WHERE conversation_id IN " +
-                "(SELECT id FROM conversations WHERE deleted_at>0 AND deleted_at<?)",
-            arrayOf(cutoff.toString())
-        )
-        db.writableDatabase.execSQL(
-            "DELETE FROM conversations WHERE deleted_at>0 AND deleted_at<?",
-            arrayOf(cutoff.toString())
-        )
     }
+
+    /** The lines a grouped notification should carry: only what the other person
+     *  has sent and only what is still unread. A plain blocking read, because the
+     *  notification is built on a receiver thread, not from a Flow. */
+    fun notificationHistory(
+        conversationId: Long,
+        maxLines: Int
+    ): List<com.anindra.messages.sms.NotificationLine> = runOnIo {
+        var unread = 0
+        db.readableDatabase.rawQuery(
+            "SELECT unread_count FROM conversations WHERE id=?",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) unread = c.getInt(0) }
+        val out = mutableListOf<com.anindra.messages.sms.NotificationLine>()
+        db.readableDatabase.rawQuery(
+            "SELECT body,timestamp FROM messages WHERE conversation_id=? AND deleted_at=0" +
+                " AND is_me=0 ORDER BY timestamp DESC, id DESC LIMIT ?",
+            arrayOf(
+                conversationId.toString(),
+                com.anindra.messages.sms.NotificationHistory
+                    .takeCount(unread, maxLines).toString()
+            )
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    com.anindra.messages.sms.NotificationLine(
+                        text = c.getString(0),
+                        timestamp = c.getLong(1),
+                        fromMe = false
+                    )
+                )
+            }
+        }
+        out.reversed()
+    }
+
+    private fun argFor(
+        bucket: RetentionBucket,
+        now: Long,
+        trashDays: Int,
+        spamDays: Int
+    ): Array<String> =
+        arrayOf(RetentionPolicy.cutoffFor(bucket, now, trashDays, spamDays).toString())
 
     /** Permanently deletes a conversation and its messages. */
     fun deleteConversationSuspend(conversationId: Long) {
@@ -994,6 +1255,13 @@ class Repository(private val context: Context) {
     /** Invalidates the in-process block cache; call after [blockNumber]/[unblockNumber]. */
     private fun invalidateBlockCache(number: String) { blockedCache.remove(number) }
 
+    /** True when [address] is on the blocklist, matching canonical spellings. */
+    fun isAddressBlocked(address: String): Boolean {
+        if (isNumberBlocked(address)) return true
+        val canon = canonical(address).ifEmpty { address }
+        return canon != address && isNumberBlocked(canon)
+    }
+
     fun conversationIdForAddress(address: String): Long? = runOnIo {
         var id: Long? = null
         db.readableDatabase.rawQuery(
@@ -1073,13 +1341,30 @@ class Repository(private val context: Context) {
         }
         db.writableDatabase.insertWithOnConflict("blocked_numbers", null, cv, SQLiteDatabase.CONFLICT_IGNORE)
         invalidateBlockCache(number)
+        setConversationBlockedForAddress(number, blocked = true)
         notifyChanged()
     }
 
     fun unblockNumber(number: String) {
         db.writableDatabase.execSQL("DELETE FROM blocked_numbers WHERE number=?", arrayOf(number))
         invalidateBlockCache(number)
+        setConversationBlockedForAddress(number, blocked = false)
         notifyChanged()
+    }
+
+    private fun setConversationBlockedForAddress(number: String, blocked: Boolean) {
+        val flag = if (blocked) 1 else 0
+        // Ageing a blocked sender from when it was blocked, not from its last
+        // message, is what lets auto-delete ever reach a sender that keeps texting.
+        val blockedAt = if (blocked) System.currentTimeMillis() else 0
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET blocked=?,blocked_at=? WHERE address=?",
+            arrayOf<Any?>(flag, blockedAt, canonical(number).ifEmpty { number })
+        )
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET blocked=?,blocked_at=? WHERE address=?",
+            arrayOf<Any?>(flag, blockedAt, number)
+        )
     }
 
     fun scheduledMessages(): Flow<List<ScheduledMessage>> = observe {
@@ -1177,10 +1462,102 @@ class Repository(private val context: Context) {
         } catch (_: Exception) { false }
     }
 
-    sealed class ImportResult {
+    sealed interface ImportResult {
         /** [merged] is the number of messages added, non-null only for a merge import. */
-        data class Success(val merged: Int? = null) : ImportResult()
-        data class Error(val message: String) : ImportResult()
+        data class Success(val merged: Int? = null) : ImportResult
+        data class Error(val message: String) : ImportResult
+    }
+
+    /**
+     * Imports an SMS Import / Export (sms-ie) backup. Messages are matched to
+     * existing conversations by canonical address; MMS attachments are copied
+     * into app storage so they survive the backup file going away.
+     */
+    fun importSmsIe(messages: List<SmsIeBackup.Message>): Int {
+        if (messages.isEmpty()) return 0
+        val database = db.writableDatabase
+        var added = 0
+        database.beginTransaction()
+        try {
+            for (msg in messages.sortedBy { it.timestamp }) {
+                val address = canonical(msg.address).ifEmpty { msg.address }
+                val cid = matchConversationId(database, address) ?: database.insertOrThrow(
+                    "conversations", null, ContentValues().apply {
+                        put("address", address)
+                        put("name", contactNameFor(address) ?: address)
+                    }
+                )
+                val image = msg.imageBytes
+                database.insertOrThrow("messages", null, ContentValues().apply {
+                    put("conversation_id", cid)
+                    put("body", msg.body)
+                    put("timestamp", msg.timestamp)
+                    put("is_me", if (msg.isMe) 1 else 0)
+                    put("status", msg.status)
+                    put("transport", if (msg.isMms) MmsSupport.TRANSPORT_MMS else MmsSupport.TRANSPORT_SMS)
+                    put("media_type", if (image != null) "image" else "text")
+                    put("media_uri", if (image != null) storeImportedImage(image, msg) else "")
+                })
+                if (!msg.isMe && !msg.read) {
+                    database.execSQL(
+                        "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
+                    )
+                }
+                upsertParticipant(database, address)
+                added++
+            }
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+        refreshConversationSnippets()
+        reMigrateParticipants()
+        notifyChanged()
+        return added
+    }
+
+    /** Copies an imported MMS attachment into app storage and returns its URI. */
+    private fun storeImportedImage(bytes: ByteArray, msg: SmsIeBackup.Message): String {
+        return try {
+            val dir = File(context.filesDir, "mms-import").apply { mkdirs() }
+            val safeName = msg.imageName.ifBlank { "image.${SmsIeBackup.extensionFor(msg.imageMime)}" }
+                .replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val file = File(dir, "${msg.timestamp}_$safeName")
+            file.writeBytes(bytes)
+            "content://${context.packageName}.fileprovider/mms/${file.name}"
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    fun importSmsIeFrom(
+        context: Context,
+        uri: android.net.Uri,
+        mode: ImportMode = ImportMode.MERGE
+    ): ImportResult {
+        val loaded = SmsIeReader.load(context, uri)
+            ?: return ImportResult.Error("Cannot read that backup file")
+        if (loaded.parsed.messages.isEmpty()) {
+            return ImportResult.Error("No messages found in that backup")
+        }
+        if (SmsIeBackupPolicy.clearsExisting(mode)) clearAllMessages()
+        val added = importSmsIe(loaded.parsed.messages)
+        return ImportResult.Success(added)
+    }
+
+    /** Drops every stored message and conversation, leaving settings intact. */
+    fun clearAllMessages() {
+        val database = db.writableDatabase
+        database.beginTransaction()
+        try {
+            database.execSQL("DELETE FROM messages")
+            database.execSQL("DELETE FROM conversations")
+            database.execSQL("DELETE FROM participants")
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+        notifyChanged()
     }
 
     fun importDatabase(
@@ -1589,6 +1966,10 @@ class Repository(private val context: Context) {
             try {
                 val resolver = context.contentResolver
                 val initial = needsInitialImport
+                // Heal pre-fix alphanumeric sender rows before importing, so a
+                // pending message from the same sender reuses the repaired thread
+                // instead of creating a second one.
+                var changed = repairAlphanumericSenders()
                 android.util.Log.d("RepoSync", "Starting syncFromSystem")
                 // Count first so the read phase (which can take a while on a phone
                 // with a large provider) shows a moving bar instead of an apparently
@@ -1652,7 +2033,6 @@ class Repository(private val context: Context) {
                 android.util.Log.d("RepoSync", "Loaded ${byAddress.size} addresses, $pending pending messages")
                 if (pending > 0) _initialSyncProgress.value = if (initial) SyncProgress.READ_END else 0f
 
-                var changed = false
                 var done = 0
                 val batchSize = 50
                 val pendingMessages = mutableListOf<Triple<String, Long, SysSms>>()
@@ -1673,7 +2053,7 @@ class Repository(private val context: Context) {
                 pendingMessages.chunked(batchSize).forEach { batch ->
                     db.writableDatabase.beginTransaction()
                     try {
-                        for ((addr, cid, m) in batch) {
+                        for ((_, cid, m) in batch) {
                             val isMe = m.type != android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX
                             var localId = -1L
                             db.readableDatabase.rawQuery(
@@ -1718,7 +2098,7 @@ class Repository(private val context: Context) {
                     }
                 }
 
-                if (importProviderMms()) changed = true
+                if (importProviderMms().isNotEmpty()) changed = true
 
                 val stale = db.readableDatabase.rawQuery(
                     """SELECT COUNT(*) FROM conversations
@@ -1750,11 +2130,83 @@ class Repository(private val context: Context) {
         }
     }
 
-    private fun importProviderMms(): Boolean {
+    /** One-shot heal for conversations whose stored address was reduced to bare
+     *  digits before issue #207 ("A1 SRB" → "1"). The system provider still
+     *  holds the original sender ID, so each affected conversation is
+     *  re-addressed from the `sys_id`s of its messages. Idempotent; retries on
+     *  the next sync when SMS access is still missing. Returns true when a row
+     *  was rewritten. */
+    private fun repairAlphanumericSenders(): Boolean {
+        if (settings.alphanumericRepairDone) return false
+        try {
+            val byAddress = LinkedHashMap<String, MutableList<Long>>()
+            context.contentResolver.query(
+                android.provider.Telephony.Sms.CONTENT_URI,
+                arrayOf(
+                    android.provider.Telephony.Sms._ID,
+                    android.provider.Telephony.Sms.ADDRESS
+                ),
+                null, null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val addr = c.getString(1)?.takeIf { it.isNotBlank() } ?: continue
+                    if (addr.none { it.isLetter() }) continue
+                    byAddress.getOrPut(addr) { mutableListOf() }.add(c.getLong(0))
+                }
+            }
+            if (byAddress.isEmpty()) {
+                settings.alphanumericRepairDone = true
+                return false
+            }
+            var changed = false
+            db.writableDatabase.beginTransaction()
+            try {
+                for ((addr, sysIds) in byAddress) {
+                    val convoIds = mutableSetOf<Long>()
+                    sysIds.chunked(500).forEach { chunk ->
+                        val ph = chunk.joinToString(",") { "?" }
+                        db.readableDatabase.rawQuery(
+                            "SELECT DISTINCT conversation_id FROM messages WHERE transport=? AND sys_id IN ($ph)",
+                            arrayOf(MmsSupport.TRANSPORT_SMS) + chunk.map { it.toString() }
+                        ).use { q -> while (q.moveToNext()) convoIds.add(q.getLong(0)) }
+                    }
+                    for (cid in convoIds) {
+                        val row = db.readableDatabase.rawQuery(
+                            "SELECT address, name FROM conversations WHERE id=?",
+                            arrayOf(cid.toString())
+                        ).use { q ->
+                            if (q.moveToFirst()) q.getString(0) to q.getString(1) else null
+                        } ?: continue
+                        val (oldAddr, oldName) = row
+                        if (AddressIdentity.samePerson(oldAddr, addr)) continue
+                        db.writableDatabase.execSQL(
+                            """UPDATE conversations
+                               SET address=?, name=CASE WHEN name=? THEN ? ELSE name END
+                               WHERE id=?""",
+                            arrayOf(addr, oldAddr, addr, cid.toString())
+                        )
+                        changed = true
+                    }
+                }
+                db.writableDatabase.setTransactionSuccessful()
+            } finally {
+                db.writableDatabase.endTransaction()
+            }
+            settings.alphanumericRepairDone = true
+            return changed
+        } catch (e: SecurityException) {
+            android.util.Log.e("RepoSync", "alphanumeric repair skipped: ${e.message}", e)
+        } catch (e: Exception) {
+            android.util.Log.e("RepoSync", "alphanumeric repair failed: ${e.message}", e)
+        }
+        return false
+    }
+
+    private fun importProviderMms(): List<MmsSupport.InboundMms> {
         val existing = mutableSetOf<Long>()
         db.readableDatabase.rawQuery("SELECT sys_id FROM messages WHERE transport='mms' AND sys_id>0", null)
             .use { cursor -> while (cursor.moveToNext()) existing.add(cursor.getLong(0)) }
-        var changed = false
+        val imported = mutableListOf<MmsSupport.InboundMms>()
         try {
             MmsProviderReader(context.contentResolver).read(existing) { message ->
                 runOnIo {
@@ -1789,7 +2241,9 @@ class Repository(private val context: Context) {
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
                             )
                             upsertParticipant(database, address, message.subId)
-                            changed = true
+                            if (!message.isMe) imported.add(
+                                MmsSupport.InboundMms(address, message.content.body, message.timestamp)
+                            )
                         }
                         database.setTransactionSuccessful()
                     } finally {
@@ -1800,8 +2254,13 @@ class Repository(private val context: Context) {
         } catch (_: Exception) {
             android.util.Log.w("RepoSync", "MMS import incomplete; retry on next sync")
         }
-        return changed
+        return imported
     }
+
+    /** Imports MMS that finished downloading and returns the inbound messages
+     *  that were new, so the caller can notify. Not wrapped in [runOnIo]:
+     *  [importProviderMms] already serializes its writes on the same executor. */
+    fun importDownloadedMms(): List<MmsSupport.InboundMms> = importProviderMms()
 
     /** Re-runs [syncFromSystem] with the loading UI active. */
     fun requeryFromSystem() {
@@ -1966,7 +2425,7 @@ class Repository(private val context: Context) {
                     // Primary: an already-canonical row, else the lowest id.
                     val primary = group.firstOrNull { it.second == e164 }
                         ?: group.minByOrNull { it.first }!!
-                    for ((id, addr, name) in group) {
+                    for ((id, addr, _) in group) {
                         if (id == primary.first) {
                             if (addr != e164) {
                                 db.writableDatabase.execSQL(

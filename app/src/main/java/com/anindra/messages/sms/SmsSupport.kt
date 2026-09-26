@@ -8,9 +8,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.Person
 import androidx.core.app.RemoteInput
+import androidx.core.graphics.drawable.IconCompat
 import com.anindra.messages.MainActivity
 import com.anindra.messages.R
 import com.anindra.messages.data.SettingsStore
@@ -103,6 +106,45 @@ object NotificationHelper {
      * every post and reflects live setting changes (the sound must be set
      * EXPLICITLY, or an update leaves a legacy custom tone in place).
      */
+    /** Grouped per conversation, so expanding shows the recent messages from
+     *  this sender rather than one long body. notify() replaces the record, so
+     *  the history is re-read every time rather than appended to. */
+    private fun groupedStyle(
+        context: Context,
+        app: com.anindra.messages.MessagesApplication,
+        convoId: Long?,
+        senderName: String,
+        fallbackText: String
+    ): NotificationCompat.Style {
+        val hideLinks = app.repository.settings.hideLinks
+        val person = Person.Builder().setName(senderName)
+            .setIcon(IconCompat.createWithResource(context, R.drawable.ic_stat_message))
+            .build()
+        val me = Person.Builder().setName(context.getString(R.string.notif_you))
+            .setIcon(IconCompat.createWithResource(context, R.drawable.ic_stat_message))
+            .build()
+        val style = NotificationCompat.MessagingStyle(me)
+            .setConversationTitle(senderName)
+
+        val history = convoId
+            ?.let { app.repository.notificationHistory(it, NotificationHistory.MAX_LINES) }
+            .orEmpty()
+        val lines = NotificationHistory.window(
+            if (history.isEmpty()) listOf(NotificationLine(fallbackText, System.currentTimeMillis(), false))
+            else history.map {
+                NotificationLine(
+                    if (hideLinks) hideUrls(it.text) else it.text,
+                    it.timestamp,
+                    fromMe = false
+                )
+            }
+        )
+        lines.forEach {
+            style.addMessage(it.text, it.timestamp, if (it.fromMe) me else person)
+        }
+        return style
+    }
+
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
@@ -141,7 +183,11 @@ object NotificationHelper {
 
     fun show(context: Context, from: String, body: String) {
         // Skip notification if user is already reading this conversation
-        if (ForegroundTracker.isAppInForeground && ForegroundTracker.isConversationOpen(from)) return
+        if (NotificationPolicy.skipForOpenThread(
+                ForegroundTracker.isAppInForeground,
+                ForegroundTracker.isConversationOpen(from)
+            )
+        ) return
 
         // create the channel before any early-return: notify() with an unknown
         // channel id is a silent no-op, so the first-ever post must have it ready
@@ -190,10 +236,15 @@ object NotificationHelper {
 
         val remoteInput = RemoteInput.Builder("quick_reply").setLabel("Reply").build()
 
-        val replyAction = NotificationCompat.Action.Builder(
-            R.drawable.ic_reply, "Reply", replyIntent
-        ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
-            .addRemoteInput(remoteInput).build()
+        // Alphanumeric sender IDs cannot receive replies, so no reply action.
+        val replyAction = if (com.anindra.messages.data.AddressIdentity.isReplyable(from)) {
+            NotificationCompat.Action.Builder(
+                R.drawable.ic_reply, "Reply", replyIntent
+            ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+                .addRemoteInput(remoteInput).build()
+        } else {
+            null
+        }
 
         val markReadData = Intent(context, MarkReadReceiver::class.java)
         markReadData.action = MarkReadReceiver.ACTION_MARK_READ
@@ -227,12 +278,14 @@ object NotificationHelper {
             .setSmallIcon(R.drawable.ic_stat_message)
             .setContentTitle(title)
             .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
+            // Launchers that render a count read this field.
+            .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
-            .addAction(replyAction)
-            .addAction(markReadAction)
+            .setStyle(groupedStyle(context, app, convoId, senderName, text))
+        if (replyAction != null) builder.addAction(replyAction)
+        builder.addAction(markReadAction)
         try {
             NotificationManagerCompat.from(context).notify(notifId, builder.build())
         } catch (_: SecurityException) {
@@ -278,6 +331,17 @@ object NotificationHelper {
         }
     }
 
+    fun clearConversationNotification(
+        context: Context,
+        conversationId: Long?,
+        address: String? = null
+    ) {
+        val ids = BadgePolicy.idsToDismiss(conversationId, address?.hashCode()) ?: return
+        val nm = NotificationManagerCompat.from(context)
+        nm.cancel(ids.first)
+        nm.cancel("failed", ids.second)
+    }
+
     fun playSentSound(context: Context) = playSound(context)
 
     private fun playSound(context: Context) {
@@ -303,16 +367,22 @@ object NotificationHelper {
 
 object SmsSender {
 
-    private fun manager(context: Context, subscriptionId: Int): android.telephony.SmsManager {
+    internal fun manager(context: Context, subscriptionId: Int): android.telephony.SmsManager {
         val sm = context.getSystemService(android.telephony.SmsManager::class.java)
         if (subscriptionId == -1) return sm
         return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             sm.createForSubscriptionId(subscriptionId)
         } else {
-            @Suppress("DEPRECATION")
-            android.telephony.SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
+            legacyManagerForSubscription(subscriptionId)
         }
     }
+
+    // getSmsManagerForSubscriptionId is the only per-SIM API on 29-30 and is
+    // deprecated on S+; reflect to avoid compiling against the deprecated call.
+    private fun legacyManagerForSubscription(subscriptionId: Int): android.telephony.SmsManager =
+        android.telephony.SmsManager::class.java
+            .getMethod("getSmsManagerForSubscriptionId", Int::class.javaPrimitiveType)
+            .invoke(null, subscriptionId) as android.telephony.SmsManager
 
     /**
      * Sends via the framework with sent/delivery callbacks; SmsStatusReceiver
@@ -360,35 +430,57 @@ object SmsSender {
         false
     }
 
-    /** Strips formatting from stored address; keeps digits and a leading '+'. */
+    /** Strips formatting from a stored phone address; keeps digits and a
+     *  leading '+'. Non-numeric (alphanumeric sender ID) addresses are returned
+     *  trimmed rather than reduced to their digits (issue #207). */
     private fun normalizeAddress(address: String): String {
         val digits = address.filter { it.isDigit() }
-        if (digits.isEmpty()) return address
+        if (digits.isEmpty() || address.any { it.isLetter() }) return address.trim()
         return if (address.trimStart().startsWith("+")) "+$digits" else digits
     }
 
     /**
-     * Best-effort MMS hand-off. On an emulator without an MMSC this typically
-     * throws or reports failure immediately; callers mark the row as failed.
+     * Sends MMS by building the m_SendReq PDU, persisting it to the provider
+     * outbox and handing the composed PDU to the framework (see [MmsComposer]).
+     * SmsStatusReceiver confirms the result; the row is marked failed when the
+     * hand-off itself cannot be started.
      */
     fun sendMms(
         context: Context,
         messageId: Long,
         address: String,
         media: Uri,
-        subscriptionId: Int = -1
-    ): Boolean = try {
-        val sent = PendingIntent.getBroadcast(
-            context, (messageId % Int.MAX_VALUE).toInt(),
-            Intent(SmsStatusReceiver.ACTION_MMS_SENT)
-                .setPackage(context.packageName)
-                .setComponent(android.content.ComponentName(context, SmsStatusReceiver::class.java))
-                .putExtra(SmsStatusReceiver.EXTRA_MESSAGE_ID, messageId),
-            PendingIntent.FLAG_IMMUTABLE
+        subscriptionId: Int = -1,
+        caption: String = ""
+    ): Boolean {
+        val mime = com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
+            context.contentResolver.getType(media), media.toString()
         )
-        manager(context, subscriptionId).sendMultimediaMessage(context, media, null, null, sent)
-        true
-    } catch (_: Exception) {
-        false
+        val prepared = MmsComposer.prepare(
+            context, address, media, mime, caption, subscriptionId
+        ) ?: return false
+        return try {
+            val sent = PendingIntent.getBroadcast(
+                context, (messageId % Int.MAX_VALUE).toInt(),
+                Intent(SmsStatusReceiver.ACTION_MMS_SENT)
+                    .setPackage(context.packageName)
+                    .setComponent(android.content.ComponentName(context, SmsStatusReceiver::class.java))
+                    .putExtra(SmsStatusReceiver.EXTRA_MESSAGE_ID, messageId)
+                    .putExtra(SmsStatusReceiver.EXTRA_MMS_OUTBOX, prepared.outboxUri.toString())
+                    .putExtra(SmsStatusReceiver.EXTRA_MMS_PDU_FILE, prepared.pduFile.absolutePath),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val overrides = Bundle().apply {
+                putBoolean(android.telephony.SmsManager.MMS_CONFIG_GROUP_MMS_ENABLED, false)
+            }
+            manager(context, subscriptionId).sendMultimediaMessage(
+                context, prepared.pduUri, null, overrides, sent
+            )
+            true
+        } catch (t: Throwable) {
+            android.util.Log.w("MmsComposer", "sendMultimediaMessage failed: ${t.message}")
+            prepared.pduFile.delete()
+            false
+        }
     }
 }

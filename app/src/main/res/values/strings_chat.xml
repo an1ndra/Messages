@@ -5,6 +5,7 @@
     <string name="chat_block">Block</string>
     <string name="chat_block_report">Block &amp; report spam</string>
     <string name="chat_unblock">Unblock</string>
+    <string name="chat_moved_to_spam">Moved to Spam &amp; blocked</string>
     <string name="chat_block_number">Block number</string>
     <string name="chat_unblock_number">Unblock number</string>
     <string name="chat_forward">Forward</string>
@@ -16,6 +17,11 @@
     <string name="chat_select_time">Select time</string>
     <string name="chat_media_camera">Camera</string>
     <string name="chat_media_gallery">Gallery</string>
+    <string name="chat_select_all">Select all</string>
+    <string name="chat_select_text">Select text</string>
+    <string name="chat_save_image">Save image</string>
+    <string name="chat_image_saved">Image saved to Pictures/Messages</string>
+    <string name="chat_image_save_failed">Could not save the image</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Can\'t send message</string>
@@ -30,6 +36,7 @@
     <string name="chat_retry">Retry</string>
     <string name="chat_retry_sim">Retry with SIM</string>
     <string name="chat_sending_via">Sending via %s</string>
+    <string name="chat_switch_sim">Switch SIM</string>
     <string name="chat_scheduled_for">Scheduled for %s</string>
     <string name="chat_search_contacts">Search contacts</string>
     <string name="chat_add_people">Add people</string>
@@ -71,9 +78,11 @@
     <string name="chat_draft_prefix">Draft: </string>
     <string name="chat_sending_countdown">Sending in %d seconds...</string>
     <string name="chat_alphanumeric_error">You cannot send messages to alphanumeric senders like %s. Only phone numbers are supported.</string>
+    <string name="chat_alphanumeric_notice">%s can\'t receive replies. Only phone numbers are supported.</string>
     <string name="chat_unlock_dialog">Unlock</string>
     <string name="chat_lock_dialog">Lock</string>
     <string name="chat_message_deleted">Message deleted</string>
     <string name="chat_messages_deleted">%d messages deleted</string>
+    <string name="chat_trash">Move to trash</string>
     <string name="status_not_sent">Not sent</string>
 </resources>

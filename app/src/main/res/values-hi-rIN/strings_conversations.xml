@@ -13,6 +13,12 @@
     <string name="new_chat_send_to">“%s” को भेजें</string>
     <string name="text_placeholder">पाठ संदेश</string>
     <string name="conversations_archived">संग्रहीत</string>
+    <string name="conversations_spam_blocked">स्पैम और ब्लॉक</string>
+    <string name="conversations_spam_blocked_empty">कोई स्पैम या ब्लॉक किया गया संवाद नहीं</string>
+    <string name="spam_tab_conversations">संवाद</string>
+    <string name="spam_tab_messages">संदेश</string>
+    <string name="spam_blocked_messages_empty">कोई ब्लॉक किया गया संदेश नहीं</string>
+    <string name="spam_message_deleted">संदेश हटाया गया</string>
     <string name="conversations_messages">संदेश</string>
     <string name="conversations_me">मैं</string>
     <string name="conversations_allow_sms_access">SMS पहुँच अनुमति दें</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">खोज बंद करें</string>
     <string name="convo_back_to_inbox">इनबॉक्स पर वापस जाएं</string>
+    <string name="spam_empty">खाली करें</string>
+    <string name="spam_empty_confirm">इससे इस टैब के सभी %d आइटम हट जाएंगे। इसे वापस नहीं लाया जा सकता।</string>
+    <string name="spam_conversation_deleted">अवरुद्ध बातचीत हटाई गई</string>
+    <string name="spam_conversations_cleared">अवरुद्ध बातचीतें खाली की गईं</string>
+    <string name="spam_messages_cleared">अवरुद्ध संदेश खाली किए गए</string>
 </resources>

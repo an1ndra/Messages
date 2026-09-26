@@ -17,6 +17,77 @@ class MmsSupportTest {
     }
 
     @Test
+    fun detectsAnnouncedButUndownloadedInboxMms() {
+        assertTrue(MmsSupport.isPendingDownload(1, MmsSupport.PDU_NOTIFICATION_IND))
+        assertFalse(MmsSupport.isPendingDownload(1, MmsSupport.PDU_RETRIEVE_CONF))
+        assertFalse(MmsSupport.isPendingDownload(1, MmsSupport.PDU_SEND_REQ))
+        assertFalse(MmsSupport.isPendingDownload(2, MmsSupport.PDU_NOTIFICATION_IND))
+        assertFalse(MmsSupport.isPendingDownload(3, MmsSupport.PDU_NOTIFICATION_IND))
+        assertEquals("msg_box=1 AND m_type=130", MmsSupport.PENDING_DOWNLOAD_SELECTION)
+        assertEquals("content://mms/42", MmsSupport.messageContentUri(42))
+    }
+
+    @Test
+    fun throttlesRepeatedDownloadAttempts() {
+        val now = 1_700_000_000_000L
+        assertTrue(MmsSupport.shouldRetryDownload(0, now))
+        assertTrue(MmsSupport.shouldRetryDownload(-1, now))
+        assertFalse(MmsSupport.shouldRetryDownload(now - 1_000, now))
+        assertTrue(
+            MmsSupport.shouldRetryDownload(now - MmsSupport.DOWNLOAD_RETRY_COOLDOWN_MS, now)
+        )
+    }
+
+    @Test
+    fun resolvesAttachmentMimeWhenTheProviderIsSilent() {
+        assertEquals("image/png", MmsSupport.defaultAttachmentMime("image/png", "content://x/a"))
+        assertEquals("image/jpeg", MmsSupport.defaultAttachmentMime("image/jpeg; charset=binary", "content://x/a"))
+        assertEquals("video/mp4", MmsSupport.defaultAttachmentMime(null, "content://x/clip.MP4"))
+        assertEquals("audio/mp4", MmsSupport.defaultAttachmentMime("  ", "content://x/clip.m4a"))
+        assertEquals("image/jpeg", MmsSupport.defaultAttachmentMime(null, "content://x/photo"))
+    }
+
+    @Test
+    fun buildsAttachmentPlusOptionalTextPart() {
+        val withCaption = MmsSupport.outgoingParts("image/png", "hello")
+        assertEquals(2, withCaption.size)
+        assertEquals("image", withCaption[0].name)
+        assertEquals("image/png", withCaption[0].mimeType)
+        assertFalse(withCaption[0].isText)
+        assertEquals("text/plain", withCaption[1].mimeType)
+        assertTrue(withCaption[1].isText)
+        assertEquals(1, MmsSupport.outgoingParts("image/png", "  ").size)
+    }
+
+    @Test
+    fun namesSavedAttachmentsSafely() {
+        assertEquals(
+            "Marek Nowak_1700000000000.jpg",
+            MmsSupport.savedAttachmentName("Marek Nowak", 1_700_000_000_000L, "image/jpeg")
+        )
+        assertEquals(
+            "message_1700000000000.png",
+            MmsSupport.savedAttachmentName("   ", 1_700_000_000_000L, "image/png")
+        )
+        assertEquals(
+            "a_b_1700000000000.jpg",
+            MmsSupport.savedAttachmentName("a/b", 1_700_000_000_000L, "image/jpeg")
+        )
+        assertEquals(
+            "Sara_1700000000000.jpg",
+            MmsSupport.savedAttachmentName("Sara", 1_700_000_000_000L, "application/octet-stream")
+        )
+    }
+
+    @Test
+    fun resolvesSavedAttachmentMimeByExtension() {
+        assertEquals("image/png", MmsSupport.mimeForSavedAttachment("content://mms/part/9", "image/png"))
+        assertEquals("image/png", MmsSupport.mimeForSavedAttachment("content://x/a.PNG", null))
+        assertEquals("video/mp4", MmsSupport.mimeForSavedAttachment("content://x/clip.mp4", null))
+        assertEquals("image/jpeg", MmsSupport.mimeForSavedAttachment("content://mms/part/9", null))
+    }
+
+    @Test
     fun convertsSecondsWithoutOverflow() {
         assertEquals(1_700_000_000_000L, MmsSupport.milliseconds(1_700_000_000L))
         assertNull(MmsSupport.milliseconds(-1))

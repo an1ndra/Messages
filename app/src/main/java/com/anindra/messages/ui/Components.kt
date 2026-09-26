@@ -22,7 +22,10 @@ import androidx.compose.material.icons.rounded.BusinessCenter
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.anindra.messages.ui.theme.Motion
 import com.anindra.messages.R
+import com.anindra.messages.ui.theme.LocalReduceMotion
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
@@ -142,7 +145,6 @@ fun WorkProfileBadge(modifier: Modifier = Modifier) {
     )
 }
 
-private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
 private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
 private val dividerFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())
 
@@ -159,7 +161,7 @@ fun formatListTime(ts: Long, now: Long = System.currentTimeMillis(), ctx: androi
     return when {
         now - ts < 60_000L -> ctx.getString(R.string.time_now)
         now - ts < 3_600_000L -> String.format(ctx.getString(R.string.time_minutes), (now - ts) / 60_000)
-        sameDay(ts, now) -> timeFmt.format(zoned(ts))
+        sameDay(ts, now) -> timeOnlyFormatter(is24HourFormat(ctx)).format(zoned(ts))
         isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
         else -> dayFmt.format(zoned(ts))
     }
@@ -173,7 +175,8 @@ fun formatDividerTime(ts: Long, ctx: android.content.Context): String {
     }
 }
 
-fun formatTimeOnly(ts: Long): String = timeFmt.format(zoned(ts))
+fun formatTimeOnly(ts: Long, is24Hour: Boolean): String =
+    timeOnlyFormatter(is24Hour).format(zoned(ts))
 
 private fun epochDay(ts: Long): Long {
     val offset = zone.rules.getOffset(Instant.ofEpochMilli(ts))
@@ -190,7 +193,8 @@ fun UnreadBadge(count: Int, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(20.dp)
-            .background(MaterialTheme.colorScheme.primary, CircleShape),
+            .background(MaterialTheme.colorScheme.primary, CircleShape)
+            .clearAndSetSemantics {},
         contentAlignment = Alignment.Center
     ) {
         androidx.compose.material3.Text(
@@ -224,18 +228,24 @@ fun Modifier.shimmer(): Modifier {
  *  its own [rememberInfiniteTransition]. */
 @Composable
 fun ProvideShimmer(content: @Composable () -> Unit) {
-    val transition = androidx.compose.animation.core.rememberInfiniteTransition()
-    val translateAnim: Float by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1200f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(
-                1100,
-                easing = androidx.compose.animation.core.FastOutSlowInEasing
-            ),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+    val reduceMotion = LocalReduceMotion.current
+    val translateAnim: Float = if (reduceMotion) {
+        0f
+    } else {
+        val transition = androidx.compose.animation.core.rememberInfiniteTransition()
+        val anim: Float by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1200f,
+            animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                animation = androidx.compose.animation.core.tween(
+                    Motion.SHIMMER_DURATION_MS,
+                    easing = Motion.emphasized(reduceMotion)
+                ),
+                repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+            )
         )
-    )
+        anim
+    }
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.runtime.compositionLocalOf { 0f } provides translateAnim,
         content = content
@@ -246,7 +256,6 @@ private val LocalShimmerTranslate = androidx.compose.runtime.compositionLocalOf 
 
 @Composable
 fun SkeletonConversationRow() {
-    val cs = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()

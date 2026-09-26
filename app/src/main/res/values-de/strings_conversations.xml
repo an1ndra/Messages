@@ -13,6 +13,12 @@
     <string name="new_chat_send_to">An „%s“ senden</string>
     <string name="text_placeholder">Textnachricht</string>
     <string name="conversations_archived">Archiviert</string>
+    <string name="conversations_spam_blocked">Spam und blockiert</string>
+    <string name="conversations_spam_blocked_empty">Keine Spam- oder blockierten Unterhaltungen</string>
+    <string name="spam_tab_conversations">Unterhaltungen</string>
+    <string name="spam_tab_messages">Nachrichten</string>
+    <string name="spam_blocked_messages_empty">Keine blockierten Nachrichten</string>
+    <string name="spam_message_deleted">Nachricht gelöscht</string>
     <string name="conversations_messages">Nachrichten</string>
     <string name="conversations_me">Ich</string>
     <string name="conversations_allow_sms_access">SMS-Zugang erlauben</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">Suche schließen</string>
     <string name="convo_back_to_inbox">Zurück zum Posteingang</string>
+    <string name="spam_empty">Leeren</string>
+    <string name="spam_empty_confirm">Dadurch werden alle %d Elemente aus diesem Tab entfernt. Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="spam_conversation_deleted">Blockierte Unterhaltung gelöscht</string>
+    <string name="spam_conversations_cleared">Blockierte Unterhaltungen geleert</string>
+    <string name="spam_messages_cleared">Blockierte Nachrichten geleert</string>
 </resources>

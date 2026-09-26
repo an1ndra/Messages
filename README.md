@@ -23,16 +23,17 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 - **Contact Photos**: Loads real contact profile pictures
 - **Delayed Sending**: Configurable delay before sending messages
 - **Work Profile Contacts**: Search contacts in both the personal and work (managed) profile; work contacts are shown with a briefcase badge in the picker, home list, and chat header
+- **Accessibility Mode**: TalkBack descriptions, high-contrast themes, larger text and touch targets, and reduced motion
 
 ## Screenshots
 
-| Home (Dark) | Chat (Dark) | Settings (Dark) | Reply (Dark) |
+| Conversations | Grouped bubbles | OTP highlighting | New chat |
 |---|---|---|---|
-| ![Home Dark](screenshots/fdroid/01-home-dark.png) | ![Chat Dark](screenshots/fdroid/02-chat-dark.png) | ![Settings Dark](screenshots/fdroid/06-settings-dark.png) | ![Reply Dark](screenshots/fdroid/07-reply-dark.png) |
+| ![Conversations](fastlane/metadata/android/en-US/images/phoneScreenshots/01-conversations.png) | ![Grouped bubbles](fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat-grouped-bubbles.png) | ![OTP highlighting](fastlane/metadata/android/en-US/images/phoneScreenshots/05-chat-otp.png) | ![New chat](fastlane/metadata/android/en-US/images/phoneScreenshots/06-new-chat.png) |
 
-| Home (Light) | Chat (Light) | Settings (Light) | Reply (Light) |
-|---|---|---|---|
-| ![Home Light](screenshots/fdroid/03-home-light.png) | ![Chat Light](screenshots/fdroid/04-chat-light.png) | ![Settings Light](screenshots/fdroid/05-settings-light.png) | ![Reply Light](screenshots/fdroid/08-reply-light.png) |
+| Work chat | Alex chat | Settings |
+|---|---|---|
+| ![Work chat](fastlane/metadata/android/en-US/images/phoneScreenshots/03-chat-work.png) | ![Alex chat](fastlane/metadata/android/en-US/images/phoneScreenshots/04-chat-alex.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/07-settings.png) |
 
 ## Download
 
@@ -49,8 +50,10 @@ F-Droid builds the app from source and signs it with the F-Droid project key.
 ## Requirements
 
 - Android 10 (API 29) or higher
-- SMS permissions (SEND_SMS, RECEIVE_SMS, READ_SMS)
-- Contact permissions (READ_CONTACTS)
+- SMS/MMS permissions (send, receive, read, MMS/WAP push)
+- Contact permission (READ_CONTACTS)
+- Notification permission (Android 13+), phone state (dual-SIM), and photo access (attachments)
+- No internet permission
 
 ## Technical Details
 
@@ -58,7 +61,7 @@ F-Droid builds the app from source and signs it with the F-Droid project key.
 - **Min SDK**: 29 (Android 10)
 - **Compile / Target SDK**: 36 (Android 16)
 - **Database**: SQLite with Flow-based reactive queries
-- **Architecture**: Single-Activity, Compose Navigation
+- **Architecture**: Single-Activity, manual `navRoute` state (no Navigation-Compose)
 
 ## License
 
@@ -66,4 +69,4 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Contributing
 
-See [Developer.md](Developer.md) for development setup instructions.
+See [docs/Developer.md](docs/Developer.md) for development setup instructions.

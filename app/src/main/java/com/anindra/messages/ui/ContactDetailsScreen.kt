@@ -82,8 +82,7 @@ fun ContactDetailsScreen(
     }
     val address = convo!!.address
     val name = convo!!.name
-    val display = convo!!.display
-    val isKnownContact = name != address
+    val display = BidiText.ltr(convo!!.display)
     val workProfile = phoneKey(address).let { it.isNotEmpty() && it in workNums }
 
     // flows (not sync SELECTs) for notify/block state; VM retains last value
@@ -125,7 +124,7 @@ fun ContactDetailsScreen(
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = if (isKnownContact) name else display,
+                    text = ContactDetails.title(name, address, display),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
@@ -133,13 +132,19 @@ fun ContactDetailsScreen(
                         .fillMaxWidth()
                         .wrapContentHeight(Alignment.CenterVertically)
                 )
+                ContactDetails.subtitle(name, address, display)?.let { number ->
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = number,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 if (workProfile) {
                     Spacer(Modifier.height(4.dp))
                     WorkProfileBadge()
-                }
-
-                if (!isKnownContact) {
-                    Spacer(Modifier.height(4.dp))
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -278,15 +283,23 @@ fun ContactDetailsScreen(
                     ) {
                         PersonAvatar(address, size = 40.dp)
                         Spacer(Modifier.width(16.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                if (isKnownContact) name else display,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (workProfile) {
-                                Spacer(Modifier.width(6.dp))
-                                WorkProfileBadge()
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    ContactDetails.title(name, address, display),
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                if (workProfile) {
+                                    Spacer(Modifier.width(6.dp))
+                                    WorkProfileBadge()
+                                }
+                            }
+                            ContactDetails.subtitle(name, address, display)?.let { number ->
+                                Text(
+                                    number,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }

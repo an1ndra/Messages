@@ -49,7 +49,18 @@
     <string name="notification_channel_desc">Powiadomienia o nowych wiadomościach</string>
     <string name="notif_title_private">Nowa wiadomość</string>
     <string name="notif_body_private">Masz nową wiadomość</string>
+    <string name="notif_you">Ty</string>
     <string name="notif_send_fail_private">Nie udało się wysłać wiadomości. Stuknij, aby ponowić.</string>
     <string name="notif_send_fail">Nie udało się wysłać wiadomości do %s. Stuknij, aby ponowić.</string>
     <string name="notif_not_delivered">Wiadomość nie została dostarczona</string>
+
+    <!-- Crash reports -->
+    <string name="crash_report_title">Raport awarii</string>
+    <string name="crash_report_message">Aplikacja ostatnio się zawiesiła. Log został zapisany w Downloads/Messages — dołącz go do zgłoszenia na GitHubie, aby pomóc w naprawie.</string>
+    <string name="crash_report_message_many">Aplikacja zawiesiła się %1$d razy. Logi zostały zapisane w Downloads/Messages — dołącz je do zgłoszenia na GitHubie, aby pomóc w naprawie.</string>
+    <string name="crash_report_export">Zapisz ZIP</string>
+    <string name="crash_report_copy">Kopiuj</string>
+    <string name="crash_report_delete">Usuń</string>
+    <string name="crash_report_saved">Zapisano w Downloads/Messages</string>
+    <string name="crash_report_clip_label">Raport awarii Messages</string>
 </resources>

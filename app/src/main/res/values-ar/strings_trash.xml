@@ -5,11 +5,16 @@
     <string name="trash_emptied">تم إفراغ سلة المحذوفات</string>
     <string name="toast_trash_deleted">تم حذف المحادثة</string>
     <string name="trash_delete_conversation">حذف المحادثة</string>
-    <string name="trash_conversation_deleted">تم حذف المحادثة</string>
+    <string name="trash_delete_message">حذف الرسالة</string>
+    <string name="trash_tab_conversations">المحادثات</string>
+    <string name="trash_tab_messages">الرسائل</string>
+    <string name="trash_messages_empty">لا توجد رسائل محذوفة</string>
+    <string name="trash_messages_empty_message">تُحفظ الرسائل المحذوفة هنا حتى تحذفها</string>
 
     <string name="trash_empty_is_empty">سلة المحذوفات فارغة</string>
     <string name="trash_empty_message">تُحذف المحادثات المحذوفة نهائيًا بعد 30 يومًا</string>
     <string name="trash_empty_confirm">هل تريد حذف جميع المحادثات %d من سلة المحذوفات؟ لا يمكن التراجع عن هذا الإجراء.</string>
     <string name="trash_delete_forever_confirm">حذف %s نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.</string>
     <string name="trash_deleted_on">تم الحذف %s</string>
+    <string name="trash_reason_blocked">كلمة</string>
 </resources>

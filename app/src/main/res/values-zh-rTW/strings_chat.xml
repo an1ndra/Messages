@@ -4,6 +4,7 @@
     <string name="chat_block">封鎖</string>
     <string name="chat_block_report">封鎖並檢舉垃圾訊息</string>
     <string name="chat_unblock">解除封鎖</string>
+    <string name="chat_moved_to_spam">已移至垃圾郵件並封鎖</string>
     <string name="chat_block_number">封鎖號碼</string>
     <string name="chat_unblock_number">解除封鎖號碼</string>
     <string name="chat_forward">轉寄</string>
@@ -15,6 +16,12 @@
     <string name="chat_select_time">選擇時間</string>
     <string name="chat_media_camera">相機</string>
     <string name="chat_media_gallery">相簿</string>
+    <string name="chat_select_all">全選</string>
+    <string name="chat_select_text">選取文字</string>
+    <string name="chat_save_image">儲存圖片</string>
+    <string name="chat_image_saved">圖片已儲存至 Pictures/Messages</string>
+    <string name="chat_image_save_failed">無法儲存圖片</string>
+
     <string name="chat_cant_send">無法傳送訊息</string>
     <string name="chat_archived">對話已封存</string>
     <string name="chat_deleted">對話已刪除</string>
@@ -27,16 +34,21 @@
     <string name="chat_retry">重試</string>
     <string name="chat_retry_sim">重試使用 SIM 卡</string>
     <string name="chat_sending_via">透過 %s 傳送</string>
+    <string name="chat_switch_sim">切換 SIM 卡</string>
     <string name="chat_scheduled_for">已排定於 %s 傳送</string>
     <string name="chat_search_contacts">搜尋通訊錄</string>
     <string name="chat_add_people">加入人員</string>
     <string name="chat_locked">已鎖定</string>
+
     <string name="chat_copied">已複製</string>
     <string name="chat_link_copied">連結已複製</string>
     <string name="chat_copy_link">複製連結</string>
     <string name="chat_link_caution">警告：外部連結</string>
     <string name="chat_link_warning">訊息中的連結可能導向盜取個人資料或安裝惡意軟體的假網站。</string>
     <string name="chat_link_no_dont_show">不再顯示此警告</string>
+    <string name="chat_link_label">連結</string>
+    <string name="chat_messages_label">訊息</string>
+
     <string name="chat_close">關閉</string>
     <string name="chat_open">開啟</string>
     <string name="chat_next">下一步</string>
@@ -44,16 +56,29 @@
     <string name="chat_cancel">取消</string>
     <string name="chat_delete">刪除</string>
     <string name="chat_details_title">對話詳情</string>
+    <string name="message_details_title">訊息詳細資料</string>
+    <string name="message_detail_type">類型</string>
+    <string name="message_detail_to">收件者</string>
+    <string name="message_detail_from">寄件者</string>
+    <string name="message_detail_sent">已傳送</string>
+    <string name="message_detail_delivered">已送達</string>
+    <string name="message_detail_status">狀態</string>
+    <string name="message_status_sending">傳送中…</string>
+    <string name="message_status_sent">已傳送</string>
+    <string name="message_status_delivered">已送達</string>
+    <string name="message_status_received">已接收</string>
+    <string name="message_status_failed">未傳送</string>
+
     <string name="chat_status_not_sent">未傳送</string>
     <string name="chat_status_retry">輕觸以重試</string>
     <string name="chat_draft_prefix">草稿：</string>
     <string name="chat_sending_countdown">正在傳送 %d 秒後…</string>
     <string name="chat_alphanumeric_error">您無法向 %s 這類字母數字寄件者傳送訊息。僅支援電話號碼。</string>
+    <string name="chat_alphanumeric_notice">%s 無法接收回覆。僅支援電話號碼。</string>
     <string name="chat_unlock_dialog">解鎖</string>
     <string name="chat_lock_dialog">鎖定</string>
-    <string name="chat_link_label">連結</string>
     <string name="chat_message_deleted">訊息已刪除</string>
     <string name="chat_messages_deleted">%d 則訊息已刪除</string>
-    <string name="chat_messages_label">訊息</string>
+    <string name="chat_trash">移到垃圾桶</string>
     <string name="status_not_sent">未发送</string>
 </resources>

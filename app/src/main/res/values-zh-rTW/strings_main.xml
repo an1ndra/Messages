@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">訊息</string>
+
     <string name="lock_title">驗證以存取您的訊息</string>
     <string name="lock_unlock_title">解鎖訊息</string>
     <string name="lock_auth_subtitle">驗證以顯示這些訊息</string>
@@ -9,12 +11,14 @@
     <string name="lock_setup_needed">請先在裝置上設定螢幕鎖定（指紋、人臉或密碼）</string>
     <string name="lock_turn_on">設定螢幕鎖定</string>
     <string name="lock_turn_on_hint">設定後即可重新開啟應用程式鎖定。</string>
-    <string name="lock_error_no_screen_lock">應用程式鎖定無法使用，因為此裝置沒有螢幕鎖定（指紋、人臉或密碼）來驗證您的身份。</string>
+
     <string name="default_sms_title">設為預設訊息應用程式？</string>
     <string name="default_sms_message">若要傳送和接收訊息，「訊息」需要設為您預設的 SMS 應用程式。</string>
     <string name="default_sms_set">設為預設</string>
     <string name="default_sms_not_now">現在不要</string>
+
     <string name="notifications_disabled">已停用通知 — 您將不會收到新訊息通知</string>
+
     <string name="messages_footer">訊息 1.0 — 離線 SMS</string>
     <string name="settings_light_mode">淺色</string>
     <string name="settings_dark_mode">深色</string>
@@ -31,14 +35,28 @@
     <string name="settings_pin_error_too_short">PIN 碼至少需要 4 位數</string>
     <string name="settings_pin_error_mismatch">PIN 碼不一致</string>
     <string name="settings_sound_arrival">收到訊息時播放的聲音</string>
-    <string name="app_name">訊息</string>
+    <string name="convo_moved_to_trash">對話已移至垃圾桶</string>
+    <string name="convo_archived">對話已封存</string>
+    <string name="action_undo">復原</string>
+    <string name="lock_error_no_screen_lock">應用程式鎖定無法使用，因為此裝置沒有螢幕鎖定（指紋、人臉或密碼）來驗證您的身份。</string>
     <string name="sim_default">預設</string>
     <string name="time_yesterday">昨天</string>
+    <string name="link_warning_confirm">開啟外部連結前確認</string>
     <string name="notification_channel_title">訊息</string>
     <string name="notification_channel_desc">新訊息通知</string>
     <string name="notif_title_private">新訊息</string>
     <string name="notif_body_private">您有一則新訊息</string>
+    <string name="notif_you">你</string>
     <string name="notif_send_fail_private">無法傳送訊息。輕觸以重試。</string>
     <string name="notif_send_fail">無法傳送至 %s。輕觸以重試。</string>
     <string name="notif_not_delivered">訊息未送達</string>
+
+    <string name="crash_report_title">當機報告</string>
+    <string name="crash_report_message">上次應用程式發生當機。記錄檔已儲存在 Downloads/Messages — 請附到 GitHub issue 以協助修正。</string>
+    <string name="crash_report_message_many">應用程式當機 %1$d 次。記錄檔已儲存在 Downloads/Messages — 請附到 GitHub issue 以協助修正。</string>
+    <string name="crash_report_export">儲存 ZIP</string>
+    <string name="crash_report_copy">複製</string>
+    <string name="crash_report_delete">刪除</string>
+    <string name="crash_report_saved">已儲存至 Downloads/Messages</string>
+    <string name="crash_report_clip_label">Messages 當機報告</string>
 </resources>

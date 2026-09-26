@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen reader (TalkBack) labels -->
+    <string name="access_open_conversation">Abrir conversación</string>
+    <string name="access_conversation_options">Opciones de la conversación</string>
+    <string name="access_unread">%1$d sin leer</string>
+
+    <!-- Accessibility mode (Advanced settings) -->
+    <string name="settings_accessibility_title">Modo de accesibilidad</string>
+    <string name="settings_accessibility_subtitle">Texto más grande, alto contraste y movimiento reducido</string>
+    <string name="accessibility_options_title">Opciones de accesibilidad</string>
+    <string name="accessibility_options_subtitle">Personaliza el texto, el contraste y el movimiento</string>
+    <string name="accessibility_title">Accesibilidad</string>
+
+    <!-- Text -->
+    <string name="a11y_font_size_title">Tamaño de fuente</string>
+    <string name="a11y_font_size_desc">Escala el texto en toda la app además del tamaño del sistema</string>
+    <string name="a11y_choose_font_size">Elegir tamaño de fuente</string>
+    <string name="a11y_font_85">Pequeño (85 %)</string>
+    <string name="a11y_font_100">Predeterminado (100 %)</string>
+    <string name="a11y_font_115">Grande (115 %)</string>
+    <string name="a11y_font_130">Muy grande (130 %)</string>
+    <string name="a11y_bold_title">Texto en negrita</string>
+    <string name="a11y_bold_desc">Usar pesos de fuente más gruesos</string>
+
+    <!-- Display -->
+    <string name="a11y_high_contrast_title">Alto contraste</string>
+    <string name="a11y_high_contrast_desc">Colores y contornos más intensos</string>
+    <string name="a11y_large_touch_title">Áreas táctiles más grandes</string>
+    <string name="a11y_large_touch_desc">Zonas de toque más grandes para botones y filas</string>
+
+    <!-- Motion -->
+    <string name="a11y_reduce_motion_title">Reducir movimiento</string>
+    <string name="a11y_reduce_motion_desc">Desactivar animaciones y transiciones</string>
+</resources>

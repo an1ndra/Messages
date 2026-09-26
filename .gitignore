@@ -9,9 +9,9 @@
 .cxx
 local.properties
 /app/build
+/android-smsmms/build
 .kotlin
 screenshots/*
-!screenshots/fdroid/
 release.keystore
 *.apk
 .commandcode/

@@ -9,11 +9,13 @@ data class Conversation(
     val unreadCount: Int,
     val isMe: Boolean,
     val archived: Boolean = false,
+    val blocked: Boolean = false,
     val pinned: Boolean = false,
     val draft: String = "",
     val draftDate: Long = 0,
     val deletedAt: Long = 0,
-    val display: String = address
+    val display: String = address,
+    val deletedReason: String = TrashReason.MANUAL
 )
 
 data class Message(
@@ -36,6 +38,28 @@ data class BlockedNumber(
     val id: Long = 0,
     val number: String,
     val timestamp: Long = System.currentTimeMillis()
+)
+
+/** A keyword-blocked SMS parked in the "Spam & blocked" folder. */
+data class BlockedMessage(
+    val id: Long,
+    val conversationId: Long,
+    val address: String,
+    val name: String,
+    val body: String,
+    val timestamp: Long,
+    val blockedReason: String
+)
+
+/** A manually deleted message kept in Trash (message-level soft delete). */
+data class TrashedMessage(
+    val id: Long,
+    val conversationId: Long,
+    val address: String,
+    val name: String,
+    val body: String,
+    val timestamp: Long,
+    val deletedAt: Long
 )
 
 data class ScheduledMessage(
