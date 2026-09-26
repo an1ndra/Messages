@@ -51,6 +51,14 @@ jobs:
           languages: java-kotlin
           queries: security-and-quality
           build-mode: manual
+          # android-smsmms is a vendored fork of the AOSP MMS stack: 142 files of
+          # upstream Java we do not own. It accounted for 451 of 455 open alerts,
+          # 344 of them one style lint (missing-override-annotation), which buried
+          # the handful of findings that are actually ours. The app uses 11 classes
+          # from it (the MMS PDU compose/persist layer), so it stays a real
+          # dependency - it is just not code we should be fixing linter warnings in.
+          paths-ignore:
+            - android-smsmms
 
       # --no-build-cache forces kotlinc to run under the CodeQL build tracer
       - name: Build for CodeQL
