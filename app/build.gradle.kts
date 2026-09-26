@@ -16,8 +16,8 @@ android {
         applicationId = "com.anindra.messages"
         minSdk = 29
         targetSdk = 36
-        versionCode = 29
-        versionName = "1.0.26"
+        versionCode = 30
+        versionName = "1.0.27"
     }
 
     signingConfigs {
