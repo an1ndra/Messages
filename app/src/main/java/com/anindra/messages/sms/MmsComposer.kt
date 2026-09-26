@@ -1,22 +1,13 @@
 package com.anindra.messages.sms
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.net.Uri
-import android.provider.Telephony
+import android.os.Build
+import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
 import android.util.Log
-import com.android.mms.dom.smil.parser.SmilXmlSerializer
 import com.anindra.messages.data.MmsSupport
-import com.google.android.mms.ContentType
-import com.google.android.mms.pdu_alt.CharacterSets
-import com.google.android.mms.pdu_alt.EncodedStringValue
-import com.google.android.mms.pdu_alt.PduBody
-import com.google.android.mms.pdu_alt.PduComposer
-import com.google.android.mms.pdu_alt.PduHeaders
-import com.google.android.mms.pdu_alt.PduPart
-import com.google.android.mms.pdu_alt.PduPersister
-import com.google.android.mms.pdu_alt.SendReq
-import com.google.android.mms.smil.SmilHelper
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.UUID
 
@@ -24,15 +15,16 @@ import java.util.UUID
  * Builds and hands off outgoing MMS.
  *
  * `SmsManager.sendMultimediaMessage` does not take the attachment: its URI must
- * point at the MMS *message* to transmit. So a real `m_SendReq` PDU is built,
- * persisted as a `content://mms/outbox/<id>` row (which also gives the system a
- * provider-side record), then composed to the binary PDU the radio expects and
- * served through the app's FileProvider. Mirrors the flow used by
- * quik/Fossify (klinker `Transaction.sendMmsThroughSystem`).
+ * point at the MMS *message* to transmit. So a real `m_SendReq` PDU is built by
+ * [MmsPdu], a matching row is persisted to the system MMS outbox so the system
+ * and the stock messaging UI can see the message, and the composed PDU is served
+ * through the app's FileProvider.
  */
 internal object MmsComposer {
     private const val TAG = "MmsComposer"
+    private const val PDU_TAG = "MmsPdu"
     private const val EXPIRY_SECONDS = 7L * 24 * 60 * 60
+    private const val LOG_CHUNK = 512
 
     data class Prepared(val outboxUri: Uri, val pduFile: File, val pduUri: Uri)
 
@@ -47,84 +39,129 @@ internal object MmsComposer {
         caption: String,
         subscriptionId: Int
     ): Prepared? = try {
-        val request = buildRequest(context, address, media, mimeType, caption, subscriptionId)
-        val outbox = PduPersister.getPduPersister(context).persist(
-            request, Telephony.Mms.Outbox.CONTENT_URI, true, true, null, subscriptionId
-        )
-        if (outbox.lastPathSegment?.toLongOrNull() == null) {
-            Log.w(TAG, "outbox persist returned $outbox")
-            null
-        } else {
-            // Re-read so the transmitted bytes match the stored row. The
-            // provider has no app_id column on modern releases, so the app-side
-            // id travels in the sent PendingIntent instead.
-            val bytes = PduComposer(context, PduPersister.getPduPersister(context).load(outbox)).make()
-            val file = File(context.cacheDir, "mms-send-${UUID.randomUUID()}.dat")
-            file.outputStream().use { it.write(bytes) }
-            Prepared(outbox, file, pduContentUri(context, file))
+        val attachment = context.contentResolver.openInputStream(media)?.use { it.readBytes() }
+        if (attachment == null || attachment.isEmpty()) {
+            throw IllegalStateException("attachment unavailable: $media")
         }
+        val specs = MmsSupport.outgoingParts(mimeType, caption)
+        val transactionId = "T" + java.lang.Long.toHexString(System.currentTimeMillis())
+        val dateSeconds = System.currentTimeMillis() / 1000
+        val parts = buildParts(specs, caption, attachment)
+        val outbox = MmsOutbox.persist(
+            context, transactionId, dateSeconds, address, parts, subscriptionId
+        ) ?: return null
+
+        val bytes = MmsPdu.sendReq(
+            transactionId = transactionId,
+            dateSeconds = dateSeconds,
+            to = address,
+            parts = parts,
+            from = ownNumber(context, subscriptionId),
+            expirySeconds = EXPIRY_SECONDS
+        )
+        logPdu(context, transactionId, bytes)
+
+        val file = File(context.cacheDir, "mms-send-${UUID.randomUUID()}.dat")
+        file.outputStream().use { it.write(bytes) }
+        Prepared(outbox, file, pduContentUri(context, file))
     } catch (t: Throwable) {
         Log.w(TAG, "failed to build mms pdu: ${t.message}")
         null
     }
 
-    private fun buildRequest(
-        context: Context,
-        address: String,
-        media: Uri,
-        mimeType: String,
+    /**
+     * The SMIL part leads the body: the multipart `start` and `type` parameters
+     * are taken from part 0, so without it the root document would be the image.
+     */
+    private fun buildParts(
+        specs: List<MmsSupport.OutgoingPart>,
         caption: String,
-        subscriptionId: Int
-    ): SendReq {
-        val request = SendReq()
-        request.prepareFromAddress(context, "", subscriptionId)
-        request.addTo(EncodedStringValue(address))
-        request.date = System.currentTimeMillis() / 1000
-
-        val body = PduBody()
-        val attachment = context.contentResolver.openInputStream(media)?.use { it.readBytes() }
-        if (attachment == null || attachment.isEmpty()) {
-            throw IllegalStateException("attachment unavailable: $media")
+        attachment: ByteArray
+    ): List<MmsPdu.Part> = buildList {
+        add(
+            MmsPdu.Part(
+                contentType = MmsPdu.APP_SMIL,
+                name = "smil.xml",
+                contentId = "smil",
+                charset = null,
+                data = MmsSmil.document(
+                    specs[0].name,
+                    mediaTag(mimeType = specs[0].mimeType),
+                    specs.getOrNull(1)?.name
+                ).toByteArray(Charsets.UTF_8)
+            )
+        )
+        add(
+            MmsPdu.Part(
+                contentType = specs[0].mimeType,
+                name = specs[0].name,
+                contentId = specs[0].name,
+                charset = null,
+                data = attachment
+            )
+        )
+        if (specs.size > 1) {
+            add(
+                MmsPdu.Part(
+                    contentType = specs[1].mimeType,
+                    name = specs[1].name,
+                    contentId = specs[1].name,
+                    charset = MmsPdu.CHARSET_UTF_8,
+                    data = caption.toByteArray(Charsets.UTF_8)
+                )
+            )
         }
-        val parts = MmsSupport.outgoingParts(mimeType, caption)
-        val text = caption.toByteArray()
-        addPart(body, parts[0].mimeType, parts[0].name, attachment)
-        var size = attachment.size.toLong()
-        if (parts.size > 1) {
-            addPart(body, parts[1].mimeType, parts[1].name, text)
-            size += text.size
-        }
-        addSmil(body)
-        request.body = body
-        request.messageSize = size
-        request.messageClass = PduHeaders.MESSAGE_CLASS_PERSONAL_STR.toByteArray()
-        request.expiry = EXPIRY_SECONDS
-        request.priority = PduHeaders.PRIORITY_NORMAL
-        request.deliveryReport = PduHeaders.VALUE_NO
-        request.readReport = PduHeaders.VALUE_NO
-        return request
     }
 
-    /** A SMIL part is expected by many carriers and clients, as in quik. */
-    private fun addSmil(body: PduBody) {
-        val out = ByteArrayOutputStream()
-        SmilXmlSerializer.serialize(SmilHelper.createSmilDocument(body), out)
-        body.addPart(0, PduPart().apply {
-            contentId = "smil".toByteArray()
-            contentLocation = "smil.xml".toByteArray()
-            contentType = ContentType.APP_SMIL.toByteArray()
-            data = out.toByteArray()
-        })
+    private fun mediaTag(mimeType: String): String = when {
+        mimeType.startsWith("image/") -> "img"
+        mimeType.startsWith("video/") -> "video"
+        mimeType.startsWith("audio/") -> "audio"
+        else -> "img"
     }
 
-    private fun addPart(body: PduBody, mimeType: String, name: String, data: ByteArray) {
-        body.addPart(PduPart().apply {
-            contentType = mimeType.toByteArray()
-            contentLocation = name.toByteArray()
-            contentId = name.toByteArray()
-            if (mimeType.startsWith("text")) charset = CharacterSets.UTF_8
-            this.data = data
-        })
+    /**
+     * The device's own MSISDN, when it is readable. Reading it needs
+     * READ_PHONE_NUMBERS, which the app does not hold, so this is normally null
+     * and the PDU carries an insert-address-token for the MMSC to stamp.
+     */
+    private fun ownNumber(context: Context, subscriptionId: Int): String? = try {
+        val manager = context.getSystemService(SubscriptionManager::class.java)
+        val telephony = context.getSystemService(TelephonyManager::class.java)
+        val active = manager?.activeSubscriptionInfoList
+        if (manager == null || telephony == null || active == null) {
+            null
+        } else {
+            active.firstOrNull { it.subscriptionId == subscriptionId }?.let {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    telephony.createForSubscriptionId(subscriptionId)?.line1Number
+                } else {
+                    telephony.line1Number
+                }
+            }
+        }
+    } catch (_: SecurityException) {
+        null
+    }
+
+    /**
+     * Debug builds only: the staged PDU file is deleted by the sent-callback
+     * within seconds, so the bytes are echoed here for the regression script.
+     */
+    private fun logPdu(context: Context, transactionId: String, bytes: ByteArray) {
+        val debuggable =
+            (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val hex = bytes.joinToString("") { "%02x".format(it) }
+        Log.i(PDU_TAG, "txid=$transactionId n=${bytes.size} i=0 ${hex.take(LOG_CHUNK)}")
+        var offset = LOG_CHUNK
+        var index = 1
+        while (offset < hex.length) {
+            val chunk = hex.substring(offset, (offset + LOG_CHUNK).coerceAtMost(hex.length))
+            Log.i(PDU_TAG, "txid=$transactionId n=${bytes.size} i=$index $chunk")
+            offset += LOG_CHUNK
+            index++
+        }
     }
 
     fun pduContentUri(context: Context, file: File): Uri = Uri.Builder()
