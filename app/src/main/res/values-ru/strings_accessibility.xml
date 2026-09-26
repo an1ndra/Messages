@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen reader (TalkBack) labels -->
+    <string name="access_open_conversation">Открыть переписку</string>
+    <string name="access_conversation_options">Действия с перепиской</string>
+    <string name="access_unread">%1$d непрочитанных</string>
+
+    <!-- Accessibility mode (Advanced settings) -->
+    <string name="settings_accessibility_title">Режим специальных возможностей</string>
+    <string name="settings_accessibility_subtitle">Крупный текст, высокая контрастность и меньше анимации</string>
+    <string name="accessibility_options_title">Параметры специальных возможностей</string>
+    <string name="accessibility_options_subtitle">Настройте текст, контрастность и анимацию</string>
+    <string name="accessibility_title">Специальные возможности</string>
+
+    <!-- Text -->
+    <string name="a11y_font_size_title">Размер шрифта</string>
+    <string name="a11y_font_size_desc">Масштабировать текст в приложении поверх системного размера</string>
+    <string name="a11y_choose_font_size">Выберите размер шрифта</string>
+    <string name="a11y_font_85">Мелкий (85%)</string>
+    <string name="a11y_font_100">Обычный (100%)</string>
+    <string name="a11y_font_115">Крупный (115%)</string>
+    <string name="a11y_font_130">Очень крупный (130%)</string>
+    <string name="a11y_bold_title">Полужирный текст</string>
+    <string name="a11y_bold_desc">Использовать более жирные начертания</string>
+
+    <!-- Display -->
+    <string name="a11y_high_contrast_title">Высокая контрастность</string>
+    <string name="a11y_high_contrast_desc">Более насыщенные цвета и контуры</string>
+    <string name="a11y_large_touch_title">Увеличенные области касания</string>
+    <string name="a11y_large_touch_desc">Большие зоны нажатия для кнопок и строк</string>
+
+    <!-- Motion -->
+    <string name="a11y_reduce_motion_title">Меньше анимации</string>
+    <string name="a11y_reduce_motion_desc">Отключить анимацию и переходы</string>
+</resources>

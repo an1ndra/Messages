@@ -5,6 +5,7 @@
     <string name="chat_block">Bloquear</string>
     <string name="chat_block_report">Bloquear y reportar spam</string>
     <string name="chat_unblock">Desbloquear</string>
+    <string name="chat_moved_to_spam">Movido a spam y bloqueado</string>
     <string name="chat_block_number">Bloquear número</string>
     <string name="chat_unblock_number">Desbloquear número</string>
     <string name="chat_forward">Reenviar</string>
@@ -16,6 +17,11 @@
     <string name="chat_select_time">Seleccionar hora</string>
     <string name="chat_media_camera">Cámara</string>
     <string name="chat_media_gallery">Galería</string>
+    <string name="chat_select_all">Seleccionar todo</string>
+    <string name="chat_select_text">Seleccionar texto</string>
+    <string name="chat_save_image">Guardar imagen</string>
+    <string name="chat_image_saved">Imagen guardada en Pictures/Messages</string>
+    <string name="chat_image_save_failed">No se pudo guardar la imagen</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">No se puede enviar el mensaje</string>
@@ -54,15 +60,29 @@
     <string name="chat_cancel">Cancelar</string>
     <string name="chat_delete">Eliminar</string>
     <string name="chat_details_title">Detalles de la conversación</string>
+    <string name="message_details_title">Detalles del mensaje</string>
+    <string name="message_detail_type">Tipo</string>
+    <string name="message_detail_to">Para</string>
+    <string name="message_detail_from">De</string>
+    <string name="message_detail_sent">Enviado</string>
+    <string name="message_detail_delivered">Entregado</string>
+    <string name="message_detail_status">Estado</string>
+    <string name="message_status_sending">Enviando…</string>
+    <string name="message_status_sent">Enviado</string>
+    <string name="message_status_delivered">Entregado</string>
+    <string name="message_status_received">Recibido</string>
+    <string name="message_status_failed">No enviado</string>
 
     <string name="chat_status_not_sent">No enviado</string>
     <string name="chat_status_retry">Toca para reintentar</string>
     <string name="chat_draft_prefix">Borrador: </string>
     <string name="chat_sending_countdown">Enviando en %d segundos...</string>
     <string name="chat_alphanumeric_error">No puedes enviar mensajes a remitentes alfanuméricos como %s. Solo se admiten números de teléfono.</string>
+    <string name="chat_alphanumeric_notice">%s no puede recibir respuestas. Solo se admiten números de teléfono.</string>
     <string name="chat_unlock_dialog">Desbloquear</string>
     <string name="chat_lock_dialog">Bloquear</string>
     <string name="chat_message_deleted">Mensaje eliminado</string>
     <string name="chat_messages_deleted">%d mensajes eliminados</string>
+    <string name="chat_trash">Mover a la papelera</string>
     <string name="status_not_sent">No enviado</string>
 </resources>

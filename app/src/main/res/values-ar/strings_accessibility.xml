@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen reader (TalkBack) labels -->
+    <string name="access_open_conversation">فتح المحادثة</string>
+    <string name="access_conversation_options">خيارات المحادثة</string>
+    <string name="access_unread">%1$d غير مقروءة</string>
+
+    <!-- Accessibility mode (Advanced settings) -->
+    <string name="settings_accessibility_title">وضع إمكانية الوصول</string>
+    <string name="settings_accessibility_subtitle">نص أكبر وتباين عالٍ وتقليل الحركة</string>
+    <string name="accessibility_options_title">خيارات إمكانية الوصول</string>
+    <string name="accessibility_options_subtitle">تخصيص النص والتباين والحركة</string>
+    <string name="accessibility_title">إمكانية الوصول</string>
+
+    <!-- Text -->
+    <string name="a11y_font_size_title">حجم الخط</string>
+    <string name="a11y_font_size_desc">تكبير النص في التطبيق إضافة إلى حجم النظام</string>
+    <string name="a11y_choose_font_size">اختيار حجم الخط</string>
+    <string name="a11y_font_85">صغير (85%)</string>
+    <string name="a11y_font_100">افتراضي (100%)</string>
+    <string name="a11y_font_115">كبير (115%)</string>
+    <string name="a11y_font_130">الأكبر (130%)</string>
+    <string name="a11y_bold_title">نص عريض</string>
+    <string name="a11y_bold_desc">استخدام أوزان خط أكثر ثقلًا</string>
+
+    <!-- Display -->
+    <string name="a11y_high_contrast_title">تباين عالٍ</string>
+    <string name="a11y_high_contrast_desc">ألوان وحدود أوضح</string>
+    <string name="a11y_large_touch_title">مناطق لمس أكبر</string>
+    <string name="a11y_large_touch_desc">مساحات لمس أكبر للأزرار والصفوف</string>
+
+    <!-- Motion -->
+    <string name="a11y_reduce_motion_title">تقليل الحركة</string>
+    <string name="a11y_reduce_motion_desc">تعطيل الرسوم المتحركة والانتقالات</string>
+</resources>

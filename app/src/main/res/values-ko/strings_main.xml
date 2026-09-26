@@ -49,7 +49,18 @@
     <string name="notification_channel_desc">새 메시지 알림</string>
     <string name="notif_title_private">새 메시지</string>
     <string name="notif_body_private">새 메시지가 도착했습니다</string>
+    <string name="notif_you">나</string>
     <string name="notif_send_fail_private">메시지를 보낼 수 없습니다. 다시 시도하려면 탭하세요.</string>
     <string name="notif_send_fail">%s(으)로 메시지를 보낼 수 없습니다. 다시 시도하려면 탭하세요.</string>
     <string name="notif_not_delivered">메시지가 전달되지 않았습니다</string>
+
+    <!-- Crash reports -->
+    <string name="crash_report_title">크래시 보고서</string>
+    <string name="crash_report_message">마지막에 앱이 충돌했습니다. 로그가 Downloads/Messages에 저장되었으니, 수정을 돕기 위해 GitHub 이슈에 첨부하세요.</string>
+    <string name="crash_report_message_many">앱이 %1$d번 충돌했습니다. 로그가 Downloads/Messages에 저장되었으니, 수정을 돕기 위해 GitHub 이슈에 첨부하세요.</string>
+    <string name="crash_report_export">ZIP 저장</string>
+    <string name="crash_report_copy">복사</string>
+    <string name="crash_report_delete">삭제</string>
+    <string name="crash_report_saved">Downloads/Messages에 저장했습니다</string>
+    <string name="crash_report_clip_label">Messages 크래시 보고서</string>
 </resources>

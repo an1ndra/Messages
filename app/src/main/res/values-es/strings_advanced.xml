@@ -12,4 +12,30 @@
     <string name="settings_advanced_turn_off_suffix">" primero</string>
     <string name="settings_advanced_permanent_delete_on">La eliminación permanente está activada. Esta conversación y sus mensajes se eliminarán de tu dispositivo de inmediato — no se moverán a la papelera — y no podrán ser restaurados.</string>
 
+    <string name="settings_font_title">Fuente</string>
+    <string name="settings_advanced_emoji_button">Botón de emoji</string>
+    <string name="settings_advanced_emoji_button_desc">Mostrar el botón de emoji en el campo de mensaje</string>
+    <string name="settings_choose_font">Elegir fuente</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">Predeterminada del sistema</string>
+
+    <string name="keywords_title">Palabras clave bloqueadas</string>
+    <string name="keywords_hint">Los mensajes que contengan alguna de estas palabras se mueven a la papelera: no aparecen en la bandeja de entrada ni suena la notificación.</string>
+    <string name="keywords_add_hint">Añadir palabra clave</string>
+    <string name="keywords_add">Añadir</string>
+    <string name="keywords_empty">Aún no hay palabras clave bloqueadas.</string>
+    <string name="keywords_remove">Quitar palabra clave</string>
+    <string name="keywords_subtitle_none">Ninguna</string>
+    <string name="keywords_subtitle_count">%1$d bloqueadas</string>
+
+    <string name="diagnostics_title">Diagnóstico</string>
+    <string name="diagnostics_subtitle">Diagnóstico del dispositivo y de la app para solucionar problemas</string>
+    <string name="diagnostics_save">Guardar</string>
+    <string name="diagnostics_copy">Copiar</string>
+    <string name="diagnostics_close">Cerrar</string>
+    <string name="diagnostics_clip_label">Diagnóstico de Messages</string>
+    <string name="settings_sim_unknown">SIM desconocida</string>
 </resources>
