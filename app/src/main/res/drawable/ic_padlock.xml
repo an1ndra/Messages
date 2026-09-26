@@ -1,6 +1,6 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="12.5dp"
-    android:height="17.3dp"
+    android:width="13.26dp"
+    android:height="18.36dp"
     android:viewportWidth="360"
     android:viewportHeight="498">
     <!-- Traced from a 512px SVG (icons/svg/padlock-512.svg).
@@ -16,9 +16,11 @@
          The dp size is set so the drawn height matches a Material glyph:
          Icons.Rounded.Delete fills ~18 of its 24 viewport, so at size(22.dp) it
          puts ~16.5dp of ink on screen. This art fills its viewport, so it is
-         declared at a height landing on that same ink height - measured off a
-         device screenshot rather than derived - and is used without a size
-         modifier, which would override this and undo the match. -->
+         declared at a height landing on that ink height - measured off a device
+         screenshot rather than derived - and is used without a size modifier,
+         which would override this and undo the match. It now sits a little over
+         that, on purpose: nudged up for visual weight against the bin, so it is
+         no longer strictly tracking the Material glyph. -->
     <path
         android:fillColor="#FF000000"
         android:pathData="M51 211V127a126 126 0 0 1 252 0 28.5 28.5 0 0 1 -57 0 69 69 0 0 0 -138 0v84z" />

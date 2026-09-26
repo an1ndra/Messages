@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -111,8 +112,15 @@ fun SpamBlockedScreen(
                         blockedMessages.isNotEmpty()
                     }
                     if (canEmpty) {
-                        TextButton(onClick = { showEmptyDialog = true }) {
-                            Text(stringResource(R.string.spam_empty), color = MaterialTheme.colorScheme.error)
+                        // Icon only, so the label has to live on the icon itself or
+                        // TalkBack has nothing to announce. Left at its natural size to
+                        // match the auto-delete clock beside it.
+                        IconButton(onClick = { showEmptyDialog = true }) {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = stringResource(R.string.spam_empty),
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 }
@@ -318,8 +326,9 @@ private fun MessagesTab(
                 }
                 IconButton(onClick = { onDelete(msg) }) {
                     Icon(
-                        Icons.Rounded.Delete,
+                        Icons.Rounded.Close,
                         contentDescription = stringResource(R.string.common_delete),
+                        modifier = Modifier.size(22.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
