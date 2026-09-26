@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name_placeholder">Сообщения</string>
-    <string name="translation_help">Translations are community-powered and may contain errors. If you find any inaccurate or missing translations, please open a new GitHub issue at github.com/an1ndra/Messages to help us improve.</string>
+    <string name="translation_help">Переводы сделаны сообществом и могут содержать ошибки. Если вы нашли неточный или отсутствующий перевод, откройте новую задачу на GitHub по адресу github.com/an1ndra/Messages, чтобы помочь нам улучшить переводы.</string>
 </resources>

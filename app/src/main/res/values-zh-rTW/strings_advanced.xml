@@ -11,5 +11,31 @@
     <string name="settings_advanced_turn_off">關閉「</string>
     <string name="settings_advanced_turn_off_suffix">」</string>
     <string name="settings_advanced_permanent_delete_on">永久刪除已開啟。此對話及其訊息將立即從您的裝置上移除 — 不會移至垃圾桶 — 且無法復原。</string>
-    <string name="link_warning_confirm">開啟外部連結前確認</string>
+
+    <string name="settings_font_title">字型</string>
+    <string name="settings_advanced_emoji_button">表情符號按鈕</string>
+    <string name="settings_advanced_emoji_button_desc">在訊息輸入欄顯示表情符號按鈕</string>
+    <string name="settings_choose_font">選擇字型</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">系統預設</string>
+
+    <string name="keywords_title">已封鎖的關鍵字</string>
+    <string name="keywords_hint">包含其中任一關鍵字的訊息會移到垃圾桶：不會顯示在收件匣中，也不會播放通知音效。</string>
+    <string name="keywords_add_hint">新增關鍵字</string>
+    <string name="keywords_add">新增</string>
+    <string name="keywords_empty">尚未封鎖任何關鍵字。</string>
+    <string name="keywords_remove">移除關鍵字</string>
+    <string name="keywords_subtitle_none">無</string>
+    <string name="keywords_subtitle_count">已封鎖 %1$d 個</string>
+
+    <string name="diagnostics_title">診斷</string>
+    <string name="diagnostics_subtitle">用於疑難排解的裝置與應用程式診斷資訊</string>
+    <string name="diagnostics_save">儲存</string>
+    <string name="diagnostics_copy">複製</string>
+    <string name="diagnostics_close">關閉</string>
+    <string name="diagnostics_clip_label">Messages 診斷資訊</string>
+    <string name="settings_sim_unknown">未知的 SIM</string>
 </resources>

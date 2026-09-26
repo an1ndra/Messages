@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen reader (TalkBack) labels -->
+    <string name="access_open_conversation">Ouvrir la conversation</string>
+    <string name="access_conversation_options">Options de la conversation</string>
+    <string name="access_unread">%1$d non lus</string>
+
+    <!-- Accessibility mode (Advanced settings) -->
+    <string name="settings_accessibility_title">Mode accessibilité</string>
+    <string name="settings_accessibility_subtitle">Texte plus grand, contraste élevé et animations réduites</string>
+    <string name="accessibility_options_title">Options d\'accessibilité</string>
+    <string name="accessibility_options_subtitle">Personnaliser le texte, le contraste et les animations</string>
+    <string name="accessibility_title">Accessibilité</string>
+
+    <!-- Text -->
+    <string name="a11y_font_size_title">Taille de police</string>
+    <string name="a11y_font_size_desc">Agrandir le texte dans l\'application en plus de la taille système</string>
+    <string name="a11y_choose_font_size">Choisir la taille de police</string>
+    <string name="a11y_font_85">Petite (85 %)</string>
+    <string name="a11y_font_100">Par défaut (100 %)</string>
+    <string name="a11y_font_115">Grande (115 %)</string>
+    <string name="a11y_font_130">Très grande (130 %)</string>
+    <string name="a11y_bold_title">Texte gras</string>
+    <string name="a11y_bold_desc">Utiliser des graisses de police plus épaisses</string>
+
+    <!-- Display -->
+    <string name="a11y_high_contrast_title">Contraste élevé</string>
+    <string name="a11y_high_contrast_desc">Couleurs et contours plus marqués</string>
+    <string name="a11y_large_touch_title">Zones tactiles plus grandes</string>
+    <string name="a11y_large_touch_desc">Zones de toucher plus grandes pour les boutons et les lignes</string>
+
+    <!-- Motion -->
+    <string name="a11y_reduce_motion_title">Réduire les animations</string>
+    <string name="a11y_reduce_motion_desc">Désactiver les animations et les transitions</string>
+</resources>

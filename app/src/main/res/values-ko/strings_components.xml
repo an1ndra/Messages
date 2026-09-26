@@ -2,6 +2,7 @@
 <resources>
     <!-- Shared action labels -->
     <string name="common_cancel">취소</string>
+    <string name="common_continue">계속</string>
     <string name="common_ok">확인</string>
     <string name="common_delete">삭제</string>
     <string name="common_open">열기</string>
@@ -25,6 +26,7 @@
     <string name="access_delete">삭제</string>
     <string name="access_archive">보관</string>
     <string name="access_pinned">고정됨</string>
+    <string name="access_blocked">차단됨</string>
     <string name="access_start_chat">채팅 시작</string>
     <string name="access_loading_messages">메시지 로딩 중</string>
     <string name="access_photo">사진</string>

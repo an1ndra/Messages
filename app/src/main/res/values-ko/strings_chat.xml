@@ -5,6 +5,7 @@
     <string name="chat_block">차단</string>
     <string name="chat_block_report">차단 &amp; 스팸 신고</string>
     <string name="chat_unblock">차단 해제</string>
+    <string name="chat_moved_to_spam">스팸으로 옮기고 차단함</string>
     <string name="chat_block_number">번호 차단</string>
     <string name="chat_unblock_number">번호 차단 해제</string>
     <string name="chat_forward">전송</string>
@@ -16,6 +17,11 @@
     <string name="chat_select_time">시간 선택</string>
     <string name="chat_media_camera">카메라</string>
     <string name="chat_media_gallery">갤러리</string>
+    <string name="chat_select_all">모두 선택</string>
+    <string name="chat_select_text">텍스트 선택</string>
+    <string name="chat_save_image">이미지 저장</string>
+    <string name="chat_image_saved">이미지를 Pictures/Messages에 저장했습니다</string>
+    <string name="chat_image_save_failed">이미지를 저장할 수 없습니다</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">메시지를 보낼 수 없습니다</string>
@@ -54,15 +60,29 @@
     <string name="chat_cancel">취소</string>
     <string name="chat_delete">삭제</string>
     <string name="chat_details_title">대화 세부 정보</string>
+    <string name="message_details_title">메시지 세부 정보</string>
+    <string name="message_detail_type">유형</string>
+    <string name="message_detail_to">받는 사람</string>
+    <string name="message_detail_from">보내는 사람</string>
+    <string name="message_detail_sent">발신됨</string>
+    <string name="message_detail_delivered">전달됨</string>
+    <string name="message_detail_status">상태</string>
+    <string name="message_status_sending">전송 중…</string>
+    <string name="message_status_sent">발신됨</string>
+    <string name="message_status_delivered">전달됨</string>
+    <string name="message_status_received">수신됨</string>
+    <string name="message_status_failed">발신 안 됨</string>
 
     <string name="chat_status_not_sent">전송되지 않음</string>
     <string name="chat_status_retry">다시 시도하려면 탭하세요</string>
     <string name="chat_draft_prefix">임시 저장: </string>
     <string name="chat_sending_countdown">%d초 후에 보내는 중...</string>
     <string name="chat_alphanumeric_error">%s와 같은 영숫자 발신자에게 메시지를 보낼 수 없습니다. 전화번호만 지원됩니다.</string>
+    <string name="chat_alphanumeric_notice">%s(으)로는 회신을 받을 수 없습니다. 전화번호만 지원됩니다.</string>
     <string name="chat_unlock_dialog">잠금 해제</string>
     <string name="chat_lock_dialog">잠금</string>
     <string name="chat_message_deleted">메시지가 삭제되었습니다</string>
     <string name="chat_messages_deleted">%d개의 메시지가 삭제되었습니다</string>
+    <string name="chat_trash">휴지통으로 이동</string>
     <string name="status_not_sent">전송되지 않음</string>
 </resources>
