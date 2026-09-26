@@ -463,30 +463,6 @@ class Repository(private val context: Context) {
         out.reversed()
     }
 
-    /** Recent messages for the grouped notification, oldest first. Unlike
-     *  [messages] this is a plain blocking read: the notification is built on a
-     *  receiver thread, not from a Flow. */
-    fun recentMessageLines(conversationId: Long, limit: Int): List<com.anindra.messages.sms.NotificationLine> =
-        runOnIo {
-            val out = mutableListOf<com.anindra.messages.sms.NotificationLine>()
-            db.readableDatabase.rawQuery(
-                "SELECT body,timestamp,is_me FROM messages WHERE conversation_id=? AND deleted_at=0" +
-                    " ORDER BY timestamp DESC, id DESC LIMIT ?",
-                arrayOf(conversationId.toString(), limit.toString())
-            ).use { c ->
-                while (c.moveToNext()) {
-                    out.add(
-                        com.anindra.messages.sms.NotificationLine(
-                            text = c.getString(0),
-                            timestamp = c.getLong(1),
-                            fromMe = c.getInt(2) == 1
-                        )
-                    )
-                }
-            }
-            out.reversed()
-        }
-
     fun messageCount(conversationId: Long): Int = runOnIo {
         var count = 0
         db.readableDatabase.rawQuery(
@@ -1051,6 +1027,41 @@ class Repository(private val context: Context) {
             )
         }
         purgeProviderMessages(stale)
+    }
+
+    /** The lines a grouped notification should carry: only what the other person
+     *  has sent and only what is still unread. A plain blocking read, because the
+     *  notification is built on a receiver thread, not from a Flow. */
+    fun notificationHistory(
+        conversationId: Long,
+        maxLines: Int
+    ): List<com.anindra.messages.sms.NotificationLine> = runOnIo {
+        var unread = 0
+        db.readableDatabase.rawQuery(
+            "SELECT unread_count FROM conversations WHERE id=?",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) unread = c.getInt(0) }
+        val out = mutableListOf<com.anindra.messages.sms.NotificationLine>()
+        db.readableDatabase.rawQuery(
+            "SELECT body,timestamp FROM messages WHERE conversation_id=? AND deleted_at=0" +
+                " AND is_me=0 ORDER BY timestamp DESC, id DESC LIMIT ?",
+            arrayOf(
+                conversationId.toString(),
+                com.anindra.messages.sms.NotificationHistory
+                    .takeCount(unread, maxLines).toString()
+            )
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    com.anindra.messages.sms.NotificationLine(
+                        text = c.getString(0),
+                        timestamp = c.getLong(1),
+                        fromMe = false
+                    )
+                )
+            }
+        }
+        out.reversed()
     }
 
     private fun argFor(

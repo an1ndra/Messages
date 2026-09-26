@@ -24,6 +24,16 @@ object NotificationHistory {
         lines.filter { it.text.isNotBlank() }
             .takeLast(MAX_LINES)
 
+    /** How many of their messages to carry. Bounded by what is actually
+     *  unread, so a long-conversation read earlier does not repopulate the
+     *  notification with old lines. At least one line, because the message that
+     *  triggered the post is itself unread and must appear. */
+    fun takeCount(unread: Int, maxLines: Int): Int = when {
+        unread <= 0 -> 1
+        unread >= maxLines -> maxLines
+        else -> unread
+    }
+
     /** What the collapsed notification reads as. */
     fun summary(count: Int, sender: String): String = when (count) {
         0 -> sender
