@@ -35,10 +35,6 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 |---|---|---|---|
 | ![Group chat](fastlane/metadata/android/en-US/images/phoneScreenshots/04-group-chat.png) | ![Spam & Blocked](fastlane/metadata/android/en-US/images/phoneScreenshots/06-spam-blocked.png) | ![Trash](fastlane/metadata/android/en-US/images/phoneScreenshots/08-trash.png) | ![Schedule send](fastlane/metadata/android/en-US/images/phoneScreenshots/09-schedule-send.png) |
 
-| Auto-delete | Notifications | Settings | Dark mode |
-|---|---|---|---|
-| ![Auto-delete](fastlane/metadata/android/en-US/images/phoneScreenshots/10-auto-delete.png) | ![Notifications](fastlane/metadata/android/en-US/images/phoneScreenshots/12-notification-grouped.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/11-settings.png) | ![Dark mode](fastlane/metadata/android/en-US/images/phoneScreenshots/13-conversations-dark.png) |
-
 ## Download
 
 ### GitHub Releases
