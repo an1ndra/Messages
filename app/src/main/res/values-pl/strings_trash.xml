@@ -5,14 +5,16 @@
     <string name="trash_emptied">Kosz opróżniony</string>
     <string name="toast_trash_deleted">Rozmowa usunięta</string>
     <string name="trash_delete_conversation">Usuń rozmowę</string>
-    <string name="trash_empty_is_empty">Kosz jest pusty</string>
-    <string name="trash_empty_message">Usunięte rozmowy są trwale usuwane po 30 dniach</string>
-    <string name="trash_empty_confirm">Usunąć wszystkie %d rozmowy z kosza? Tej operacji nie można cofnąć.</string>
-    <string name="trash_delete_forever_confirm">Trwale usunąć %s? Tej operacji nie można cofnąć.</string>
-    <string name="trash_deleted_on">Usunięto %s</string>
     <string name="trash_delete_message">Usuń wiadomość</string>
     <string name="trash_tab_conversations">Rozmowy</string>
     <string name="trash_tab_messages">Wiadomości</string>
     <string name="trash_messages_empty">Brak usuniętych wiadomości</string>
     <string name="trash_messages_empty_message">Usunięte wiadomości są tu przechowywane, dopóki ich nie usuniesz</string>
+
+    <string name="trash_empty_is_empty">Kosz jest pusty</string>
+    <string name="trash_empty_message">Usunięte rozmowy są trwale usuwane po 30 dniach</string>
+    <string name="trash_empty_confirm">Usunąć wszystkie %d rozmowy z kosza? Tej operacji nie można cofnąć.</string>
+    <string name="trash_delete_forever_confirm">Trwale usunąć %s? Tej operacji nie można cofnąć.</string>
+    <string name="trash_deleted_on">Usunięto %s</string>
+    <string name="trash_reason_blocked">Słowo kluczowe</string>
 </resources>

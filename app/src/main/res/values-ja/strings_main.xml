@@ -49,7 +49,18 @@
     <string name="notification_channel_desc">新しいメッセージの通知</string>
     <string name="notif_title_private">新しいメッセージ</string>
     <string name="notif_body_private">新しいメッセージがあります</string>
+    <string name="notif_you">自分</string>
     <string name="notif_send_fail_private">メッセージを送信できませんでした。タップして再試行。</string>
     <string name="notif_send_fail">%s にメッセージを送信できませんでした。タップして再試行。</string>
     <string name="notif_not_delivered">メッセージが配信されませんでした</string>
+
+    <!-- Crash reports -->
+    <string name="crash_report_title">クラッシュレポート</string>
+    <string name="crash_report_message">前回アプリがクラッシュしました。ログは Downloads/Messages に保存されています。修正に協力するため、GitHub の Issue に添付してください。</string>
+    <string name="crash_report_message_many">アプリは %1$d 回クラッシュしました。ログは Downloads/Messages に保存されています。修正に協力するため、GitHub の Issue に添付してください。</string>
+    <string name="crash_report_export">ZIP を保存</string>
+    <string name="crash_report_copy">コピー</string>
+    <string name="crash_report_delete">削除</string>
+    <string name="crash_report_saved">Downloads/Messages に保存しました</string>
+    <string name="crash_report_clip_label">Messages のクラッシュレポート</string>
 </resources>

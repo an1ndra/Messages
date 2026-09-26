@@ -5,14 +5,16 @@
     <string name="trash_emptied">कूड़ा खाली किया गया</string>
     <string name="toast_trash_deleted">संवाद हटाया गया</string>
     <string name="trash_delete_conversation">संवाद हटाएं</string>
-    <string name="trash_empty_is_empty">कूड़ा खाली है</string>
-    <string name="trash_empty_message">हटाए गए संवाद 30 दिनों बाद स्थायी रूप से हटा दिए जाते हैं</string>
-    <string name="trash_empty_confirm">कूड़े से सभी %d संवाद हटाएं? यह पूर्ववत नहीं किया जा सकता।</string>
-    <string name="trash_delete_forever_confirm">%s को स्थायी रूप से हटाएं? यह पूर्ववत नहीं किया जा सकता।</string>
-    <string name="trash_deleted_on">हटाया गया %s</string>
     <string name="trash_delete_message">संदेश हटाएँ</string>
     <string name="trash_tab_conversations">बातचीत</string>
     <string name="trash_tab_messages">संदेश</string>
     <string name="trash_messages_empty">कोई हटाए गए संदेश नहीं</string>
     <string name="trash_messages_empty_message">आपके हटाए गए संदेश तब तक यहाँ रहते हैं जब तक आप उन्हें न हटाएँ</string>
+
+    <string name="trash_empty_is_empty">कूड़ा खाली है</string>
+    <string name="trash_empty_message">हटाए गए संवाद 30 दिनों बाद स्थायी रूप से हटा दिए जाते हैं</string>
+    <string name="trash_empty_confirm">कूड़े से सभी %d संवाद हटाएं? यह पूर्ववत नहीं किया जा सकता।</string>
+    <string name="trash_delete_forever_confirm">%s को स्थायी रूप से हटाएं? यह पूर्ववत नहीं किया जा सकता।</string>
+    <string name="trash_deleted_on">हटाया गया %s</string>
+    <string name="trash_reason_blocked">शब्द</string>
 </resources>

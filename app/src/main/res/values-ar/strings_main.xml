@@ -40,7 +40,7 @@
     <string name="settings_sound_arrival">الصوت الذي يُشغَّل عند وصول رسالة</string>
     <string name="convo_moved_to_trash">تم نقل المحادثة إلى سلة المحذوفات</string>
     <string name="convo_archived">تم أرشفت المحادثة</string>
-   <string name="action_undo">تراجع</string>
+    <string name="action_undo">تراجع</string>
     <string name="lock_error_no_screen_lock">لا يمكن استخدام قفل التطبيق لأن هذا الجهاز لا يحتوي على قفل شاشة (بصمة وجه، بصمة إصبع، أو رقم سري) للتحقق من هويتك.</string>
     <string name="sim_default">الافتراضي</string>
     <string name="time_yesterday">أمس</string>
@@ -49,7 +49,18 @@
     <string name="notification_channel_desc">إشعارات الرسائل الجديدة</string>
     <string name="notif_title_private">رسالة جديدة</string>
     <string name="notif_body_private">لديك رسالة جديدة</string>
+    <string name="notif_you">أنت</string>
     <string name="notif_send_fail_private">فشل إرسال الرسالة. انقر للمحاولة مرة أخرى.</string>
     <string name="notif_send_fail">فشل إرسال الرسالة إلى %s. انقر للمحاولة مرة أخرى.</string>
     <string name="notif_not_delivered">لم تُسلّم الرسالة</string>
+
+    <!-- Crash reports -->
+    <string name="crash_report_title">تقرير الأعطال</string>
+    <string name="crash_report_message">تعطل التطبيق في المرة الأخيرة. تم حفظ السجل في Downloads/Messages — أرفقه بمشكلة على GitHub للمساعدة في حل المشكلة.</string>
+    <string name="crash_report_message_many">تعطل التطبيق %1$d مرة. تم حفظ السجلات في Downloads/Messages — أرفقها بمشكلة على GitHub للمساعدة في حل المشكلة.</string>
+    <string name="crash_report_export">حفظ ZIP</string>
+    <string name="crash_report_copy">نسخ</string>
+    <string name="crash_report_delete">حذف</string>
+    <string name="crash_report_saved">تم الحفظ في Downloads/Messages</string>
+    <string name="crash_report_clip_label">تقرير أعطال تطبيق Messages</string>
 </resources>

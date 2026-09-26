@@ -5,6 +5,7 @@
     <string name="chat_block">ब्लॉक</string>
     <string name="chat_block_report">ब्लॉक करें &amp; रिपोर्ट स्पैम करें</string>
     <string name="chat_unblock">अनब्लॉक</string>
+    <string name="chat_moved_to_spam">स्पैम में भेजा गया और ब्लॉक किया गया</string>
     <string name="chat_block_number">नंबर ब्लॉक करें</string>
     <string name="chat_unblock_number">नंबर अनब्लॉक करें</string>
     <string name="chat_forward">आगे भेजें</string>
@@ -16,6 +17,11 @@
     <string name="chat_select_time">समय चुनें</string>
     <string name="chat_media_camera">कैमरा</string>
     <string name="chat_media_gallery">गैलरी</string>
+    <string name="chat_select_all">सभी चुनें</string>
+    <string name="chat_select_text">टेक्स्ट चुनें</string>
+    <string name="chat_save_image">छवि सहेजें</string>
+    <string name="chat_image_saved">छवि Pictures/Messages में सहेजी गई</string>
+    <string name="chat_image_save_failed">छवि सहेजी नहीं जा सकी</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">संदेश भेजा नहीं जा सकता</string>
@@ -54,15 +60,29 @@
     <string name="chat_cancel">रद्द करें</string>
     <string name="chat_delete">हटाएं</string>
     <string name="chat_details_title">संवाद विवरण</string>
+    <string name="message_details_title">संदेश विवरण</string>
+    <string name="message_detail_type">प्रकार</string>
+    <string name="message_detail_to">इसे</string>
+    <string name="message_detail_from">से</string>
+    <string name="message_detail_sent">भेजा गया</string>
+    <string name="message_detail_delivered">वितरित</string>
+    <string name="message_detail_status">स्थिति</string>
+    <string name="message_status_sending">भेजा जा रहा है...</string>
+    <string name="message_status_sent">भेजा गया</string>
+    <string name="message_status_delivered">वितरित</string>
+    <string name="message_status_received">प्राप्त</string>
+    <string name="message_status_failed">नहीं भेजा गया</string>
 
     <string name="chat_status_not_sent">भेजा नहीं गया</string>
     <string name="chat_status_retry">पुनः प्रयास करने के लिए टैप करें</string>
     <string name="chat_draft_prefix">ड्राफ्ट: </string>
     <string name="chat_sending_countdown">%d सेकंड में भेजा जा रहा है...</string>
     <string name="chat_alphanumeric_error">आप %s जैसे अल्फ़ान्यूमेरिक प्रेषकों को संदेश नहीं भेज सकते। केवल फ़ोन नंबर समर्थित हैं।</string>
+    <string name="chat_alphanumeric_notice">%s उत्तर प्राप्त नहीं कर सकता। केवल फ़ोन नंबर समर्थित हैं।</string>
     <string name="chat_unlock_dialog">अनलॉक करें</string>
     <string name="chat_lock_dialog">लॉक करें</string>
     <string name="chat_message_deleted">संदेश हटाया गया</string>
     <string name="chat_messages_deleted">%d संदेश हटाए गए</string>
+    <string name="chat_trash">कूड़े में भेजें</string>
     <string name="status_not_sent">भेजा नहीं गया</string>
 </resources>

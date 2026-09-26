@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen reader (TalkBack) labels -->
+    <string name="access_open_conversation">대화 열기</string>
+    <string name="access_conversation_options">대화 옵션</string>
+    <string name="access_unread">읽지 않음 %1$d개</string>
+
+    <!-- Accessibility mode (Advanced settings) -->
+    <string name="settings_accessibility_title">접근성 모드</string>
+    <string name="settings_accessibility_subtitle">큰 글자, 높은 대비, 모션 줄이기</string>
+    <string name="accessibility_options_title">접근성 옵션</string>
+    <string name="accessibility_options_subtitle">글자, 대비, 모션 사용자 지정</string>
+    <string name="accessibility_title">접근성</string>
+
+    <!-- Text -->
+    <string name="a11y_font_size_title">글꼴 크기</string>
+    <string name="a11y_font_size_desc">시스템 크기에 더해 앱 전체의 글자 크기 조절</string>
+    <string name="a11y_choose_font_size">글꼴 크기 선택</string>
+    <string name="a11y_font_85">작게 (85%)</string>
+    <string name="a11y_font_100">기본 (100%)</string>
+    <string name="a11y_font_115">크게 (115%)</string>
+    <string name="a11y_font_130">가장 크게 (130%)</string>
+    <string name="a11y_bold_title">굵은 글자</string>
+    <string name="a11y_bold_desc">더 무거운 글꼴 굵기 사용</string>
+
+    <!-- Display -->
+    <string name="a11y_high_contrast_title">높은 대비</string>
+    <string name="a11y_high_contrast_desc">더 강한 색상과 테두리</string>
+    <string name="a11y_large_touch_title">더 큰 터치 영역</string>
+    <string name="a11y_large_touch_desc">버튼과 행의 더 넓은 탭 영역</string>
+
+    <!-- Motion -->
+    <string name="a11y_reduce_motion_title">모션 줄이기</string>
+    <string name="a11y_reduce_motion_desc">애니메이션과 전환 효과 끄기</string>
+</resources>

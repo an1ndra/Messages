@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="access_open_conversation">開啟對話</string>
+    <string name="access_conversation_options">對話選項</string>
+    <string name="access_unread">%1$d 則未讀</string>
+
+    <string name="settings_accessibility_title">無障礙模式</string>
+    <string name="settings_accessibility_subtitle">更大字級、高對比與減少動態效果</string>
+    <string name="accessibility_options_title">無障礙選項</string>
+    <string name="accessibility_options_subtitle">自訂文字、對比與動態效果</string>
+    <string name="accessibility_title">無障礙</string>
+
+    <string name="a11y_font_size_title">字型大小</string>
+    <string name="a11y_font_size_desc">在系統大小之外調整整個應用程式的文字大小</string>
+    <string name="a11y_choose_font_size">選擇字型大小</string>
+    <string name="a11y_font_85">小 (85%)</string>
+    <string name="a11y_font_100">預設 (100%)</string>
+    <string name="a11y_font_115">大 (115%)</string>
+    <string name="a11y_font_130">最大 (130%)</string>
+    <string name="a11y_bold_title">粗體文字</string>
+    <string name="a11y_bold_desc">使用較粗的字重</string>
+
+    <string name="a11y_high_contrast_title">高對比</string>
+    <string name="a11y_high_contrast_desc">更強烈的顏色與外框</string>
+    <string name="a11y_large_touch_title">更大的觸控區域</string>
+    <string name="a11y_large_touch_desc">為按鈕與列提供更大的點按範圍</string>
+
+    <string name="a11y_reduce_motion_title">減少動態效果</string>
+    <string name="a11y_reduce_motion_desc">停用動畫與轉場</string>
+</resources>

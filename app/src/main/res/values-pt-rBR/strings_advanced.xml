@@ -12,4 +12,30 @@
     <string name="settings_advanced_turn_off_suffix">" primeiro</string>
     <string name="settings_advanced_permanent_delete_on">A exclusão permanente está ativada. Esta conversa e suas mensagens serão removidas do seu dispositivo imediatamente — não movidas para a lixeira — e não poderão ser restauradas.</string>
 
+    <string name="settings_font_title">Fonte</string>
+    <string name="settings_advanced_emoji_button">Botão de emoji</string>
+    <string name="settings_advanced_emoji_button_desc">Mostrar o botão de emoji no campo de mensagem</string>
+    <string name="settings_choose_font">Escolher fonte</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">Padrão do sistema</string>
+
+    <string name="keywords_title">Palavras-chave bloqueadas</string>
+    <string name="keywords_hint">Mensagens que contiverem qualquer uma destas palavras vão para a Lixeira: não aparecem na caixa de entrada e não tocam o som da notificação.</string>
+    <string name="keywords_add_hint">Adicionar palavra-chave</string>
+    <string name="keywords_add">Adicionar</string>
+    <string name="keywords_empty">Nenhuma palavra-chave bloqueada ainda.</string>
+    <string name="keywords_remove">Remover palavra-chave</string>
+    <string name="keywords_subtitle_none">Nenhuma</string>
+    <string name="keywords_subtitle_count">%1$d bloqueadas</string>
+
+    <string name="diagnostics_title">Diagnóstico</string>
+    <string name="diagnostics_subtitle">Diagnóstico do dispositivo e do app para solução de problemas</string>
+    <string name="diagnostics_save">Salvar</string>
+    <string name="diagnostics_copy">Copiar</string>
+    <string name="diagnostics_close">Fechar</string>
+    <string name="diagnostics_clip_label">Diagnóstico do Messages</string>
+    <string name="settings_sim_unknown">SIM desconhecido</string>
 </resources>

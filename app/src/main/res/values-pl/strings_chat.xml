@@ -5,6 +5,7 @@
     <string name="chat_block">Blokuj</string>
     <string name="chat_block_report">Blokuj i zgłoś jako spam</string>
     <string name="chat_unblock">Odblokuj</string>
+    <string name="chat_moved_to_spam">Przeniesiono do spamu i zablokowano</string>
     <string name="chat_block_number">Zablokuj numer</string>
     <string name="chat_unblock_number">Odblokuj numer</string>
     <string name="chat_forward">Przekaż</string>
@@ -16,6 +17,11 @@
     <string name="chat_select_time">Wybierz czas</string>
     <string name="chat_media_camera">Aparat</string>
     <string name="chat_media_gallery">Galeria</string>
+    <string name="chat_select_all">Zaznacz wszystko</string>
+    <string name="chat_select_text">Zaznacz tekst</string>
+    <string name="chat_save_image">Zapisz obraz</string>
+    <string name="chat_image_saved">Obraz zapisano w Pictures/Messages</string>
+    <string name="chat_image_save_failed">Nie można zapisać obrazu</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Nie można wysłać wiadomości</string>
@@ -54,15 +60,29 @@
     <string name="chat_cancel">Anuluj</string>
     <string name="chat_delete">Usuń</string>
     <string name="chat_details_title">Szczegóły rozmowy</string>
+    <string name="message_details_title">Szczegóły wiadomości</string>
+    <string name="message_detail_type">Typ</string>
+    <string name="message_detail_to">Do</string>
+    <string name="message_detail_from">Od</string>
+    <string name="message_detail_sent">Wysłano</string>
+    <string name="message_detail_delivered">Dostarczono</string>
+    <string name="message_detail_status">Status</string>
+    <string name="message_status_sending">Wysyłanie…</string>
+    <string name="message_status_sent">Wysłana</string>
+    <string name="message_status_delivered">Dostarczona</string>
+    <string name="message_status_received">Otrzymano</string>
+    <string name="message_status_failed">Nie wysłano</string>
 
     <string name="chat_status_not_sent">Nie wysłano</string>
     <string name="chat_status_retry">Stuknij, aby ponowić</string>
     <string name="chat_draft_prefix">Wersja robocza: </string>
     <string name="chat_sending_countdown">Wysyłanie za %d sekund…</string>
     <string name="chat_alphanumeric_error">Nie można wysyłać wiadomości do nadawców alfanumerycznych, takich jak %s. Obsługiwane są tylko numery telefonów.</string>
+    <string name="chat_alphanumeric_notice">%s nie może odbierać odpowiedzi. Obsługiwane są tylko numery telefonów.</string>
     <string name="chat_unlock_dialog">Odblokuj</string>
     <string name="chat_lock_dialog">Zablokuj</string>
     <string name="chat_message_deleted">Wiadomość usunięta</string>
     <string name="chat_messages_deleted">%d wiadomości usunięto</string>
+    <string name="chat_trash">Przenieś do kosza</string>
     <string name="status_not_sent">Nie wysłano</string>
 </resources>

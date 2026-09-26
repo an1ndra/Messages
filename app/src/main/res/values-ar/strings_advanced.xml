@@ -12,4 +12,30 @@
     <string name="settings_advanced_turn_off_suffix">" أولاً</string>
     <string name="settings_advanced_permanent_delete_on">الحذف النهائي مفعّل. سيتم إزالة هذه المحادثة ورسائلها من جهازك فورًا - لن تُنقل إلى سلة المحذوفات - ولا يمكن استعادتها.</string>
 
+    <string name="settings_font_title">الخط</string>
+    <string name="settings_advanced_emoji_button">زر الرموز التعبيرية</string>
+    <string name="settings_advanced_emoji_button_desc">إظهار زر الرموز التعبيرية في حقل الرسالة</string>
+    <string name="settings_choose_font">اختيار الخط</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">خط النظام الافتراضي</string>
+
+    <string name="keywords_title">الكلمات المحظورة</string>
+    <string name="keywords_hint">يتم نقل الرسائل التي تحتوي على أي من هذه الكلمات إلى سلة المحذوفات: لا تظهر في صندوق الوارد ولا يصدر صوت تنبيه.</string>
+    <string name="keywords_add_hint">إضافة كلمة</string>
+    <string name="keywords_add">إضافة</string>
+    <string name="keywords_empty">لا توجد كلمات محظورة بعد.</string>
+    <string name="keywords_remove">إزالة الكلمة</string>
+    <string name="keywords_subtitle_none">لا شيء</string>
+    <string name="keywords_subtitle_count">%1$d محظورة</string>
+
+    <string name="diagnostics_title">التشخيص</string>
+    <string name="diagnostics_subtitle">تشخيص الجهاز والتطبيق لاستكشاف الأخطاء وإصلاحها</string>
+    <string name="diagnostics_save">حفظ</string>
+    <string name="diagnostics_copy">نسخ</string>
+    <string name="diagnostics_close">إغلاق</string>
+    <string name="diagnostics_clip_label">تشخيص تطبيق Messages</string>
+    <string name="settings_sim_unknown">شريحة SIM غير معروفة</string>
 </resources>

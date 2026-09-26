@@ -12,4 +12,30 @@
     <string name="settings_advanced_turn_off_suffix">" बंद करें</string>
     <string name="settings_advanced_permanent_delete_on">स्थायी हटाना चालू है। यह संवाद और इसके संदेश आपके डिवाइस से तुरंत हटा दिए जाएंगे — कूड़े में नहीं ले जाए जाएंगे — और बहाल नहीं किए जा सकते।</string>
 
+    <string name="settings_font_title">फ़ॉन्ट</string>
+    <string name="settings_advanced_emoji_button">इमोजी बटन</string>
+    <string name="settings_advanced_emoji_button_desc">संदेश फ़ील्ड में इमोजी बटन दिखाएं</string>
+    <string name="settings_choose_font">फ़ॉन्ट चुनें</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">सिस्टम डिफ़ॉल्ट</string>
+
+    <string name="keywords_title">ब्लॉक किए गए शब्द</string>
+    <string name="keywords_hint">इनमें से किसी भी शब्द वाले संदेश कूड़े में भेज दिए जाते हैं: वे इनबॉक्स में नहीं दिखते और सूचना की आवाज़ नहीं बजती।</string>
+    <string name="keywords_add_hint">शब्द जोड़ें</string>
+    <string name="keywords_add">जोड़ें</string>
+    <string name="keywords_empty">अभी कोई ब्लॉक किया गया शब्द नहीं है।</string>
+    <string name="keywords_remove">शब्द हटाएं</string>
+    <string name="keywords_subtitle_none">कोई नहीं</string>
+    <string name="keywords_subtitle_count">%1$d ब्लॉक</string>
+
+    <string name="diagnostics_title">डायग्नोस्टिक्स</string>
+    <string name="diagnostics_subtitle">समस्या ठीक करने के लिए डिवाइस और ऐप डायग्नोस्टिक्स</string>
+    <string name="diagnostics_save">सहेजें</string>
+    <string name="diagnostics_copy">कॉपी करें</string>
+    <string name="diagnostics_close">बंद करें</string>
+    <string name="diagnostics_clip_label">Messages डायग्नोस्टिक्स</string>
+    <string name="settings_sim_unknown">अज्ञात SIM</string>
 </resources>

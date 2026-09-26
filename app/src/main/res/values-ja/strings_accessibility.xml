@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen reader (TalkBack) labels -->
+    <string name="access_open_conversation">会話を開く</string>
+    <string name="access_conversation_options">会話のオプション</string>
+    <string name="access_unread">未読 %1$d 件</string>
+
+    <!-- Accessibility mode (Advanced settings) -->
+    <string name="settings_accessibility_title">アクセシビリティモード</string>
+    <string name="settings_accessibility_subtitle">大きな文字、高コントラスト、動きを減らす</string>
+    <string name="accessibility_options_title">アクセシビリティのオプション</string>
+    <string name="accessibility_options_subtitle">文字、コントラスト、動きをカスタマイズ</string>
+    <string name="accessibility_title">アクセシビリティ</string>
+
+    <!-- Text -->
+    <string name="a11y_font_size_title">文字サイズ</string>
+    <string name="a11y_font_size_desc">システムのサイズに加えてアプリ全体の文字を拡大縮小</string>
+    <string name="a11y_choose_font_size">文字サイズを選択</string>
+    <string name="a11y_font_85">小 (85%)</string>
+    <string name="a11y_font_100">標準 (100%)</string>
+    <string name="a11y_font_115">大 (115%)</string>
+    <string name="a11y_font_130">最大 (130%)</string>
+    <string name="a11y_bold_title">太字</string>
+    <string name="a11y_bold_desc">より太いフォントウェイトを使用</string>
+
+    <!-- Display -->
+    <string name="a11y_high_contrast_title">高コントラスト</string>
+    <string name="a11y_high_contrast_desc">より濃い色と太い輪郭線</string>
+    <string name="a11y_large_touch_title">タップ領域を大きく</string>
+    <string name="a11y_large_touch_desc">ボタンと行のタップ範囲を大きく</string>
+
+    <!-- Motion -->
+    <string name="a11y_reduce_motion_title">動きを減らす</string>
+    <string name="a11y_reduce_motion_desc">アニメーションとトランジションを無効にする</string>
+</resources>
