@@ -77,12 +77,21 @@ class RetentionPolicyTest {
     }
 
     @Test
-    fun blockedSendersAreAgedByLastActivityNotByTrash() {
+    fun blockedSendersAreAgedByWhenTheyWereBlockedNotByLastActivity() {
         val sql = RetentionPolicy.BLOCKED_CONVERSATION_SQL
         assertTrue(sql.contains("blocked=1"))
-        assertTrue(sql.contains("timestamp<?"))
+        assertTrue(sql.contains("blocked_at<?"))
+        assertTrue("a blocked sender that keeps texting must still age out",
+            !sql.contains("timestamp<?"))
         assertTrue("must not key off deleted_at, which is never set for a blocked sender",
             !sql.contains("deleted_at"))
+    }
+
+    @Test
+    fun blockedSendersWithAnUnknownBlockDateAreLeftAlone() {
+        // blocked_at defaults to 0, so a row that predates the column would
+        // otherwise be purged the moment retention runs.
+        assertTrue(RetentionPolicy.BLOCKED_CONVERSATION_SQL.contains("blocked_at>0"))
     }
 
     @Test
