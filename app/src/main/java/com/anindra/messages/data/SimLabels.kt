@@ -1,10 +1,10 @@
 package com.anindra.messages.data
 
 sealed interface SimLabel {
-    data object Default : SimLabel
+    object Default : SimLabel
     data class Carrier(val carrier: String, val slot: Int) : SimLabel
     data class Slot(val slot: Int) : SimLabel
-    data object Unknown : SimLabel
+    object Unknown : SimLabel
 }
 
 object SimLabels {

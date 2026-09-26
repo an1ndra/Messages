@@ -5,6 +5,7 @@
     <string name="chat_block">حظر</string>
     <string name="chat_block_report">حظر والإبلاغ عن رسائل غير مرغوبة</string>
     <string name="chat_unblock">إلغاء الحظر</string>
+    <string name="chat_moved_to_spam">تم النقل إلى الرسائل غير المرغوبة وحظر المحادثة</string>
     <string name="chat_block_number">حظر الرقم</string>
     <string name="chat_unblock_number">إلغاء حظر الرقم</string>
     <string name="chat_forward">إعادة توجيه</string>
@@ -16,6 +17,11 @@
     <string name="chat_select_time">اختر الوقت</string>
     <string name="chat_media_camera">الكاميرا</string>
     <string name="chat_media_gallery">المعرض</string>
+    <string name="chat_select_all">تحديد الكل</string>
+    <string name="chat_select_text">تحديد النص</string>
+    <string name="chat_save_image">حفظ الصورة</string>
+    <string name="chat_image_saved">تم حفظ الصورة في Pictures/Messages</string>
+    <string name="chat_image_save_failed">تعذر حفظ الصورة</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">لا يمكن إرسال الرسالة</string>
@@ -30,6 +36,7 @@
     <string name="chat_retry">إعادة المحاولة</string>
     <string name="chat_retry_sim">إعادة المحاولة باستخدام شريحة SIM</string>
     <string name="chat_sending_via">جارٍ الإرسال عبر %s</string>
+    <string name="chat_switch_sim">تبديل شريحة SIM</string>
     <string name="chat_scheduled_for">مجدولة في %s</string>
     <string name="chat_search_contacts">البحث في جهات الاتصال</string>
     <string name="chat_add_people">إضافة أشخاص</string>
@@ -53,15 +60,29 @@
     <string name="chat_cancel">إلغاء</string>
     <string name="chat_delete">حذف</string>
     <string name="chat_details_title">تفاصيل المحادثة</string>
+    <string name="message_details_title">تفاصيل الرسالة</string>
+    <string name="message_detail_type">النوع</string>
+    <string name="message_detail_to">إلى</string>
+    <string name="message_detail_from">من</string>
+    <string name="message_detail_sent">مرسلة</string>
+    <string name="message_detail_delivered">تم التسليم</string>
+    <string name="message_detail_status">الحالة</string>
+    <string name="message_status_sending">جارٍ الإرسال…</string>
+    <string name="message_status_sent">مرسلة</string>
+    <string name="message_status_delivered">تم التسليم</string>
+    <string name="message_status_received">تم الاستلام</string>
+    <string name="message_status_failed">لم تُرسل</string>
 
     <string name="chat_status_not_sent">لم تُرسَل</string>
     <string name="chat_status_retry">انقر للمحاولة مرة أخرى</string>
     <string name="chat_draft_prefix">مسودة: </string>
     <string name="chat_sending_countdown">جارٍ الإرسال خلال %d ثانية...</string>
     <string name="chat_alphanumeric_error">لا يمكنك إرسال رسائل إلى مرسلين بأحرف وأرقام مثل %s. يتم دعم أرقام الهواتف فقط.</string>
+    <string name="chat_alphanumeric_notice">لا يمكن لـ %s استقبال الردود. المدعوم هو أرقام الهواتف فقط.</string>
     <string name="chat_unlock_dialog">فتح القفل</string>
     <string name="chat_lock_dialog">قفل</string>
     <string name="chat_message_deleted">تم حذف الرسالة</string>
     <string name="chat_messages_deleted">تم حذف %d رسائل</string>
+    <string name="chat_trash">نقل إلى سلة المحذوفات</string>
     <string name="status_not_sent">لم تُرسَل</string>
 </resources>

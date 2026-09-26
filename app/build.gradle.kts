@@ -61,6 +61,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":android-smsmms"))
     implementation(libs.androidx.core.ktx)
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
@@ -79,4 +80,6 @@ dependencies {
     implementation(libs.coil.compose)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation("junit:junit:4.13.2")
+    // Real org.json on the unit-test classpath; the android.jar stubs throw.
+    testImplementation("org.json:json:20240303")
 }

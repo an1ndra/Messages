@@ -5,6 +5,7 @@
     <string name="chat_block">Bloquer</string>
     <string name="chat_block_report">Bloquer &amp; signaler comme spam</string>
     <string name="chat_unblock">Débloquer</string>
+    <string name="chat_moved_to_spam">Déplacé vers les spams et bloqué</string>
     <string name="chat_block_number">Bloquer le numéro</string>
     <string name="chat_unblock_number">Débloquer le numéro</string>
     <string name="chat_forward">Transférer</string>
@@ -16,6 +17,11 @@
     <string name="chat_select_time">Sélectionner l\'heure</string>
     <string name="chat_media_camera">Appareil photo</string>
     <string name="chat_media_gallery">Galerie</string>
+    <string name="chat_select_all">Tout sélectionner</string>
+    <string name="chat_select_text">Sélectionner le texte</string>
+    <string name="chat_save_image">Enregistrer l\'image</string>
+    <string name="chat_image_saved">Image enregistrée dans Pictures/Messages</string>
+    <string name="chat_image_save_failed">Impossible d\'enregistrer l\'image</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Impossible d\'envoyer le message</string>
@@ -30,6 +36,7 @@
     <string name="chat_retry">Réessayer</string>
     <string name="chat_retry_sim">Réessayer avec SIM</string>
     <string name="chat_sending_via">Envoi via %s</string>
+    <string name="chat_switch_sim">Changer de SIM</string>
     <string name="chat_scheduled_for">Planifié pour %s</string>
     <string name="chat_search_contacts">Rechercher des contacts</string>
     <string name="chat_add_people">Ajouter des personnes</string>
@@ -53,15 +60,29 @@
     <string name="chat_cancel">Annuler</string>
     <string name="chat_delete">Supprimer</string>
     <string name="chat_details_title">Détails de la conversation</string>
+    <string name="message_details_title">Détails du message</string>
+    <string name="message_detail_type">Type</string>
+    <string name="message_detail_to">À</string>
+    <string name="message_detail_from">De</string>
+    <string name="message_detail_sent">Envoyé</string>
+    <string name="message_detail_delivered">Remis</string>
+    <string name="message_detail_status">Statut</string>
+    <string name="message_status_sending">Envoi en cours…</string>
+    <string name="message_status_sent">Envoyé</string>
+    <string name="message_status_delivered">Remis</string>
+    <string name="message_status_received">Reçu</string>
+    <string name="message_status_failed">Non envoyé</string>
 
     <string name="chat_status_not_sent">Non envoyé</string>
     <string name="chat_status_retry">Appuyez pour réessayer</string>
     <string name="chat_draft_prefix">Brouillon : </string>
     <string name="chat_sending_countdown">Envoi dans %d secondes...</string>
     <string name="chat_alphanumeric_error">Vous ne pouvez pas envoyer de messages à des expéditeurs alphanumériques comme %s. Seuls les numéros de téléphone sont pris en charge.</string>
+    <string name="chat_alphanumeric_notice">%s ne peut pas recevoir de réponses. Seuls les numéros de téléphone sont pris en charge.</string>
     <string name="chat_unlock_dialog">Déverrouiller</string>
     <string name="chat_lock_dialog">Verrouiller</string>
     <string name="chat_message_deleted">Message supprimé</string>
     <string name="chat_messages_deleted">%d messages supprimés</string>
+    <string name="chat_trash">Déplacer dans la corbeille</string>
     <string name="status_not_sent">Non envoyé</string>
 </resources>

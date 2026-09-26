@@ -24,6 +24,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.Messages">
 
@@ -120,6 +121,14 @@
             <intent-filter android:priority="999">
                 <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
                 <data android:mimeType="application/vnd.wap.mms-message" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".sms.MmsDownloadReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.anindra.messages.MMS_DOWNLOAD_COMPLETE" />
             </intent-filter>
         </receiver>
 

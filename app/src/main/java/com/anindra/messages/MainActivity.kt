@@ -5,6 +5,7 @@ import android.app.Application
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -57,9 +59,14 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.ui.theme.Motion
+import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.R
 import androidx.compose.ui.res.stringResource
-import com.anindra.messages.data.BlockedNumber
+import com.anindra.messages.data.BlockedMessage
+import com.anindra.messages.data.DownloadsStore
+import com.anindra.messages.data.MmsSupport
+import com.anindra.messages.data.TrashedMessage
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.Repository
 import com.anindra.messages.sms.NotificationHelper
@@ -70,8 +77,11 @@ import com.anindra.messages.ui.ContactDetailsScreen
 import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.SettingsScreen
 import com.anindra.messages.ui.AdvancedSettingsScreen
+import com.anindra.messages.ui.AccessibilityScreen
+import com.anindra.messages.ui.SpamBlockedScreen
 import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.isPhoneNumber
+import com.anindra.messages.ui.theme.A11yOptions
 import com.anindra.messages.ui.theme.MessagesTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
@@ -179,6 +189,46 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _fontState = androidx.compose.runtime.mutableStateOf(settings.fontFamily)
 
+    // Observable accessibility-mode state; AccessibilityScreen updates it.
+    val a11y: A11yOptions get() = _a11yState.value
+
+    private val _a11yState = androidx.compose.runtime.mutableStateOf(readA11y())
+
+    private fun readA11y() = A11yOptions(
+        enabled = settings.a11yEnabled,
+        fontScalePercent = settings.a11yFontScalePercent,
+        bold = settings.a11yBold,
+        highContrast = settings.a11yHighContrast,
+        reduceMotion = settings.a11yReduceMotion,
+        largeTouchTargets = settings.a11yLargeTouch
+    )
+
+    private fun refreshA11y() { _a11yState.value = readA11y() }
+
+    var a11yEnabled: Boolean
+        get() = _a11yState.value.enabled
+        set(value) { settings.a11yEnabled = value; refreshA11y() }
+
+    var a11yFontScalePercent: Int
+        get() = _a11yState.value.fontScalePercent
+        set(value) { settings.a11yFontScalePercent = value; refreshA11y() }
+
+    var a11yBold: Boolean
+        get() = _a11yState.value.bold
+        set(value) { settings.a11yBold = value; refreshA11y() }
+
+    var a11yHighContrast: Boolean
+        get() = _a11yState.value.highContrast
+        set(value) { settings.a11yHighContrast = value; refreshA11y() }
+
+    var a11yReduceMotion: Boolean
+        get() = _a11yState.value.reduceMotion
+        set(value) { settings.a11yReduceMotion = value; refreshA11y() }
+
+    var a11yLargeTouch: Boolean
+        get() = _a11yState.value.largeTouchTargets
+        set(value) { settings.a11yLargeTouch = value; refreshA11y() }
+
     fun addBlockedKeyword(keyword: String) {
         val kw = keyword.trim()
         if (kw.isEmpty()) return
@@ -225,6 +275,38 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun trashedConversations(): Flow<List<Conversation>> = repo.trashedConversations()
 
+    fun trashedMessages(): Flow<List<TrashedMessage>> = repo.trashedMessages()
+
+    fun deleteMessageForever(messageId: Long) =
+        scope.launch { repo.deleteMessageForeverSuspend(messageId) }
+
+    fun emptyMessageTrash() = scope.launch { repo.emptyMessageTrashSuspend() }
+
+    fun blockedMessages(): Flow<List<BlockedMessage>> = repo.blockedMessages()
+
+    fun deleteBlockedMessage(messageId: Long) {
+        scope.launch(Dispatchers.IO) { repo.deleteBlockedMessage(messageId) }
+    }
+
+    fun restoreBlockedMessage(
+        conversationId: Long,
+        body: String,
+        timestamp: Long,
+        blockedReason: String
+    ) = scope.launch(Dispatchers.IO) {
+        repo.restoreBlockedMessage(conversationId, body, timestamp, blockedReason)
+    }
+
+    fun deleteBlockedConversation(conversationId: Long, address: String) =
+        scope.launch(Dispatchers.IO) { repo.deleteBlockedConversation(conversationId, address) }
+
+    fun deleteAllBlockedMessages() = scope.launch(Dispatchers.IO) { repo.deleteAllBlockedMessages() }
+
+    fun returnBlockedMessageToChat(messageId: Long) =
+        scope.launch(Dispatchers.IO) { repo.returnBlockedMessageToChat(messageId) }
+
+    fun unblockAllNumbers() = scope.launch(Dispatchers.IO) { repo.unblockAllNumbers() }
+
     fun setArchived(id: Long, archived: Boolean) =
         scope.launch { repo.setArchivedSuspend(id, archived) }
 
@@ -253,6 +335,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun send(conversationId: Long, body: String, subId: Int = settings.simSubscriptionId) {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
+            if (!isPhoneNumber(convo.address)) return@launch
             val stored = repo.sendText(conversationId, body, subId) ?: return@launch
             if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
             val handedOff = SmsSender.send(
@@ -273,7 +356,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (!isPhoneNumber(convo.address)) return@launch
             val stored = repo.sendMedia(conversationId, "image", uri.toString()) ?: return@launch
             val handedOff = SmsSender.sendMms(
-                getApplication(), stored.id, convo.address, uri, settings.simSubscriptionId
+                getApplication(), stored.id, convo.address, uri, settings.simSubscriptionId,
+                stored.body
             )
             if (!handedOff) {
                 repo.markMessageStatusSuspend(stored.id, "failed")
@@ -282,10 +366,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Saves a message attachment (e.g. an MMS picture) to the gallery (#235).
+     *  Reads the bytes through the resolver so provider-backed
+     *  `content://mms/part/...` URIs and our own cache URIs both work. */
+    fun saveMessageImage(messageId: Long) {
+        scope.launch {
+            val app = getApplication<Application>()
+            val resolver = app.contentResolver
+            val msg = repo.messageByIdSuspend(messageId)
+            if (msg == null || msg.mediaUri.isBlank()) {
+                Toast.makeText(app, R.string.chat_image_save_failed, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val uri = Uri.parse(msg.mediaUri)
+            val bytes = runCatching { resolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+            val mime = MmsSupport.mimeForSavedAttachment(
+                msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
+            )
+            val convo = repo.conversationByIdSuspend(msg.conversationId)
+            val name = MmsSupport.savedAttachmentName(
+                convo?.name ?: convo?.address ?: "message", msg.timestamp, mime
+            )
+            val ok = bytes != null && bytes.isNotEmpty() &&
+                DownloadsStore.writeImage(app, name, mime, bytes)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    app,
+                    if (ok) R.string.chat_image_saved else R.string.chat_image_save_failed,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
     fun retryMessage(messageId: Long, simId: Int = settings.simSubscriptionId) {
         scope.launch {
             val msg = repo.messageByIdSuspend(messageId) ?: return@launch
             val convo = repo.conversationByIdSuspend(msg.conversationId) ?: return@launch
+            if (!isPhoneNumber(convo.address)) return@launch
             repo.markMessageStatusSuspend(messageId, "sending")
             val handedOff = if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
                 SmsSender.sendMms(getApplication(), messageId, convo.address, Uri.parse(msg.mediaUri), simId)
@@ -344,8 +462,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun peekBackupFormat(uri: Uri, onResult: (com.anindra.messages.data.BackupFormat) -> Unit) {
+    /** Imports an SMS Import / Export (sms-ie) backup file. [mode] REPLACE wipes
+     *  the current history first, matching the Restore option. */
+    fun importSmsIe(
+        uri: Uri,
+        mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
+        onResult: (Int) -> Unit
+    ) {
+        importLoading.value = 0
         scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    repo.importSmsIeFrom(getApplication(), uri, mode)
+                }.getOrNull()
+            }
+            importLoading.value = null
+            when (result) {
+                is com.anindra.messages.data.Repository.ImportResult.Success -> onResult(result.merged ?: 0)
+                is com.anindra.messages.data.Repository.ImportResult.Error -> onResult(-1)
+                null -> onResult(-1)
+            }
+        }
+    }
+
+    fun peekBackupFormat(uri: Uri, onResult: (com.anindra.messages.data.BackupFormat) -> Unit) {        scope.launch {
             val format = withContext(Dispatchers.IO) {
                 repo.peekBackupFormat(getApplication(), uri)
             }
@@ -497,21 +637,22 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyFakeDualSim(intent)
+        applySmsIeProbe(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             val display = window.context.display
-            val current = display?.mode?.let {
+            val current = display.mode.let {
                 com.anindra.messages.diagnostics.DisplayModeInfo(
                     it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
                 )
             }
-            val modes = display?.supportedModes?.map {
+            val modes = display.supportedModes.map {
                 com.anindra.messages.diagnostics.DisplayModeInfo(
                     it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate
                 )
-            } ?: emptyList()
+            }
             com.anindra.messages.diagnostics.DisplayModeSelector
                 .bestModeId(current, modes)
                 ?.let { window.attributes.preferredDisplayModeId = it }
@@ -531,8 +672,9 @@ class MainActivity : FragmentActivity() {
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            // Dismiss all notifications when opening a chat from notification
-            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+                this@MainActivity, null, it
+            )
         }
         recipientFromIntent(intent)?.let { pendingOpenAddress = it }
         // Opening straight from an external sms:/smsto: launch: hold on a neutral
@@ -585,7 +727,7 @@ class MainActivity : FragmentActivity() {
 
             if (!appUnlocked) {
                 if (lockNotAvailable) {
-                    MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
+                    MessagesTheme(mode = vm.themeMode, font = vm.fontFamily, a11y = vm.a11y) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
@@ -636,7 +778,7 @@ class MainActivity : FragmentActivity() {
                 return@setContent
             }
 
-            MessagesTheme(mode = vm.themeMode, font = vm.fontFamily) {
+            MessagesTheme(mode = vm.themeMode, font = vm.fontFamily, a11y = vm.a11y) {
                 var chatId by remember { mutableStateOf(-1L) }
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
@@ -710,29 +852,27 @@ class MainActivity : FragmentActivity() {
 
                 // Single back dispatcher for all routes; child screen BackHandlers win.
                 androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
-                    val wasChat = navRoute == "chat"
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "trash" -> navRoute = "settings"
                         "advanced" -> navRoute = "settings"
+                        "accessibility" -> navRoute = "advanced"
+                        "spam" -> navRoute = "settings"
                         else -> navRoute = "list"
-                    }
-                    // Clear ForegroundTracker when leaving chat
-                    if (wasChat) {
-                        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(null)
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "advanced" to 2)
-                val isList = navRoute == "list"
-                val isChat = navRoute == "chat"
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "advanced" to 2, "accessibility" to 3)
+                val reduceMotion = vm.a11y.reduceMotionEnabled
+                val navSlide = motionTween<IntOffset>(reduceMotion, Motion.DURATION_MEDIUM2)
+                val navFade = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
 
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     ConversationsScreen(
                         vm = vm,
                         onOpenConversation = { id ->
-                            // Dismiss notifications when opening chat from conversation list
-                            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+                            com.anindra.messages.sms.NotificationHelper
+                                .clearConversationNotification(this@MainActivity, id)
                             chatId = id
                             navRoute = "chat"
                         },
@@ -743,14 +883,21 @@ class MainActivity : FragmentActivity() {
                     AnimatedContent(
                         targetState = navRoute,
                         transitionSpec = {
-                            val from = routeDepth[initialState] ?: 0
-                            val to = routeDepth[targetState] ?: 0
-                            when {
-                                to > from -> slideInHorizontally(tween(300)) { it } togetherWith
-                                    slideOutHorizontally(tween(300)) { -it }
-                                to < from -> slideInHorizontally(tween(300)) { -it } togetherWith
-                                    slideOutHorizontally(tween(300)) { it }
-                                else -> fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                            if (vm.a11y.reduceMotionEnabled) {
+                                androidx.compose.animation.EnterTransition.None togetherWith
+                                    androidx.compose.animation.ExitTransition.None
+                            } else {
+                                val from = routeDepth[initialState] ?: 0
+                                val to = routeDepth[targetState] ?: 0
+                                when {
+                                    to > from ->
+                                        slideInHorizontally(navSlide) { it } togetherWith
+                                            slideOutHorizontally(navSlide) { -it }
+                                    to < from ->
+                                        slideInHorizontally(navSlide) { -it } togetherWith
+                                            slideOutHorizontally(navSlide) { it }
+                                    else -> fadeIn(navFade) togetherWith fadeOut(navFade)
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxSize(),
@@ -777,13 +924,24 @@ class MainActivity : FragmentActivity() {
                                         onBack = { navRoute = "list" },
                                         onOpenTrash = { navRoute = "trash" },
                                         onOpenAdvanced = { navRoute = "advanced" },
+                                        onOpenSpamBlocked = { navRoute = "spam" },
                                         scrollState = settingsScroll
                                     )
                                     "advanced" -> AdvancedSettingsScreen(
                                         vm = vm,
-                                        onBack = { navRoute = "settings" }
+                                        onBack = { navRoute = "settings" },
+                                        onOpenAccessibility = { navRoute = "accessibility" }
+                                    )
+                                    "accessibility" -> AccessibilityScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" }
                                     )
                                     "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
+                                    "spam" -> SpamBlockedScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" },
+                                        onOpenConversation = { navRoute = "chat"; chatId = it }
+                                    )
                                     "details" -> ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
@@ -834,6 +992,9 @@ class MainActivity : FragmentActivity() {
             repo.refreshContactNames()
             lastResumeTime = now
         }
+        // Catch MMS whose WAP push was missed (e.g. the app was not the default
+        // handler at the time); they stay announced in the provider until fetched.
+        com.anindra.messages.sms.MmsDownloader.requestPending(this)
     }
 
     override fun onPause() {
@@ -852,10 +1013,44 @@ class MainActivity : FragmentActivity() {
         )
     }
 
+    /** Debug builds only: `--es mms_probe <media uri> --es mms_probe_to <number>`
+     *  sends a single MMS so the PDU/outbox hand-off can be asserted on an
+     *  emulator, which has no MMSC to actually deliver to. */
+    private fun applyMmsProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val media = intent.getStringExtra("mms_probe") ?: return
+        val to = intent.getStringExtra("mms_probe_to") ?: return
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
+        vm.openOrCreate(to, null) { id -> vm.sendMediaMessage(id, android.net.Uri.parse(media)) }
+    }
+
+    /** Debug builds only: `--es sms_ie_probe <uri>` runs the sms-ie import so
+     *  the end-to-end path can be asserted on an emulator (the SAF picker is
+     *  not scriptable). */
+    private fun applySmsIeProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val uri = intent.getStringExtra("sms_ie_probe") ?: return
+        val mode = if (intent.getStringExtra("sms_ie_probe_mode") == "replace") {
+            com.anindra.messages.data.ImportMode.REPLACE
+        } else {
+            com.anindra.messages.data.ImportMode.MERGE
+        }
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
+        vm.importSmsIe(Uri.parse(uri), mode) { count ->
+            android.util.Log.i("SmsIeImport", "probe imported count=$count")
+        }
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         applyFakeDualSim(intent)
+        applyMmsProbe(intent)
+        applySmsIeProbe(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
@@ -863,8 +1058,9 @@ class MainActivity : FragmentActivity() {
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            // Dismiss all notifications when opening a chat from notification
-            NotificationManagerCompat.from(this@MainActivity).cancelAll()
+            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+                this@MainActivity, null, it
+            )
         }
         recipientFromIntent(intent)?.let { pendingOpenAddress = it }
         // Warm external launch: hide whatever is on screen (usually the list)

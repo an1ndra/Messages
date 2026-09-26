@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Declares the languages the app ships so Android offers it in Settings ->
+     Per-app language. Without this the app is absent from that list entirely,
+     even though the resources exist. Keep in step with the values-* resource
+     directories: TranslationParityTest and LocaleConfigTest both check this. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="ar" />
+    <locale android:name="de" />
+    <locale android:name="es" />
+    <locale android:name="fr" />
+    <locale android:name="hi-IN" />
+    <locale android:name="ja" />
+    <locale android:name="ko" />
+    <locale android:name="pl" />
+    <locale android:name="pt-BR" />
+    <locale android:name="ru" />
+    <locale android:name="zh-CN" />
+    <locale android:name="zh-TW" />
+</locale-config>

@@ -13,6 +13,12 @@
     <string name="new_chat_send_to">Отправить «%s»</string>
     <string name="text_placeholder">Текстовое сообщение</string>
     <string name="conversations_archived">Архив</string>
+    <string name="conversations_spam_blocked">Спам и блокировка</string>
+    <string name="conversations_spam_blocked_empty">Нет переписок со спамом или заблокированных</string>
+    <string name="spam_tab_conversations">Переписки</string>
+    <string name="spam_tab_messages">Сообщения</string>
+    <string name="spam_blocked_messages_empty">Нет заблокированных сообщений</string>
+    <string name="spam_message_deleted">Сообщение удалено</string>
     <string name="conversations_messages">Сообщения</string>
     <string name="conversations_me">Я</string>
     <string name="conversations_allow_sms_access">Разрешить доступ к SMS</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">Закрыть поиск</string>
     <string name="convo_back_to_inbox">Вернуться в входящие</string>
+    <string name="spam_empty">Очистить</string>
+    <string name="spam_empty_confirm">Все элементы (%d) на этой вкладке будут удалены. Отменить нельзя.</string>
+    <string name="spam_conversation_deleted">Заблокированный чат удалён</string>
+    <string name="spam_conversations_cleared">Заблокированные чаты очищены</string>
+    <string name="spam_messages_cleared">Заблокированные сообщения очищены</string>
 </resources>

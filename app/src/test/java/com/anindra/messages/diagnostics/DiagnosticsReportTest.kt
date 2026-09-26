@@ -3,6 +3,7 @@ package com.anindra.messages.diagnostics
 import com.anindra.messages.crash.CrashAppInfo
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.crash.CrashDeviceInfo
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -144,6 +145,47 @@ class DiagnosticsReportTest {
     }
 
     @Test
+    fun reportIncludesAccessibilityModeWhenEnabled() {
+        val text = DiagnosticsReport.format(
+            DiagnosticsData(
+                device = device,
+                app = app,
+                appDetails = appDetails.copy(
+                    accessibilityMode = true,
+                    a11yFontScale = 130,
+                    a11yBold = true,
+                    a11yHighContrast = true,
+                    a11yReduceMotion = true,
+                    a11yLargeTouch = true
+                ),
+                deviceExtra = deviceExtra,
+                appExtra = appExtra,
+                system = system,
+                selectedSubId = 7,
+                phoneStateGranted = true,
+                multiSim = true,
+                phoneCount = 2,
+                sims = sims,
+                display = display,
+                timestamp = 0L
+            )
+        )
+        assertTrue(text.contains("Accessibility mode: true"))
+        assertTrue(text.contains("Font scale: 130%"))
+        assertTrue(text.contains("Bold text: true"))
+        assertTrue(text.contains("High contrast: true"))
+        assertTrue(text.contains("Reduce motion: true"))
+        assertTrue(text.contains("Larger touch targets: true"))
+    }
+
+    @Test
+    fun reportOmitsAccessibilityDetailsWhenDisabled() {
+        val text = report()
+        assertTrue(text.contains("Accessibility mode: false"))
+        assertTrue(!text.contains("Font scale: 130%"))
+    }
+
+    @Test
     fun reportHandlesMissingSimPermission() {
         val text = DiagnosticsReport.format(
             DiagnosticsData(
@@ -162,5 +204,17 @@ class DiagnosticsReportTest {
         assertTrue(text.contains("READ_PHONE_STATE granted: false"))
         assertTrue(text.contains("Active subscriptions: none"))
         assertTrue(text.contains("Messages diagnostics report"))
+    }
+
+    @Test
+    fun phoneCountUsesActiveModemsOnSdk30Plus() {
+        assertEquals(2, phoneCountForSdk(35, 2, null))
+        assertEquals(0, phoneCountForSdk(30, null, 4))
+    }
+
+    @Test
+    fun phoneCountFallsBackToMaxSubscriptionsBelowSdk30() {
+        assertEquals(2, phoneCountForSdk(29, null, 2))
+        assertEquals(0, phoneCountForSdk(29, null, null))
     }
 }

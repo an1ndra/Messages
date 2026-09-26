@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import com.anindra.messages.data.KeywordFilter
+import com.anindra.messages.data.MessageBody
 import com.anindra.messages.data.Repository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,13 +58,22 @@ class SmsReceiver : BroadcastReceiver() {
             if (fromSim > 0) return@run fromSim
             -1
         }
-        val appInForeground = ForegroundTracker.isAppInForeground
         for ((address, parts) in msgs.groupBy { it.originatingAddress!! }) {
-            val body = parts.joinToString("") { it.messageBody!! }
+            val body = MessageBody.normalize(parts.joinToString("") { it.messageBody!! })
 
-            // Blocked keyword: drop the message entirely — not stored, no
-            // notification, no sound (the user asked for keyword blocking).
-            if (repo.settings.isKeywordBlocked(body)) continue
+            // Blocked sender: keep the message in the "Spam & blocked" folder
+            // (no notification, no sound) instead of dropping it.
+            if (repo.isAddressBlocked(address)) {
+                repo.receiveSpamMessage(address, body, subId = subId)
+                continue
+            }
+
+            // Blocked keyword: store it soft-deleted for Spam & blocked and skip
+            // the notification/sound. It does not go to Trash.
+            if (KeywordFilter.route(body, repo.settings.blockedKeywords) == KeywordFilter.Route.TRASH) {
+                repo.receiveBlockedMessage(address, body, subId = subId)
+                continue
+            }
 
             var sysId = 0L
             if (isDefaultHandler) {
@@ -81,11 +92,14 @@ class SmsReceiver : BroadcastReceiver() {
                 }
             }
 
-            repo.receiveMessage(address, body, sysId, subId)
-            // Skip notification when user is actively reading this thread.
-            // Check in-memory state first, then SharedPreferences (survives process death).
-            if (ForegroundTracker.isConversationOpen(address)) continue
-            if (ForegroundTracker.isConversationOpenFromPrefs(context, address)) continue
+            // A thread the user is already looking at is read on arrival: the
+            // badge must not climb for a message that is visible on screen, and
+            // the notification is redundant with the open chat.
+            val inForeground = ForegroundTracker.isAppInForeground
+            val threadOpen = ForegroundTracker.isConversationOpen(address)
+            val counts = NotificationPolicy.countsAsUnread(inForeground, threadOpen)
+            repo.receiveMessage(address, body, sysId, subId, markUnread = counts)
+            if (NotificationPolicy.skipForOpenThread(inForeground, threadOpen)) continue
             NotificationHelper.show(context, address, body)
         }
     }

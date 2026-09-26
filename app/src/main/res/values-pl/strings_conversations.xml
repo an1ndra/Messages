@@ -13,6 +13,12 @@
     <string name="new_chat_send_to">Wyślij do „%s”</string>
     <string name="text_placeholder">Wiadomość tekstowa</string>
     <string name="conversations_archived">Zarchiwizowane</string>
+    <string name="conversations_spam_blocked">Spam i zablokowane</string>
+    <string name="conversations_spam_blocked_empty">Brak rozmów ze spamem lub zablokowanych</string>
+    <string name="spam_tab_conversations">Rozmowy</string>
+    <string name="spam_tab_messages">Wiadomości</string>
+    <string name="spam_blocked_messages_empty">Brak zablokowanych wiadomości</string>
+    <string name="spam_message_deleted">Usunięto wiadomość</string>
     <string name="conversations_messages">Wiadomości</string>
     <string name="conversations_me">Ja</string>
     <string name="conversations_allow_sms_access">Zezwól na dostęp do SMS</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">Zamknij wyszukiwanie</string>
     <string name="convo_back_to_inbox">Wróć do skrzynki odbiorczej</string>
+    <string name="spam_empty">Opróżnij</string>
+    <string name="spam_empty_confirm">Spowoduje to usunięcie wszystkich %d elementów z tej karty. Nie można tego cofnąć.</string>
+    <string name="spam_conversation_deleted">Usunięto zablokowaną rozmowę</string>
+    <string name="spam_conversations_cleared">Usunięto zablokowane rozmowy</string>
+    <string name="spam_messages_cleared">Usunięto zablokowane wiadomości</string>
 </resources>

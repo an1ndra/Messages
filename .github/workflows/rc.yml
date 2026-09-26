@@ -26,7 +26,7 @@ env:
 jobs:
   build-rc:
     name: Build RC and scan with VirusTotal
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - name: Checkout

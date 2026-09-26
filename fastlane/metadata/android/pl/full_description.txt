@@ -1,0 +1,25 @@
+<p>Messages to prosta aplikacja SMS dla Androida zbudowana w Kotlinie i Jetpack
+Compose (Material 3). Działa w pełni offline: manifest nie deklaruje
+<strong>żadnego uprawnienia INTERNET</strong>, więc wiadomości opuszczają
+urządzenie wyłącznie przez operatora.</p>
+
+<b>Funkcje</b>
+
+* Przejrzysty interfejs Material 3 z motywem jasnym / ciemnym / systemowym
+* Lista rozmów z wyszukiwaniem, wskaźnikami nieprzeczytanych i awatarami
+* Przypinanie, archiwizowanie, kosz (+ cofnij) i usuwanie; gesty przesuwania
+* Wersje robocze zapisywane automatycznie dla każdej rozmowy
+* Wiadomości zaplanowane i opcjonalne wysyłanie z opóźnieniem
+* Przekazywanie wiadomości i klikalne linki
+* Wysyłanie/odbieranie obrazów MMS (jako domyślna aplikacja SMS)
+* Obsługa dwóch kart SIM z wyborem karty dla każdej wiadomości
+* Status wysłano / dostarczono / niepowodzenie dla każdej wiadomości z ponowieniem
+* Blokowanie numerów i działania w stylu zgłaszania spamu
+* Kopia zapasowa i przywracanie bazy danych
+* Bez reklam, bez analityki, bez trackerów
+
+<b>Uprawnienia</b>
+
+Uprawnienia do SMS-ów i kontaktów służą wyłącznie do wysyłania/odbierania
+wiadomości i wyświetlania nazw kontaktów. Aplikacja nie żąda żadnego dostępu do
+sieci.

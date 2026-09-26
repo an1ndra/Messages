@@ -11,8 +11,14 @@
     <string name="new_chat_hint">Enter name or phone number</string>
     <string name="new_chat_only_phone">Only phone numbers can be messaged</string>
     <string name="new_chat_send_to">Send to “%s”</string>
-    <string name="text_placeholder">Text message</string>
+    <string name="text_placeholder">Message</string>
     <string name="conversations_archived">Archived</string>
+    <string name="conversations_spam_blocked">Spam &amp; Blocked</string>
+    <string name="conversations_spam_blocked_empty">No spam or blocked conversations</string>
+    <string name="spam_tab_conversations">Conversations</string>
+    <string name="spam_tab_messages">Messages</string>
+    <string name="spam_blocked_messages_empty">No blocked messages</string>
+    <string name="spam_message_deleted">Message deleted</string>
     <string name="conversations_messages">Messages</string>
     <string name="conversations_me">Me</string>
     <string name="conversations_allow_sms_access">Allow SMS access</string>
@@ -20,4 +26,9 @@
 
     <string name="convo_close_search">Close search</string>
     <string name="convo_back_to_inbox">Back to inbox</string>
+    <string name="spam_empty">Empty</string>
+    <string name="spam_empty_confirm">This removes all %d items from this tab. This cannot be undone.</string>
+    <string name="spam_conversation_deleted">Blocked conversation deleted</string>
+    <string name="spam_conversations_cleared">Blocked conversations cleared</string>
+    <string name="spam_messages_cleared">Blocked messages cleared</string>
 </resources>

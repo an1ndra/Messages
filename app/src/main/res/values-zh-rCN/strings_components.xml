@@ -1,31 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="contact_work_profile">工作资料联系人</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_continue">继续</string>
+    <string name="common_ok">确定</string>
+    <string name="common_delete">删除</string>
+    <string name="common_open">打开</string>
+    <string name="common_close">关闭</string>
+    <string name="common_next">下一步</string>
+
     <string name="time_now">现在</string>
     <string name="time_today">今天</string>
     <string name="time_minutes">%s 分钟</string>
     <string name="time_format_hour">h:mm a</string>
     <string name="time_format_date">MMM d</string>
     <string name="time_format_divider">EEE, MMM d</string>
-    <string name="access_archive">封存</string>
-    <string name="access_delete">删除</string>
-    <string name="access_loading_messages">正在加载消息</string>
-    <string name="access_photo">照片</string>
-    <string name="access_pinned">已置顶</string>
-    <string name="access_start_chat">开始对话</string>
+
+    <string name="contact_work_profile">工作资料联系人</string>
+
     <string name="access_restore">还原</string>
     <string name="access_delete_forever">彻底删除</string>
+    <string name="access_delete">删除</string>
+    <string name="access_archive">封存</string>
+    <string name="access_pinned">已置顶</string>
+    <string name="access_blocked">已阻止</string>
+    <string name="access_start_chat">开始对话</string>
+    <string name="access_loading_messages">正在加载消息</string>
+    <string name="access_photo">照片</string>
     <string name="action_call">拨打电话</string>
     <string name="action_add">添加</string>
-    <string name="common_cancel">取消</string>
-    <string name="common_ok">确定</string>
-    <string name="common_delete">删除</string>
-    <string name="common_open">打开</string>
-    <string name="common_close">关闭</string>
-    <string name="common_next">下一步</string>
     <string name="access_chat_top_bar">对话顶部栏</string>
-    <string name="access_nav">导航抽屉</string>
     <string name="access_swipe_background">滑动背景</string>
+    <string name="access_nav">导航抽屉</string>
     <string name="icon_back">返回</string>
     <string name="icon_cancel_selection">取消选择</string>
     <string name="icon_copy">复制</string>

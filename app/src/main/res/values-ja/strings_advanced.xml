@@ -12,4 +12,30 @@
     <string name="settings_advanced_turn_off_suffix">"」をオフにしてください</string>
     <string name="settings_advanced_permanent_delete_on">完全削除がオンになっています。この会話とそのメッセージはゴミ箱に移動されることなくデバイスから即座に削除され、復元できません。</string>
 
+    <string name="settings_font_title">フォント</string>
+    <string name="settings_advanced_emoji_button">絵文字ボタン</string>
+    <string name="settings_advanced_emoji_button_desc">メッセージ入力欄に絵文字ボタンを表示</string>
+    <string name="settings_choose_font">フォントを選択</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">システム標準</string>
+
+    <string name="keywords_title">ブロックしたキーワード</string>
+    <string name="keywords_hint">これらの語を含むメッセージはゴミ箱に移動されます。受信トレイに表示されず、通知音も鳴りません。</string>
+    <string name="keywords_add_hint">キーワードを追加</string>
+    <string name="keywords_add">追加</string>
+    <string name="keywords_empty">ブロックしたキーワードはまだありません。</string>
+    <string name="keywords_remove">キーワードを削除</string>
+    <string name="keywords_subtitle_none">なし</string>
+    <string name="keywords_subtitle_count">%1$d 件ブロック</string>
+
+    <string name="diagnostics_title">診断</string>
+    <string name="diagnostics_subtitle">トラブルシューティングのための端末とアプリの診断情報</string>
+    <string name="diagnostics_save">保存</string>
+    <string name="diagnostics_copy">コピー</string>
+    <string name="diagnostics_close">閉じる</string>
+    <string name="diagnostics_clip_label">Messages の診断情報</string>
+    <string name="settings_sim_unknown">不明な SIM</string>
 </resources>

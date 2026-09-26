@@ -49,7 +49,18 @@
     <string name="notification_channel_desc">Notificações de mensagens novas</string>
     <string name="notif_title_private">Nova mensagem</string>
     <string name="notif_body_private">Você tem uma nova mensagem</string>
+    <string name="notif_you">Você</string>
     <string name="notif_send_fail_private">Não foi possível enviar a mensagem. Toque para tentar novamente.</string>
     <string name="notif_send_fail">Não foi possível enviar a mensagem para %s. Toque para tentar novamente.</string>
     <string name="notif_not_delivered">Mensagem não entregue</string>
+
+    <!-- Crash reports -->
+    <string name="crash_report_title">Relatório de falha</string>
+    <string name="crash_report_message">O app falhou na última vez. O registro foi salvo em Downloads/Messages — anexe-o a uma issue do GitHub para ajudar na correção.</string>
+    <string name="crash_report_message_many">O app falhou %1$d vezes. Os registros foram salvos em Downloads/Messages — anexe-os a uma issue do GitHub para ajudar na correção.</string>
+    <string name="crash_report_export">Salvar ZIP</string>
+    <string name="crash_report_copy">Copiar</string>
+    <string name="crash_report_delete">Excluir</string>
+    <string name="crash_report_saved">Salvo em Downloads/Messages</string>
+    <string name="crash_report_clip_label">Relatório de falha do Messages</string>
 </resources>

@@ -12,6 +12,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -88,7 +89,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -102,6 +108,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.repeatOnLifecycle
+import com.anindra.messages.ui.theme.LocalReduceMotion
+import com.anindra.messages.ui.theme.Motion
+import com.anindra.messages.ui.theme.motionSpring
+import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
@@ -117,6 +127,7 @@ fun ConversationsScreen(
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
+    val reduceMotion = LocalReduceMotion.current
     val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
     val contacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
     val workNums = remember(contacts) {
@@ -274,7 +285,8 @@ fun ConversationsScreen(
 
     val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks) {
         conversations.filter { convo ->
-            if (showArchived) convo.archived
+            if (convo.blocked) false
+            else if (showArchived) convo.archived
             else !convo.archived
         }.let { list ->
             if (query.isBlank()) list
@@ -457,6 +469,17 @@ fun ConversationsScreen(
                         items(displayed, key = { it.id }) { convo ->
                             SwipeableConversationItem(
                                 context,
+                                modifier = Modifier.animateItem(
+                                    fadeInSpec = motionTween(
+                                        reduceMotion = reduceMotion,
+                                        durationMs = Motion.DURATION_SHORT4
+                                    ),
+                                    placementSpec = motionSpring(reduceMotion),
+                                    fadeOutSpec = motionTween(
+                                        reduceMotion = reduceMotion,
+                                        durationMs = Motion.DURATION_SHORT4
+                                    )
+                                ),
                                 settings = rowSettings,
                                 swipeEnabled = rowSettings.swipeEnabled && !showArchived,
                                 convo = convo,
@@ -489,7 +512,7 @@ fun ConversationsScreen(
                     .padding(bottom = 32.dp)
             ) {
                 Text(
-                    text = if (sheetConvo.name == sheetConvo.address) sheetConvo.display else sheetConvo.name,
+                    text = if (sheetConvo.name == sheetConvo.address) BidiText.ltr(sheetConvo.display) else sheetConvo.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -553,12 +576,14 @@ private fun SwipeableConversationItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onArchive: () -> Unit = {},
-    onLongClick: () -> Unit = {}
+    onLongClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     if (swipeEnabled) {
-        SwipeConversationItem(context, settings, convo, workProfile, onClick, onDelete, onArchive, onLongClick)
+        SwipeConversationItem(context, settings, convo, workProfile, onClick, onDelete, onArchive, onLongClick, modifier)
     } else {
         ConversationRow(
+            modifier = modifier,
             context = context,
             settings = settings,
             convo = convo,
@@ -582,7 +607,8 @@ private fun SwipeConversationItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onArchive: () -> Unit,
-    onLongClick: () -> Unit = {}
+    onLongClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     var dismissStateRef: SwipeToDismissBoxState? = null
     val dismissState = rememberSwipeToDismissBoxState(
@@ -596,6 +622,7 @@ private fun SwipeConversationItem(
 
     SwipeToDismissBox(
         state = dismissState,
+        modifier = modifier,
         backgroundContent = {
             val direction = dismissState.dismissDirection
             val endIsDelete = !settings.reverseSwipe
@@ -610,6 +637,10 @@ private fun SwipeConversationItem(
                         else MaterialTheme.colorScheme.error
                     else -> Color.Transparent
                 },
+                animationSpec = motionTween(
+                    reduceMotion = LocalReduceMotion.current,
+                    durationMs = Motion.DURATION_SHORT4
+                ),
                 label = stringResource(R.string.access_swipe_background)
             )
 
@@ -703,6 +734,7 @@ private data class RowSettings(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConversationRow(
+    modifier: Modifier = Modifier,
     context: android.content.Context,
     settings: RowSettings,
     convo: Conversation,
@@ -714,7 +746,27 @@ private fun ConversationRow(
     onLongClick: () -> Unit = {}
 ) {
     val now = LocalNowTick.current
-    Box(modifier = Modifier.fillMaxWidth()) {
+    val senderLabel = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name
+    val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
+    val draftLabel = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
+    val snippetLabel = if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
+    val previewLabel = BidiText.isolateNumberRuns(
+        if (hasDraft) {
+            context.getString(R.string.chat_draft_prefix) + draftLabel
+        } else if (convo.isMe && snippetLabel.isNotEmpty()) {
+            context.getString(R.string.convo_your_prefix) + snippetLabel
+        } else {
+            snippetLabel
+        }
+    ).text
+    val a11yLabel = A11y.describe(
+        senderLabel,
+        previewLabel,
+        formatListTime(convo.timestamp, now, context),
+        if (convo.unreadCount > 0) context.getString(R.string.access_unread, convo.unreadCount) else null,
+        if (convo.pinned && settings.pinnedEnabled) context.getString(R.string.access_pinned) else null
+    )
+    Box(modifier = modifier.fillMaxWidth()) {
         val pinnedTint = if (convo.pinned && settings.pinnedEnabled) {
             MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
         } else {
@@ -724,7 +776,20 @@ private fun ConversationRow(
         Row(
             modifier = Modifier
                 .fillMaxSize()
+                .clearAndSetSemantics {
+                    contentDescription = a11yLabel
+                    role = Role.Button
+                    onClick(label = context.getString(R.string.access_open_conversation)) {
+                        onClick()
+                        true
+                    }
+                    onLongClick(label = context.getString(R.string.access_conversation_options)) {
+                        onLongClick()
+                        true
+                    }
+                }
                 .combinedClickable(
+                    onClickLabel = context.getString(R.string.access_open_conversation),
                     onClick = onClick,
                     onLongClick = onLongClick
                 )
@@ -737,7 +802,7 @@ private fun ConversationRow(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (convo.name == convo.address) convo.display else convo.name,
+                        text = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,
@@ -759,24 +824,17 @@ private fun ConversationRow(
                     }
                 }
                 Spacer(Modifier.height(2.dp))
-                val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
                 if (hasDraft) {
-                    val draft = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
                     Text(
-                        text = stringResource(R.string.chat_draft_prefix) + draft,
+                        text = previewLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 } else {
-                    val snippet =
-                        if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
-                    val preview =
-                        if (convo.isMe && snippet.isNotEmpty()) stringResource(R.string.convo_your_prefix) + snippet
-                        else snippet
                     Text(
-                        text = preview,
+                        text = previewLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Normal,
                         color = if (convo.unreadCount > 0) MaterialTheme.colorScheme.onSurface
@@ -841,12 +899,14 @@ private fun StartChatFab(
     // Natural expanded-pill width, captured from the first layout pass (px).
     var naturalWidthPx by remember { mutableIntStateOf(0) }
     val progress = remember { Animatable(if (expanded) 1f else 0f) }
+    val reduceMotion = LocalReduceMotion.current
     LaunchedEffect(expanded) {
         progress.animateTo(
             if (expanded) 1f else 0f,
-            spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow
+            if (reduceMotion) snap()
+            else spring(
+                dampingRatio = Motion.SPATIAL_DAMPING_NO_BOUNCY,
+                stiffness = Motion.SPATIAL_STIFFNESS_MEDIUM
             )
         )
     }

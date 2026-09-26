@@ -3,13 +3,18 @@
     <string name="trash_title">Trash</string>
     <string name="trash_empty">Empty trash</string>
     <string name="trash_emptied">Trash emptied</string>
-    <string name="toast_trash_deleted">Conversation deleted</string>
+    <string name="toast_trash_deleted">Deleted</string>
     <string name="trash_delete_conversation">Delete conversation</string>
-    <string name="trash_conversation_deleted">Conversation deleted</string>
+    <string name="trash_delete_message">Delete message</string>
+    <string name="trash_tab_conversations">Conversations</string>
+    <string name="trash_tab_messages">Messages</string>
+    <string name="trash_messages_empty">No deleted messages</string>
+    <string name="trash_messages_empty_message">Messages you delete are kept here until you remove them</string>
 
     <string name="trash_empty_is_empty">Trash is empty</string>
     <string name="trash_empty_message">Deleted conversations are permanently removed after 30 days</string>
-    <string name="trash_empty_confirm">Delete all %d conversations from trash? This cannot be undone.</string>
+    <string name="trash_empty_confirm">Permanently delete all %d items in Trash? This cannot be undone.</string>
     <string name="trash_delete_forever_confirm">Permanently delete %s? This cannot be undone.</string>
     <string name="trash_deleted_on">Deleted %s</string>
+    <string name="trash_reason_blocked">Keyword</string>
 </resources>

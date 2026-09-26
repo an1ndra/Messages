@@ -12,4 +12,30 @@
     <string name="settings_advanced_turn_off_suffix">\"를 끄세요</string>
     <string name="settings_advanced_permanent_delete_on">영구 삭제가 켜져 있습니다. 이 대화와 메시지가 휴지통으로 이동되지 않고 기기에서 즉시 제거되며 복원할 수 없습니다.</string>
 
+    <string name="settings_font_title">글꼴</string>
+    <string name="settings_advanced_emoji_button">이모지 버튼</string>
+    <string name="settings_advanced_emoji_button_desc">메시지 입력란에 이모지 버튼 표시</string>
+    <string name="settings_choose_font">글꼴 선택</string>
+    <string name="font_dm_sans">DM Sans</string>
+    <string name="font_inter">Inter</string>
+    <string name="font_figtree">Figtree</string>
+    <string name="font_poppins">Poppins</string>
+    <string name="font_system">시스템 기본값</string>
+
+    <string name="keywords_title">차단된 키워드</string>
+    <string name="keywords_hint">다음 단어 중 하나가 포함된 메시지는 휴지통으로 이동합니다. 받은편지함에 표시되지 않고 알림 소리도 나지 않습니다.</string>
+    <string name="keywords_add_hint">키워드 추가</string>
+    <string name="keywords_add">추가</string>
+    <string name="keywords_empty">차단된 키워드가 아직 없습니다.</string>
+    <string name="keywords_remove">키워드 제거</string>
+    <string name="keywords_subtitle_none">없음</string>
+    <string name="keywords_subtitle_count">%1$d개 차단됨</string>
+
+    <string name="diagnostics_title">진단</string>
+    <string name="diagnostics_subtitle">문제 해결을 위한 기기 및 앱 진단</string>
+    <string name="diagnostics_save">저장</string>
+    <string name="diagnostics_copy">복사</string>
+    <string name="diagnostics_close">닫기</string>
+    <string name="diagnostics_clip_label">Messages 진단</string>
+    <string name="settings_sim_unknown">알 수 없는 SIM</string>
 </resources>

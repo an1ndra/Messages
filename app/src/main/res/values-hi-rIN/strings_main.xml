@@ -49,7 +49,18 @@
     <string name="notification_channel_desc">नए संदेश सूचनाएँ</string>
     <string name="notif_title_private">नया संदेश</string>
     <string name="notif_body_private">आपके पास एक नया संदेश है</string>
+    <string name="notif_you">आप</string>
     <string name="notif_send_fail_private">संदेश भेजा नहीं जा सका। पुनः प्रयास करने के लिए टैप करें।</string>
     <string name="notif_send_fail">%s को संदेश भेजा नहीं जा सका। पुनः प्रयास करने के लिए टैप करें।</string>
     <string name="notif_not_delivered">संदेश वितरित नहीं हुआ</string>
+
+    <!-- Crash reports -->
+    <string name="crash_report_title">क्रैश रिपोर्ट</string>
+    <string name="crash_report_message">पिछली बार ऐप क्रैश हो गया था। लॉग Downloads/Messages में सहेजा गया है — इसे GitHub issue से जोड़ें ताकि इसे ठीक करने में मदद मिल सके।</string>
+    <string name="crash_report_message_many">ऐप %1$d बार क्रैश हुआ। लॉग Downloads/Messages में सहेजे गए हैं — इन्हें GitHub issue से जोड़ें ताकि इसे ठीक करने में मदद मिल सके।</string>
+    <string name="crash_report_export">ZIP सहेजें</string>
+    <string name="crash_report_copy">कॉपी करें</string>
+    <string name="crash_report_delete">हटाएं</string>
+    <string name="crash_report_saved">Downloads/Messages में सहेजा गया</string>
+    <string name="crash_report_clip_label">Messages क्रैश रिपोर्ट</string>
 </resources>

@@ -2,6 +2,7 @@
 <resources>
     <!-- Shared action labels -->
     <string name="common_cancel">إلغاء</string>
+    <string name="common_continue">متابعة</string>
     <string name="common_ok">موافق</string>
     <string name="common_delete">حذف</string>
     <string name="common_open">فتح</string>
@@ -25,6 +26,7 @@
     <string name="access_delete">حذف</string>
     <string name="access_archive">أرشفة</string>
     <string name="access_pinned">مثبّت</string>
+    <string name="access_blocked">محظورة</string>
     <string name="access_start_chat">بدء محادثة</string>
     <string name="access_loading_messages">جارٍ تحميل الرسائل</string>
     <string name="access_photo">صورة</string>
