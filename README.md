@@ -33,11 +33,11 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 | Conversations | Chat | Contact details | New chat |
 |---|---|---|---|
-| ![Conversations](fastlane/metadata/android/en-US/images/phoneScreenshots/01-conversations.png) | ![Chat](fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat.png) | ![Contact details](fastlane/metadata/android/en-US/images/phoneScreenshots/03-contact-details.png) | ![New chat](fastlane/metadata/android/en-US/images/phoneScreenshots/05-new-chat.png) |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01-conversations.png" alt="Conversations" width="240" height="533"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat.png" alt="Chat" width="240" height="533"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03-contact-details.png" alt="Contact details" width="240" height="533"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05-new-chat.png" alt="New chat" width="240" height="533"> |
 
 | Group chat | Spam &amp; Blocked | Trash | Schedule send |
 |---|---|---|---|
-| ![Group chat](fastlane/metadata/android/en-US/images/phoneScreenshots/04-group-chat.png) | ![Spam & Blocked](fastlane/metadata/android/en-US/images/phoneScreenshots/06-spam-blocked.png) | ![Trash](fastlane/metadata/android/en-US/images/phoneScreenshots/08-trash.png) | ![Schedule send](fastlane/metadata/android/en-US/images/phoneScreenshots/09-schedule-send.png) |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04-group-chat.png" alt="Group chat" width="240" height="533"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/06-spam-blocked.png" alt="Spam & Blocked" width="240" height="533"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/08-trash.png" alt="Trash" width="240" height="533"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/09-schedule-send.png" alt="Schedule send" width="240" height="533"> |
 
 ## Download
 
