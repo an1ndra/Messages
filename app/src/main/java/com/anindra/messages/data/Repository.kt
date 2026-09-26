@@ -25,7 +25,7 @@ private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
 enum class ImportMode { REPLACE, MERGE }
 
-private const val DB_VERSION = 20
+private const val DB_VERSION = 21
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -46,6 +46,7 @@ class Db(context: Context) :
                 last_is_me INTEGER NOT NULL DEFAULT 0,
                 archived INTEGER NOT NULL DEFAULT 0,
                 blocked INTEGER NOT NULL DEFAULT 0,
+                blocked_at INTEGER NOT NULL DEFAULT 0,
                 pinned INTEGER NOT NULL DEFAULT 0,
                 draft TEXT NOT NULL DEFAULT '',
                 draft_date INTEGER NOT NULL DEFAULT 0,
@@ -202,6 +203,13 @@ class Db(context: Context) :
         }
         if (oldVersion < 20) {
             db.execSQL("ALTER TABLE messages ADD COLUMN blocked_reason TEXT NOT NULL DEFAULT ''")
+        }
+        if (oldVersion < 21) {
+            db.execSQL("ALTER TABLE conversations ADD COLUMN blocked_at INTEGER NOT NULL DEFAULT 0")
+            // Seed from the conversation's own activity so an already-blocked
+            // sender gets a full window from the upgrade rather than being
+            // purged the moment it is first seen.
+            db.execSQL("UPDATE conversations SET blocked_at=timestamp WHERE blocked=1 AND blocked_at=0")
         }
     }
 
@@ -755,7 +763,7 @@ class Repository(private val context: Context) {
             arrayOf(conversationId)
         )
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET blocked=0,unread_count=0 WHERE id=?",
+            "UPDATE conversations SET blocked=0,blocked_at=0,unread_count=0 WHERE id=?",
             arrayOf(conversationId)
         )
         if (isNumberBlocked(address)) unblockNumber(address)
@@ -770,7 +778,7 @@ class Repository(private val context: Context) {
     /** Drop every blocked sender, emptying the Conversations tab. */
     fun unblockAllNumbers() {
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET blocked=0,unread_count=0 WHERE blocked=1"
+            "UPDATE conversations SET blocked=0,blocked_at=0,unread_count=0 WHERE blocked=1"
         )
         db.writableDatabase.execSQL("DELETE FROM blocked_numbers")
         notifyChanged()
@@ -833,8 +841,9 @@ class Repository(private val context: Context) {
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
-               unread_count=0,blocked=1 WHERE id=?""",
-            arrayOf<Any?>(clean, now, convoId)
+               unread_count=0,blocked=1,
+               blocked_at=CASE WHEN blocked_at>0 THEN blocked_at ELSE ? END WHERE id=?""",
+            arrayOf<Any?>(clean, now, now, convoId)
         )
         notifyChanged()
         return convoId
@@ -1334,13 +1343,16 @@ class Repository(private val context: Context) {
 
     private fun setConversationBlockedForAddress(number: String, blocked: Boolean) {
         val flag = if (blocked) 1 else 0
+        // Ageing a blocked sender from when it was blocked, not from its last
+        // message, is what lets auto-delete ever reach a sender that keeps texting.
+        val blockedAt = if (blocked) System.currentTimeMillis() else 0
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET blocked=? WHERE address=?",
-            arrayOf<Any?>(flag, canonical(number).ifEmpty { number })
+            "UPDATE conversations SET blocked=?,blocked_at=? WHERE address=?",
+            arrayOf<Any?>(flag, blockedAt, canonical(number).ifEmpty { number })
         )
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET blocked=? WHERE address=?",
-            arrayOf<Any?>(flag, number)
+            "UPDATE conversations SET blocked=?,blocked_at=? WHERE address=?",
+            arrayOf<Any?>(flag, blockedAt, number)
         )
     }
 
