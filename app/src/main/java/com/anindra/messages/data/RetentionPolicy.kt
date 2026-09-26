@@ -30,9 +30,12 @@ object RetentionPolicy {
     /** Keyword-blocked messages, which never touch their conversation. */
     const val KEYWORD_BLOCKED_SQL = "deleted_at>0 AND blocked_reason!='' AND deleted_at<?"
 
-    /** Blocked senders have no deleted_at, so their last activity stands in for
-     *  age - a sender who keeps texting is not purged out from under the user. */
-    const val BLOCKED_CONVERSATION_SQL = "blocked=1 AND timestamp<?"
+    /** Blocked senders are aged from blocked_at, the moment the number was
+     *  blocked, not from their last message. Ageing by activity meant a blocked
+     *  sender that kept texting reset its own clock on every delivery and could
+     *  never age out, so the folder only ever grew. blocked_at>0 keeps a row
+     *  whose block date is unknown out of the purge. */
+    const val BLOCKED_CONVERSATION_SQL = "blocked=1 AND blocked_at>0 AND blocked_at<?"
 
     fun cutoffFor(bucket: RetentionBucket, now: Long, trashDays: Int, spamDays: Int): Long =
         now - daysFor(bucket, trashDays, spamDays) * 24L * 60 * 60 * 1000
