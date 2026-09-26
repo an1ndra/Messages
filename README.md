@@ -1,5 +1,9 @@
 # Messages
 
+[![VirusTotal](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/an1ndra/Messages/main/.github/virustotal.json)](https://github.com/an1ndra/Messages/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/an1ndra/Messages/total?label=Downloads&logo=github)](https://github.com/an1ndra/Messages/releases)
+[![License](https://img.shields.io/github/license/an1ndra/Messages?label=License)](LICENSE)
+
 Simple, private SMS messaging. Offline-first, no ads, no tracking.
 
 Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permission — everything is local SMS + local database.

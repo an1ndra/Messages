@@ -19,6 +19,7 @@ concurrency:
 
 env:
   VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+  DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
 
 jobs:
   scan:
@@ -170,6 +171,49 @@ jobs:
             echo "| Undetected | $UNDET |"
             echo "| Total engines | $TOTAL |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Separate checkout for the badge commit: the scan checkout deliberately
+      # uses persist-credentials: false, and this one needs to push to the
+      # default branch.
+      - name: Checkout default branch for badge commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Publish badge state
+        env:
+          MAL: ${{ steps.result.outputs.malicious }}
+          SUS: ${{ steps.result.outputs.suspicious }}
+          TOTAL: ${{ steps.result.outputs.total }}
+          TAG: ${{ steps.rel.outputs.tag }}
+        run: |
+          # shields.io serves the README badge out of this file, so it has to
+          # exist on the default branch. Never fail the job on a badge push —
+          # the scan itself is the thing that matters.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 - "$MAL" "$SUS" "$TOTAL" > .github/virustotal.json <<'PY'
+          import json, sys
+          mal, sus, total = (int(x or 0) for x in sys.argv[1:4])
+          flagged = mal + sus
+          color = "brightgreen" if flagged == 0 else "yellow" if flagged <= 2 else "red"
+          json.dump({
+              "schemaVersion": 1,
+              "label": "VirusTotal",
+              "message": f"{flagged}/{total} flagged",
+              "color": color,
+          }, sys.stdout, indent=2)
+          print()
+          PY
+          cat .github/virustotal.json
+          if git diff --quiet -- .github/virustotal.json; then
+            echo "Badge unchanged, nothing to commit"
+          else
+            git add .github/virustotal.json
+            git commit -m "chore: update VirusTotal badge for v$TAG"
+            git push origin "HEAD:$DEFAULT_BRANCH" \
+              || echo "::warning::Could not push badge; README badge will lag"
+          fi
 
       - name: Flag malware detections
         if: steps.result.outputs.malicious != '' && steps.result.outputs.malicious != '0'
