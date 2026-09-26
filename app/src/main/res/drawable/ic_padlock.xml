@@ -1,0 +1,29 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="12.5dp"
+    android:height="17.3dp"
+    android:viewportWidth="360"
+    android:viewportHeight="498">
+    <!-- Traced from a 512px SVG (icons/svg/padlock-512.svg).
+
+         The viewport is the artwork's measured ink bounds, rebased to the
+         origin: x 80..438, y 10..506 in the source, plus a 1-unit margin.
+         Measure these by rasterising the source and reading the alpha bbox -
+         do NOT read them off the path data. The shackle is a 126-unit radius
+         arc whose start point sits at y=136 while its apex is at y=10, so
+         taking the start point as the top pushes the apex to a negative
+         coordinate and VectorDrawable's clip silently eats the whole shackle.
+
+         The dp size is set so the drawn height matches a Material glyph:
+         Icons.Rounded.Delete fills ~18 of its 24 viewport, so at size(22.dp) it
+         puts ~16.5dp of ink on screen. This art fills its viewport, so it is
+         declared at a height landing on that same ink height - measured off a
+         device screenshot rather than derived - and is used without a size
+         modifier, which would override this and undo the match. -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M51 211V127a126 126 0 0 1 252 0 28.5 28.5 0 0 1 -57 0 69 69 0 0 0 -138 0v84z" />
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M1 224a28 28 0 0 1 28 -28h301a28 28 0 0 1 28 28v244a28 28 0 0 1 -28 28H29a28 28 0 0 1 -28 -28zM151 373a52 52 0 1 1 52 0v30a26 26 0 0 1 -52 0z" />
+</vector>

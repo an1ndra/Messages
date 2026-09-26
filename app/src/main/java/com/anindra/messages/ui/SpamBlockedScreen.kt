@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -245,11 +246,22 @@ private fun ConversationsTab(
                         maxLines = 1
                     )
                 }
-                TextButton(onClick = { onDelete(convo) }) {
-                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
+                IconButton(onClick = { onDelete(convo) }) {
+                    Icon(
+                        Icons.Rounded.Delete,
+                        contentDescription = stringResource(R.string.common_delete),
+                        modifier = Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
-                TextButton(onClick = { onUnblock(convo) }) {
-                    Text(stringResource(R.string.chat_unblock))
+                IconButton(onClick = { onUnblock(convo) }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_padlock),
+                        contentDescription = stringResource(R.string.chat_unblock),
+                        // No size modifier: the drawable declares the dp size that
+                        // matches the bin's optical weight. See ic_padlock.xml.
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
