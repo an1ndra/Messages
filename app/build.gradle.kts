@@ -64,7 +64,7 @@ dependencies {
     implementation(project(":android-smsmms"))
     implementation(libs.androidx.core.ktx)
     implementation("androidx.biometric:biometric:1.1.0")
-    implementation("androidx.fragment:fragment-ktx:1.6.2")
+    implementation("androidx.fragment:fragment-ktx:1.9.1")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
