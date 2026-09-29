@@ -67,7 +67,6 @@
     <string name="settings_trash_subtitle">Conversaciones eliminadas · se eliminan después de 30 días</string>
     <string name="settings_spam_blocked_subtitle">Las conversaciones bloqueadas se conservan aquí</string>
     <string name="settings_retention_title">Eliminación automática</string>
-
     <string name="settings_choose_retention">Se aplica a la papelera, los mensajes bloqueados y los remitentes bloqueados:</string>
     <string name="settings_retention_subtitle">La papelera, los mensajes bloqueados y los remitentes bloqueados se eliminan automáticamente</string>
     <string name="settings_retention_days">%d días</string>
