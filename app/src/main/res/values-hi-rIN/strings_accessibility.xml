@@ -1,35 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Screen reader (TalkBack) labels -->
-    <string name="access_open_conversation">संवाद खोलें</string>
-    <string name="access_conversation_options">संवाद विकल्प</string>
-    <string name="access_unread">%1$d अपठित</string>
-
+    <string name="access_open_conversation">Open conversation</string>
+    <string name="access_conversation_options">Conversation options</string>
+    <string name="access_unread">%1$d unread</string>
     <!-- Accessibility mode (Advanced settings) -->
-    <string name="settings_accessibility_title">सुगम्यता मोड</string>
-    <string name="settings_accessibility_subtitle">बड़ा टेक्स्ट, अधिक कंट्रास्ट और कम गति</string>
-    <string name="accessibility_options_title">सुगम्यता विकल्प</string>
-    <string name="accessibility_options_subtitle">टेक्स्ट, कंट्रास्ट और गति को अनुकूलित करें</string>
-    <string name="accessibility_title">सुगम्यता</string>
-
+    <string name="settings_accessibility_title">Accessibility mode</string>
+    <string name="settings_accessibility_subtitle">Larger text, high contrast and reduced motion</string>
+    <string name="accessibility_options_title">Accessibility options</string>
+    <string name="accessibility_options_subtitle">Customize text, contrast and motion</string>
+    <string name="accessibility_title">Accessibility</string>
     <!-- Text -->
-    <string name="a11y_font_size_title">फ़ॉन्ट आकार</string>
-    <string name="a11y_font_size_desc">सिस्टम आकार के अतिरिक्त ऐप में टेक्स्ट का आकार बदलें</string>
-    <string name="a11y_choose_font_size">फ़ॉन्ट आकार चुनें</string>
-    <string name="a11y_font_85">छोटा (85%)</string>
-    <string name="a11y_font_100">डिफ़ॉल्ट (100%)</string>
-    <string name="a11y_font_115">बड़ा (115%)</string>
-    <string name="a11y_font_130">सबसे बड़ा (130%)</string>
-    <string name="a11y_bold_title">गाढ़ा टेक्स्ट</string>
-    <string name="a11y_bold_desc">अधिक मोटे फ़ॉन्ट वज़न का उपयोग करें</string>
-
+    <string name="a11y_font_size_title">Font size</string>
+    <string name="a11y_font_size_desc">Scale text across the app on top of the system size</string>
+    <string name="a11y_choose_font_size">Choose font size</string>
+    <string name="a11y_font_85">Small (85%)</string>
+    <string name="a11y_font_100">Default (100%)</string>
+    <string name="a11y_font_115">Large (115%)</string>
+    <string name="a11y_font_130">Largest (130%)</string>
+    <string name="a11y_bold_title">Bold text</string>
+    <string name="a11y_bold_desc">Use heavier font weights</string>
     <!-- Display -->
-    <string name="a11y_high_contrast_title">अधिक कंट्रास्ट</string>
-    <string name="a11y_high_contrast_desc">गहरे रंग और स्पष्ट किनारे</string>
-    <string name="a11y_large_touch_title">बड़े टच क्षेत्र</string>
-    <string name="a11y_large_touch_desc">बटन और पंक्तियों के लिए बड़े टैप क्षेत्र</string>
-
+    <string name="a11y_high_contrast_title">High contrast</string>
+    <string name="a11y_high_contrast_desc">Stronger colors and outlines</string>
+    <string name="a11y_large_touch_title">Larger touch targets</string>
+    <string name="a11y_large_touch_desc">Bigger tap areas for buttons and rows</string>
     <!-- Motion -->
-    <string name="a11y_reduce_motion_title">गति कम करें</string>
-    <string name="a11y_reduce_motion_desc">एनिमेशन और ट्रांज़िशन बंद करें</string>
+    <string name="a11y_reduce_motion_title">Reduce motion</string>
+    <string name="a11y_reduce_motion_desc">Disable animations and transitions</string>
 </resources>
