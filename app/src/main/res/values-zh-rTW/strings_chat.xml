@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Chat actions & labels -->
     <string name="chat_archive">封存</string>
     <string name="chat_block">封鎖</string>
     <string name="chat_block_report">封鎖並檢舉垃圾訊息</string>
@@ -21,7 +22,7 @@
     <string name="chat_save_image">儲存圖片</string>
     <string name="chat_image_saved">圖片已儲存至 Pictures/Messages</string>
     <string name="chat_image_save_failed">無法儲存圖片</string>
-
+    <!-- Status messages -->
     <string name="chat_cant_send">無法傳送訊息</string>
     <string name="chat_archived">對話已封存</string>
     <string name="chat_deleted">對話已刪除</string>
@@ -39,7 +40,7 @@
     <string name="chat_search_contacts">搜尋通訊錄</string>
     <string name="chat_add_people">加入人員</string>
     <string name="chat_locked">已鎖定</string>
-
+    <!-- Copy & links -->
     <string name="chat_copied">已複製</string>
     <string name="chat_link_copied">連結已複製</string>
     <string name="chat_copy_link">複製連結</string>
@@ -48,7 +49,7 @@
     <string name="chat_link_no_dont_show">不再顯示此警告</string>
     <string name="chat_link_label">連結</string>
     <string name="chat_messages_label">訊息</string>
-
+    <!-- General -->
     <string name="chat_close">關閉</string>
     <string name="chat_open">開啟</string>
     <string name="chat_next">下一步</string>
@@ -68,7 +69,6 @@
     <string name="message_status_delivered">已送達</string>
     <string name="message_status_received">已接收</string>
     <string name="message_status_failed">未傳送</string>
-
     <string name="chat_status_not_sent">未傳送</string>
     <string name="chat_status_retry">輕觸以重試</string>
     <string name="chat_draft_prefix">草稿：</string>
