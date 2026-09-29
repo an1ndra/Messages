@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="contact_block">ब्लॉक करें</string>
-    <string name="contact_block_confirm">%s — आप इस नंबर से कॉल या संदेश प्राप्त नहीं करेंगे।</string>
-    <string name="contact_block_report">नंबर ब्लॉक करें</string>
-    <string name="contact_notifications">सूचनाएँ</string>
-
-    <string name="contact_one_person">1 अन्य व्यक्ति</string>
-    <string name="contact_add_people">लोगों को जोड़ें</string>
+    <string name="contact_block">Block</string>
+    <string name="contact_block_confirm">%s - you won\'t receive calls or messages from this number.</string>
+    <string name="contact_block_report">Block number</string>
+    <string name="contact_notifications">Notifications</string>
+    <string name="contact_one_person">1 other person</string>
+    <string name="contact_add_people">Add people</string>
 </resources>
