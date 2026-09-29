@@ -1139,13 +1139,20 @@ fun ChatScreen(
             onSchedule = { ts ->
                 val text = draft.trim()
                 val addr = convo?.address ?: return@ChatSchedulePicker
-                vm.scheduleMessage(addr, text, ts, conversationId)
-                val timeText = formatDateTime(ts, "MMM d,", is24HourFormat(context))
-                Toast.makeText(context, context.getString(R.string.chat_scheduled_for, timeText), Toast.LENGTH_SHORT).show()
-                vm.saveDraft(conversationId, "")
-                draft = ""
-                showEmoji = false
-                showSchedulePicker = false
+                vm.scheduleMessage(addr, text, ts, conversationId) { ok ->
+                    if (!ok) {
+                        Toast.makeText(
+                            context, context.getString(R.string.chat_schedule_failed), Toast.LENGTH_LONG
+                        ).show()
+                        return@scheduleMessage
+                    }
+                    val timeText = formatDateTime(ts, "MMM d,", is24HourFormat(context))
+                    Toast.makeText(context, context.getString(R.string.chat_scheduled_for, timeText), Toast.LENGTH_SHORT).show()
+                    vm.saveDraft(conversationId, "")
+                    draft = ""
+                    showEmoji = false
+                    showSchedulePicker = false
+                }
             },
             onDismiss = { showSchedulePicker = false }
         )
@@ -1545,14 +1552,13 @@ private fun ChatSchedulePicker(
             confirmButton = {
                 TextButton(onClick = {
                     onTimeSelected(timePickerState.hour, timePickerState.minute)
-                    val cal = Calendar.getInstance().apply {
-                        timeInMillis = scheduledDateMillis ?: System.currentTimeMillis()
-                        set(Calendar.HOUR_OF_DAY, timePickerState.hour)
-                        set(Calendar.MINUTE, timePickerState.minute)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }
-                    onSchedule(cal.timeInMillis)
+                    onSchedule(
+                        com.anindra.messages.data.ScheduledTime.resolve(
+                            scheduledDateMillis ?: System.currentTimeMillis(),
+                            timePickerState.hour,
+                            timePickerState.minute
+                        )
+                    )
                 }) { Text(stringResource(R.string.chat_schedule)) }
             },
             dismissButton = {

@@ -23,6 +23,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -84,6 +85,10 @@ import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.A11yOptions
 import com.anindra.messages.ui.theme.MessagesTheme
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineExceptionHandler
+import com.anindra.messages.crash.CrashReportFormatter
+import com.anindra.messages.crash.CrashReporter
+import com.anindra.messages.crash.CrashReportStore
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -94,7 +99,27 @@ import kotlinx.coroutines.launch
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val repo: Repository = (app as MessagesApplication).repository
     val settings = repo.settings
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    // A throw escaping a fire-and-forget launch on a bare SupervisorJob reaches
+    // the default uncaught handler and kills the process. Record it as a crash
+    // report instead, so a failed background write never closes the app. (#281)
+    private val scope = CoroutineScope(
+        SupervisorJob() +
+            CoroutineExceptionHandler { _, throwable ->
+                runCatching {
+                    CrashReportStore.save(
+                        getApplication(),
+                        CrashReportFormatter.format(
+                            throwable,
+                            CrashReporter.deviceInfo(),
+                            CrashReporter.appInfo(getApplication()),
+                            System.currentTimeMillis()
+                        ),
+                        System.currentTimeMillis()
+                    )
+                }
+            } +
+            Dispatchers.Main
+    )
 
     override fun onCleared() {
         super.onCleared()
@@ -537,23 +562,70 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun conversationIdForAddress(address: String): Long? = repo.conversationIdForAddress(address)
 
+    /** Stores the forwarded row in the target conversation *and* hands it to
+     *  the framework, so SmsStatusReceiver can flip it to sent/failed. Storing
+     *  alone would leave it on "Sending…" forever. */
     fun forwardMessage(messageId: Long, targetConversationId: Long) {
         scope.launch {
             val msg = repo.messageByIdSuspend(messageId) ?: return@launch
+            val target = repo.conversationByIdSuspend(targetConversationId) ?: return@launch
+            if (!isPhoneNumber(target.address)) return@launch
+            val subId = settings.simSubscriptionId
             val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
-            repo.sendText(targetConversationId, text, settings.simSubscriptionId)
+            when (val plan = com.anindra.messages.data.ForwardPlan.of(msg, text)) {
+                is com.anindra.messages.data.ForwardPlan.Sms -> {
+                    val stored = repo.sendText(targetConversationId, plan.body, subId) ?: return@launch
+                    handOff(stored.id, target.address) {
+                        SmsSender.send(
+                            getApplication(), stored.id, target.address, plan.body,
+                            subId, settings.deliveryReportsEnabled
+                        )
+                    }
+                }
+                is com.anindra.messages.data.ForwardPlan.Mms -> {
+                    val uri = Uri.parse(plan.mediaUri)
+                    val stored = repo.sendMedia(
+                        targetConversationId, "image", plan.mediaUri, plan.caption
+                    ) ?: return@launch
+                    handOff(stored.id, target.address) {
+                        SmsSender.sendMms(
+                            getApplication(), stored.id, target.address, uri, subId, plan.caption
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    /** Marks the row failed and notifies when the framework declines the
+     *  handoff; on success SmsStatusReceiver confirms sent/failed. */
+    private suspend fun handOff(rowId: Long, address: String, send: () -> Boolean) {
+        if (send()) return
+        repo.markMessageStatusSuspend(rowId, "failed")
+        NotificationHelper.showSendFailed(getApplication(), address)
     }
 
     fun scheduledMessages() = repo.scheduledMessages()
 
-    fun scheduleMessage(address: String, body: String, timestamp: Long, conversationId: Long) {
+    fun scheduleMessage(
+        address: String,
+        body: String,
+        timestamp: Long,
+        conversationId: Long,
+        onResult: (Boolean) -> Unit = {}
+    ) {
         scope.launch(Dispatchers.IO) {
-            val subId = settings.simSubscriptionId
-            val id = repo.addScheduledMessage(address, body, timestamp, conversationId, subId)
-            com.anindra.messages.sms.ScheduledMessageSender.schedule(
-                getApplication(), id, address, body, subId, timestamp
-            )
+            // The repository rejects a blank body or a non-future time by throwing;
+            // an uncaught throw here would take the process down, so the caller is
+            // told instead. (#281)
+            val ok = runCatching {
+                val subId = settings.simSubscriptionId
+                val id = repo.addScheduledMessage(address, body, timestamp, conversationId, subId)
+                com.anindra.messages.sms.ScheduledMessageSender.schedule(
+                    getApplication(), id, address, body, subId, timestamp
+                )
+            }.isSuccess
+            withContext(Dispatchers.Main) { onResult(ok) }
         }
     }
 
@@ -783,9 +855,17 @@ class MainActivity : FragmentActivity() {
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
                 var defaultSmsChecked by remember { mutableStateOf(false) }
-                // Hoisted so the Settings list keeps its scroll position when
-                // navigating into Advanced and back.
+                // Hoisted above the AnimatedContent so every settings screen keeps
+                // its scroll position when navigating into a nested screen and
+                // back; inline remember* state would be rebuilt at 0 on re-entry.
                 val settingsScroll = rememberScrollState()
+                val advancedScroll = rememberScrollState()
+                val accessibilityScroll = rememberScrollState()
+                val contactDetailsScroll = rememberScrollState()
+                val trashConversationList = rememberLazyListState()
+                val trashMessageList = rememberLazyListState()
+                val spamConversationList = rememberLazyListState()
+                val spamMessageList = rememberLazyListState()
 
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     if (navRoute != "settings") {
@@ -930,22 +1010,32 @@ class MainActivity : FragmentActivity() {
                                     "advanced" -> AdvancedSettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
-                                        onOpenAccessibility = { navRoute = "accessibility" }
+                                        onOpenAccessibility = { navRoute = "accessibility" },
+                                        scrollState = advancedScroll
                                     )
                                     "accessibility" -> AccessibilityScreen(
                                         vm = vm,
-                                        onBack = { navRoute = "advanced" }
+                                        onBack = { navRoute = "advanced" },
+                                        scrollState = accessibilityScroll
                                     )
-                                    "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
+                                    "trash" -> TrashScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" },
+                                        conversationListState = trashConversationList,
+                                        messageListState = trashMessageList
+                                    )
                                     "spam" -> SpamBlockedScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
-                                        onOpenConversation = { navRoute = "chat"; chatId = it }
+                                        onOpenConversation = { navRoute = "chat"; chatId = it },
+                                        conversationListState = spamConversationList,
+                                        messageListState = spamMessageList
                                     )
                                     "details" -> ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
-                                        onBack = { navRoute = "chat" }
+                                        onBack = { navRoute = "chat" },
+                                        scrollState = contactDetailsScroll
                                     )
                                     else -> ChatScreen(
                                         vm = vm,

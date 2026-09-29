@@ -38,6 +38,7 @@
     <string name="chat_sending_via">Senden über %s</string>
     <string name="chat_switch_sim">SIM wechseln</string>
     <string name="chat_scheduled_for">Geplant für %s</string>
+    <string name="chat_schedule_failed">Nachricht konnte nicht geplant werden</string>
     <string name="chat_search_contacts">Kontakte durchsuchen</string>
     <string name="chat_add_people">Personen hinzufügen</string>
     <string name="chat_locked">Gesperrt</string>
