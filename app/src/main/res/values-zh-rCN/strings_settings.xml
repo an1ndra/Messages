@@ -67,7 +67,6 @@
     <string name="settings_trash_subtitle">已删除的对话 · 30 天后自动清除</string>
     <string name="settings_spam_blocked_subtitle">已阻止的对话保存在这里</string>
     <string name="settings_retention_title">自动删除</string>
-
     <string name="settings_choose_retention">适用于回收站、被阻止的消息和被阻止的发送者：</string>
     <string name="settings_retention_subtitle">回收站、被阻止的消息和被阻止的发送者会自动清除</string>
     <string name="settings_retention_days">%d 天</string>
