@@ -1,0 +1,16 @@
+# Crowdin GitHub integration config, read from the connected branch.
+# No credentials here: the integration authenticates via the GitHub App, and the
+# CLI / Android Studio plugin should read CROWDIN_PROJECT_ID and CROWDIN_TOKEN.
+files:
+  - source: "/app/src/main/res/values/strings*.xml"
+    translation: "/app/src/main/res/values-%android_code%/%original_file_name%"
+    update_option: "update_as_unapproved"
+    # 2 = backslash escape, matching the existing \' in the repo. French uses
+    # apostrophes in nearly every string, and the default ('' doubling) would
+    # break them.
+    escape_quotes: 2
+
+# The 12 locales already in the repo are shipped, so import them as approved
+# rather than as fresh untranslated strings.
+import_eq_suggestions: false
+auto_approve_imported: true
