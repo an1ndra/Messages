@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,7 +69,8 @@ import com.anindra.messages.AppViewModel
 fun ContactDetailsScreen(
     vm: AppViewModel,
     conversationId: Long,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    scrollState: ScrollState = rememberScrollState()
 ) {
     val context = LocalContext.current
     val convo by vm.conversationById(conversationId).collectAsState(initial = null)
@@ -111,7 +113,7 @@ fun ContactDetailsScreen(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             Spacer(Modifier.height(8.dp))
 

@@ -38,6 +38,7 @@
     <string name="chat_sending_via">Отправка через %s</string>
     <string name="chat_switch_sim">Сменить SIM</string>
     <string name="chat_scheduled_for">Запланировано на %s</string>
+    <string name="chat_schedule_failed">Не удалось запланировать сообщение</string>
     <string name="chat_search_contacts">Поиск контактов</string>
     <string name="chat_add_people">Добавить участников</string>
     <string name="chat_locked">Заблокировано</string>

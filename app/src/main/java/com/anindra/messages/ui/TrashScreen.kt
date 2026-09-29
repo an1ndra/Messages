@@ -1,5 +1,8 @@
 package com.anindra.messages.ui
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -55,11 +60,34 @@ import com.anindra.messages.data.TrashedMessage
 import java.text.DateFormat
 import java.util.Date
 
+/**
+ * Pulls a hoisted [LazyListState] back into range when its anchor index is past
+ * the end of a list that shrank. Without this a row restored into an emptied
+ * list is not composed, so it reads as "Undo did nothing".
+ */
+@Composable
+internal fun ClampToItemCount(
+    listState: LazyListState,
+    active: Boolean,
+    itemCount: Int
+) {
+    val count by rememberUpdatedState(itemCount)
+    LaunchedEffect(listState, active, itemCount) {
+        if (!active) return@LaunchedEffect
+        val n = count
+        if (n > 0 && listState.firstVisibleItemIndex > n - 1) {
+            listState.scrollToItem(n - 1)
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrashScreen(
     vm: AppViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    conversationListState: LazyListState = rememberLazyListState(),
+    messageListState: LazyListState = rememberLazyListState()
 ) {
     BackHandler(onBack = onBack)
     val conversations by vm.trashedConversations().collectAsState(initial = emptyList())
@@ -72,6 +100,13 @@ fun TrashScreen(
     var showDeleteForeverDialog by remember { mutableStateOf(false) }
     var deleteConversationTarget by remember { mutableStateOf<Long?>(null) }
     var deleteMessageTarget by remember { mutableStateOf<Long?>(null) }
+
+    // A hoisted LazyListState outlives the list it was pointing at. Emptying the
+    // folder (delete, or "Empty trash") leaves firstVisibleItemIndex past the end,
+    // and a row restored by Undo then lands off screen because index 0 is never
+    // composed. Pull the anchor back into range whenever it drifts out.
+    ClampToItemCount(conversationListState, tab == 0, conversations.size)
+    ClampToItemCount(messageListState, tab == 1, messages.size)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -123,7 +158,8 @@ fun TrashScreen(
                     )
                 } else {
                     LazyColumn(
-                        Modifier.fillMaxSize(),
+                        state = conversationListState,
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
                     ) {
                         items(conversations, key = { it.id }) { convo ->
@@ -146,7 +182,8 @@ fun TrashScreen(
                     )
                 } else {
                     LazyColumn(
-                        Modifier.fillMaxSize(),
+                        state = messageListState,
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
                     ) {
                         items(messages, key = { it.id }) { msg ->
