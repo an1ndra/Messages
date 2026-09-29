@@ -9,8 +9,17 @@ files:
     # apostrophes in nearly every string, and the default ('' doubling) would
     # break them.
     escape_quotes: 2
+    # Crowdin only offers es-ES for Spanish, whose %android_code% would export
+    # to values-es-rES and so never serve es-MX users. Pin it to plain `es`.
+    languages_mapping:
+      android_code:
+        es-ES: es
 
 # The 12 locales already in the repo are shipped, so import them as approved
 # rather than as fresh untranslated strings.
 import_eq_suggestions: false
 auto_approve_imported: true
+
+pull_request_title: "New Crowdin translations"
+pull_request_labels:
+  - l10n
