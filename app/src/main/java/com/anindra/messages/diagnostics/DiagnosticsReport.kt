@@ -419,7 +419,7 @@ object DiagnosticsReport {
             receiveSound = settings.receiveSoundEnabled,
             privacyMode = settings.privacyModeEnabled,
             appLock = settings.appLockEnabled,
-            drafts = settings.draftsEnabled,
+            drafts = true,
             blockedKeywords = settings.blockedKeywords.size,
             accessibilityMode = settings.a11yEnabled,
             a11yFontScale = settings.a11yFontScalePercent,

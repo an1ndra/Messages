@@ -20,7 +20,7 @@
     <string name="sim_slot_suffix"> · SIM %s</string>
     <string name="settings_sim_label">SIM %s</string>
     <string name="settings_notif_title">通知</string>
-    <string name="settings_notif_subtitle">显示新消息通知</string>
+    <string name="settings_notif_subtitle">声音和提醒</string>
     <string name="settings_send_sound_title">发送声音</string>
     <string name="settings_send_sound_subtitle">发送消息时播放声音</string>
     <string name="settings_receive_sound_title">接收声音</string>
@@ -29,9 +29,7 @@
     <string name="settings_delivery_reports_subtitle">追踪 SMS 消息是否已成功送达</string>
     <string name="settings_mark_read_title">全部标记为已读</string>
     <string name="settings_mark_read_subtitle">清除所有对话的未读徽章</string>
-    <string name="settings_theme_title">主题</string>
-    <string name="settings_drafts_title">草稿</string>
-    <string name="settings_drafts_subtitle">自动保存未发送的文本为草稿</string>
+    <string name="settings_theme_title">选择主题</string>
     <string name="settings_archiving_title">归档</string>
     <string name="settings_archiving_subtitle">允许归档对话</string>
     <string name="settings_pinned_title">置顶对话</string>
@@ -48,8 +46,21 @@
     <string name="settings_delayed_subtitle">发送消息前等待时间</string>
     <string name="settings_delay_secs_title">延迟秒数</string>
     <string name="settings_delay_secs_subtitle"></string>
-    <string name="settings_advanced_title">高级</string>
-    <string name="settings_advanced_subtitle">永久删除、滑动方向、链接行为</string>
+    <string name="settings_inbox_title">收件箱设置</string>
+    <string name="settings_advanced_title">高级设置</string>
+    <string name="settings_backup_subtitle">保存副本</string>
+    <string name="settings_scheduled_none">没有定时消息</string>
+    <string name="settings_scheduled_meta">发送给：%1$s · %2$s</string>
+        <string name="settings_scheduled_count">已定时 %d 条</string>
+    <string name="settings_link_behaviour_title">链接行为</string>
+    <string name="settings_link_behaviour_subtitle">隐藏、高亮、警告</string>
+    <string name="settings_link_needs_highlight">请先开启“突出显示链接”</string>
+    <string name="swipe_action_off">无</string>
+    <string name="swipe_action_mark_read">标记为已读/未读</string>
+    <string name="swipe_action_block">屏蔽</string>
+    <string name="swipe_left_title">向左滑动</string>
+    <string name="swipe_right_title">向右滑动</string>
+    <string name="settings_advanced_subtitle">更多选项</string>
     <string name="settings_blocking_title">阻止号码</string>
     <string name="settings_blocking_subtitle">阻止对方无法向您发送消息</string>
     <string name="settings_blocked_numbers_title">已阻止的号码</string>
@@ -92,7 +103,7 @@
     <string name="settings_backup_change">更改</string>
     <string name="settings_backup_saved_location">备份已使用 PIN 保存到 %s</string>
     <string name="settings_import_title">导入消息</string>
-    <string name="settings_import_subtitle">导入备份的数据库文件</string>
+    <string name="settings_import_subtitle">恢复备份</string>
     <string name="settings_import_source_title">选择要导入的备份</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">短信导入/导出 (.zip, .json)</string>
@@ -119,4 +130,10 @@
     <string name="settings_save">保存</string>
     <string name="settings_import">导入</string>
     <string name="advanced_turn_on_links">先开启“隐藏消息中的链接”</string>
+    <string name="settings_swipe_actions_change">更改</string>
+    <string name="settings_link_behaviour_footer">选择消息中链接的行为：保持为纯文本、点击时打开，或打开前先询问你。</string>
+    <string name="settings_notif_footer">控制哪些对话会通知你、是否发出声音，以及通知显示多久。</string>
+    <string name="settings_auto_delete_footer">已删除的对话、被屏蔽的消息和被屏蔽的发送者会先移至“垃圾邮件和已屏蔽”，然后才彻底清除。关闭自动删除时不会清除任何内容。</string>
+    <string name="settings_accessibility_footer">无障碍模式会放大文字、点按区域和对比度。更改会应用到整个应用。</string>
+    <string name="settings_inbox_footer">归档、滑动操作、屏蔽和延迟发送适用于信息列表中的对话。</string>
 </resources>

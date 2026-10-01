@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -10,6 +11,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.biometric.BiometricManager
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -47,7 +51,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -93,6 +96,7 @@ fun SettingsScreen(
     onOpenTrash: () -> Unit = {},
     onOpenAdvanced: () -> Unit = {},
     onOpenSpamBlocked: () -> Unit = {},
+    onOpenInbox: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
@@ -102,8 +106,6 @@ fun SettingsScreen(
     val revision by vm.settings.revision.collectAsState()
 
     var themeDialog by remember { mutableStateOf(false) }
-    var notifications by remember(revision) { mutableStateOf(vm.settings.notificationsEnabled) }
-    var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
     var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
     val notificationSoundOptions = listOf(
         SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
@@ -112,26 +114,15 @@ fun SettingsScreen(
         SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
         SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
     )
-    var showSim by remember(revision) { mutableStateOf(vm.settings.showSimIndicator) }
     val themeMode = vm.themeMode
 
     var soundDialog by remember { mutableStateOf(false) }
 
-    var pinned by remember(revision) { mutableStateOf(vm.settings.pinnedEnabled) }
-    var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
-    var swipeActions by remember(revision) { mutableStateOf(vm.settings.swipeActionsEnabled) }
-    var blocking by remember(revision) { mutableStateOf(vm.settings.blockingEnabled) }
-    val privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
-    var forwarding by remember(revision) { mutableStateOf(vm.settings.forwardingEnabled) }
-    var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
-    var scheduledMessages by remember(revision) { mutableStateOf(vm.settings.scheduledMessagesEnabled) }
-    var delayedSending by remember(revision) { mutableStateOf(vm.settings.delayedSendingEnabled) }
-    var delaySeconds by remember(revision) { mutableIntStateOf(vm.settings.delaySeconds) }
+    var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
+    var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
 
     var simDialog by remember { mutableStateOf(false) }
     var sims by remember { mutableStateOf(emptyList<SimCard>()) }
-    var backingUp by remember { mutableStateOf(false) }
-    var delayDialog by remember { mutableStateOf(false) }
     var backupFolder by remember(revision) { mutableStateOf(vm.settings.backupTreeUri) }
 
     var pinMode by remember { mutableStateOf<PinDialogMode?>(null) }
@@ -238,45 +229,30 @@ fun SettingsScreen(
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = SettingsLayout.SCREEN_PADDING)
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(SettingsLayout.TOP_GAP))
 
             SettingsGroup {
                 SettingsRow(
+                    position = RowPosition.FIRST,
                     title = stringResource(R.string.settings_notif_title),
-                    subtitle = stringResource(R.string.settings_notif_subtitle),
-                    checked = notifications,
-                    onChecked = { notifications = it; vm.settings.notificationsEnabled = it }
+                    onClick = { openSystemNotificationSettings(context) }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_pin_notification_sound),
-                    subtitle = notificationSoundLabel(notificationSound, notificationSoundOptions, context),
-                    onClick = {
-                        notificationSound = vm.settings.notificationSound
-                        soundDialog = true
-                    }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_delivery_reports_title),
-                    subtitle = stringResource(R.string.settings_delivery_reports_subtitle),
-                    checked = delivery,
-                    onChecked = { delivery = it; vm.settings.deliveryReportsEnabled = it }
-                )
-                SettingsRow(
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_mark_read_title),
-                    subtitle = stringResource(R.string.settings_mark_read_subtitle),
                     onClick = {
                         vm.markAllRead()
-                        Toast.makeText(context, context.getString(R.string.settings_mark_read), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.settings_mark_read),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
                 SettingsRow(
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_theme_title),
                     subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
@@ -299,11 +275,12 @@ fun SettingsScreen(
                     }
                 }
                 SettingsRow(
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_pin_sim_card),
                     subtitle = currentSimLabel,
                     onClick = {
                         val hasPerm = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
-                                PackageManager.PERMISSION_GRANTED
+                            PackageManager.PERMISSION_GRANTED
                         if (hasPerm) {
                             sims = SimCards.load(context)
                             simDialog = true
@@ -313,101 +290,55 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_sim_indicator),
-                    subtitle = stringResource(R.string.settings_sim_indicator_desc),
-                    checked = showSim,
-                    onChecked = { showSim = it; vm.settings.showSimIndicator = it }
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_archiving_title),
-                    subtitle = stringResource(R.string.settings_archiving_subtitle),
-                    checked = archiving,
-                    onChecked = { archiving = it; vm.settings.archivingEnabled = it }
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_inbox_title),
+                    onClick = onOpenInbox
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_pinned_title),
-                    subtitle = stringResource(R.string.settings_pinned_subtitle),
-                    checked = pinned,
-                    onChecked = { pinned = it; vm.settings.pinnedEnabled = it; if (!it) vm.unpinAll() }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_swipe_actions_title),
-                    subtitle = stringResource(R.string.settings_swipe_actions_subtitle),
-                    checked = swipeActions,
-                    onChecked = { swipeActions = it; vm.settings.swipeActionsEnabled = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_unread_top_title),
-                    subtitle = stringResource(R.string.settings_unread_top_subtitle),
-                    checked = unreadAtTop,
-                    onChecked = { unreadAtTop = it; vm.settings.unreadAtTopEnabled = it }
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_forwarding_title),
-                    subtitle = stringResource(R.string.settings_forwarding_subtitle),
-                    checked = forwarding,
-                    onChecked = { forwarding = it; vm.settings.forwardingEnabled = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_scheduled_title),
-                    subtitle = stringResource(R.string.settings_scheduled_subtitle),
-                    checked = scheduledMessages,
-                    onChecked = { scheduledMessages = it; vm.settings.scheduledMessagesEnabled = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_delayed_title),
-                    subtitle = stringResource(R.string.settings_delayed_subtitle),
-                    checked = delayedSending,
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_privacy_title),
+                    checked = privacyMode,
                     onChecked = {
-                        delayedSending = it; vm.settings.delayedSendingEnabled = it
-                        if (it) delayDialog = true
+                        privacyMode = it
+                        (context as? Activity)?.let { act -> vm.setPrivacyMode(act, it) }
                     }
                 )
-                if (delayedSending) {
-                    SettingsRow(
-                        title = stringResource(R.string.settings_delay_secs_title),
-                        subtitle = String.format(context.getString(R.string.settings_delay_with_value), delaySeconds),
-                        onClick = { delayDialog = true }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
                 SettingsRow(
-                    title = stringResource(R.string.settings_blocking_title),
-                    subtitle = stringResource(R.string.settings_blocking_subtitle),
-                    checked = blocking,
-                    onChecked = { blocking = it; vm.settings.blockingEnabled = it }
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_applock_title),
+                    subtitle = stringResource(R.string.settings_applock_subtitle),
+                    checked = appLock,
+                    onChecked = { enable ->
+                        val canAuth = BiometricManager.from(context).canAuthenticate(
+                            BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                                BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                        )
+                        if (enable && canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.lock_setup_needed),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            appLock = enable
+                            vm.settings.appLockEnabled = enable
+                        }
+                    }
                 )
                 SettingsRow(
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_trash_title),
-                    subtitle = stringResource(R.string.settings_trash_subtitle),
                     onClick = onOpenTrash
                 )
                 SettingsRow(
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.conversations_spam_blocked),
-                    subtitle = stringResource(R.string.settings_spam_blocked_subtitle),
                     onClick = onOpenSpamBlocked
                 )
                 SettingsRow(
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_backup_title),
-                    subtitle = when {
-                        privacyMode -> stringResource(R.string.settings_backup_privacy_disabled)
-                        backingUp -> stringResource(R.string.settings_saving)
-                        else -> stringResource(R.string.settings_backup_saving)
-                    },
+                    subtitle = stringResource(R.string.settings_backup_subtitle),
                     enabled = !privacyMode,
                     onClick = {
                         pinMode = PinDialogMode.SET
@@ -417,16 +348,13 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_import_title),
                     subtitle = stringResource(R.string.settings_import_subtitle),
                     onClick = { importSourceDialog = true }
                 )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
                 SettingsRow(
+                    position = RowPosition.LAST,
                     title = stringResource(R.string.settings_advanced_title),
                     subtitle = stringResource(R.string.settings_advanced_subtitle),
                     onClick = onOpenAdvanced
@@ -435,52 +363,57 @@ fun SettingsScreen(
 
             val scheduledMsgs by vm.scheduledMessages().collectAsState(initial = emptyList())
             if (scheduledMsgs.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(SettingsLayout.GROUP_GAP))
                 SettingsGroup {
                     val is24Hour = is24HourFormat(context)
                     scheduledMsgs.forEach { sm ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        Card(
+                            shape = RoundedCornerShape(SettingsLayout.OUTER_RADIUS),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                Icons.Rounded.Schedule, null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(sm.body, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                                Text(
-                                    "To: ${formatPhoneNumber(sm.address)} · ${formatDateTime(sm.timestamp, "MMM d,", is24Hour)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            IconButton(
-                                onClick = { vm.cancelScheduledMessage(sm.id) },
-                                modifier = Modifier.size(A11y.touchTarget(32.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal = SettingsLayout.ROW_CONTENT_PADDING,
+                                        vertical = 12.dp
+                                    )
                             ) {
-                                Icon(Icons.Rounded.Cancel, stringResource(R.string.icon_cancel), modifier = Modifier.size(20.dp))
+                                Icon(
+                                    Icons.Rounded.Schedule, null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(sm.body, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                                    Text(
+                                        "To: ${formatPhoneNumber(sm.address)} · ${formatDateTime(sm.timestamp, "MMM d,", is24Hour)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { vm.cancelScheduledMessage(sm.id) },
+                                    modifier = Modifier.size(A11y.touchTarget(32.dp))
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Cancel,
+                                        stringResource(R.string.icon_cancel),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
                             }
                         }
                     }
-                }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                stringResource(R.string.messages_footer),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .padding(bottom = 16.dp)
-            )
+            SettingsFooter(stringResource(R.string.messages_footer))
         }
     }
 
@@ -609,50 +542,6 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { simDialog = false }) { Text(stringResource(R.string.common_cancel)) }
-            }
-        )
-    }
-
-    if (delayDialog) {
-        val options = listOf(1, 3, 5, 10, 30)
-        AlertDialog(
-            onDismissRequest = { delayDialog = false },
-            title = { Text(stringResource(R.string.settings_pin_delay)) },
-            text = {
-                Column {
-                    Text(
-                        stringResource(R.string.settings_choose_delay),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    options.forEach { secs ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    delaySeconds = secs
-                                    vm.settings.delaySeconds = secs
-                                    delayDialog = false
-                                }
-                                .padding(vertical = 4.dp)
-                        ) {
-                            RadioButton(
-                                selected = delaySeconds == secs,
-                                onClick = {
-                                    delaySeconds = secs
-                                    vm.settings.delaySeconds = secs
-                                    delayDialog = false
-                                }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(context.getString(R.string.settings_countdown_placeholder, secs))
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { delayDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -884,9 +773,7 @@ fun SettingsScreen(
                         else -> {
                             if (mode == PinDialogMode.SET) {
                                 pinMode = null
-                                backingUp = true
                                 vm.backupDatabase(pin) { ok ->
-                                    backingUp = false
                                     val location = if (BackupLocation.isCustom(backupFolder)) BackupLocation.label(backupFolder)
                                     else context.getString(R.string.settings_backup_location_default)
                                     Toast.makeText(
@@ -938,16 +825,76 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * A run of settings rows separated by a small gap. Each row draws its own card;
+ * the group itself is only the vertical rhythm, so a group's outer rows are
+ * strongly rounded while the rows between them stay nearly rectangular.
+ */
+/**
+ * A card whose corner rounding follows its place in a group, for screens that
+ * need their own row content but the same shape language as the settings list.
+ * Pair with a [Column] of [SettingsLayout.ROW_GAP] spacing.
+ */
 @Composable
-fun SettingsGroup(content: @Composable () -> Unit) {
+fun GroupedRowCard(
+    position: RowPosition,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val corners = rowCorners(position)
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(
+            topStart = corners.topStart,
+            topEnd = corners.topEnd,
+            bottomEnd = corners.bottomEnd,
+            bottomStart = corners.bottomStart
+        ),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         content()
+    }
+}
+
+@Composable
+fun SettingsGroup(content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(SettingsLayout.ROW_GAP)) {
+        content()
+    }
+}
+
+/**
+ * One card holding several related rows, split by hairlines. Used where a list
+ * reads as a single block rather than as a run of separate row cards, e.g. a
+ * contact profile's notification and block controls.
+ */
+@Composable
+fun GroupedRowList(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(SettingsLayout.OUTER_RADIUS),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column { content() }
+    }
+}
+
+/** Android's own notification prefs for this app, which is where the OS-level
+ *  toggles (per-conversation, channels, badges) actually live. */
+private fun openSystemNotificationSettings(context: android.content.Context) {
+    runCatching {
+        context.startActivity(
+            android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
     }
 }
 
@@ -997,53 +944,122 @@ private fun ImportRadioGroup(
     }
 }
 
+/**
+ * One settings row, drawn as its own card. [position] decides which corners
+ * soften, so the first and last rows of a group are strongly rounded and the
+ * ones between them nearly square, which makes a gap-separated run of cards
+ * read as one group.
+ */
 @Composable
 fun SettingsRow(
     title: String,
-    subtitle: String?,
+    subtitle: String? = null,
     checked: Boolean? = null,
     onChecked: ((Boolean) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    position: RowPosition = RowPosition.SINGLE,
+    trailing: (@Composable () -> Unit)? = null,
+    preview: (@Composable () -> Unit)? = null
 ) {
     val contentAlpha = if (enabled) 1f else 0.38f
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = if (LocalLargeTouchTargets.current) 72.dp else 60.dp)
-            .clickable(enabled = enabled && (onClick != null || checked != null)) {
-                if (checked != null && onChecked != null) onChecked(!checked) else onClick?.invoke()
-            }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+    val corners = rowCorners(position)
+    Card(
+        shape = RoundedCornerShape(
+            topStart = corners.topStart,
+            topEnd = corners.topEnd,
+            bottomEnd = corners.bottomEnd,
+            bottomStart = corners.bottomStart
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.weight(1f).alpha(contentAlpha)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            if (subtitle != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled && (onClick != null || checked != null)) {
+                    if (checked != null && onChecked != null) onChecked(!checked) else onClick?.invoke()
+                }
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(
+                        min = SettingsLayout.rowMinHeight(
+                            hasSubtitle = subtitle != null,
+                            largeTouchTargets = LocalLargeTouchTargets.current
+                        )
+                    )
+                    .padding(
+                        horizontal = SettingsLayout.ROW_CONTENT_PADDING,
+                        vertical = 12.dp
+                    )
+            ) {
+                Column(Modifier.weight(1f).alpha(contentAlpha)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    if (subtitle != null) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (checked != null && onChecked != null) {
+                    Spacer(Modifier.width(8.dp))
+                    // M3 sizes the Switch for a 48dp touch target, which makes every
+                    // switch row ~16dp taller than a title-only one and breaks the
+                    // list's rhythm. The whole row is already the control, so the
+                    // switch only has to render at its own 52x32 track size.
+                    Switch(
+                        checked = checked,
+                        onCheckedChange = { onChecked(it) },
+                        enabled = enabled,
+                        modifier = Modifier.size(width = 52.dp, height = 32.dp)
+                    )
+                } else if (trailing != null) {
+                    trailing()
+                }
             }
-        }
-        if (checked != null && onChecked != null) {
-            Spacer(Modifier.width(8.dp))
-            Switch(
-                checked = checked,
-                onCheckedChange = { onChecked(it) },
-                enabled = enabled,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                )
-            )
+            if (preview != null) {
+                Box(
+                    Modifier.padding(
+                        start = SettingsLayout.PREVIEW_INSET,
+                        end = SettingsLayout.PREVIEW_INSET,
+                        bottom = SettingsLayout.PREVIEW_INSET
+                    )
+                ) { preview() }
+            }
         }
     }
+}
+
+/**
+ * Explanatory text under a settings group. Set on its own line rather than as a
+ * row, so it reads as a note about the group instead of another option. Uses
+ * the same type as a row's subtitle, since it describes those same options.
+ */
+@Composable
+fun SettingsFooter(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            // No horizontal inset: the note lines up with the left and right
+            // edges of the row cards above it, the way a page's border does,
+            // rather than with the text inside them.
+            .padding(
+                top = SettingsLayout.FOOTER_TOP_GAP,
+                bottom = SettingsLayout.FOOTER_BOTTOM_GAP
+            )
+    )
 }

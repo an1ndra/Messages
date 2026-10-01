@@ -25,7 +25,7 @@ private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
 enum class ImportMode { REPLACE, MERGE }
 
-private const val DB_VERSION = 21
+private const val DB_VERSION = 24
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -107,6 +107,26 @@ class Db(context: Context) :
                 comparable_destination TEXT NOT NULL,
                 country_code TEXT NOT NULL DEFAULT '',
                 sub_id INTEGER NOT NULL DEFAULT -1)"""
+        )
+        db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
+        createConversationRecipients(db)
+    }
+
+    /**
+     * Who a conversation goes to. `conversations.address` stays as the primary
+     * recipient so every existing 1:1 conversation keeps working untouched; a
+     * conversation is a group once this table holds more than one row.
+     */
+    private fun createConversationRecipients(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS conversation_recipients(
+                conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                address TEXT NOT NULL,
+                PRIMARY KEY(conversation_id, address))"""
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_conv_recipients_address ON conversation_recipients(address)"
         )
     }
 
@@ -210,6 +230,25 @@ class Db(context: Context) :
             // sender gets a full window from the upgrade rather than being
             // purged the moment it is first seen.
             db.execSQL("UPDATE conversations SET blocked_at=timestamp WHERE blocked=1 AND blocked_at=0")
+        }
+        if (oldVersion < 22) {
+            createConversationRecipients(db)
+            // Every existing conversation starts as its own single recipient, so
+            // 1:1 chats keep sending exactly where they did before.
+            db.execSQL(
+                """INSERT OR IGNORE INTO conversation_recipients(conversation_id, address)
+                   SELECT id, address FROM conversations WHERE deleted_at=0"""
+            )
+        }
+        if (oldVersion < 23) {
+            // Every existing conversation is 1:1, so no group titles yet; they
+            // are filled in the moment a second person is added.
+            db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
+        }
+        if (oldVersion < 24) {
+            // Who sent each message. Blank means the conversation's own address
+            // (1:1 chats, and everything sent by the user).
+            db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
         }
     }
 
@@ -343,7 +382,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.blocked,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address)
+               COALESCE(p.display_destination, c.address), c.group_title
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.deleted_at=0 ORDER BY c.pinned DESC, c.timestamp DESC""",
@@ -365,7 +404,8 @@ class Repository(private val context: Context) {
                         draft = c.getString(10),
                         draftDate = c.getLong(11),
                         deletedAt = c.getLong(12),
-                        display = c.getString(13)
+                        display = c.getString(13),
+                        groupTitle = c.getString(14).orEmpty()
                     )
                 )
             }
@@ -378,7 +418,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address)
+               COALESCE(p.display_destination, c.address), c.group_title
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.id=? AND c.deleted_at=0""",
@@ -398,7 +438,8 @@ class Repository(private val context: Context) {
                     draft = c.getString(9),
                     draftDate = c.getLong(10),
                     deletedAt = c.getLong(11),
-                    display = c.getString(12)
+                    display = c.getString(12),
+                    groupTitle = c.getString(13).orEmpty()
                 )
             }
         }
@@ -444,7 +485,7 @@ class Repository(private val context: Context) {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
             """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id,
-               transport,delivered_at FROM messages
+               transport,delivered_at,address FROM messages
                WHERE conversation_id=? AND deleted_at=0 ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
             arrayOf(conversationId.toString(), limit.toString(), offset.toString())
         ).use { c ->
@@ -463,7 +504,8 @@ class Repository(private val context: Context) {
                         locked = c.getInt(8) == 1,
                         subId = c.getInt(9),
                         transport = c.getString(10),
-                        deliveredAt = c.getLong(11)
+                        deliveredAt = c.getLong(11),
+                        address = c.getString(12).orEmpty()
                     )
                 )
             }
@@ -578,6 +620,14 @@ class Repository(private val context: Context) {
             }
             convoId = db.writableDatabase.insert("conversations", null, cv)
             upsertParticipant(db.writableDatabase, target, subId)
+            // Every conversation needs its own address as a recipient, or adding
+            // a second person would build a group that drops the original.
+            if (convoId > 0) {
+                db.writableDatabase.execSQL(
+                    "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                    arrayOf(convoId, target)
+                )
+            }
             notifyChanged()
         } else if (InboundIngest.restoresTrashedConversation(kind)) {
             // A trashed thread addressed by a new chat / incoming message must be
@@ -599,7 +649,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.pinned,c.draft,c.draft_date,
-               COALESCE(p.display_destination, c.address)
+               COALESCE(p.display_destination, c.address), c.group_title
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.id=? AND c.deleted_at=0""",
@@ -617,11 +667,187 @@ class Repository(private val context: Context) {
                 pinned = c.getInt(8) == 1,
                 draft = c.getString(9),
                 draftDate = c.getLong(10),
-                display = c.getString(11)
+                display = c.getString(11),
+                groupTitle = c.getString(12).orEmpty()
             )
         }
         found
     }
+
+    /**
+     * Who a conversation goes to, primary recipient first. Falls back to the
+     * conversation's own `address` so a conversation with no rows here (a
+     * brand-new one, or one predating the migration) still sends somewhere.
+     */
+    suspend fun conversationRecipients(conversationId: Long): List<String> =
+        runOnIoAsync { recipientsBlocking(conversationId) }
+
+    /** True once a conversation has more than one recipient. */
+    suspend fun isGroup(conversationId: Long): Boolean =
+        runOnIoAsync { recipientsBlocking(conversationId).size > 1 }
+
+    private fun recipientsBlocking(conversationId: Long): List<String> {
+        val out = mutableListOf<String>()
+        db.readableDatabase.rawQuery(
+            "SELECT address FROM conversation_recipients WHERE conversation_id=? ORDER BY rowid",
+            arrayOf(conversationId.toString())
+        ).use { c ->
+            while (c.moveToNext()) out += c.getString(0)
+        }
+        if (out.isEmpty()) {
+            db.readableDatabase.rawQuery(
+                "SELECT address FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+            ).use { c -> if (c.moveToFirst()) out += c.getString(0) }
+        }
+        return out.filter { it.isNotBlank() }.distinct()
+    }
+
+    /**
+     * Adds [addresses] to the conversation, keeping its primary recipient.
+     * Returns the addresses that were not already on the conversation.
+     */
+    suspend fun addParticipants(conversationId: Long, addresses: List<String>): List<String> =
+        runOnIoAsync {
+            val existing = recipientsBlocking(conversationId).toMutableSet()
+            val added = mutableListOf<String>()
+            for (raw in addresses) {
+                val address = raw.trim()
+                if (address.isEmpty()) continue
+                upsertParticipant(db.writableDatabase, address)
+                if (!existing.add(address)) continue
+                added += address
+                db.writableDatabase.execSQL(
+                    "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                    arrayOf(conversationId, address)
+                )
+            }
+            // A conversation that somehow lost its own recipient row would
+            // otherwise become a group that no longer sends to its original
+            // address, so put it back before anything else.
+            val primary = db.readableDatabase.rawQuery(
+                "SELECT address FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+            ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+            if (primary != null && primary !in existing && added.isNotEmpty()) {
+                db.writableDatabase.execSQL(
+                    "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                    arrayOf(conversationId, primary)
+                )
+            }
+            if (added.isNotEmpty()) {
+                ensureGroupTitle(conversationId)
+                notifyChanged()
+            }
+            added
+        }
+
+    /**
+     * Gives a group a default name from its members, once. A title the user set
+     * is never overwritten, and a 1:1 conversation keeps its contact name.
+     */
+    private fun ensureGroupTitle(conversationId: Long) {
+        val members = recipientsBlocking(conversationId)
+        if (members.size <= 1) return
+        val current = db.readableDatabase.rawQuery(
+            "SELECT group_title FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        if (!current.isNullOrBlank()) return
+        val names = members.map { contactNameFor(it) ?: it }.take(3)
+        val title = when {
+            names.size <= 1 -> names.first()
+            else -> names.dropLast(1).joinToString(", ") + " +" + names.last()
+        }
+        db.writableDatabase.update(
+            "conversations",
+            ContentValues().apply { put("group_title", title) },
+            "id=?", arrayOf(conversationId.toString())
+        )
+    }
+
+    /**
+     * Where an inbound SMS from [address] belongs, or null when the caller
+     * should create a 1:1 thread.
+     *
+     * A 1:1 with this sender always wins: if the user has a private thread with
+     * them, a text from them almost certainly means that thread, not a group.
+     * Failing that, the message goes to their group, but only when exactly one
+     * group is possible -- an SMS names a sender, never a conversation, so this
+     * refuses to guess between two.
+     */
+    suspend fun conversationForInbound(address: String): Long? =
+        runOnIoAsync { conversationForInboundBlocking(address) }
+
+    fun conversationForInboundBlocking(address: String): Long? =
+        conversationIdForAddressBlocking(address) ?: soleGroupBlocking(address)
+
+    private fun conversationIdForAddressBlocking(address: String): Long? {
+        var id: Long? = null
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM conversations WHERE address=? AND deleted_at=0", arrayOf(address)
+        ).use { c -> if (c.moveToFirst()) id = c.getLong(0) }
+        return id ?: matchConversationId(db.readableDatabase, address, activeOnly = true)
+    }
+
+    /**
+     * The one group conversation [address] belongs to, or null if ambiguous.
+     *
+     * Compared by canonical identity rather than by string: the network can
+     * deliver an address with or without a leading '+', and an exact match would
+     * silently fail to attribute those messages.
+     */
+    fun soleGroupBlocking(address: String): Long? {
+        val groups = mutableMapOf<Long, MutableList<String>>()
+        db.readableDatabase.rawQuery(
+            """SELECT r.conversation_id, r.address FROM conversation_recipients r
+               JOIN conversations c ON c.id = r.conversation_id
+               WHERE c.deleted_at = 0""",
+            null
+        ).use { c ->
+            val idIdx = c.getColumnIndex("conversation_id")
+            val addrIdx = c.getColumnIndex("address")
+            while (c.moveToNext()) {
+                groups.getOrPut(c.getLong(idIdx)) { mutableListOf() } += c.getString(addrIdx)
+            }
+        }
+        return groups
+            .filter { (_, members) -> members.size > 1 }
+            .filter { (_, members) -> members.any { samePerson(it, address) } }
+            .keys
+            .singleOrNull()
+    }
+
+    /** A group's own name, or blank when the conversation is 1:1. */
+    fun groupTitleBlocking(conversationId: Long): String =
+        db.readableDatabase.rawQuery(
+            "SELECT group_title FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getString(0).orEmpty() else "" }
+
+    /** Renames a group. Blank input clears it, restoring the default. */
+    suspend fun setGroupTitle(conversationId: Long, title: String) = runOnIoAsync {
+        val clean = title.trim()
+        db.writableDatabase.update(
+            "conversations",
+            ContentValues().apply { put("group_title", clean) },
+            "id=?", arrayOf(conversationId.toString())
+        )
+        if (clean.isEmpty()) ensureGroupTitle(conversationId)
+        notifyChanged()
+    }
+
+    /**
+     * Drops [address] from the conversation. The last remaining recipient
+     * cannot be removed, so a conversation always has somewhere to send.
+     * Returns true when a row was actually deleted.
+     */
+    suspend fun removeParticipant(conversationId: Long, address: String): Boolean =
+        runOnIoAsync {
+            if (recipientsBlocking(conversationId).size <= 1) return@runOnIoAsync false
+            val removed = db.writableDatabase.delete(
+                "conversation_recipients", "conversation_id=? AND address=?",
+                arrayOf(conversationId.toString(), address)
+            )
+            if (removed > 0) notifyChanged()
+            removed > 0
+        }
 
     /** Stores a text message as 'sending'; SmsStatusReceiver confirms the final state. */
     fun sendText(conversationId: Long, body: String, subId: Int = -1): Message? {
@@ -680,12 +906,16 @@ class Repository(private val context: Context) {
     ): Long {
         val now = System.currentTimeMillis()
         val clean = MessageBody.normalize(body)
-        val convoId = getOrCreateConversationBlocking(address, null, subId)
+        val convoId = conversationForInboundBlocking(address)
+            ?: getOrCreateConversationBlocking(address, null, subId)
 
         db.writableDatabase.execSQL(
-            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
-               VALUES(?,?,?,?,?,?,?,?)""",
-            arrayOf<Any?>(convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id,address)
+               VALUES(?,?,?,?,?,?,?,?,?)""",
+            arrayOf<Any?>(
+                convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS,
+                subId, address
+            )
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
@@ -861,8 +1091,14 @@ class Repository(private val context: Context) {
     }
 
     fun markReadSuspend(conversationId: Long) {
+        setReadSuspend(conversationId, read = true)
+    }
+
+    /** [read] false restores the unread badge, which a swipe undo needs. */
+    fun setReadSuspend(conversationId: Long, read: Boolean) {
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET unread_count=0 WHERE id=?", arrayOf(conversationId)
+            "UPDATE conversations SET unread_count=? WHERE id=?",
+            arrayOf<Any>(if (read) 0 else 1, conversationId)
         )
         notifyChanged()
     }
@@ -996,7 +1232,7 @@ class Repository(private val context: Context) {
         }
         // A draft only keeps the chat around while drafts are actually surfaced;
         // a leftover column value from when the feature was on must not.
-        val draftKeepsIt = settings.draftsEnabled && draft.isNotBlank()
+        val draftKeepsIt = draft.isNotBlank()
         if (remaining > 0 || draftKeepsIt) return
         db.writableDatabase.execSQL(
             "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
@@ -2219,12 +2455,16 @@ class Repository(private val context: Context) {
                         ).use { it.moveToFirst() }
                         if (!duplicate) {
                             val address = canonical(message.address).ifEmpty { message.address }
-                            val cid = matchConversationId(database, address) ?: database.insertOrThrow(
-                                "conversations", null, ContentValues().apply {
-                                    put("address", address)
-                                    put("name", contactNameFor(address) ?: address)
-                                }
-                            )
+                            // Same routing as an inbound SMS: a 1:1 with the
+                            // sender wins, otherwise the group they are in, and
+                            // only when exactly one is possible.
+                            val cid = conversationForInboundBlocking(address)
+                                ?: database.insertOrThrow(
+                                    "conversations", null, ContentValues().apply {
+                                        put("address", address)
+                                        put("name", contactNameFor(address) ?: address)
+                                    }
+                                )
                             database.insertOrThrow("messages", null, ContentValues().apply {
                                 put("conversation_id", cid)
                                 put("body", message.content.body)
@@ -2236,6 +2476,7 @@ class Repository(private val context: Context) {
                                 put("sub_id", message.subId)
                                 put("media_type", if (message.content.imageId == null) "text" else "image")
                                 put("media_uri", message.content.imageId?.let { "content://mms/part/$it" } ?: "")
+                                put("address", if (message.isMe) "" else address)
                             })
                             if (!message.isMe && !message.read) database.execSQL(
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)

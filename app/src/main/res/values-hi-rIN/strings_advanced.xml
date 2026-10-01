@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_advanced_reverse_swipe">उल्टा स्वाइप एक्शन</string>
     <string name="settings_advanced_reverse_swipe_desc">संग्रहीत करने के लिए बाईं ओर स्वाइप करें और हटाने के लिए दाईं ओर स्वाइप करें</string>
     <string name="settings_advanced_hide_links">संदेशों से लिंक छुपाएं</string>
     <string name="settings_advanced_hide_links_desc">संदेशों में लिंक को कभी भी टैप करने योग्य लिंक में न बदलें</string>
@@ -38,4 +37,16 @@
     <string name="diagnostics_close">बंद करें</string>
     <string name="diagnostics_clip_label">Messages डायग्नोस्टिक्स</string>
     <string name="settings_sim_unknown">अज्ञात SIM</string>
+
+    <string name="mms_check_title">MMS समर्थन</string>
+    <string name="mms_check_subtitle">हर SIM से MMS की जाँच करें</string>
+    <string name="mms_check_summary">%2$d में से %1$d SIM MMS का समर्थन करते हैं</string>
+    <string name="mms_check_verdict_supported">समर्थित</string>
+    <string name="mms_check_verdict_disabled">इस कैरियर पर बंद है</string>
+    <string name="mms_check_verdict_no_carrier">इस SIM पर कोई नेटवर्क नहीं है</string>
+    <string name="mms_check_verdict_unknown">जाँच नहीं हो सकी</string>
+    <string name="mms_check_number_hidden">कैरियर नंबर साझा नहीं करता</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">हर SIM की जाँच उसके अपने कैरियर द्वारा प्रकाशित MMS सेटिंग्स से की जाती है, क्योंकि एक ही देश के दो कैरियर अलग हो सकते हैं। देश कोड SIM नंबर से मिलता है जब कैरियर उसे साझा करता है, वरना SIM के नेटवर्क से।</string>
+    <string name="mms_check_no_sims">कोई सक्रिय SIM नहीं मिली</string>
 </resources>

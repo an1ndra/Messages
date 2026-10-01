@@ -448,7 +448,7 @@ object SmsSender {
     fun sendMms(
         context: Context,
         messageId: Long,
-        address: String,
+        addresses: List<String>,
         media: Uri,
         subscriptionId: Int = -1,
         caption: String = ""
@@ -456,9 +456,16 @@ object SmsSender {
         val mime = com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
             context.contentResolver.getType(media), media.toString()
         )
-        val prepared = MmsComposer.prepare(
-            context, address, media, mime, caption, subscriptionId
-        ) ?: return false
+        val config = MmsCarrierConfig.of(context, subscriptionId)
+        val prepared = when (val outcome = MmsComposer.prepare(
+            context, addresses, media, mime, caption, subscriptionId, config
+        )) {
+            is MmsComposer.Outcome.Ready -> outcome.prepared
+            is MmsComposer.Outcome.Rejected -> {
+                android.util.Log.w("MmsComposer", "MMS not sent: ${outcome.reason}")
+                return false
+            }
+        }
         return try {
             val sent = PendingIntent.getBroadcast(
                 context, (messageId % Int.MAX_VALUE).toInt(),
@@ -472,6 +479,30 @@ object SmsSender {
             )
             val overrides = Bundle().apply {
                 putBoolean(android.telephony.SmsManager.MMS_CONFIG_GROUP_MMS_ENABLED, false)
+                putInt(
+                    android.telephony.SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE,
+                    config.maxMessageSize
+                )
+                putInt(
+                    android.telephony.SmsManager.MMS_CONFIG_MAX_IMAGE_WIDTH,
+                    config.maxImageWidth
+                )
+                putInt(
+                    android.telephony.SmsManager.MMS_CONFIG_MAX_IMAGE_HEIGHT,
+                    config.maxImageHeight
+                )
+                putBoolean(
+                    android.telephony.SmsManager.MMS_CONFIG_MMS_DELIVERY_REPORT_ENABLED,
+                    config.deliveryReport
+                )
+                putBoolean(
+                    android.telephony.SmsManager.MMS_CONFIG_MMS_READ_REPORT_ENABLED,
+                    config.readReport
+                )
+                putBoolean(
+                    android.telephony.SmsManager.MMS_CONFIG_NOTIFY_WAP_MMSC_ENABLED,
+                    config.notifyWapMmsc
+                )
             }
             manager(context, subscriptionId).sendMultimediaMessage(
                 context, prepared.pduUri, null, overrides, sent

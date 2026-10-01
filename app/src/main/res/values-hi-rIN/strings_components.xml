@@ -31,7 +31,6 @@
     <string name="access_loading_messages">संदेश लोड हो रहे हैं</string>
     <string name="access_photo">फ़ोटो</string>
     <string name="action_call">कॉल करें</string>
-    <string name="action_add">जोड़ें</string>
     <string name="access_chat_top_bar">चैट टॉप बार</string>
     <string name="access_swipe_background">स्वाइप बैकग्राउंड</string>
     <string name="access_nav">नेविगेशन ड्रॉअर</string>
@@ -63,4 +62,18 @@
     <!-- Detail row labels -->
     <string name="detail_phone_number">फ़ोन नंबर</string>
     <string name="detail_messages">संदेश</string>
+    <string name="common_unblock">अवरुद्ध हटाएँ</string>
+    <string name="swipe_action_pin">पिन करें</string>
+    <string name="access_mark_read">पढ़ा चिह्नित करें</string>
+    <string name="access_mark_unread">अपठा चिह्नित करें</string>
+    <string name="action_contact">संपर्क</string>
+    <string name="action_info">जानकारी</string>
+    <string name="common_add">जोड़ें</string>
+    <string name="contact_people_selected">%1$d चुने गए</string>
+    <string name="contact_people_count">%1$d लोग</string>
+    <string name="contact_selected">चयनित</string>
+    <string name="contact_remove_people">समूह से हटाएँ</string>
+    <string name="contact_group_name">समूह का नाम</string>
+    <string name="contact_create_group">समूह बनाएँ</string>
+    <string name="contact_group_name_optional">वैकल्पिक - हम नाम रख देंगे</string>
 </resources>

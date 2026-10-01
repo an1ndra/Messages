@@ -20,7 +20,7 @@
     <string name="sim_slot_suffix"> · SIM %s</string>
     <string name="settings_sim_label">SIM %s</string>
     <string name="settings_notif_title">通知</string>
-    <string name="settings_notif_subtitle">顯示新訊息通知</string>
+    <string name="settings_notif_subtitle">音效和提醒</string>
     <string name="settings_send_sound_title">傳送聲音</string>
     <string name="settings_send_sound_subtitle">傳送訊息時播放聲音</string>
     <string name="settings_receive_sound_title">接收聲音</string>
@@ -29,9 +29,7 @@
     <string name="settings_delivery_reports_subtitle">追蹤 SMS 訊息是否已成功送達</string>
     <string name="settings_mark_read_title">全部標記為已讀</string>
     <string name="settings_mark_read_subtitle">清除所有對話的未讀徽章</string>
-    <string name="settings_theme_title">主題</string>
-    <string name="settings_drafts_title">草稿</string>
-    <string name="settings_drafts_subtitle">自動儲存未傳送的文字為草稿</string>
+    <string name="settings_theme_title">選擇主題</string>
     <string name="settings_archiving_title">封存</string>
     <string name="settings_archiving_subtitle">允許封存對話</string>
     <string name="settings_pinned_title">置頂對話</string>
@@ -48,8 +46,21 @@
     <string name="settings_delayed_subtitle">傳送訊息前等待時間</string>
     <string name="settings_delay_secs_title">延遲秒數</string>
     <string name="settings_delay_secs_subtitle"></string>
-    <string name="settings_advanced_title">進階</string>
-    <string name="settings_advanced_subtitle">永久刪除、滑動方向、連結行為</string>
+    <string name="settings_inbox_title">收件匣設定</string>
+    <string name="settings_advanced_title">進階設定</string>
+    <string name="settings_backup_subtitle">儲存副本</string>
+    <string name="settings_scheduled_none">沒有預定訊息</string>
+    <string name="settings_scheduled_meta">傳送給：%1$s · %2$s</string>
+        <string name="settings_scheduled_count">已預定 %d 則</string>
+    <string name="settings_link_behaviour_title">連結行為</string>
+    <string name="settings_link_behaviour_subtitle">隱藏、高亮、警告</string>
+    <string name="settings_link_needs_highlight">請先開啟「突顯連結」</string>
+    <string name="swipe_action_off">無</string>
+    <string name="swipe_action_mark_read">標記為已讀/未讀</string>
+    <string name="swipe_action_block">封鎖</string>
+    <string name="swipe_left_title">向左滑動</string>
+    <string name="swipe_right_title">向右滑動</string>
+    <string name="settings_advanced_subtitle">更多選項</string>
     <string name="settings_blocking_title">封鎖號碼</string>
     <string name="settings_blocking_subtitle">封鎖對方無法向您傳送訊息</string>
     <string name="settings_blocked_numbers_title">已封鎖的號碼</string>
@@ -92,7 +103,7 @@
     <string name="settings_backup_change">變更</string>
     <string name="settings_backup_saved_location">備份已使用 PIN 儲存至 %s</string>
     <string name="settings_import_title">匯入訊息</string>
-    <string name="settings_import_subtitle">匯入備份的資料庫檔案</string>
+    <string name="settings_import_subtitle">還原備份</string>
     <string name="settings_import_source_title">選擇要匯入的備份</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">簡訊匯入/匯出 (.zip, .json)</string>
@@ -119,4 +130,10 @@
     <string name="settings_save">儲存</string>
     <string name="settings_import">匯入</string>
     <string name="advanced_turn_on_links">先開啟「隱藏訊息中的連結」</string>
+    <string name="settings_swipe_actions_change">更改</string>
+    <string name="settings_link_behaviour_footer">選擇訊息中連結的行為：保持為純文字、點選時開啟，或開啟前先詢問你。</string>
+    <string name="settings_notif_footer">控制哪些對話會通知你、是否發出聲音，以及通知顯示多久。</string>
+    <string name="settings_auto_delete_footer">已刪除的對話、被封鎖的訊息和被封鎖的傳送者會先移至「垃圾郵件和已封鎖」，然後才徹底清除。關閉自動刪除時不會清除任何內容。</string>
+    <string name="settings_accessibility_footer">無障礙模式會放大文字、點按區域和對比度。更改會套用至整個應用程式。</string>
+    <string name="settings_inbox_footer">封存、滑動操作、封鎖和延遲傳送適用於訊息清單中的對話。</string>
 </resources>

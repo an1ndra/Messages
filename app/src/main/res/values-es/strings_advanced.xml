@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_advanced_reverse_swipe">Invertir acciones al deslizar</string>
     <string name="settings_advanced_reverse_swipe_desc">Deslizar a la izquierda para archivar y a la derecha para eliminar</string>
     <string name="settings_advanced_hide_links">Ocultar enlaces de los mensajes</string>
     <string name="settings_advanced_hide_links_desc">Nunca convertir los enlaces en los mensajes en enlaces seleccionables</string>
@@ -38,4 +37,16 @@
     <string name="diagnostics_close">Cerrar</string>
     <string name="diagnostics_clip_label">Diagnóstico de Messages</string>
     <string name="settings_sim_unknown">SIM desconocida</string>
+
+    <string name="mms_check_title">Compatibilidad con MMS</string>
+    <string name="mms_check_subtitle">Comprobar la compatibilidad con MMS de cada SIM</string>
+    <string name="mms_check_summary">%1$d de %2$d tarjetas SIM admiten MMS</string>
+    <string name="mms_check_verdict_supported">Compatible</string>
+    <string name="mms_check_verdict_disabled">Desactivado en este operador</string>
+    <string name="mms_check_verdict_no_carrier">Sin red en esta SIM</string>
+    <string name="mms_check_verdict_unknown">No se ha podido comprobar</string>
+    <string name="mms_check_number_hidden">El operador no comparte el número</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">Cada tarjeta SIM se comprueba con la configuración de MMS que publica su propio operador, porque dos operadores del mismo país pueden no coincidir. El prefijo del número se obtiene del número de la SIM cuando el operador lo comparte y, si no, de la red de la SIM.</string>
+    <string name="mms_check_no_sims">No se ha encontrado ninguna SIM activa</string>
 </resources>

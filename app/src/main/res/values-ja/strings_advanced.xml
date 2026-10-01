@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_advanced_reverse_swipe">スワイプアクションを逆にする</string>
     <string name="settings_advanced_reverse_swipe_desc">左にスワイプしてアーカイブ、右にスワイプして削除</string>
     <string name="settings_advanced_hide_links">メッセージからリンクを非表示</string>
     <string name="settings_advanced_hide_links_desc">メッセージ内のリンクをタップ可能なリンクにしない</string>
@@ -38,4 +37,16 @@
     <string name="diagnostics_close">閉じる</string>
     <string name="diagnostics_clip_label">Messages の診断情報</string>
     <string name="settings_sim_unknown">不明な SIM</string>
+
+    <string name="mms_check_title">MMS の対応状況</string>
+    <string name="mms_check_subtitle">各 SIM の MMS 対応を確認</string>
+    <string name="mms_check_summary">%2$d 個中 %1$d 個の SIM が MMS に対応しています</string>
+    <string name="mms_check_verdict_supported">対応</string>
+    <string name="mms_check_verdict_disabled">このキャリアでは無効</string>
+    <string name="mms_check_verdict_no_carrier">この SIM にネットワークがありません</string>
+    <string name="mms_check_verdict_unknown">確認できませんでした</string>
+    <string name="mms_check_number_hidden">キャリアが番号を公開していません</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">同じ国でもキャリアによって MMS の対応が異なるため、各 SIM はそのキャリアの MMS 設定と照合します。国番号は/carrier が番号を公開する場合は SIM 番号から、公開しない場合は SIM ネットワークから取得します。</string>
+    <string name="mms_check_no_sims">有効な SIM が見つかりません</string>
 </resources>

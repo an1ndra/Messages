@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_advanced_reverse_swipe">反轉滑動方向</string>
     <string name="settings_advanced_reverse_swipe_desc">向左滑動封存，向右滑動刪除</string>
     <string name="settings_advanced_hide_links">隱藏訊息中的連結</string>
     <string name="settings_advanced_hide_links_desc">不要將連結轉換為可點擊的文字</string>
@@ -38,4 +37,16 @@
     <string name="diagnostics_close">關閉</string>
     <string name="diagnostics_clip_label">Messages 診斷資訊</string>
     <string name="settings_sim_unknown">未知的 SIM</string>
+
+    <string name="mms_check_title">MMS 支援</string>
+    <string name="mms_check_subtitle">檢查每張 SIM 卡的 MMS 支援情況</string>
+    <string name="mms_check_summary">%2$d 張 SIM 卡中有 %1$d 張支援 MMS</string>
+    <string name="mms_check_verdict_supported">支援</string>
+    <string name="mms_check_verdict_disabled">此電信商已關閉</string>
+    <string name="mms_check_verdict_no_carrier">此 SIM 卡沒有網路</string>
+    <string name="mms_check_verdict_unknown">無法檢查</string>
+    <string name="mms_check_number_hidden">電信商未提供號碼</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">每張 SIM 卡都會依其電信商發布的 MMS 設定進行檢查，因為同一國家的兩家電信商可能不同。區碼在電信商提供號碼時取自 SIM 卡號，否則取自 SIM 網路。</string>
+    <string name="mms_check_no_sims">找不到可用的 SIM 卡</string>
 </resources>

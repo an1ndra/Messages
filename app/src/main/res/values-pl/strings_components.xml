@@ -31,7 +31,6 @@
     <string name="access_loading_messages">Ładowanie wiadomości</string>
     <string name="access_photo">Zdjęcie</string>
     <string name="action_call">Zadzwoń</string>
-    <string name="action_add">Dodaj</string>
     <string name="access_chat_top_bar">Górny pasek czatu</string>
     <string name="access_swipe_background">Tło przesunięcia</string>
     <string name="access_nav">Szuflejka nawigacji</string>
@@ -63,4 +62,18 @@
     <!-- Detail row labels -->
     <string name="detail_phone_number">Numer telefonu</string>
     <string name="detail_messages">Wiadomości</string>
+    <string name="common_unblock">Odblokuj</string>
+    <string name="swipe_action_pin">Przypnij</string>
+    <string name="access_mark_read">Oznacz jako przeczytane</string>
+    <string name="access_mark_unread">Oznacz jako nieprzeczytane</string>
+    <string name="action_contact">Kontakt</string>
+    <string name="action_info">Informacje</string>
+    <string name="common_add">Dodaj</string>
+    <string name="contact_people_selected">wybrano: %1$d</string>
+    <string name="contact_people_count">%1$d osób</string>
+    <string name="contact_selected">Wybrano</string>
+    <string name="contact_remove_people">Usuń z grupy</string>
+    <string name="contact_group_name">Nazwa grupy</string>
+    <string name="contact_create_group">Utwórz grupę</string>
+    <string name="contact_group_name_optional">Opcjonalnie - nazwiemy ją</string>
 </resources>

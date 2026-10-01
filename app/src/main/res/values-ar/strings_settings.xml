@@ -20,7 +20,7 @@
     <string name="sim_slot_suffix"> · شريحة %s</string>
     <string name="settings_sim_label">شريحة %s</string>
     <string name="settings_notif_title">الإشعارات</string>
-    <string name="settings_notif_subtitle">عرض إشعارات الرسائل</string>
+    <string name="settings_notif_subtitle">الصوت والتنبيهات</string>
     <string name="settings_send_sound_title">صوت الإرسال</string>
     <string name="settings_send_sound_subtitle">تشغيل الصوت عند إرسال رسالة</string>
     <string name="settings_receive_sound_title">صوت الاستلام</string>
@@ -29,9 +29,7 @@
     <string name="settings_delivery_reports_subtitle">معرفة متى يتم تسليم رسالة SMS</string>
     <string name="settings_mark_read_title">وضع علامة على الكل كمقروء</string>
     <string name="settings_mark_read_subtitle">إزالة علامات الرسائل غير المقروءة لجميع المحادثات</string>
-    <string name="settings_theme_title">السمة</string>
-    <string name="settings_drafts_title">المسودات</string>
-    <string name="settings_drafts_subtitle">حفظ تلقائي للرسائل غير المرسَلة كمسودات</string>
+    <string name="settings_theme_title">اختيار المظهر</string>
     <string name="settings_archiving_title">الأرشفة</string>
     <string name="settings_archiving_subtitle">السماح بأرشفة المحادثات</string>
     <string name="settings_pinned_title">المحادثات المثبّتة</string>
@@ -48,8 +46,21 @@
     <string name="settings_delayed_subtitle">الانتظار قبل إرسال الرسالة</string>
     <string name="settings_delay_secs_title">ثواني التأخير</string>
     <string name="settings_delay_secs_subtitle"></string>
-    <string name="settings_advanced_title">متقدم</string>
-    <string name="settings_advanced_subtitle">الحذف النهائي، اتجاه التمرير، سلوك الروابط</string>
+    <string name="settings_inbox_title">إعدادات صندوق الوارد</string>
+    <string name="settings_advanced_title">إعدادات متقدمة</string>
+    <string name="settings_backup_subtitle">حفظ نسخة</string>
+    <string name="settings_scheduled_none">لا توجد رسائل مجدولة</string>
+    <string name="settings_scheduled_meta">إلى: %1$s · %2$s</string>
+        <string name="settings_scheduled_count">%d مجدولة</string>
+    <string name="settings_link_behaviour_title">سلوك الروابط</string>
+    <string name="settings_link_behaviour_subtitle">إخفاء وإبراز وتحذير</string>
+    <string name="settings_link_needs_highlight">فعّل «إبراز الروابط» أولاً</string>
+    <string name="swipe_action_off">لا شيء</string>
+    <string name="swipe_action_mark_read">تعليم كمقروء/غير مقروء</string>
+    <string name="swipe_action_block">حظر</string>
+    <string name="swipe_left_title">اسحب لليسار</string>
+    <string name="swipe_right_title">اسحب لليمين</string>
+    <string name="settings_advanced_subtitle">خيارات أخرى</string>
     <string name="settings_blocking_title">حظر الأرقام</string>
     <string name="settings_blocking_subtitle">حظر الأرقام من مراسلتك</string>
     <string name="settings_blocked_numbers_title">الأرقام المحظورة</string>
@@ -92,7 +103,7 @@
     <string name="settings_backup_change">تغيير</string>
     <string name="settings_backup_saved_location">تم حفظ النسخة الاحتياطية برمز PIN في %s</string>
     <string name="settings_import_title">استيراد الرسائل</string>
-    <string name="settings_import_subtitle">استيراد ملف قاعدة بيانات نسخ احتياطي</string>
+    <string name="settings_import_subtitle">استعادة نسخة احتياطية</string>
     <string name="settings_import_source_title">اختر النسخة الاحتياطية المراد استيرادها</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">استيراد/تصدير SMS (.zip, .json)</string>
@@ -119,4 +130,10 @@
     <string name="settings_save">حفظ</string>
     <string name="settings_import">استيراد</string>
     <string name="advanced_turn_on_links">فعّل \"تسليط الضوء على الروابط\" أولاً</string>
+    <string name="settings_swipe_actions_change">تغيير</string>
+    <string name="settings_link_behaviour_footer">اختر سلوك الروابط في رسائلك: تبقى نصًا عاديًا، أو تُفتح عند الضغط عليها، أو يسألك التطبيق قبل فتحها.</string>
+    <string name="settings_notif_footer">تحكم في المحادثات التي تُشعرك، وهل يصدر صوت، وكم تبقى الإشعار.</string>
+    <string name="settings_auto_delete_footer">لا ُحذف المحادثات والرسائل المحظورة والمرسلون المحظورون إلا بعد نقلهم إلى البريد غير المرغوب والمحظور. لا شيء يُحذف إلا إيقاف الحذف التلقائي.</string>
+    <string name="settings_accessibility_footer">يكبّر وضع إمكانية الوصول النص ومناطق اللمس والتباين. تسري التغييرات على التطبيق كله.</string>
+    <string name="settings_inbox_footer">ينطبق الأرشفة وإجراءات السحب والحظر والإرسال المؤجل على المحادثات في قائمة الرسائل.</string>
 </resources>
