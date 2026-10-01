@@ -38,6 +38,7 @@
     <string name="chat_sending_via">Envoi via %s</string>
     <string name="chat_switch_sim">Changer de SIM</string>
     <string name="chat_scheduled_for">Planifié pour %s</string>
+    <string name="chat_schedule_failed">Impossible de programmer le message</string>
     <string name="chat_search_contacts">Rechercher des contacts</string>
     <string name="chat_add_people">Ajouter des personnes</string>
     <string name="chat_locked">Verrouillé</string>
@@ -75,7 +76,8 @@
 
     <string name="chat_status_not_sent">Non envoyé</string>
     <string name="chat_status_retry">Appuyez pour réessayer</string>
-    <string name="chat_draft_prefix">Brouillon : </string>
+    <string name="chat_draft_prefix">"Brouillon : "</string>
+    <string name="chat_scheduled_prefix">"Programmé : "</string>
     <string name="chat_sending_countdown">Envoi dans %d secondes...</string>
     <string name="chat_alphanumeric_error">Vous ne pouvez pas envoyer de messages à des expéditeurs alphanumériques comme %s. Seuls les numéros de téléphone sont pris en charge.</string>
     <string name="chat_alphanumeric_notice">%s ne peut pas recevoir de réponses. Seuls les numéros de téléphone sont pris en charge.</string>

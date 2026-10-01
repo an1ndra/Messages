@@ -1222,18 +1222,22 @@ class Repository(private val context: Context) {
         // Return the two values from the query lambda instead of capturing
         // mutable locals: the capture hides the assignment from static analysis
         // (CodeQL saw `remaining` as always 0 -> java/constant-comparison).
-        val (remaining, draft) = db.readableDatabase.rawQuery(
-            """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0), draft
+        val (remaining, pending, draft) = db.readableDatabase.rawQuery(
+            """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0),
+                      (SELECT COUNT(*) FROM scheduled_messages WHERE conversation_id=?),
+                      draft
                FROM conversations WHERE id=? AND deleted_at=0""",
-            arrayOf(conversationId.toString(), conversationId.toString())
+            arrayOf(conversationId.toString(), conversationId.toString(), conversationId.toString())
         ).use { c ->
             if (!c.moveToFirst()) return
-            c.getInt(0) to (c.getString(1) ?: "")
+            Triple(c.getInt(0), c.getInt(1), c.getString(2) ?: "")
         }
         // A draft only keeps the chat around while drafts are actually surfaced;
         // a leftover column value from when the feature was on must not.
-        val draftKeepsIt = draft.isNotBlank()
-        if (remaining > 0 || draftKeepsIt) return
+        // A queued message is content the user is waiting on. It lives in its own
+        // table, so without counting it the chat looks empty the moment the draft
+        // is cleared on scheduling and the conversation vanishes from the list.
+        if (ConversationLiveness.keepAlive(remaining, pending, draft)) return
         db.writableDatabase.execSQL(
             "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
             arrayOf(System.currentTimeMillis().toString(), TrashReason.MANUAL, conversationId.toString())
@@ -1644,6 +1648,35 @@ class Repository(private val context: Context) {
 
     fun deleteScheduledMessage(id: Long) {
         db.writableDatabase.execSQL("DELETE FROM scheduled_messages WHERE id=?", arrayOf(id))
+        notifyChanged()
+    }
+
+    suspend fun scheduledMessageById(id: Long): ScheduledMessage? = runOnIoAsync {
+        db.readableDatabase.rawQuery(
+            "SELECT id,address,body,timestamp,conversation_id,sub_id FROM scheduled_messages WHERE id=?",
+            arrayOf(id.toString())
+        ).use { c ->
+            if (!c.moveToFirst()) return@use null
+            ScheduledMessage(
+                id = c.getLong(0),
+                address = c.getString(1),
+                body = c.getString(2),
+                timestamp = c.getLong(3),
+                conversationId = c.getLong(4),
+                subId = c.getInt(5)
+            )
+        }
+    }
+
+    fun updateScheduledMessage(id: Long, timestamp: Long) {
+        require(timestamp > System.currentTimeMillis()) { "Scheduled time must be in the future" }
+        val updated = db.writableDatabase.update(
+            "scheduled_messages",
+            ContentValues().apply { put("timestamp", timestamp) },
+            "id=?",
+            arrayOf(id.toString())
+        )
+        require(updated > 0) { "No scheduled message with id $id" }
         notifyChanged()
     }
 

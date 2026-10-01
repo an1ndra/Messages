@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">उन्नत सेटिंग्स</string>
     <string name="settings_backup_subtitle">एक प्रति सहेजें</string>
     <string name="settings_scheduled_none">कोई निर्धारित संदेश नहीं</string>
+    <string name="settings_scheduled_search">संपर्क से खोजें</string>
+    <string name="settings_scheduled_reschedule">भेजने का समय बदलें</string>
+    <string name="settings_scheduled_no_match">इस नाम से कोई निर्धारित संदेश नहीं मिला</string>
     <string name="settings_scheduled_meta">प्राप्तकर्ता: %1$s · %2$s</string>
         <string name="settings_scheduled_count">%d निर्धारित</string>
     <string name="settings_link_behaviour_title">लिंक व्यवहार</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">लाइट</string>
     <string name="settings_theme_dark">डार्क</string>
     <string name="settings_theme_system">सिस्टम डिफ़ॉल्ट</string>
-    <string name="convo_your_prefix">आप: </string>
+    <string name="convo_your_prefix">"आप: "</string>
     <string name="settings_restored_msg">%s संदेश बहाल हुए। मौजूदा संवाद रखे गए।</string>
     <string name="settings_sim_default">डिफ़ॉल्ट (सिस्टम)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>

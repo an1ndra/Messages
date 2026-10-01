@@ -136,6 +136,12 @@ fun ConversationsScreen(
 ) {
     val reduceMotion = LocalReduceMotion.current
     val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
+    val scheduledAll by vm.scheduledMessages().collectAsState(initial = emptyList())
+    val scheduledPreview = remember(scheduledAll) {
+        scheduledAll
+            .sortedBy { it.timestamp }
+            .associate { it.conversationId to it.body }
+    }
     val contacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
     val workNums = remember(contacts) {
         contacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
@@ -326,28 +332,14 @@ fun ConversationsScreen(
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
     val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks) {
-        conversations.filter { convo ->
-            if (convo.blocked) false
-            else if (showArchived) convo.archived
-            else !convo.archived
-        }.let { list ->
-            if (query.isBlank()) list
-            else list.filter {
-                val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
-                it.name.contains(query, true) || it.address.contains(query) ||
-                        snippet.contains(query, true)
-            }
-        }.let { list ->
-            // Unread-at-top: stable reorder — pinned stays on top, then unread
-            // conversations above read ones, timestamp order preserved within a tier.
-            if (unreadAtTop && !showArchived) {
-                list.sortedWith(
-                    compareBy({ !it.pinned }, { if (it.unreadCount > 0) 0 else 1 }, { -it.timestamp })
-                )
-            } else {
-                list
-            }
-        }
+        val hide = rowSettings.hideLinks
+        com.anindra.messages.data.ConversationList.sort(
+            com.anindra.messages.data.ConversationList.filter(
+                conversations, showArchived, query,
+                snippetFor = { if (hide) hideUrls(it.snippet) else it.snippet }
+            ),
+            unreadAtTop, showArchived
+        )
     }
 
     // Reveal a new unread only while the user is still at the top.
@@ -506,7 +498,10 @@ fun ConversationsScreen(
                     }
                 }
             } else {
-                CompositionLocalProvider(LocalNowTick provides nowTick) {
+                CompositionLocalProvider(
+                    LocalNowTick provides nowTick,
+                    LocalScheduledPreview provides scheduledPreview
+                ) {
                     LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
                         items(displayed, key = { it.id }) { convo ->
                             SwipeableConversationItem(
@@ -917,9 +912,12 @@ private fun ConversationRow(
     val hasDraft = convo.draft.isNotBlank()
     val draftLabel = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
     val snippetLabel = if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
+    val scheduledLabel = LocalScheduledPreview.current[convo.id]
     val previewLabel = BidiText.isolateNumberRuns(
         if (hasDraft) {
             context.getString(R.string.chat_draft_prefix) + draftLabel
+        } else if (!scheduledLabel.isNullOrBlank()) {
+            context.getString(R.string.chat_scheduled_prefix) + scheduledLabel
         } else if (convo.isMe && snippetLabel.isNotEmpty()) {
             context.getString(R.string.convo_your_prefix) + snippetLabel
         } else {

@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">Ustawienia zaawansowane</string>
     <string name="settings_backup_subtitle">Zapisz kopię</string>
     <string name="settings_scheduled_none">Brak zaplanowanych wiadomości</string>
+    <string name="settings_scheduled_search">Szukaj według kontaktu</string>
+    <string name="settings_scheduled_reschedule">Zmień godzinę wysłania</string>
+    <string name="settings_scheduled_no_match">Brak zaplanowanej wiadomości o tej nazwie</string>
     <string name="settings_scheduled_meta">Do: %1$s · %2$s</string>
         <string name="settings_scheduled_count">%d zaplanowanych</string>
     <string name="settings_link_behaviour_title">Zachowanie linków</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">Jasny</string>
     <string name="settings_theme_dark">Ciemny</string>
     <string name="settings_theme_system">Domyślne systemowe</string>
-    <string name="convo_your_prefix">Ty: </string>
+    <string name="convo_your_prefix">"Ty: "</string>
     <string name="settings_restored_msg">Przywrócono %s wiadomości. Istniejące rozmowy zachowane.</string>
     <string name="settings_sim_default">Domyślne (systemowe)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>

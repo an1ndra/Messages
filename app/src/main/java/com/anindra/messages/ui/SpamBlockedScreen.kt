@@ -16,7 +16,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -76,7 +78,9 @@ import kotlinx.coroutines.launch
 fun SpamBlockedScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
-    onOpenConversation: (Long) -> Unit = {}
+    onOpenConversation: (Long) -> Unit = {},
+    conversationListState: LazyListState = rememberLazyListState(),
+    messageListState: LazyListState = rememberLazyListState()
 ) {
     BackHandler(onBack = onBack)
     val conversations by vm.conversations.collectAsState(initial = emptyList())
@@ -89,6 +93,11 @@ fun SpamBlockedScreen(
     val scope = rememberCoroutineScope()
     var showEmptyDialog by remember { mutableStateOf(false) }
     var spamDays by remember(vm.settings.revision) { mutableStateOf(vm.settings.retentionSpamDays) }
+
+    // Same stale-anchor hazard as Trash: emptying a folder must not leave the
+    // hoisted state pointing past the end, or a later row is off screen.
+    ClampToItemCount(conversationListState, tab == 0, blockedConversations.size)
+    ClampToItemCount(messageListState, tab == 1, blockedMessages.size)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -142,6 +151,7 @@ fun SpamBlockedScreen(
                 if (tab == 0) {
                     ConversationsTab(
                         blocked = blockedConversations,
+                        listState = conversationListState,
                         onOpenConversation = onOpenConversation,
                         onUnblock = { convo ->
                             vm.unblockNumber(convo.address)
@@ -155,6 +165,7 @@ fun SpamBlockedScreen(
                 } else {
                     MessagesTab(
                         messages = blockedMessages,
+                        listState = messageListState,
                         restorable = { msg ->
                             SpamRestore.canReturnToChat(msg.body, blockedKeywords)
                         },
@@ -212,6 +223,7 @@ fun SpamBlockedScreen(
 @Composable
 private fun ConversationsTab(
     blocked: List<Conversation>,
+    listState: LazyListState,
     onOpenConversation: (Long) -> Unit,
     onUnblock: (Conversation) -> Unit,
     onDelete: (Conversation) -> Unit
@@ -222,7 +234,7 @@ private fun ConversationsTab(
     }
     val context = LocalContext.current
     val now = LocalNowTick.current
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         items(blocked, key = { it.id }) { convo ->
             val sender = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name
             val blockedLabel = stringResource(R.string.access_blocked)
@@ -286,6 +298,7 @@ private fun ConversationsTab(
 @Composable
 private fun MessagesTab(
     messages: List<BlockedMessage>,
+    listState: LazyListState,
     restorable: (BlockedMessage) -> Boolean,
     onDelete: (BlockedMessage) -> Unit,
     onRestore: (BlockedMessage) -> Unit
@@ -296,7 +309,7 @@ private fun MessagesTab(
     }
     val context = LocalContext.current
     val now = LocalNowTick.current
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         items(messages, key = { it.id }) { msg ->
             val sender = if (msg.name == msg.address) BidiText.ltr(formatPhoneNumber(msg.address)) else msg.name
             Row(

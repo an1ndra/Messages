@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">Configurações avançadas</string>
     <string name="settings_backup_subtitle">Salvar uma cópia</string>
     <string name="settings_scheduled_none">Nenhuma mensagem agendada</string>
+    <string name="settings_scheduled_search">Buscar por contato</string>
+    <string name="settings_scheduled_reschedule">Alterar o horário de envio</string>
+    <string name="settings_scheduled_no_match">Nenhuma mensagem agendada corresponde a esse nome</string>
     <string name="settings_scheduled_meta">Para: %1$s · %2$s</string>
         <string name="settings_scheduled_count">%d agendados</string>
     <string name="settings_link_behaviour_title">Comportamento de links</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Escuro</string>
     <string name="settings_theme_system">Padrão do sistema</string>
-    <string name="convo_your_prefix">Você: </string>
+    <string name="convo_your_prefix">"Você: "</string>
     <string name="settings_restored_msg">%s mensagens restauradas. Conversas existentes mantidas.</string>
     <string name="settings_sim_default">Padrão (Sistema)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>

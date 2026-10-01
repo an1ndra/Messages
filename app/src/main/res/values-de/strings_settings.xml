@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">Erweiterte Einstellungen</string>
     <string name="settings_backup_subtitle">Kopie speichern</string>
     <string name="settings_scheduled_none">Keine geplanten Nachrichten</string>
+    <string name="settings_scheduled_search">Nach Kontakt suchen</string>
+    <string name="settings_scheduled_reschedule">Sendezeit ändern</string>
+    <string name="settings_scheduled_no_match">Keine geplante Nachricht mit diesem Namen</string>
     <string name="settings_scheduled_meta">An: %1$s · %2$s</string>
         <string name="settings_scheduled_count">%d geplant</string>
     <string name="settings_link_behaviour_title">Link-Verhalten</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">Hell</string>
     <string name="settings_theme_dark">Dunkel</string>
     <string name="settings_theme_system">Systemstandard</string>
-    <string name="convo_your_prefix">Sie: </string>
+    <string name="convo_your_prefix">"Sie: "</string>
     <string name="settings_restored_msg">%s Nachrichten wiederhergestellt. Bestehende Unterhaltungen beibehalten.</string>
     <string name="settings_sim_default">Standard (System)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>
