@@ -851,9 +851,9 @@ class MainActivity : FragmentActivity() {
 
         val appLockEnabled = bootVm.settings.appLockEnabled
 
-        // Script hooks: --es set_theme dark|light|system, --ez open_settings true
+        // Script hooks: --es set_theme dark|light|system|amoled, --ez open_settings true
         when (intent.getStringExtra("set_theme")) {
-            "dark", "light", "system" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
+            "dark", "light", "system", "amoled" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
@@ -1386,7 +1386,7 @@ onBack = { navRoute = "chat" },
         applySmsIeProbe(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
-            "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
+            "dark", "light", "system", "amoled" -> vm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {

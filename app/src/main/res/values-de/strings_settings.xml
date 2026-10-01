@@ -125,6 +125,7 @@
     <string name="settings_sound_bubble">Blase</string>
     <string name="settings_theme_light">Hell</string>
     <string name="settings_theme_dark">Dunkel</string>
+    <string name="settings_theme_amoled">AMOLED (echtes Schwarz)</string>
     <string name="settings_theme_system">Systemstandard</string>
     <string name="convo_your_prefix">"Sie: "</string>
     <string name="settings_restored_msg">%s Nachrichten wiederhergestellt. Bestehende Unterhaltungen beibehalten.</string>

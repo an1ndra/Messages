@@ -126,6 +126,7 @@
     <string name="settings_sound_bubble">Bubble</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_amoled">AMOLED (true black)</string>
     <string name="settings_theme_system">System default</string>
     <string name="convo_your_prefix">"You: "</string>
     <string name="settings_restored_msg">Restored %s messages. Existing conversations kept.</string>

@@ -125,6 +125,7 @@
     <string name="settings_sound_bubble">泡泡</string>
     <string name="settings_theme_light">浅色</string>
     <string name="settings_theme_dark">深色</string>
+    <string name="settings_theme_amoled">AMOLED（纯黑）</string>
     <string name="settings_theme_system">系统默认</string>
     <string name="convo_your_prefix">"我："</string>
     <string name="settings_restored_msg">已还原 %s 条消息。现有对话已保留。</string>

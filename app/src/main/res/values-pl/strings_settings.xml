@@ -125,6 +125,7 @@
     <string name="settings_sound_bubble">Bańka</string>
     <string name="settings_theme_light">Jasny</string>
     <string name="settings_theme_dark">Ciemny</string>
+    <string name="settings_theme_amoled">AMOLED (czysta czerń)</string>
     <string name="settings_theme_system">Domyślne systemowe</string>
     <string name="convo_your_prefix">"Ty: "</string>
     <string name="settings_restored_msg">Przywrócono %s wiadomości. Istniejące rozmowy zachowane.</string>

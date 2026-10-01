@@ -110,6 +110,55 @@ internal val DarkColors = darkColorScheme(
     surfaceContainerHighest = Color(0xFF333537)
 )
 
+// ─────────────── AMOLED scheme (seed #A8C7FA) ───────────────
+// True black on the page, for OLED panels where a lit pixel costs power. The
+// point of the theme is that background and surface *and* the page behind
+// everything are all #000000, so an unlit conversation list draws no light at
+// all.
+//
+// The container roles still step up off black. Cards, the composer and the
+// incoming bubble all sit on surfaceContainer*; left at #000000 they would be
+// invisible, and their separation is what makes the layout readable. The steps
+// are kept tighter than the dark scheme's because every step off black is
+// itself a lit pixel, which is what the theme is trying to avoid.
+internal val AmoledColors = darkColorScheme(
+    primary = Color(0xFFA8C7FA),
+    onPrimary = Color(0xFF062E6F),
+    primaryContainer = Color(0xFF0A3D8F),
+    onPrimaryContainer = Color(0xFFD3E3FD),
+    inversePrimary = Color(0xFF0B57D0),
+    secondary = Color(0xFFBFC6DC),
+    onSecondary = Color(0xFF293041),
+    secondaryContainer = Color(0xFF333A49),
+    onSecondaryContainer = Color(0xFFDAE2F9),
+    tertiary = Color(0xFFA2CAFF),
+    onTertiary = Color(0xFF00315B),
+    tertiaryContainer = Color(0xFF14395C),
+    onTertiaryContainer = Color(0xFFD2E4FF),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF7A0509),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFE3E3E3),
+    surface = Color(0xFF000000),
+    onSurface = Color(0xFFE3E3E3),
+    surfaceVariant = Color(0xFF3A3D45),
+    onSurfaceVariant = Color(0xFFC4C7C5),
+    outline = Color(0xFF8E9099),
+    outlineVariant = Color(0xFF3A3D44),
+    scrim = Color(0xFF000000),
+    inverseSurface = Color(0xFFE3E2E6),
+    inverseOnSurface = Color(0xFF2E3036),
+    surfaceDim = Color(0xFF000000),
+    surfaceBright = Color(0xFF2E2E2E),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF0B0B0B),
+    surfaceContainer = Color(0xFF111111),
+    surfaceContainerHigh = Color(0xFF191919),
+    surfaceContainerHighest = Color(0xFF232323)
+)
+
 // ─────────────── High-contrast schemes (accessibility mode) ───────────────
 // Same M3 roles, pushed to pure black/white text-on-background and stronger
 // outlines to meet WCAG AAA contrast in accessibility mode.
@@ -207,18 +256,44 @@ val ColorScheme.onSelectedBubble: Color
 // at a slightly lighter weight than surrounding text.
 val ChatMetaWeight: FontWeight = FontWeight.Medium
 
+/**
+ * Whether a theme mode renders as a dark scheme.
+ *
+ * AMOLED counts as dark: it is a dark scheme that simply starts from true
+ * black, and it does not follow the system, so picking it under a light system
+ * must still give a black page.
+ */
+internal fun themeIsDark(mode: String, systemIsDark: Boolean): Boolean = when (mode) {
+    SettingsStore.THEME_DARK, SettingsStore.THEME_AMOLED -> true
+    SettingsStore.THEME_LIGHT -> false
+    else -> systemIsDark
+}
+
+/**
+ * The scheme a mode resolves to. The single source of truth for theme
+ * selection: the app renders through this and Diagnostics reports through this,
+ * so the colour it prints is the colour that was painted. Keeping a second copy
+ * of this branch is how a theme ends up reported as black while rendering grey.
+ */
+internal fun schemeFor(mode: String, a11y: A11yOptions, darkTheme: Boolean): ColorScheme = when {
+    // High contrast wins over AMOLED: it is an accessibility commitment, and
+    // DarkHighContrastColors already sits on #000000, so the two agree on the
+    // page colour and there is nothing to give up.
+    a11y.highContrastEnabled && darkTheme -> DarkHighContrastColors
+    a11y.highContrastEnabled -> LightHighContrastColors
+    mode == SettingsStore.THEME_AMOLED -> AmoledColors
+    darkTheme -> DarkColors
+    else -> LightColors
+}
+
 @Composable
 fun MessagesTheme(
-    mode: String = "system",   // system | light | dark
+    mode: String = "system",   // system | light | dark | amoled
     font: String = SettingsStore.FONT_SYSTEM,
     a11y: A11yOptions = A11yOptions.DISABLED,
     content: @Composable () -> Unit
 ) {
-    val darkTheme = when (mode) {
-        "dark" -> true
-        "light" -> false
-        else -> isSystemInDarkTheme()
-    }
+    val darkTheme = themeIsDark(mode, isSystemInDarkTheme())
 
     // Match status-bar icon appearance to the *app* theme (not just the system).
     val view = LocalView.current
@@ -234,12 +309,7 @@ fun MessagesTheme(
         messagesTypography(AppFonts.familyFor(font), bold = a11y.boldEnabled)
     }
 
-    val colorScheme = when {
-        a11y.highContrastEnabled && darkTheme -> DarkHighContrastColors
-        a11y.highContrastEnabled -> LightHighContrastColors
-        darkTheme -> DarkColors
-        else -> LightColors
-    }
+    val colorScheme = schemeFor(mode, a11y, darkTheme)
 
     // App text scale stacks on top of the system font scale.
     val systemDensity = LocalDensity.current

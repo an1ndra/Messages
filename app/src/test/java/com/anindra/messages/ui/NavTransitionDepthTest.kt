@@ -82,6 +82,6 @@ class NavTransitionDepthTest {
 
     private companion object {
         /** `when` branches on these are theme/intent modes, not navigation routes. */
-        val NON_ROUTE_WHEN_KEYS = setOf("dark", "light", "system")
+        val NON_ROUTE_WHEN_KEYS = setOf("dark", "light", "system", "amoled")
     }
 }
