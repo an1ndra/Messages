@@ -38,6 +38,7 @@
     <string name="chat_sending_via">Enviando via %s</string>
     <string name="chat_switch_sim">Trocar SIM</string>
     <string name="chat_scheduled_for">Agendado para %s</string>
+    <string name="chat_schedule_failed">Não foi possível agendar a mensagem</string>
     <string name="chat_search_contacts">Pesquisar contatos</string>
     <string name="chat_add_people">Adicionar pessoas</string>
     <string name="chat_locked">Bloqueado</string>
@@ -75,7 +76,8 @@
 
     <string name="chat_status_not_sent">Não enviada</string>
     <string name="chat_status_retry">Toque para tentar novamente</string>
-    <string name="chat_draft_prefix">Rascunho: </string>
+    <string name="chat_draft_prefix">"Rascunho: "</string>
+    <string name="chat_scheduled_prefix">"Agendada: "</string>
     <string name="chat_sending_countdown">Enviando em %d segundos...</string>
     <string name="chat_alphanumeric_error">Você não pode enviar mensagens para remetentes alfanuméricos como %s. Apenas números de telefone são suportados.</string>
     <string name="chat_alphanumeric_notice">%s não pode receber respostas. Somente números de telefone são suportados.</string>

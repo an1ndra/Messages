@@ -86,6 +86,7 @@ class SettingsStore(context: Context) {
         const val DEFAULTS_DELIVERY = false
         const val DEFAULTS_SIM_SUBSCRIPTION_ID = -1
         const val DEFAULTS_EMOJI_BUTTON = false
+        const val DEFAULTS_UNREAD_AT_TOP = false
     }
 
     var themeMode: String
@@ -176,7 +177,7 @@ class SettingsStore(context: Context) {
         set(v) { prefs.edit().putBoolean(KEY_FORWARDING_ENABLED, v).apply(); _revision.value++ }
 
     var unreadAtTopEnabled: Boolean
-        get() = prefs.getBoolean(KEY_UNREAD_AT_TOP_ENABLED, true)
+        get() = prefs.getBoolean(KEY_UNREAD_AT_TOP_ENABLED, DEFAULTS_UNREAD_AT_TOP)
         set(v) { prefs.edit().putBoolean(KEY_UNREAD_AT_TOP_ENABLED, v).apply(); _revision.value++ }
 
     var scheduledMessagesEnabled: Boolean

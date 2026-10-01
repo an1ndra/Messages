@@ -156,6 +156,10 @@ private fun zoned(ts: Long): ZonedDateTime = Instant.ofEpochMilli(ts).atZone(zon
  *  relative labels ("Now", "5 min") age instead of freezing at composition. */
 val LocalNowTick = compositionLocalOf { System.currentTimeMillis() }
 
+/** conversationId -> body of its earliest pending scheduled message, for the
+ *  "Scheduled: …" conversation-list preview. Empty when nothing is queued. */
+val LocalScheduledPreview = compositionLocalOf<Map<Long, String>> { emptyMap() }
+
 fun formatListTime(ts: Long, now: Long = System.currentTimeMillis(), ctx: android.content.Context): String {
     if (ts <= 0) return ""
     return when {

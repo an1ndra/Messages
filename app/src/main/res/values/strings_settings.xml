@@ -17,7 +17,7 @@
     <string name="settings_advanced_warning">Do not show this warning again</string>
     <string name="settings_sim_indicator">SIM indicator</string>
     <string name="settings_sim_indicator_desc">Show which SIM was used for each message</string>
-    <string name="sim_slot_suffix"> · SIM %s</string>
+    <string name="sim_slot_suffix">" • SIM %s"</string>
     <string name="settings_sim_label">SIM %s</string>
     <string name="settings_notif_title">Notifications</string>
     <string name="settings_notif_subtitle">Sound and alerts</string>
@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">Advanced settings</string>
     <string name="settings_backup_subtitle">Save a copy</string>
     <string name="settings_scheduled_none">No scheduled messages</string>
+    <string name="settings_scheduled_search">Search by contact</string>
+    <string name="settings_scheduled_reschedule">Change send time</string>
+    <string name="settings_scheduled_no_match">No scheduled message matches that name</string>
     <string name="settings_scheduled_meta">To: %1$s · %2$s</string>
         <string name="settings_scheduled_count">%d scheduled</string>
     <string name="settings_link_behaviour_title">Link behaviour</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_theme_system">System default</string>
-    <string name="convo_your_prefix">You: </string>
+    <string name="convo_your_prefix">"You: "</string>
     <string name="settings_restored_msg">Restored %s messages. Existing conversations kept.</string>
     <string name="settings_sim_default">Default (System)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>

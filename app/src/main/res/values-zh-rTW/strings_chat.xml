@@ -36,6 +36,7 @@
     <string name="chat_sending_via">透過 %s 傳送</string>
     <string name="chat_switch_sim">切換 SIM 卡</string>
     <string name="chat_scheduled_for">已排定於 %s 傳送</string>
+    <string name="chat_schedule_failed">無法排定此訊息</string>
     <string name="chat_search_contacts">搜尋通訊錄</string>
     <string name="chat_add_people">加入人員</string>
     <string name="chat_locked">已鎖定</string>
@@ -72,6 +73,7 @@
     <string name="chat_status_not_sent">未傳送</string>
     <string name="chat_status_retry">輕觸以重試</string>
     <string name="chat_draft_prefix">草稿：</string>
+    <string name="chat_scheduled_prefix">排定：</string>
     <string name="chat_sending_countdown">正在傳送 %d 秒後…</string>
     <string name="chat_alphanumeric_error">您無法向 %s 這類字母數字寄件者傳送訊息。僅支援電話號碼。</string>
     <string name="chat_alphanumeric_notice">%s 無法接收回覆。僅支援電話號碼。</string>

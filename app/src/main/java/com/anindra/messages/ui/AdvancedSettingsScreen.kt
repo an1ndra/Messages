@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -53,11 +54,12 @@ import com.anindra.messages.ui.theme.AppFonts
 fun AdvancedSettingsScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
-    onOpenAccessibility: () -> Unit = {},
+onOpenAccessibility: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     onOpenAutoDelete: () -> Unit = {},
     onOpenLinks: () -> Unit = {},
-    onOpenMmsCheck: () -> Unit = {}
+    onOpenMmsCheck: () -> Unit = {},
+    scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
 
@@ -97,7 +99,7 @@ fun AdvancedSettingsScreen(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+.verticalScroll(scrollState)
                 .padding(horizontal = SettingsLayout.SCREEN_PADDING)
         ) {
             Spacer(Modifier.height(SettingsLayout.TOP_GAP))

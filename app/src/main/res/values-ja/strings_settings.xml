@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">詳細設定</string>
     <string name="settings_backup_subtitle">コピーを保存</string>
     <string name="settings_scheduled_none">予約されたメッセージはありません</string>
+    <string name="settings_scheduled_search">連絡先で検索</string>
+    <string name="settings_scheduled_reschedule">送信時刻を変更</string>
+    <string name="settings_scheduled_no_match">その名前に一致する予約済みメッセージはありません</string>
     <string name="settings_scheduled_meta">宛先: %1$s · %2$s</string>
         <string name="settings_scheduled_count">%d 件予約済み</string>
     <string name="settings_link_behaviour_title">リンクの動作</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">ライト</string>
     <string name="settings_theme_dark">ダーク</string>
     <string name="settings_theme_system">システム規定値</string>
-    <string name="convo_your_prefix">あなた: </string>
+    <string name="convo_your_prefix">"あなた: "</string>
     <string name="settings_restored_msg">%s件のメッセージを復元しました。既存の会話を保持。</string>
     <string name="settings_sim_default">既定（システム）</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>

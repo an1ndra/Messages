@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">Paramètres avancés</string>
     <string name="settings_backup_subtitle">Enregistrer une copie</string>
     <string name="settings_scheduled_none">Aucun message planifié</string>
+    <string name="settings_scheduled_search">Rechercher par contact</string>
+    <string name="settings_scheduled_reschedule">Modifier l’heure d’envoi</string>
+    <string name="settings_scheduled_no_match">Aucun message programmé ne correspond à ce nom</string>
     <string name="settings_scheduled_meta">À : %1$s · %2$s</string>
         <string name="settings_scheduled_count">%d planifiés</string>
     <string name="settings_link_behaviour_title">Comportement des liens</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">Clair</string>
     <string name="settings_theme_dark">Sombre</string>
     <string name="settings_theme_system">Par défaut système</string>
-    <string name="convo_your_prefix">Vous : </string>
+    <string name="convo_your_prefix">"Vous : "</string>
     <string name="settings_restored_msg">%s messages restaurés. Les conversations existantes conservées.</string>
     <string name="settings_sim_default">Par défaut (système)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>

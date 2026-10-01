@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -68,7 +69,8 @@ private fun ChangeAffordance() {
 @Composable
 fun InboxSettingsScreen(
     vm: AppViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
 
@@ -86,9 +88,7 @@ fun InboxSettingsScreen(
     var delaySeconds by remember(revision) { mutableIntStateOf(vm.settings.delaySeconds) }
     var delayDialog by remember { mutableStateOf(false) }
     var showBlocked by remember { mutableStateOf(false) }
-    var showScheduled by remember { mutableStateOf(false) }
     val blockedNumbers by vm.blockedNumbers().collectAsState(initial = emptyList())
-    val scheduledMsgs by vm.scheduledMessages().collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = {
@@ -106,7 +106,7 @@ fun InboxSettingsScreen(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = SettingsLayout.SCREEN_PADDING)
         ) {
             Spacer(Modifier.height(SettingsLayout.TOP_GAP))
@@ -159,14 +159,6 @@ fun InboxSettingsScreen(
                         R.string.settings_blocked_numbers_count, blockedNumbers.size
                     ),
                     onClick = { showBlocked = true }
-                )
-                SettingsRow(
-                    position = RowPosition.MIDDLE,
-                    title = stringResource(R.string.settings_scheduled_title),
-                    subtitle = context.getString(
-                        R.string.settings_scheduled_count, scheduledMsgs.size
-                    ),
-                    onClick = { showScheduled = true }
                 )
                 SettingsRow(
                     position = if (delayed) RowPosition.MIDDLE else RowPosition.LAST,
@@ -226,58 +218,6 @@ fun InboxSettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showBlocked = false }) {
-                    Text(stringResource(R.string.common_close))
-                }
-            }
-        )
-    }
-
-    if (showScheduled) {
-        AlertDialog(
-            onDismissRequest = { showScheduled = false },
-            title = { Text(stringResource(R.string.settings_scheduled_title)) },
-            text = {
-                Column {
-                    if (scheduledMsgs.isEmpty()) {
-                        Text(
-                            stringResource(R.string.settings_scheduled_none),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        val is24 = is24HourFormat(context)
-                        scheduledMsgs.forEach { sm ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        sm.body,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        String.format(
-                                            context.getString(R.string.settings_scheduled_meta),
-                                            formatPhoneNumber(sm.address),
-                                            formatDateTime(sm.timestamp, "MMM d,", is24)
-                                        ),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                IconButton(onClick = { vm.cancelScheduledMessage(sm.id) }) {
-                                    Icon(
-                                        Icons.Rounded.Cancel,
-                                        stringResource(R.string.icon_cancel),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showScheduled = false }) {
                     Text(stringResource(R.string.common_close))
                 }
             }

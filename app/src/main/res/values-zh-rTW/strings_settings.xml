@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">進階設定</string>
     <string name="settings_backup_subtitle">儲存副本</string>
     <string name="settings_scheduled_none">沒有預定訊息</string>
+    <string name="settings_scheduled_search">依聯絡人搜尋</string>
+    <string name="settings_scheduled_reschedule">更改傳送時間</string>
+    <string name="settings_scheduled_no_match">沒有符合該名稱的排定訊息</string>
     <string name="settings_scheduled_meta">傳送給：%1$s · %2$s</string>
         <string name="settings_scheduled_count">已預定 %d 則</string>
     <string name="settings_link_behaviour_title">連結行為</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">淺色</string>
     <string name="settings_theme_dark">深色</string>
     <string name="settings_theme_system">系統預設</string>
-    <string name="convo_your_prefix">我： </string>
+    <string name="convo_your_prefix">"我："</string>
     <string name="settings_restored_msg">已還原 %s 則訊息。現有對話已保留。</string>
     <string name="settings_sim_default">預設（系統）</string>
     <string name="settings_sim_label_format">%s（SIM %s）</string>

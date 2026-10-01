@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">إعدادات متقدمة</string>
     <string name="settings_backup_subtitle">حفظ نسخة</string>
     <string name="settings_scheduled_none">لا توجد رسائل مجدولة</string>
+    <string name="settings_scheduled_search">البحث حسب جهة الاتصال</string>
+    <string name="settings_scheduled_reschedule">تغيير وقت الإرسال</string>
+    <string name="settings_scheduled_no_match">لا توجد رسالة مجدولة بهذا الاسم</string>
     <string name="settings_scheduled_meta">إلى: %1$s · %2$s</string>
         <string name="settings_scheduled_count">%d مجدولة</string>
     <string name="settings_link_behaviour_title">سلوك الروابط</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">فاتح</string>
     <string name="settings_theme_dark">داكن</string>
     <string name="settings_theme_system">تفضيلات النظام</string>
-    <string name="convo_your_prefix">أنت: </string>
+    <string name="convo_your_prefix">"أنت: "</string>
     <string name="settings_restored_msg">تم استعادة %s رسائل. تم الحفاظ على المحادثات الحالية.</string>
     <string name="settings_sim_default">الافتراضي (النظام)</string>
     <string name="settings_sim_label_format">%s (شريحة %s)</string>

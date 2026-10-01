@@ -97,6 +97,7 @@ fun SettingsScreen(
     onOpenAdvanced: () -> Unit = {},
     onOpenSpamBlocked: () -> Unit = {},
     onOpenInbox: () -> Unit = {},
+    onOpenScheduled: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
@@ -104,6 +105,9 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     val revision by vm.settings.revision.collectAsState()
+    val scheduledAll by vm.scheduledMessages().collectAsState(initial = emptyList())
+    val scheduledCount = if (scheduledAll.isEmpty()) null
+    else context.getString(R.string.settings_scheduled_count, scheduledAll.size)
 
     var themeDialog by remember { mutableStateOf(false) }
     var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
@@ -296,6 +300,12 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_scheduled_title),
+                    subtitle = scheduledCount,
+                    onClick = onOpenScheduled
+                )
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_privacy_title),
                     checked = privacyMode,
                     onChecked = {
@@ -359,58 +369,6 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_advanced_subtitle),
                     onClick = onOpenAdvanced
                 )
-            }
-
-            val scheduledMsgs by vm.scheduledMessages().collectAsState(initial = emptyList())
-            if (scheduledMsgs.isNotEmpty()) {
-                Spacer(Modifier.height(SettingsLayout.GROUP_GAP))
-                SettingsGroup {
-                    val is24Hour = is24HourFormat(context)
-                    scheduledMsgs.forEach { sm ->
-                        Card(
-                            shape = RoundedCornerShape(SettingsLayout.OUTER_RADIUS),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        horizontal = SettingsLayout.ROW_CONTENT_PADDING,
-                                        vertical = 12.dp
-                                    )
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Schedule, null,
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(sm.body, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                                    Text(
-                                        "To: ${formatPhoneNumber(sm.address)} · ${formatDateTime(sm.timestamp, "MMM d,", is24Hour)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { vm.cancelScheduledMessage(sm.id) },
-                                    modifier = Modifier.size(A11y.touchTarget(32.dp))
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.Cancel,
-                                        stringResource(R.string.icon_cancel),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                            }
-                        }
-                    }
             }
 
             SettingsFooter(stringResource(R.string.messages_footer))

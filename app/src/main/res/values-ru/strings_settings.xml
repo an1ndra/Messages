@@ -50,6 +50,9 @@
     <string name="settings_advanced_title">Дополнительные настройки</string>
     <string name="settings_backup_subtitle">Сохранить копию</string>
     <string name="settings_scheduled_none">Нет запланированных сообщений</string>
+    <string name="settings_scheduled_search">Поиск по контакту</string>
+    <string name="settings_scheduled_reschedule">Изменить время отправки</string>
+    <string name="settings_scheduled_no_match">Нет запланированных сообщений с таким именем</string>
     <string name="settings_scheduled_meta">Кому: %1$s · %2$s</string>
         <string name="settings_scheduled_count">Запланировано: %d</string>
     <string name="settings_link_behaviour_title">Поведение ссылок</string>
@@ -122,7 +125,7 @@
     <string name="settings_theme_light">Светлая</string>
     <string name="settings_theme_dark">Тёмная</string>
     <string name="settings_theme_system">Системные</string>
-    <string name="convo_your_prefix">Вы: </string>
+    <string name="convo_your_prefix">"Вы: "</string>
     <string name="settings_restored_msg">Восстановлено %s сообщений. Существующие переписки сохранены.</string>
     <string name="settings_sim_default">Основная (системная)</string>
     <string name="settings_sim_label_format">%s (SIM %s)</string>
