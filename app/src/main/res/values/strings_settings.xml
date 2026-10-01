@@ -143,4 +143,5 @@
     <string name="settings_inbox_footer">Archiving, swipe actions, blocking and delayed sending apply to conversations in the Messages list.</string>
     <string name="settings_new_ui_title">Redesigned interface</string>
     <string name="settings_new_ui_subtitle">Use the new settings and list layout</string>
+    <string name="settings_scheduled_manage_title">Manage scheduled messages</string>
 </resources>

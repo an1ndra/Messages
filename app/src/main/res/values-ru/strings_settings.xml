@@ -142,4 +142,5 @@
     <string name="settings_inbox_footer">Архивирование, свайп-действия, блокировка и отложенная отправка применяются к разговорам в списке сообщений.</string>
     <string name="settings_new_ui_title">Обновлённый интерфейс</string>
     <string name="settings_new_ui_subtitle">Использовать новый вид настроек и списков</string>
+    <string name="settings_scheduled_manage_title">Управление запланированными сообщениями</string>
 </resources>

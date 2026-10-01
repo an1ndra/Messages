@@ -142,4 +142,5 @@
     <string name="settings_inbox_footer">封存、滑動操作、封鎖和延遲傳送適用於訊息清單中的對話。</string>
     <string name="settings_new_ui_title">重新設計的介面</string>
     <string name="settings_new_ui_subtitle">使用新的設定與清單版面</string>
+    <string name="settings_scheduled_manage_title">管理排定訊息</string>
 </resources>

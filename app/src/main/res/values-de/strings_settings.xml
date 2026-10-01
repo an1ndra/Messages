@@ -142,4 +142,5 @@
     <string name="settings_inbox_footer">Archivieren, Wischaktionen, Blockieren und verzögertes Senden gelten für Konversationen in der Nachrichtenliste.</string>
     <string name="settings_new_ui_title">Neugestaltete Oberfläche</string>
     <string name="settings_new_ui_subtitle">Neues Layout für Einstellungen und Listen verwenden</string>
+    <string name="settings_scheduled_manage_title">Geplante Nachrichten verwalten</string>
 </resources>

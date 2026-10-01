@@ -142,4 +142,5 @@
     <string name="settings_inbox_footer">归档、滑动操作、屏蔽和延迟发送适用于信息列表中的对话。</string>
     <string name="settings_new_ui_title">重新设计的界面</string>
     <string name="settings_new_ui_subtitle">使用新的设置和列表布局</string>
+    <string name="settings_scheduled_manage_title">管理定时消息</string>
 </resources>
