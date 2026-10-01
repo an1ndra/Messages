@@ -209,3 +209,66 @@ object SmsIeBackupPolicy {
     /** Restore (REPLACE) wipes the current messages first; Merge keeps them. */
     fun clearsExisting(mode: ImportMode): Boolean = mode == ImportMode.REPLACE
 }
+
+/**
+ * Copes with backups written by an older build, whose `messages` table is
+ * missing columns this one expects.
+ *
+ * A backup is only rejected earlier for not being a SQLite file at all, so a
+ * merge has to cope with an old schema rather than refusing the file the user
+ * actually has. A real v8 backup fails with "no such column: locked" otherwise.
+ */
+object LegacyBackupSchema {
+
+    /**
+     * Absent in older backups; each falls back to a constant of the same shape.
+     *
+     * The order matters: the caller reads these positionally and the original
+     * query put transport last, so the order here is locked, sub_id, transport.
+     */
+    private val OPTIONAL = listOf("locked" to "0", "sub_id" to "-1", "transport" to "'sms'")
+
+    /** Always present, in the order the caller reads them. */
+    private val REQUIRED =
+        listOf("conversation_id", "body", "timestamp", "is_me", "status", "media_type", "media_uri", "reactions", "sys_id")
+
+    /**
+     * Builds the SELECT from the columns the file actually has.
+     *
+     * A missing optional column becomes a literal, so the result set keeps its
+     * shape and the caller's positional reads stay correct. Substituting the
+     * column *name* instead would shift every index after it and write the wrong
+     * values into the wrong fields.
+     */
+    fun messagesQuery(available: Set<String>): String {
+        val select = (REQUIRED + OPTIONAL.map { it.first })
+            .joinToString(",") { column ->
+                if (column in available) column
+                else OPTIONAL.first { it.first == column }.second
+            }
+        // deleted_at arrived with soft delete; without it nothing is in the trash.
+        val where = if ("deleted_at" in available) "WHERE deleted_at=0" else ""
+        return "SELECT $select FROM messages $where ORDER BY timestamp"
+    }
+
+    /**
+     * Provider ids are meaningful only on the device that issued them.
+     *
+     * A backup carries them, so restoring it on the *same* phone keeps working:
+     * the rows are already mirrored and must not be inserted into the provider a
+     * second time. Restoring on a *different* phone is the dangerous case -- every
+     * carried id refers to a row that does not exist here, and a reconcile against
+     * the provider then concludes the messages were deleted and removes them.
+     *
+     * So a carried id is kept only if the local provider actually has it;
+     * otherwise it is cleared, which leaves the row local-only until it gets
+     * mirrored with a fresh id. Returns the ids to keep.
+     */
+    fun adoptProviderIds(carried: Collection<Long>, liveProviderIds: Set<Long>): Set<Long> =
+        carried.filterTo(HashSet()) { it > 0 && it in liveProviderIds }
+
+    /** Positional indexes of the optional columns, in the order above. */
+    const val LOCKED_INDEX = 9
+    const val SUB_ID_INDEX = 10
+    const val TRANSPORT_INDEX = 11
+}
