@@ -37,13 +37,13 @@
     <string name="settings_sim_unknown">Unbekannte SIM</string>
     <string name="mms_check_title">MMS-Unterstützung</string>
     <string name="mms_check_subtitle">Jede SIM-Karte auf MMS prüfen</string>
-    <string name="mms_check_summary">%1$d von %2$d SIM-Karten unterstützen MMS</string>
-    <string name="mms_check_verdict_supported">Unterstützt</string>
+    <string name="mms_check_summary">MMS ist bei %1$d von %2$d SIMs vom Anbieter aktiviert</string>
+    <string name="mms_check_verdict_supported">Vom Anbieter aktiviert</string>
     <string name="mms_check_verdict_disabled">Bei diesem Anbieter deaktiviert</string>
     <string name="mms_check_verdict_no_carrier">Kein Netz auf dieser SIM-Karte</string>
     <string name="mms_check_verdict_unknown">Konnte nicht geprüft werden</string>
     <string name="mms_check_number_hidden">Nummer wird vom Anbieter nicht herausgegeben</string>
     <string name="mms_check_country">%1$s · %2$s</string>
-    <string name="mms_check_footer">Jede SIM-Karte wird gegen die MMS-Einstellungen ihres Anbieters geprüft, denn zwei Anbieter im selben Land können sich unterscheiden. Die Ländervorwahl stammt aus der SIM-Nummer, wenn der Anbieter sie herausgibt, sonst aus dem SIM-Netz.</string>
+    <string name="mms_check_footer">Jede SIM wird mit der MMS-Einstellung ihres Anbieters abgeglichen. Dies meldet die Angabe des Anbieters, keinen getesteten MMS-Dienst: dessen Prüfung erfordert die System-APN-Einstellungen, die nur privilegierte Apps lesen können.</string>
     <string name="mms_check_no_sims">Keine aktive SIM-Karte gefunden</string>
 </resources>

@@ -37,13 +37,13 @@
     <string name="settings_sim_unknown">未知 SIM 卡</string>
     <string name="mms_check_title">MMS 支持</string>
     <string name="mms_check_subtitle">检查每张 SIM 卡的 MMS 支持情况</string>
-    <string name="mms_check_summary">%2$d 张 SIM 卡中有 %1$d 张支持 MMS</string>
-    <string name="mms_check_verdict_supported">支持</string>
+    <string name="mms_check_summary">%2$d 张 SIM 卡中有 %1$d 张已由运营商启用 MMS</string>
+    <string name="mms_check_verdict_supported">运营商已启用</string>
     <string name="mms_check_verdict_disabled">该运营商已关闭</string>
     <string name="mms_check_verdict_no_carrier">此 SIM 卡无网络</string>
     <string name="mms_check_verdict_unknown">无法检查</string>
     <string name="mms_check_number_hidden">运营商未提供号码</string>
     <string name="mms_check_country">%1$s · %2$s</string>
-    <string name="mms_check_footer">每张 SIM 卡都按其所属运营商发布的 MMS 设置进行检查，因为同一国家的两家运营商可能并不一致。区号在运营商提供号码时取自 SIM 卡号，否则取自 SIM 网络。</string>
+    <string name="mms_check_footer">每张 SIM 卡都会与其运营商公布的 MMS 设置进行比对。这反映的是运营商的声明，而非经过验证的 MMS 服务：验证需要系统 APN 设置，只有特权应用才能读取。</string>
     <string name="mms_check_no_sims">未找到可用的 SIM 卡</string>
 </resources>

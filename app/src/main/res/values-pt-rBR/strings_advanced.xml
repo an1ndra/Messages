@@ -37,13 +37,13 @@
     <string name="settings_sim_unknown">SIM desconhecido</string>
     <string name="mms_check_title">Suporte a MMS</string>
     <string name="mms_check_subtitle">Verificar o suporte a MMS em cada chip</string>
-    <string name="mms_check_summary">%1$d de %2$d chips aceitam MMS</string>
-    <string name="mms_check_verdict_supported">Aceita</string>
+    <string name="mms_check_summary">MMS ativado pela operadora em %1$d de %2$d chips</string>
+    <string name="mms_check_verdict_supported">Ativado pela operadora</string>
     <string name="mms_check_verdict_disabled">Desativado nesta operadora</string>
     <string name="mms_check_verdict_no_carrier">Sem rede neste chip</string>
     <string name="mms_check_verdict_unknown">Não foi possível verificar</string>
     <string name="mms_check_number_hidden">A operadora não informa o número</string>
     <string name="mms_check_country">%1$s · %2$s</string>
-    <string name="mms_check_footer">Cada chip é verificado com as configurações de MMS que a própria operadora publica, porque duas operadoras do mesmo país podem divergir. O código do país vem do número do chip quando a operadora o fornece e, caso contrário, da rede do chip.</string>
+    <string name="mms_check_footer">Cada SIM é comparada com a configuração de MMS publicada por sua operadora. Isso relata o que a operadora declara, não um serviço MMS testado: verificar exigiria as configurações de APN do sistema, que só apps com privilégio conseguem ler.</string>
     <string name="mms_check_no_sims">Nenhum chip ativo encontrado</string>
 </resources>

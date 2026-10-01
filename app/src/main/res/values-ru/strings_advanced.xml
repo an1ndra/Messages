@@ -37,13 +37,13 @@
     <string name="settings_sim_unknown">Неизвестная SIM</string>
     <string name="mms_check_title">Поддержка MMS</string>
     <string name="mms_check_subtitle">Проверить поддержку MMS на каждой SIM-карте</string>
-    <string name="mms_check_summary">MMS поддерживают %1$d из %2$d SIM-карт</string>
-    <string name="mms_check_verdict_supported">Поддерживается</string>
+    <string name="mms_check_summary">MMS включена оператором на %1$d из %2$d SIM-карт</string>
+    <string name="mms_check_verdict_supported">Включено оператором</string>
     <string name="mms_check_verdict_disabled">Отключено у этого оператора</string>
     <string name="mms_check_verdict_no_carrier">Нет сети на этой SIM-карте</string>
     <string name="mms_check_verdict_unknown">Не удалось проверить</string>
     <string name="mms_check_number_hidden">Оператор не сообщает номер</string>
     <string name="mms_check_country">%1$s · %2$s</string>
-    <string name="mms_check_footer">Каждая SIM-карта проверяется по MMS-настройкам, которые публикует её оператор, потому что два оператора в одной стране могут различаться. Код страны берётся из номера SIM-карты, если оператор его сообщает, иначе — из сети SIM.</string>
+    <string name="mms_check_footer">Каждая SIM сравнивается с настройкой MMS, объявленной её оператором. Это сообщает заявление оператора, а не проверенную услугу MMS: для проверки нужны системные настройки APN, доступные только приложениям с привилегиями.</string>
     <string name="mms_check_no_sims">Активные SIM-карты не найдены</string>
 </resources>
