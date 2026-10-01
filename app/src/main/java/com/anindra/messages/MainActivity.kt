@@ -144,6 +144,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ctx = app.applicationContext
             val out = mutableListOf<com.anindra.messages.ui.Contact>()
             val enterpriseBase = android.provider.ContactsContract.Directory.ENTERPRISE_DEFAULT
+            // Shared across both sources: the same number can be saved in the
+            // personal and the work profile and must be listed once.
+            val seen = mutableSetOf<String>()
 
             fun load(uri: android.net.Uri, withContactId: Boolean) {
                 val projection = if (withContactId) arrayOf(
@@ -160,7 +163,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     null, null,
                     android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
                 )?.use { c ->
-                    val seen = mutableSetOf<String>()
                     while (c.moveToNext()) {
                         val name = c.getString(0) ?: continue
                         val num = c.getString(1) ?: continue
@@ -173,20 +175,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
 
             try {
-                // ENTERPRISE_CONTENT_URI is API 34+; referencing it on older
-                // devices throws NoSuchFieldError (an Error), so guard by SDK
-                // and fall back to the plain personal-profile URI. (#209)
+                load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
+            } catch (_: Throwable) {
+            }
+
+            try {
+                // The enterprise URI returns only work-profile contacts, so it is
+                // loaded *in addition to* the personal profile. Loading it alone
+                // — as this did — dropped every personal contact on API 34+,
+                // leaving the picker showing work contacts, or nothing at all.
+                // Referencing it below API 34 throws NoSuchFieldError (an Error,
+                // not an Exception), hence the SDK guard. (#209)
                 if (com.anindra.messages.data.EnterpriseContacts.isSupported(Build.VERSION.SDK_INT)) {
                     load(com.anindra.messages.data.EnterpriseContacts.phoneUri(), true)
-                } else {
-                    load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
                 }
             } catch (_: Throwable) {
-                out.clear()
-                try {
-                    load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
-                } catch (_: Throwable) {
-                }
             }
             contacts.value = out
         }
