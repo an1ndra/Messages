@@ -50,5 +50,4 @@
     <string name="mms_check_country">%1$s · %2$s</string>
     <string name="mms_check_footer">Each SIM is checked against the MMS settings its own carrier publishes, because two carriers in the same country can disagree. The country code comes from the SIM number when the carrier shares it, and from the SIM network otherwise.</string>
     <string name="mms_check_no_sims">No active SIM found</string>
-
 </resources>
