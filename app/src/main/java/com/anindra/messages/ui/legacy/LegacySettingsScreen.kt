@@ -453,42 +453,6 @@ fun SettingsScreen(
                 )
             }
 
-            val scheduledMsgs by vm.scheduledMessages().collectAsState(initial = emptyList())
-            if (scheduledMsgs.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                SettingsGroup {
-                    val is24Hour = is24HourFormat(context)
-                    scheduledMsgs.forEach { sm ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Schedule, null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(sm.body, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                                Text(
-                                    "To: ${formatPhoneNumber(sm.address)} · ${formatDateTime(sm.timestamp, "MMM d,", is24Hour)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            IconButton(
-                                onClick = { vm.cancelScheduledMessage(sm.id) },
-                                modifier = Modifier.size(A11y.touchTarget(32.dp))
-                            ) {
-                                Icon(Icons.Rounded.Cancel, stringResource(R.string.icon_cancel), modifier = Modifier.size(20.dp))
-                            }
-                        }
-                    }
-                }
-            }
 
             Spacer(Modifier.height(8.dp))
 
