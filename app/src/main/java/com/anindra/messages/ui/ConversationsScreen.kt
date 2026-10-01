@@ -702,8 +702,12 @@ private fun SwipeConversationItem(
             }
         },
         // A direction set to OFF must not be swipeable at all, not just inert.
-        enableDismissFromStartToEnd = settings.swipeLeftAction != SwipeAction.OFF,
-        enableDismissFromEndToStart = settings.swipeRightAction != SwipeAction.OFF
+        enableDismissFromStartToEnd = swipeActionFor(
+            travelsRight = true, settings.swipeLeftAction, settings.swipeRightAction
+        ) != SwipeAction.OFF,
+        enableDismissFromEndToStart = swipeActionFor(
+            travelsRight = false, settings.swipeLeftAction, settings.swipeRightAction
+        ) != SwipeAction.OFF
     ) {
         ConversationRow(
             context = context,
@@ -735,8 +739,12 @@ private fun SwipeConversationItem(
 
 /** The action a swipe in [this] direction performs, per the user's configuration. */
 private fun SwipeToDismissBoxValue.action(settings: RowSettings): SwipeAction = when (this) {
-    SwipeToDismissBoxValue.StartToEnd -> settings.swipeLeftAction
-    SwipeToDismissBoxValue.EndToStart -> settings.swipeRightAction
+    SwipeToDismissBoxValue.StartToEnd -> swipeActionFor(
+        travelsRight = true, settings.swipeLeftAction, settings.swipeRightAction
+    )
+    SwipeToDismissBoxValue.EndToStart -> swipeActionFor(
+        travelsRight = false, settings.swipeLeftAction, settings.swipeRightAction
+    )
     else -> SwipeAction.OFF
 }
 

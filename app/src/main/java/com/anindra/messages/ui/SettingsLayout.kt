@@ -125,6 +125,20 @@ object SettingsLayout {
 enum class SwipeDirection { LEFT, RIGHT }
 
 /**
+ * Which configured action a completed swipe performs.
+ *
+ * [travelsRight] is the direction the **row itself** moves. Compose names its
+ * settle values after that same direction, so `StartToEnd` is a rightward
+ * swipe. The settings rows are labelled by the direction the *finger* travels,
+ * which is the opposite way round, so binding the two by name swapped them:
+ * choosing "Swipe left" ran the action configured for "Swipe right". The
+ * preview in settings was already drawn by finger direction, so it advertised
+ * the opposite of what the gesture did.
+ */
+fun swipeActionFor(travelsRight: Boolean, left: SwipeAction, right: SwipeAction): SwipeAction =
+    if (travelsRight) right else left
+
+/**
  * The action a swipe in this direction performs. A direction set to
  * [SwipeAction.OFF] resolves to OFF, which is what makes it unswipeable.
  */
