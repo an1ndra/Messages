@@ -455,20 +455,11 @@ fun ChatScreen(
     // by send time rather than read back as messages. A message that has not
     // fired yet has no row at all, which is why this cannot come from `messages`.
     val allScheduled by vm.scheduledMessages().collectAsState(initial = emptyList())
-    val scheduledHere = remember(allScheduled, conversationId) {
-        allScheduled.filter { it.conversationId == conversationId }
-    }
-    val chatRows = remember(messages, scheduledHere) {
-        (messages.map { ChatRow.Sent(it) } + scheduledHere.map { ChatRow.Pending(it) })
-            .sortedBy { it.timestamp }
-    }
+    val chatRows = rememberChatRows(messages, allScheduled, conversationId)
     // Row indices and message indices stop agreeing once pending rows are
     // interleaved, so map each row to its position in `messages` (or -1). Without
     // this a scheduled row above a message shifts every tail below it.
-    val sentIndexAt = remember(chatRows) {
-        var n = 0
-        chatRows.map { if (it is ChatRow.Sent) n++ else -1 }
-    }
+    val sentIndexAt = rememberSentIndexAt(chatRows)
     val lastSentRow = remember(chatRows, sentIndexAt) { sentIndexAt.indexOfLast { it >= 0 } }
     // Highest id already on screen when the chat was opened (or first loaded);
     // only newer arrivals play the entrance animation, so scrolling back and
@@ -1872,110 +1863,6 @@ private fun DetailRow(label: String, value: String) {
 }
 
 @OptIn(ExperimentalFoundationApi::class)
-/**
- * One row of the conversation: either a stored message or one still waiting on
- * the scheduler. Merged by [timestamp] so a scheduled message sits in the
- * position it will actually appear in, and keys are namespaced because both
- * tables number their rows from 1.
- */
-private sealed interface ChatRow {
-    val timestamp: Long
-    val key: String
-
-    data class Sent(val message: com.anindra.messages.data.Message) : ChatRow {
-        override val timestamp get() = message.timestamp
-        override val key get() = "sent_${message.id}"
-    }
-
-    data class Pending(val scheduled: com.anindra.messages.data.ScheduledMessage) : ChatRow {
-        override val timestamp get() = scheduled.timestamp
-        override val key get() = "pending_${scheduled.id}"
-    }
-}
-
-/**
- * A message still waiting on the scheduler, drawn in the conversation it is
- * bound to. It carries the same time + SIM meta line a sent bubble does, so the
- * row reads as "this goes out at 6:30 PM on SIM 2", plus the live countdown.
- */
-@Composable
-private fun ScheduledBubble(
-    scheduled: com.anindra.messages.data.ScheduledMessage,
-    onCancel: () -> Unit,
-    showSimIndicator: Boolean,
-) {
-    val cs = MaterialTheme.colorScheme
-    val context = LocalContext.current
-    var confirmCancel by remember { mutableStateOf(false) }
-    var now by remember(scheduled.timestamp) { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(scheduled.timestamp) {
-        while (true) {
-            val wait = com.anindra.messages.data.ScheduledCountdown
-                .refreshIntervalMillis(now, scheduled.timestamp)
-            delay(wait)
-            now = System.currentTimeMillis()
-        }
-    }
-
-    val countdown = remember(now, scheduled.timestamp) {
-        com.anindra.messages.data.ScheduledCountdown.format(now, scheduled.timestamp)
-    }
-    val timeText = remember(scheduled.timestamp) { formatTimeOnly(scheduled.timestamp, is24HourFormat(context)) }
-    val simLabel = remember(scheduled.subId, showSimIndicator) {
-        if (showSimIndicator && scheduled.subId > 0) {
-            try {
-                val slot = android.telephony.SubscriptionManager.getSlotIndex(scheduled.subId)
-                if (slot >= 0) String.format(context.getString(R.string.sim_slot_suffix), slot + 1) else ""
-            } catch (_: Exception) { "" }
-        } else ""
-    }
-
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
-        Surface(
-            color = cs.outgoingBubble,
-            shape = RoundedCornerShape(18.dp),
-            modifier = Modifier
-                .widthIn(max = 260.dp)
-                .combinedClickable(onClick = {}, onLongClick = { confirmCancel = true })
-        ) {
-            Text(
-                scheduled.body,
-                style = MaterialTheme.typography.bodyLarge,
-                color = cs.onPrimaryContainer,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-            )
-        }
-        Text(
-            buildString {
-                append(timeText)
-                if (countdown.isNotEmpty()) append(" • in ").append(countdown)
-                append(simLabel)
-            },
-            style = MaterialTheme.typography.labelSmall,
-            color = cs.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp, end = 4.dp)
-        )
-    }
-
-    if (confirmCancel) {
-        AlertDialog(
-            onDismissRequest = { confirmCancel = false },
-            title = { Text(stringResource(R.string.settings_scheduled_title)) },
-            text = { Text(scheduled.body, maxLines = 3) },
-            confirmButton = {
-                TextButton(onClick = { confirmCancel = false; onCancel() }) {
-                    Text(stringResource(R.string.icon_cancel))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmCancel = false }) {
-                    Text(stringResource(R.string.chat_close))
-                }
-            }
-        )
-    }
-}
-
 @Composable
 fun MessageRow(
     msg: Message,

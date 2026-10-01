@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_advanced_reverse_swipe">Изменить направление свайпов</string>
     <string name="settings_advanced_reverse_swipe_desc">Свайп влево для архивирования, вправо — для удаления</string>
     <string name="settings_advanced_hide_links">Скрыть ссылки из сообщений</string>
     <string name="settings_advanced_hide_links_desc">Не превращать ссылки в сообщениях в кликабельные</string>
@@ -10,7 +11,6 @@
     <string name="settings_advanced_turn_off">Сначала отключите «</string>
     <string name="settings_advanced_turn_off_suffix">"»</string>
     <string name="settings_advanced_permanent_delete_on">Удаление безвозвратно включено. Эта переписка и её сообщения будут немедленно удалены с устройства — без перемещения в корзину — и не могут быть восстановлены.</string>
-
     <string name="settings_font_title">Шрифт</string>
     <string name="settings_advanced_emoji_button">Кнопка эмодзи</string>
     <string name="settings_advanced_emoji_button_desc">Показывать кнопку эмодзи в поле сообщения</string>
@@ -20,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Системный шрифт</string>
-
     <string name="keywords_title">Заблокированные ключевые слова</string>
     <string name="keywords_hint">Сообщения, содержащие любое из этих слов, перемещаются в корзину: они не отображаются во входящих и не воспроизводят звук уведомления.</string>
     <string name="keywords_add_hint">Добавить ключевое слово</string>
@@ -29,7 +28,6 @@
     <string name="keywords_remove">Удалить ключевое слово</string>
     <string name="keywords_subtitle_none">Нет</string>
     <string name="keywords_subtitle_count">%1$d заблокировано</string>
-
     <string name="diagnostics_title">Диагностика</string>
     <string name="diagnostics_subtitle">Диагностика устройства и приложения для устранения неполадок</string>
     <string name="diagnostics_save">Сохранить</string>
@@ -37,7 +35,6 @@
     <string name="diagnostics_close">Закрыть</string>
     <string name="diagnostics_clip_label">Диагностика Messages</string>
     <string name="settings_sim_unknown">Неизвестная SIM</string>
-
     <string name="mms_check_title">Поддержка MMS</string>
     <string name="mms_check_subtitle">Проверить поддержку MMS на каждой SIM-карте</string>
     <string name="mms_check_summary">MMS поддерживают %1$d из %2$d SIM-карт</string>

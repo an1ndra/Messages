@@ -40,6 +40,8 @@
     <string name="settings_unread_top_subtitle">Ordenar mensagens não lidas no topo</string>
     <string name="settings_forwarding_title">Encaminhamento</string>
     <string name="settings_forwarding_subtitle">Ativar encaminhamento de mensagens</string>
+    <string name="settings_drafts_title">Rascunhos</string>
+    <string name="settings_drafts_subtitle">Salvar automaticamente texto não enviado como rascunho</string>
     <string name="settings_scheduled_title">Mensagens agendadas</string>
     <string name="settings_scheduled_subtitle">Ativar agendamento de mensagens</string>
     <string name="settings_delayed_title">Envio atrasado</string>
@@ -81,7 +83,6 @@
     <string name="settings_trash_subtitle">Conversas excluídas · removidas após 30 dias</string>
     <string name="settings_spam_blocked_subtitle">Conversas bloqueadas ficam guardadas aqui</string>
     <string name="settings_retention_title">Exclusão automática</string>
-
     <string name="settings_choose_retention">Aplica-se à lixeira, às mensagens bloqueadas e aos remetentes bloqueados:</string>
     <string name="settings_retention_subtitle">A lixeira, as mensagens bloqueadas e os remetentes bloqueados são removidos automaticamente</string>
     <string name="settings_retention_days">%d dias</string>

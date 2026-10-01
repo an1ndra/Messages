@@ -40,6 +40,8 @@
     <string name="settings_unread_top_subtitle">Сортировать непрочитанные сообщения вверху</string>
     <string name="settings_forwarding_title">Пересылка</string>
     <string name="settings_forwarding_subtitle">Включить пересылку сообщений</string>
+    <string name="settings_drafts_title">Черновики</string>
+    <string name="settings_drafts_subtitle">Автосохранение неотправленного текста как черновиков</string>
     <string name="settings_scheduled_title">Запланированные сообщения</string>
     <string name="settings_scheduled_subtitle">Включить планирование сообщений</string>
     <string name="settings_delayed_title">Отложенная отправка</string>
@@ -81,7 +83,6 @@
     <string name="settings_trash_subtitle">Удалённые переписки · удаляются через 30 дней</string>
     <string name="settings_spam_blocked_subtitle">Заблокированные переписки хранятся здесь</string>
     <string name="settings_retention_title">Автоудаление</string>
-
     <string name="settings_choose_retention">Применяется к корзине, заблокированным сообщениям и заблокированным отправителям:</string>
     <string name="settings_retention_subtitle">Корзина, заблокированные сообщения и заблокированные отправители удаляются автоматически</string>
     <string name="settings_retention_days">%d дней</string>

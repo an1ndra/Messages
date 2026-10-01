@@ -40,6 +40,8 @@
     <string name="settings_unread_top_subtitle">將未讀訊息排在上方</string>
     <string name="settings_forwarding_title">轉寄</string>
     <string name="settings_forwarding_subtitle">允許轉寄訊息</string>
+    <string name="settings_drafts_title">草稿</string>
+    <string name="settings_drafts_subtitle">自動儲存未傳送的文字為草稿</string>
     <string name="settings_scheduled_title">排定訊息</string>
     <string name="settings_scheduled_subtitle">允許排定訊息發送時間</string>
     <string name="settings_delayed_title">延遲傳送</string>
@@ -81,7 +83,6 @@
     <string name="settings_trash_subtitle">已刪除的對話 · 30 天後自動清除</string>
     <string name="settings_spam_blocked_subtitle">已封鎖的對話會保存在這裡</string>
     <string name="settings_retention_title">自動刪除</string>
-
     <string name="settings_choose_retention">適用於垃圾桶、被封鎖的訊息與被封鎖的寄件者：</string>
     <string name="settings_retention_subtitle">垃圾桶、被封鎖的訊息與被封鎖的寄件者會自動清除</string>
     <string name="settings_retention_days">%d 天</string>

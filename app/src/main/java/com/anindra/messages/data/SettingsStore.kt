@@ -61,6 +61,8 @@ class SettingsStore(context: Context) {
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
         const val KEY_PERMANENT_DELETE_WARN = "permanent_delete_warn"
         const val KEY_REVERSE_SWIPE = "reverse_swipe_enabled"
+        const val KEY_USE_NEW_UI = "use_new_ui"
+        const val KEY_DRAFTS_ENABLED = "drafts_enabled"
         const val KEY_SWIPE_LEFT_ACTION = "swipe_left_action"
         const val KEY_SWIPE_RIGHT_ACTION = "swipe_right_action"
         const val KEY_LINK_WARNING = "link_open_warning_enabled"
@@ -175,6 +177,28 @@ class SettingsStore(context: Context) {
     var forwardingEnabled: Boolean
         get() = prefs.getBoolean(KEY_FORWARDING_ENABLED, true)
         set(v) { prefs.edit().putBoolean(KEY_FORWARDING_ENABLED, v).apply(); _revision.value++ }
+
+    /**
+     * Which settings/chat surface to render. The redesigned screens are the
+     * default; turning this off restores the pre-redesign set under `ui/legacy`,
+     * which reads the same store and so stays in sync on data.
+     */
+    var useNewUi: Boolean
+        get() = prefs.getBoolean(KEY_USE_NEW_UI, true)
+        set(v) { prefs.edit().putBoolean(KEY_USE_NEW_UI, v).apply(); _revision.value++ }
+
+    /** Legacy surfaces still gate on these; they now read as always-on. */
+    var draftsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_DRAFTS_ENABLED, true)
+        set(v) { prefs.edit().putBoolean(KEY_DRAFTS_ENABLED, v).apply(); _revision.value++ }
+
+    var swipeActionsEnabled: Boolean
+        get() = true
+        set(v) { prefs.edit().putBoolean(KEY_SWIPE_ACTIONS_ENABLED, v).apply(); _revision.value++ }
+
+    var reverseSwipeEnabled: Boolean
+        get() = prefs.getBoolean(KEY_REVERSE_SWIPE, false)
+        set(v) { prefs.edit().putBoolean(KEY_REVERSE_SWIPE, v).apply(); _revision.value++ }
 
     var unreadAtTopEnabled: Boolean
         get() = prefs.getBoolean(KEY_UNREAD_AT_TOP_ENABLED, DEFAULTS_UNREAD_AT_TOP)

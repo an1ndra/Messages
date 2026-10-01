@@ -40,6 +40,8 @@
     <string name="settings_unread_top_subtitle">Ungelesene Nachrichten oben sortieren</string>
     <string name="settings_forwarding_title">Weiterleiten</string>
     <string name="settings_forwarding_subtitle">Nachrichtenweiterleitung aktivieren</string>
+    <string name="settings_drafts_title">Entwürfe</string>
+    <string name="settings_drafts_subtitle">Nicht gesendete Texte automatisch als Entwürfe speichern</string>
     <string name="settings_scheduled_title">Geplante Nachrichten</string>
     <string name="settings_scheduled_subtitle">Planen von Nachrichten aktivieren</string>
     <string name="settings_delayed_title">Verzögertes Senden</string>
@@ -81,7 +83,6 @@
     <string name="settings_trash_subtitle">Gelöschte Unterhaltungen · nach 30 Tagen endgültig gelöscht</string>
     <string name="settings_spam_blocked_subtitle">Blockierte Unterhaltungen werden hier aufbewahrt</string>
     <string name="settings_retention_title">Automatisches Löschen</string>
-
     <string name="settings_choose_retention">Gilt für Papierkorb, blockierte Nachrichten und blockierte Absender:</string>
     <string name="settings_retention_subtitle">Papierkorb, blockierte Nachrichten und blockierte Absender werden automatisch gelöscht</string>
     <string name="settings_retention_days">%d Tage</string>
