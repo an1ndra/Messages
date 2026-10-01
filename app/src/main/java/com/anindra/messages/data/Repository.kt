@@ -1787,7 +1787,14 @@ class Repository(private val context: Context) {
                     ImportResult.Error("No messages found in that backup")
                 // Partial success is still success: a backup with one unreadable
                 // record should not read as a total failure to the user.
-                else -> ImportResult.Success(report.added)
+                else -> {
+                    // Mirror into the system SMS store, so the phone's own
+                    // messaging app shows the imported history too. Without this
+                    // an sms-ie import lives only here, and the user finds their
+                    // backup missing from the app they actually use day to day.
+                    pushLocalMessagesToProvider()
+                    ImportResult.Success(report.added)
+                }
             }
         }
     }
@@ -2372,6 +2379,11 @@ class Repository(private val context: Context) {
             }
         if (doomed.isEmpty()) return false
 
+        // This deletes user data on the strength of the provider's state, and
+        // the local copy is the only one left if the provider was emptied by
+        // something else. A copy is taken first so the decision is reversible.
+        backUpBeforePrune(doomed.size)
+
         database.beginTransaction()
         try {
             doomed.forEach { database.delete("messages", "id=?", arrayOf(it.toString())) }
@@ -2387,6 +2399,42 @@ class Repository(private val context: Context) {
     /** SMS and MMS ids overlap, so they are namespaced before comparison. */
     private fun providerKey(transport: String, sysId: Long): Long =
         if (transport == MmsSupport.TRANSPORT_MMS) -sysId else sysId
+
+    /**
+     * Snapshots the database before a prune removes anything.
+     *
+     * The prune decides to delete on the strength of what the system provider
+     * currently holds, and the local rows are frequently the only surviving copy
+     * -- that is exactly the case that made this necessary. If the reconcile is
+     * ever wrong, the messages have to be recoverable, so the file is copied
+     * aside first and the name says how many rows it was taken for.
+     */
+    private fun backUpBeforePrune(doomed: Int) {
+        runCatching {
+            val dbFile = context.getDatabasePath(DB_NAME)
+            if (!dbFile.isFile) return
+            // Fold the write-ahead log in first, or the copy is missing whatever
+            // has not been checkpointed yet.
+            runCatching { db.writableDatabase.rawQuery("PRAGMA wal_checkpoint(FULL)", null).close() }
+            val dir = File(context.filesDir, "prune-backups").apply { mkdirs() }
+            val stamp = java.text.SimpleDateFormat(
+                "yyyyMMdd-HHmmss", java.util.Locale.US
+            ).format(java.util.Date())
+            val target = File(dir, "before-prune-$stamp-$doomed.db")
+            dbFile.copyTo(target, overwrite = true)
+            // Keep the three most recent; each is a full copy of the history.
+            dir.listFiles()
+                ?.filter { it.name.startsWith("before-prune-") }
+                ?.sortedByDescending { it.name }
+                ?.drop(3)
+                ?.forEach { runCatching { it.delete() } }
+            Log.i("RepoSync", "database copied to ${target.name} before pruning $doomed row(s)")
+        }.onFailure {
+            // Not fatal: the prune is still correct. But say so, because this is
+            // the difference between a reversible decision and an irreversible one.
+            Log.w("RepoSync", "could not back up before prune: ${it.message}")
+        }
+    }
 
     private var providerObserver: android.database.ContentObserver? = null
     private var providerHandler: android.os.Handler? = null
@@ -3032,16 +3080,44 @@ class Repository(private val context: Context) {
         }
     }
 
-    /** After a local backup import, re-populates the system SMS provider so the
-     *  rest of the phone (default Messaging app, other SMS tools) mirrors the
-     *  restored history. Best-effort: only possible while the app is the default
+    /** After a backup import, re-populates the system SMS provider so the rest of
+     *  the phone (the phone's own messaging app, other SMS tools) mirrors the
+     *  restored history. Best-effort: only possible while this app is the default
      *  handler; rows whose sys_id still exists in the provider are skipped, and
-     *  freshly inserted rows get their new provider id written back locally so
-     *  the next system sync does not duplicate them. */
+     *  freshly inserted rows get their new provider id written back locally so the
+     *  next system sync does not duplicate them.
+     *
+     *  Only plain SMS is mirrored. Writing MMS into `content://mms` means building
+     *  a multipart, uploading each part, then setting the message box, and doing
+     *  that wrong leaves malformed entries in the user's system store -- so an
+     *  imported MMS stays in this app only, which is deliberate rather than
+     *  forgotten.
+     *
+     *  The existence check for already-mirrored rows is one query per row, which
+     *  is a binder round trip each. For a 50k import that dominates the run, so
+     *  the set of live provider ids is read once and membership tested in memory.
+     */
     fun pushLocalMessagesToProvider() {
         try {
             val resolver = context.contentResolver
             val providerUri = android.provider.Telephony.Sms.CONTENT_URI
+
+            // One read of the live ids, instead of a per-row existence query.
+            val live = HashSet<Long>()
+            runCatching {
+                resolver.query(
+                    providerUri, arrayOf(android.provider.Telephony.Sms._ID),
+                    null, null, null
+                )?.use { c ->
+                    while (c.moveToNext()) live.add(c.getLong(0))
+                }
+            }.onFailure {
+                // Without a readable provider nothing can be written anyway, and
+                // a half-mirrored history is worse than none.
+                Log.w("RepoMirror", "provider not readable, not mirroring: ${it.message}")
+                return
+            }
+
             val linked = ArrayList<Pair<Long, Long>>()
             var attempted = 0
             db.readableDatabase.rawQuery(
@@ -3053,14 +3129,7 @@ class Repository(private val context: Context) {
                 while (c.moveToNext()) {
                     val localId = c.getLong(0)
                     val existingSysId = c.getLong(7)
-                    if (existingSysId > 0) {
-                        val stillThere = resolver.query(
-                            providerUri, arrayOf(android.provider.Telephony.Sms._ID),
-                            android.provider.Telephony.Sms._ID + "=?",
-                            arrayOf(existingSysId.toString()), null
-                        )?.use { it.moveToFirst() } ?: false
-                        if (stillThere) continue
-                    }
+                    if (existingSysId > 0 && live.contains(existingSysId)) continue
                     val address = c.getString(1) ?: continue
                     val body = c.getString(2) ?: continue
                     val isMe = c.getInt(4) == 1
@@ -3086,22 +3155,47 @@ class Repository(private val context: Context) {
                         if (subId > 0) put(android.provider.Telephony.Sms.SUBSCRIPTION_ID, subId)
                     }
                     val sysId = resolver.insert(providerUri, cv)?.lastPathSegment?.toLongOrNull() ?: -1L
-                    if (sysId > 0) linked.add(localId to sysId)
+                    if (sysId > 0) {
+                        live.add(sysId)
+                        linked.add(localId to sysId)
+                    }
+                    // Written back in batches: one transaction per few hundred
+                    // rather than one per row, because a 50k import otherwise
+                    // spends most of its time committing.
+                    if (linked.size >= MIRROR_FLUSH_EVERY) {
+                        writeBackSysIds(linked)
+                        linked.clear()
+                    }
                 }
             }
-            android.util.Log.w("RepoMirror", "push: attempted=$attempted linked=${linked.size}")
-            if (linked.isNotEmpty()) {
-                for ((localId, sysId) in linked) {
-                    db.writableDatabase.execSQL(
-                        "UPDATE messages SET sys_id=? WHERE id=?",
-                        arrayOf(sysId.toString(), localId.toString())
-                    )
-                }
-            }
-        } catch (e: SecurityException) {
-            android.util.Log.e("RepoMirror", "mirror skipped (not default?): ${e.message}")
+            writeBackSysIds(linked)
+            Log.i("RepoMirror", "mirrored $attempted message(s) into the system SMS store")
         } catch (e: Exception) {
-            android.util.Log.e("RepoMirror", "mirror failed: ${e.message}", e)
+            Log.w("RepoMirror", "mirror failed: ${e.message}")
+        }
+    }
+
+    /** Writes the new provider ids back so a later sync does not re-add the rows. */
+    private fun writeBackSysIds(linked: List<Pair<Long, Long>>) {
+        if (linked.isEmpty()) return
+        val database = db.writableDatabase
+        database.beginTransaction()
+        try {
+            for ((localId, sysId) in linked) {
+                database.execSQL(
+                    "UPDATE messages SET sys_id=? WHERE id=?",
+                    arrayOf(sysId.toString(), localId.toString())
+                )
+            }
+            database.setTransactionSuccessful()
+        } catch (e: SecurityException) {
+            // Not the default SMS handler: writing to the provider is not
+            // permitted, and the local history is unaffected either way.
+            Log.w("RepoMirror", "mirror skipped (not the default SMS app): ${e.message}")
+        } catch (e: Exception) {
+            Log.w("RepoMirror", "mirror write-back failed: ${e.message}")
+        } finally {
+            database.endTransaction()
         }
     }
 
@@ -3111,6 +3205,9 @@ class Repository(private val context: Context) {
          * is debounced rather than run per notification.
          */
         const val PROVIDER_RESYNC_DEBOUNCE_MS = 2_000L
+
+        /** Provider ids written back per transaction while mirroring a backup. */
+        const val MIRROR_FLUSH_EVERY = 500
 
         fun serializeReactions(r: Map<String, Int>): String =
             r.entries.filter { it.value > 0 }
