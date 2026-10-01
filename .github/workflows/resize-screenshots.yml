@@ -1,0 +1,83 @@
+name: Resize screenshots
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: resize-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  resize:
+    if: github.event.sender.type != 'Bot'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Clamp oversized screenshots
+        env:
+          GH_TOKEN: ${{ secrets.PEREGRINEBOT_TOKEN }}
+          BODY: ${{ github.event.comment.body || github.event.issue.body }}
+          TARGET_KIND: ${{ github.event.comment.id && 'comment' || 'issue' }}
+          TARGET_ID: ${{ github.event.comment.id || github.event.issue.number }}
+          MAX_WIDTH: ${{ vars.SCREENSHOT_MAX_WIDTH }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess, sys
+
+          ATTACHMENT = re.compile(
+              r'<img\b[^>]*\bsrc="https://github\.com/user-attachments/assets/[^"]*"[^>]*>',
+              re.IGNORECASE,
+          )
+
+          def dimension(tag, name):
+              m = re.search(rf'\b{name}="([0-9.]+)"', tag, re.IGNORECASE)
+              return float(m.group(1)) if m else None
+
+          body = os.environ.get("BODY") or ""
+          max_width = float(os.environ.get("MAX_WIDTH") or 400)
+          changed, notes = False, []
+
+          def clamp(match):
+              global changed
+              tag = match.group(0)
+              width = dimension(tag, "width")
+              height = dimension(tag, "height")
+              if not width or width <= max_width:
+                  return tag
+              new_height = round(height * max_width / width) if height else None
+              new_tag = re.sub(r'\bwidth="[0-9.]+"', f'width="{int(max_width)}"', tag, flags=re.IGNORECASE)
+              if new_height:
+                  new_tag = re.sub(r'\bheight="[0-9.]+"', f'height="{new_height}"', new_tag, flags=re.IGNORECASE)
+              changed = True
+              notes.append(f"{int(width)}x{int(height) if height else '?'} -> {int(max_width)}x{new_height or '?'}")
+              return new_tag
+
+          new_body = ATTACHMENT.sub(clamp, body)
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as log:
+              print(f"Scanned {len(ATTACHMENT.findall(body))} attachment(s).", file=log)
+
+          if not changed:
+              print("No oversized screenshots; nothing to write.")
+              sys.exit(0)
+
+          print("Resized: " + "; ".join(notes))
+          kind, ident = os.environ["TARGET_KIND"], os.environ["TARGET_ID"]
+          endpoint = f"issues/{ident}" if kind == "issue" else f"issues/comments/{ident}"
+          payload = json.dumps({"body": new_body})
+          result = subprocess.run(
+              ["gh", "api", "--method", "PATCH", f"repos/{os.environ['GITHUB_REPOSITORY']}/{endpoint}",
+               "--input", "-"],
+              input=payload, text=True, capture_output=True,
+          )
+          if result.returncode != 0:
+              print(result.stderr, file=sys.stderr)
+              sys.exit(result.returncode)
+          print(f"Updated {kind} {ident}.")
+          PY
