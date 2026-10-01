@@ -24,6 +24,25 @@ class ForwardTargetsTest {
     )
 
     @Test
+    fun everyContactIsOfferedNotJustTheAlphabeticallyFirstFew() {
+        // The picker used to stop at 60 targets. Because the list is ordered by
+        // name, that silently hid everyone past the cut-off: on a phone with
+        // many contacts you could scroll no further than the names starting
+        // with A, and had to know to search instead.
+        val many = (1..250).map { Contact("Person $it", "+1555%07d".format(it)) }
+        val rows = ForwardTargets.build(many, emptyList(), "")
+        assertEquals(250, rows.size)
+        assertEquals("Person 250", rows.last().name)
+    }
+
+    @Test
+    fun aLongListStillNarrowsWithTheSearchBox() {
+        val many = (1..250).map { Contact("Person $it", "+1555%07d".format(it)) }
+        val rows = ForwardTargets.build(many, emptyList(), "Person 199")
+        assertEquals(listOf("Person 199"), rows.map { it.name })
+    }
+
+    @Test
     fun contactsComeFirstAndConversationsFillInTheRest() {
         val rows = ForwardTargets.build(contacts, listOf(convo("+16505551212", "Carla", 5L)), "")
         assertEquals(listOf("+1555771010", "+1555775020", "+16505551212"), rows.map { it.number })
@@ -80,7 +99,15 @@ class ForwardTargetsTest {
 
     @Test
     fun theListStaysBoundedOnAPhoneWithThousandsOfContacts() {
+        // This used to assert a hard cap of 60. Because targets are ordered by
+        // name, the cap hid everyone past the cut-off and left a phone with many
+        // contacts able to scroll no further than the names starting with A.
+        // The picker is a LazyColumn, so bounding the list bought nothing; what
+        // matters now is that a big address book stays correct.
         val many = (1..500).map { Contact("Person $it", "+1555000%04d".format(it)) }
-        assertTrue(ForwardTargets.build(many, emptyList(), "").size <= 60)
+        val rows = ForwardTargets.build(many, emptyList(), "")
+        assertEquals(500, rows.size)
+        assertEquals(500, rows.map { it.number }.distinct().size)
+        assertTrue(ForwardTargets.build(many, emptyList(), "Person 499").isNotEmpty())
     }
 }

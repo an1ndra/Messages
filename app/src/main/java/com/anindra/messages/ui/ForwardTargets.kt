@@ -18,7 +18,6 @@ object ForwardTargets {
 
     /** Long enough to be a real number, short enough to allow an extension. */
     private const val MIN_TYPED_DIGITS = 5
-    private const val MAX_ROWS = 60
 
     fun digits(value: String): String = value.filter { it.isDigit() }
 
@@ -53,7 +52,11 @@ object ForwardTargets {
         if (matched.isEmpty() && queryDigits.length >= MIN_TYPED_DIGITS) {
             return listOf(ForwardTarget(null, query.trim()))
         }
-        return matched.take(MAX_ROWS)
+        // No row cap: targets are ordered by contact name, so truncating hid
+        // everyone past the cut-off and left a phone with many contacts able to
+        // scroll no further than the names beginning with A. The picker is a
+        // LazyColumn, so a long list costs nothing to scroll.
+        return matched
     }
 
     private fun matches(target: ForwardTarget, query: String, queryDigits: String): Boolean {
