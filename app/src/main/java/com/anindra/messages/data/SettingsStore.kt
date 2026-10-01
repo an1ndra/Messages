@@ -179,12 +179,12 @@ class SettingsStore(context: Context) {
         set(v) { prefs.edit().putBoolean(KEY_FORWARDING_ENABLED, v).apply(); _revision.value++ }
 
     /**
-     * Which settings/chat surface to render. The redesigned screens are the
-     * default; turning this off restores the pre-redesign set under `ui/legacy`,
-     * which reads the same store and so stays in sync on data.
+     * Which settings/chat surface to render. The pre-redesign screens under
+     * `ui/legacy` are the default; switching on renders the redesigned set.
+     * Both read this same store, so data stays in sync either way.
      */
     var useNewUi: Boolean
-        get() = prefs.getBoolean(KEY_USE_NEW_UI, true)
+        get() = prefs.getBoolean(KEY_USE_NEW_UI, false)
         set(v) { prefs.edit().putBoolean(KEY_USE_NEW_UI, v).apply(); _revision.value++ }
 
     /** Legacy surfaces still gate on these; they now read as always-on. */
