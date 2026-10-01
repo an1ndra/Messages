@@ -27,7 +27,7 @@ import com.anindra.messages.data.SettingsStore
  */
 
 // ────────────────────────── Light scheme (seed #0B57D0) ─────────────────────────
-private val LightColors = lightColorScheme(
+internal val LightColors = lightColorScheme(
     // Primary
     primary = Color(0xFF0B57D0),
     onPrimary = Color(0xFFFFFFFF),
@@ -72,7 +72,7 @@ private val LightColors = lightColorScheme(
 )
 
 // ────────────────────────── Dark scheme (seed #A8C7FA) ──────────────────────────
-private val DarkColors = darkColorScheme(
+internal val DarkColors = darkColorScheme(
     primary = Color(0xFFA8C7FA),
     onPrimary = Color(0xFF062E6F),
     primaryContainer = Color(0xFF0842A0),
@@ -192,7 +192,11 @@ private val DarkHighContrastColors = darkColorScheme(
 // Semantic aliases so screens express intent, not raw colors.
 val ColorScheme.outgoingBubble: Color get() = primaryContainer          // GM blue bubble
 val ColorScheme.incomingBubble: Color get() = surfaceContainerHighest   // GM grey bubble
-val ColorScheme.chatBar: Color get() = surfaceContainerLow              // input / top bars
+// The composer's strip is the chat page's own colour, so the bar behind the
+// field is not a grey band inside a white screen. Dark keeps the raised
+// container, where the page is the darker one.
+val ColorScheme.chatBar: Color
+    get() = if (background.luminance() < 0.5f) surfaceContainerLow else background
 val ColorScheme.inputPill: Color get() = surfaceContainerHigh           // text field pill
 val ColorScheme.selectedBubble: Color
     get() = if (background.luminance() < 0.5f) Color(0xFF9CC0FF) else Color(0xFF1A46A0)

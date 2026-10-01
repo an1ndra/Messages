@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_advanced_reverse_swipe">Odwróć akcje przesunięcia</string>
     <string name="settings_advanced_reverse_swipe_desc">Przesuń w lewo, aby archiwizować, i w prawo, aby usuwać</string>
     <string name="settings_advanced_hide_links">Ukryj linki z wiadomości</string>
     <string name="settings_advanced_hide_links_desc">Nigdy nie zamieniaj linków w wiadomościach na klikalne</string>
@@ -38,4 +37,16 @@
     <string name="diagnostics_close">Zamknij</string>
     <string name="diagnostics_clip_label">Diagnostyka Messages</string>
     <string name="settings_sim_unknown">Nieznana karta SIM</string>
+
+    <string name="mms_check_title">Obsługa MMS</string>
+    <string name="mms_check_subtitle">Sprawdź MMS dla każdej karty SIM</string>
+    <string name="mms_check_summary">MMS obsługują %1$d z %2$d kart SIM</string>
+    <string name="mms_check_verdict_supported">Obsługiwane</string>
+    <string name="mms_check_verdict_disabled">Wyłączone u tego operatora</string>
+    <string name="mms_check_verdict_no_carrier">Brak sieci na tej karcie SIM</string>
+    <string name="mms_check_verdict_unknown">Nie udało się sprawdzić</string>
+    <string name="mms_check_number_hidden">Operator nie udostępnia numeru</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">Każda karta SIM jest sprawdzana względem ustawień MMS publikowanych przez jej operatora, bo dwaj operatorzy w jednym kraju mogą się różnić. Prefiks kraju pochodzi z numeru SIM, gdy operator go udostępnia, a w przeciwnym razie z sieci SIM.</string>
+    <string name="mms_check_no_sims">Nie znaleziono aktywnej karty SIM</string>
 </resources>

@@ -20,7 +20,7 @@
     <string name="sim_slot_suffix"> · SIM %s</string>
     <string name="settings_sim_label">SIM %s</string>
     <string name="settings_notif_title">Powiadomienia</string>
-    <string name="settings_notif_subtitle">Pokazuj powiadomienia o wiadomościach</string>
+    <string name="settings_notif_subtitle">Dźwięk i alerty</string>
     <string name="settings_send_sound_title">Dźwięk wysyłania</string>
     <string name="settings_send_sound_subtitle">Odtwarzaj dźwięk podczas wysyłania wiadomości</string>
     <string name="settings_receive_sound_title">Dźwięk odbierania</string>
@@ -29,9 +29,7 @@
     <string name="settings_delivery_reports_subtitle">Dowiedz się, kiedy wiadomość SMS została dostarczona</string>
     <string name="settings_mark_read_title">Oznacz wszystkie jako przeczytane</string>
     <string name="settings_mark_read_subtitle">Usuń odznaki nieprzeczytanych dla każdej rozmowy</string>
-    <string name="settings_theme_title">Motyw</string>
-    <string name="settings_drafts_title">Wersje robocze</string>
-    <string name="settings_drafts_subtitle">Automatycznie zapisuj niewysłane teksty jako wersje robocze</string>
+    <string name="settings_theme_title">Wybierz motyw</string>
     <string name="settings_archiving_title">Archiwizacja</string>
     <string name="settings_archiving_subtitle">Zezwól na archiwizowanie rozmów</string>
     <string name="settings_pinned_title">Przypięte rozmowy</string>
@@ -48,8 +46,21 @@
     <string name="settings_delayed_subtitle">Czekaj przed wysłaniem wiadomości</string>
     <string name="settings_delay_secs_title">Opóźnienie w sekundach</string>
     <string name="settings_delay_secs_subtitle"></string>
-    <string name="settings_advanced_title">Zaawansowane</string>
-    <string name="settings_advanced_subtitle">Trwałe usuwanie, kierunek przesunięcia, zachowanie linków</string>
+    <string name="settings_inbox_title">Ustawienia skrzynki odbiorczej</string>
+    <string name="settings_advanced_title">Ustawienia zaawansowane</string>
+    <string name="settings_backup_subtitle">Zapisz kopię</string>
+    <string name="settings_scheduled_none">Brak zaplanowanych wiadomości</string>
+    <string name="settings_scheduled_meta">Do: %1$s · %2$s</string>
+        <string name="settings_scheduled_count">%d zaplanowanych</string>
+    <string name="settings_link_behaviour_title">Zachowanie linków</string>
+    <string name="settings_link_behaviour_subtitle">Ukryj, wyróżnij, ostrzegaj</string>
+    <string name="settings_link_needs_highlight">Najpierw włącz „Wyróżnij linki”</string>
+    <string name="swipe_action_off">Brak</string>
+    <string name="swipe_action_mark_read">Oznacz jako przeczytane/nieprzeczytane</string>
+    <string name="swipe_action_block">Zablokuj</string>
+    <string name="swipe_left_title">Przesuń w lewo</string>
+    <string name="swipe_right_title">Przesuń w prawo</string>
+    <string name="settings_advanced_subtitle">Więcej opcji</string>
     <string name="settings_blocking_title">Blokowanie numerów</string>
     <string name="settings_blocking_subtitle">Blokuj numery, które wysyłają Ci wiadomości</string>
     <string name="settings_blocked_numbers_title">Zablokowane numery</string>
@@ -92,7 +103,7 @@
     <string name="settings_backup_change">Zmień</string>
     <string name="settings_backup_saved_location">Kopię zapasową zapisano z kodem PIN w %s</string>
     <string name="settings_import_title">Importuj wiadomości</string>
-    <string name="settings_import_subtitle">Importuj plik bazy danych kopii zapasowej</string>
+    <string name="settings_import_subtitle">Przywróć kopię zapasową</string>
     <string name="settings_import_source_title">Wybierz kopię zapasową do zaimportowania</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">Import/eksport SMS (.zip, .json)</string>
@@ -119,4 +130,10 @@
     <string name="settings_save">Zapisz</string>
     <string name="settings_import">Importuj</string>
     <string name="advanced_turn_on_links">Najpierw włącz „Wyróżnij linki”</string>
+    <string name="settings_swipe_actions_change">ZMIEŃ</string>
+    <string name="settings_link_behaviour_footer">Wybierz, jak mają się zachowywać linki w wiadomościach: pozostać zwykłym tekstem, otwierać się po dotknięciu lub pytać przed otwarciem.</string>
+    <string name="settings_notif_footer">Wybierz, które rozmowy Cię powiadamiają, czy wydają dźwięk i jak długo trwa powiadomienie.</string>
+    <string name="settings_auto_delete_footer">Usunięte rozmowy, zablokowane wiadomości i zablokowani nadawcy są najpierw przenoszeni do Spam i zablokowani, a dopiero potem kasowani. Gdy automatyczne usuwanie jest wyłączone, nic nie zostaje skasowane.</string>
+    <string name="settings_accessibility_footer">Tryb ułatwień dostępu powiększa tekst, obszary dotyku i kontrast. Zmiany dotyczą całej aplikacji.</string>
+    <string name="settings_inbox_footer">Archiwizacja, gesty przesuwania, blokowanie i opóźnione wysyłanie dotyczą rozmów na liście wiadomości.</string>
 </resources>

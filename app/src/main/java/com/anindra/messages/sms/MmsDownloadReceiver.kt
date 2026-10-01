@@ -13,10 +13,16 @@ import kotlinx.coroutines.launch
 class MmsDownloadReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_DOWNLOAD_COMPLETE) return
+        val uri = intent.getStringExtra(EXTRA_MMS_URI)
+        // Only valid on the receiver thread; the platform reports the transfer
+        // result as the PendingResult result code.
+        val resultCode = resultCode
         val pendingResult = goAsync()
         val wakeLock = ReceiverWakeLock.acquire(context, "mms-download")
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
+                MmsDownloader.onComplete(context.applicationContext, uri, resultCode)
+                if (resultCode != android.app.Activity.RESULT_OK) return@launch
                 val repo = (context.applicationContext as com.anindra.messages.MessagesApplication).repository
                 for (mms in repo.importDownloadedMms()) {
                     NotificationHelper.show(context, mms.address, mms.body)
@@ -32,5 +38,6 @@ class MmsDownloadReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_DOWNLOAD_COMPLETE = "com.anindra.messages.MMS_DOWNLOAD_COMPLETE"
+        private const val EXTRA_MMS_URI = "mms_uri"
     }
 }

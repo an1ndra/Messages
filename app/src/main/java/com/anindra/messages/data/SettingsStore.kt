@@ -27,7 +27,6 @@ class SettingsStore(context: Context) {
         const val KEY_SIM_SUBSCRIPTION_ID = "sim_subscription_id"
         const val KEY_PINNED_ENABLED = "pinned_enabled"
         const val KEY_ARCHIVING_ENABLED = "archiving_enabled"
-        const val KEY_DRAFTS_ENABLED = "drafts_enabled"
         const val KEY_SWIPE_ACTIONS_ENABLED = "swipe_actions_enabled"
         const val KEY_BLOCKING_ENABLED = "blocking_enabled"
         const val KEY_RETENTION_TRASH_DAYS = "retention_trash_days"
@@ -62,6 +61,8 @@ class SettingsStore(context: Context) {
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
         const val KEY_PERMANENT_DELETE_WARN = "permanent_delete_warn"
         const val KEY_REVERSE_SWIPE = "reverse_swipe_enabled"
+        const val KEY_SWIPE_LEFT_ACTION = "swipe_left_action"
+        const val KEY_SWIPE_RIGHT_ACTION = "swipe_right_action"
         const val KEY_LINK_WARNING = "link_open_warning_enabled"
         const val KEY_FONT_FAMILY = "font_family"
         const val FONT_SYSTEM = "system"
@@ -130,14 +131,6 @@ class SettingsStore(context: Context) {
     var archivingEnabled: Boolean
         get() = prefs.getBoolean(KEY_ARCHIVING_ENABLED, true)
         set(v) { prefs.edit().putBoolean(KEY_ARCHIVING_ENABLED, v).apply(); _revision.value++ }
-
-    var draftsEnabled: Boolean
-        get() = prefs.getBoolean(KEY_DRAFTS_ENABLED, true)
-        set(v) { prefs.edit().putBoolean(KEY_DRAFTS_ENABLED, v).apply(); _revision.value++ }
-
-    var swipeActionsEnabled: Boolean
-        get() = prefs.getBoolean(KEY_SWIPE_ACTIONS_ENABLED, true)
-        set(v) { prefs.edit().putBoolean(KEY_SWIPE_ACTIONS_ENABLED, v).apply(); _revision.value++ }
 
     var blockingEnabled: Boolean
         get() = prefs.getBoolean(KEY_BLOCKING_ENABLED, true)
@@ -255,9 +248,33 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_PERMANENT_DELETE_WARN, true)
         set(v) { prefs.edit().putBoolean(KEY_PERMANENT_DELETE_WARN, v).apply(); _revision.value++ }
 
-    var reverseSwipeEnabled: Boolean
-        get() = prefs.getBoolean(KEY_REVERSE_SWIPE, false)
-        set(v) { prefs.edit().putBoolean(KEY_REVERSE_SWIPE, v).apply(); _revision.value++ }
+    /**
+     * Left/right swipe actions. The first read on an install that predates these
+     * keys derives them from `swipe_actions_enabled` + `reverse_swipe_enabled`,
+     * so upgrading users keep the behaviour they had.
+     */
+    var swipeLeftAction: SwipeAction
+        get() = prefs.getInt(KEY_SWIPE_LEFT_ACTION, -1).takeIf { it >= 0 }?.let(SwipeAction::fromStorage)
+            ?: migrateSwipeActions().first
+        set(v) { prefs.edit().putInt(KEY_SWIPE_LEFT_ACTION, v.storageValue).apply(); _revision.value++ }
+
+    var swipeRightAction: SwipeAction
+        get() = prefs.getInt(KEY_SWIPE_RIGHT_ACTION, -1).takeIf { it >= 0 }?.let(SwipeAction::fromStorage)
+            ?: migrateSwipeActions().second
+        set(v) { prefs.edit().putInt(KEY_SWIPE_RIGHT_ACTION, v.storageValue).apply(); _revision.value++ }
+
+    /** Writes the derived pair once, then the getters read the new keys. */
+    private fun migrateSwipeActions(): Pair<SwipeAction, SwipeAction> {
+        val (left, right) = SwipeAction.legacyPair(
+            enabled = prefs.getBoolean(KEY_SWIPE_ACTIONS_ENABLED, true),
+            reverse = prefs.getBoolean(KEY_REVERSE_SWIPE, false)
+        )
+        prefs.edit()
+            .putInt(KEY_SWIPE_LEFT_ACTION, left.storageValue)
+            .putInt(KEY_SWIPE_RIGHT_ACTION, right.storageValue)
+            .apply()
+        return left to right
+    }
 
     var linkOpenWarningEnabled: Boolean
         get() = prefs.getBoolean(KEY_LINK_WARNING, true)

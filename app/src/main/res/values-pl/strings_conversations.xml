@@ -31,4 +31,9 @@
     <string name="spam_conversation_deleted">Usunięto zablokowaną rozmowę</string>
     <string name="spam_conversations_cleared">Usunięto zablokowane rozmowy</string>
     <string name="spam_messages_cleared">Usunięto zablokowane wiadomości</string>
+    <string name="convo_marked_read">Oznaczono jako przeczytane</string>
+    <string name="convo_marked_unread">Oznaczono jako nieprzeczytane</string>
+    <string name="convo_pinned">Przypięto</string>
+    <string name="convo_unpinned">Odpięto</string>
+    <string name="convo_blocked">Numer zablokowany</string>
 </resources>

@@ -31,4 +31,9 @@
     <string name="spam_conversation_deleted">Заблокированный чат удалён</string>
     <string name="spam_conversations_cleared">Заблокированные чаты очищены</string>
     <string name="spam_messages_cleared">Заблокированные сообщения очищены</string>
+    <string name="convo_marked_read">Отмечено прочитанным</string>
+    <string name="convo_marked_unread">Отмечено непрочитанным</string>
+    <string name="convo_pinned">Закреплено</string>
+    <string name="convo_unpinned">Закрепление снято</string>
+    <string name="convo_blocked">Номер заблокирован</string>
 </resources>

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_advanced_reverse_swipe">Reverse swipe actions</string>
     <string name="settings_advanced_reverse_swipe_desc">Swipe left to archive and right to delete</string>
     <string name="settings_advanced_hide_links">Hide links from messages</string>
     <string name="settings_advanced_hide_links_desc">Never turn links in messages into tappable links</string>
@@ -38,5 +37,17 @@
     <string name="diagnostics_close">Close</string>
     <string name="diagnostics_clip_label">Messages diagnostics</string>
     <string name="settings_sim_unknown">Unknown SIM</string>
+
+    <string name="mms_check_title">MMS support</string>
+    <string name="mms_check_subtitle">Check each SIM for MMS</string>
+    <string name="mms_check_summary">%1$d of %2$d SIMs support MMS</string>
+    <string name="mms_check_verdict_supported">Supported</string>
+    <string name="mms_check_verdict_disabled">Off on this carrier</string>
+    <string name="mms_check_verdict_no_carrier">No network on this SIM</string>
+    <string name="mms_check_verdict_unknown">Could not be checked</string>
+    <string name="mms_check_number_hidden">Number not shared by carrier</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">Each SIM is checked against the MMS settings its own carrier publishes, because two carriers in the same country can disagree. The country code comes from the SIM number when the carrier shares it, and from the SIM network otherwise.</string>
+    <string name="mms_check_no_sims">No active SIM found</string>
 
 </resources>

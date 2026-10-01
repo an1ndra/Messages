@@ -18,6 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -64,53 +65,48 @@ fun AccessibilityScreen(
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = SettingsLayout.SCREEN_PADDING)
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(SettingsLayout.TOP_GAP))
 
             SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.a11y_font_size_title),
-                    subtitle = fontScaleLabel(vm.a11yFontScalePercent),
-                    onClick = { fontDialog = true }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.a11y_bold_title),
-                    subtitle = stringResource(R.string.a11y_bold_desc),
-                    checked = vm.a11yBold,
-                    onChecked = { vm.a11yBold = it }
-                )
+                A11Y_OPTION_ROWS.forEach { (option, position) ->
+                    when (option) {
+                        A11yOption.FONT_SIZE -> SettingsRow(
+                            position = position,
+                            title = stringResource(R.string.a11y_font_size_title),
+                            subtitle = fontScaleLabel(vm.a11yFontScalePercent),
+                            onClick = { fontDialog = true }
+                        )
+                        A11yOption.BOLD -> SettingsRow(
+                            position = position,
+                            title = stringResource(R.string.a11y_bold_title),
+                            checked = vm.a11yBold,
+                            onChecked = { vm.a11yBold = it }
+                        )
+                        A11yOption.HIGH_CONTRAST -> SettingsRow(
+                            position = position,
+                            title = stringResource(R.string.a11y_high_contrast_title),
+                            checked = vm.a11yHighContrast,
+                            onChecked = { vm.a11yHighContrast = it }
+                        )
+                        A11yOption.LARGE_TOUCH -> SettingsRow(
+                            position = position,
+                            title = stringResource(R.string.a11y_large_touch_title),
+                            checked = vm.a11yLargeTouch,
+                            onChecked = { vm.a11yLargeTouch = it }
+                        )
+                        A11yOption.REDUCE_MOTION -> SettingsRow(
+                            position = position,
+                            title = stringResource(R.string.a11y_reduce_motion_title),
+                            checked = vm.a11yReduceMotion,
+                            onChecked = { vm.a11yReduceMotion = it }
+                        )
+                    }
+                }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.a11y_high_contrast_title),
-                    subtitle = stringResource(R.string.a11y_high_contrast_desc),
-                    checked = vm.a11yHighContrast,
-                    onChecked = { vm.a11yHighContrast = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.a11y_large_touch_title),
-                    subtitle = stringResource(R.string.a11y_large_touch_desc),
-                    checked = vm.a11yLargeTouch,
-                    onChecked = { vm.a11yLargeTouch = it }
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.a11y_reduce_motion_title),
-                    subtitle = stringResource(R.string.a11y_reduce_motion_desc),
-                    checked = vm.a11yReduceMotion,
-                    onChecked = { vm.a11yReduceMotion = it }
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
+            SettingsFooter(stringResource(R.string.settings_accessibility_footer))
         }
     }
 

@@ -134,6 +134,7 @@ import androidx.core.content.FileProvider
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
+import com.anindra.messages.data.Conversation
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
@@ -200,6 +201,7 @@ private fun TextCopyDialog(
 private fun ChatBubble(
     msg: Message,
     showTime: Boolean,
+    senderName: String? = null,
     onTap: () -> Unit,
     deliveryReports: Boolean,
     highlightLinks: Boolean,
@@ -239,6 +241,25 @@ private fun ChatBubble(
         onLinkClick = { pendingUrl = it },
         textColor = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface
     )
+
+    if (senderName != null && !msg.isMe) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
+        ) {
+            PersonAvatar(
+                msg.address.ifBlank { senderName ?: "" },
+                size = 18.dp
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                senderName,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+    }
 
     val corners = bubbleCorners(position, msg.isMe)
     LaunchedEffect(msg.id, position) {
@@ -407,6 +428,13 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val convo by remember(conversationId) { vm.conversationById(conversationId) }.collectAsState(initial = null)
+    val membershipRevision by vm.membershipRevision.collectAsState()
+    var isGroupConversation by remember(conversationId, membershipRevision) {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(conversationId, membershipRevision) {
+        isGroupConversation = vm.isGroup(conversationId)
+    }
     val vmContacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
     val workNums = remember(vmContacts) {
         vmContacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
@@ -545,7 +573,7 @@ fun ChatScreen(
     }
 
     fun leaveChat() {
-        vm.saveDraftAndMaybeTrash(conversationId, draft.trim(), vm.settings.draftsEnabled)
+        vm.saveDraftAndMaybeTrash(conversationId, draft.trim())
         onBack()
     }
 
@@ -605,10 +633,16 @@ fun ChatScreen(
 
     fun forwardSelection() {
         val ids = messages.filter { it.id in selectedMessageIds }.map { it.id }
-        if (ids.isNotEmpty() && vm.settings.forwardingEnabled) {
-            forwardingMessageIds = ids
-            showForwardPicker = true
+        if (ids.isEmpty()) return
+        if (!vm.settings.forwardingEnabled) {
+            // The toolbar offers Forward whatever the setting says, so a policy
+            // that turns forwarding off has to say so. Swallowing the tap here is
+            // what made the button look broken.
+            Toast.makeText(context, context.getString(R.string.settings_forwarding_subtitle), Toast.LENGTH_SHORT).show()
+            return
         }
+        forwardingMessageIds = ids
+        showForwardPicker = true
     }
 
     fun shareSelection() {
@@ -734,7 +768,7 @@ fun ChatScreen(
     }
     LaunchedEffect(convo) {
         if (convo != null && !draftLoaded) {
-            if (vm.settings.draftsEnabled) {
+            {
                 val savedDraft = convo!!.draft
                 if (savedDraft.isNotBlank()) {
                     draft = savedDraft
@@ -802,7 +836,6 @@ fun ChatScreen(
                 numberIsBlocked = numberIsBlocked,
                 blockingEnabled = vm.settings.blockingEnabled,
                 sendCountdown = sendCountdown,
-                draftsEnabled = vm.settings.draftsEnabled,
                 onBack = ::leaveChat,
                 onOpenDetails = onOpenDetails,
                 onMenuToggle = { menuOpen = true },
@@ -971,6 +1004,14 @@ fun ChatScreen(
                         ChatBubble(
                             msg = msg,
                             showTime = isLastMessage || isRevealed,
+                            // Only a group needs a sender: in a 1:1 chat there is
+                            // only one other person and the header names them.
+                            senderName = if (isGroupConversation && !msg.isMe) {
+                                val sender = msg.address.ifBlank { convo?.address ?: "" }
+                                vm.contactNameFor(sender) ?: formatPhoneNumber(sender)
+                            } else {
+                                null
+                            },
                             onTap = {
                                 if (selectionActive) toggleSelection(msg.id)
                                 else if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
@@ -1100,8 +1141,10 @@ fun ChatScreen(
 
     if (showForwardPicker) {
         val vmContacts by vm.contacts.collectAsState()
+        val vmConversations by vm.conversations.collectAsState(initial = emptyList())
         ForwardPicker(
             contacts = vmContacts,
+            conversations = vmConversations,
             onPick = { address, name ->
                 showForwardPicker = false
                 val targets = forwardingMessageIds
@@ -1269,7 +1312,6 @@ private fun ChatTopBar(
     numberIsBlocked: Boolean,
     blockingEnabled: Boolean,
     sendCountdown: Int,
-    draftsEnabled: Boolean,
     onBack: () -> Unit,
     onOpenDetails: () -> Unit,
     onMenuToggle: () -> Unit,
@@ -1296,13 +1338,14 @@ private fun ChatTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable { onOpenDetails() }
             ) {
-                PersonAvatar(convo?.address ?: "?", size = 36.dp)
+                PersonAvatar(convo?.groupTitle?.ifBlank { convo.address } ?: "?", size = 36.dp)
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             convo?.let {
-                                if (it.name != it.address) it.name
+                                if (it.groupTitle.isNotBlank()) it.groupTitle
+                                else if (it.name != it.address) it.name
                                 else BidiText.ltr(it.display)
                             } ?: "",
                             style = MaterialTheme.typography.titleMedium,
@@ -1313,7 +1356,7 @@ private fun ChatTopBar(
                             WorkProfileBadge()
                         }
                     }
-                    if (draftsEnabled && convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
+                    if (convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
                         Text(
                             stringResource(R.string.chat_draft_prefix),
                             style = MaterialTheme.typography.labelSmall,
@@ -2197,12 +2240,13 @@ private fun SimPickerDialog(
 @Composable
 private fun ForwardPicker(
     contacts: List<Contact>,
+    conversations: List<Conversation>,
     onPick: (String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    val filtered = contacts.filter {
-        it.name.contains(query, ignoreCase = true) || it.number.contains(query)
+    val targets = remember(contacts, conversations, query) {
+        ForwardTargets.build(contacts, conversations, query)
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -2224,29 +2268,28 @@ private fun ForwardPicker(
                 )
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(Modifier.heightIn(max = 300.dp)) {
-                    items(filtered, key = { it.number }) { contact ->
+                    items(targets, key = { it.number }) { target ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onPick(contact.number, contact.name) }
+                                .clickable { onPick(target.number, target.name.orEmpty()) }
                                 .padding(vertical = 8.dp)
                         ) {
-                            PersonAvatar(contact.number, size = 36.dp)
+                            PersonAvatar(target.number, size = 36.dp)
                             Spacer(Modifier.width(12.dp))
                             Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(contact.name, fontWeight = FontWeight.Medium)
-                                    if (contact.workProfile) {
-                                        Spacer(Modifier.width(6.dp))
-                                        WorkProfileBadge()
-                                    }
-                                }
                                 Text(
-                                    contact.number,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    target.name ?: target.number,
+                                    fontWeight = FontWeight.Medium
                                 )
+                                if (target.name != null) {
+                                    Text(
+                                        target.number,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

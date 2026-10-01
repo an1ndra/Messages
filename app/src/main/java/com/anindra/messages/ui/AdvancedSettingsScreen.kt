@@ -1,11 +1,8 @@
 package com.anindra.messages.ui
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.biometric.BiometricManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -56,20 +53,19 @@ import com.anindra.messages.ui.theme.AppFonts
 fun AdvancedSettingsScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
-    onOpenAccessibility: () -> Unit = {}
+    onOpenAccessibility: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
+    onOpenAutoDelete: () -> Unit = {},
+    onOpenLinks: () -> Unit = {},
+    onOpenMmsCheck: () -> Unit = {}
 ) {
     BackHandler(onBack = onBack)
 
     val context = LocalContext.current
     val revision by vm.settings.revision.collectAsState()
-    var permanentDelete by remember(revision) { mutableStateOf(vm.settings.permanentDeleteEnabled) }
-    var reverseSwipe by remember(revision) { mutableStateOf(vm.settings.reverseSwipeEnabled) }
     var hideLinks by remember(revision) { mutableStateOf(vm.settings.hideLinks) }
     var highlightLinks by remember(revision) { mutableStateOf(vm.settings.highlightLinks) }
     var linkWarning by remember(revision) { mutableStateOf(vm.settings.linkOpenWarningEnabled) }
-    var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
-    var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
-    var drafts by remember(revision) { mutableStateOf(vm.settings.draftsEnabled) }
     var emojiButton by remember(revision) { mutableStateOf(vm.settings.emojiButtonEnabled) }
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
@@ -102,242 +98,73 @@ fun AdvancedSettingsScreen(
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = SettingsLayout.SCREEN_PADDING)
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(SettingsLayout.TOP_GAP))
 
-            // Conversations
             SettingsGroup {
                 SettingsRow(
-                    title = stringResource(R.string.settings_drafts_title),
-                    subtitle = stringResource(R.string.settings_drafts_subtitle),
-                    checked = drafts,
-                    onChecked = { drafts = it; vm.settings.draftsEnabled = it }
+                position = RowPosition.FIRST,
+                title = stringResource(R.string.settings_link_behaviour_title),
+                subtitle = stringResource(R.string.settings_link_behaviour_subtitle),
+                onClick = onOpenLinks
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_advanced_reverse_swipe),
-                    subtitle = stringResource(R.string.settings_advanced_reverse_swipe_desc),
-                    checked = reverseSwipe,
-                    onChecked = {
-                        reverseSwipe = it
-                        vm.settings.reverseSwipeEnabled = it
-                    }
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.keywords_title),
+                subtitle = blockedKeywordsSubtitle(vm.settings.blockedKeywords),
+                onClick = { keywordsDialog = true }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_advanced_permanent_delete),
-                    subtitle = stringResource(R.string.settings_advanced_permanent_delete_desc),
-                    checked = permanentDelete,
-                    onChecked = {
-                        permanentDelete = it
-                        vm.settings.permanentDeleteEnabled = it
-                        if (!it) vm.settings.permanentDeleteWarn = true
-                    }
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Links
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_advanced_hide_links),
-                    subtitle = stringResource(R.string.settings_advanced_hide_links_desc),
-                    checked = hideLinks,
-                    onChecked = {
-                        hideLinks = it
-                        vm.settings.hideLinks = it
-                    }
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_notif_title),
+                subtitle = stringResource(R.string.settings_notif_subtitle),
+                onClick = onOpenNotifications
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_advanced_highlight_links),
-                    subtitle = if (hideLinks) {
-                        stringResource(R.string.settings_advanced_turn_off) + stringResource(R.string.settings_advanced_hide_links) + stringResource(R.string.settings_advanced_turn_off_suffix)
-                    } else {
-                        stringResource(R.string.settings_link_tap_info)
-                    },
-                    checked = highlightLinks,
-                    onChecked = {
-                        highlightLinks = it
-                        vm.settings.highlightLinks = it
-                    },
-                    enabled = !hideLinks
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_font_title),
+                subtitle = fontLabel(vm.fontFamily),
+                onClick = { fontDialog = true }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_advanced_link_warning),
-                    subtitle = when {
-                        hideLinks -> stringResource(R.string.settings_advanced_turn_off) + stringResource(R.string.settings_advanced_hide_links) + stringResource(R.string.settings_advanced_turn_off_suffix)
-                        !highlightLinks -> "Turn on \"Highlight links\" first"
-                        else -> stringResource(R.string.link_warning_confirm)
-                    },
-                    checked = linkWarning,
-                    onChecked = {
-                        linkWarning = it
-                        vm.settings.linkOpenWarningEnabled = it
-                    },
-                    enabled = !hideLinks && highlightLinks
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Privacy & security
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_privacy_title),
-                    subtitle = stringResource(R.string.settings_privacy_subtitle),
-                    checked = privacyMode,
-                    onChecked = {
-                        privacyMode = it
-                        (context as? Activity)?.let { act -> vm.setPrivacyMode(act, it) }
-                    }
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_advanced_emoji_button),
+                checked = emojiButton,
+                onChecked = { emojiButton = it; vm.settings.emojiButtonEnabled = it }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_applock_title),
-                    subtitle = stringResource(R.string.settings_applock_subtitle),
-                    checked = appLock,
-                    onChecked = { enable ->
-                        val canAuth = BiometricManager.from(context).canAuthenticate(
-                            BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                                BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                        )
-                        if (enable && canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.lock_setup_needed),
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            appLock = enable
-                            vm.settings.appLockEnabled = enable
-                        }
-                    }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.keywords_title),
-                    subtitle = blockedKeywordsSubtitle(vm.settings.blockedKeywords),
-                    onClick = { keywordsDialog = true }
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Notifications
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_send_sound_title),
-                    subtitle = stringResource(R.string.settings_send_sound_subtitle),
-                    checked = sendSound,
-                    onChecked = { sendSound = it; vm.settings.sendSoundEnabled = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_receive_sound_title),
-                    subtitle = stringResource(R.string.settings_receive_sound_subtitle),
-                    checked = receiveSound,
-                    onChecked = {
-                        receiveSound = it
-                        vm.settings.receiveSoundEnabled = it
-                        NotificationHelper.ensureChannel(context)
-                    }
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Appearance
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_font_title),
-                    subtitle = fontLabel(vm.fontFamily),
-                    onClick = { fontDialog = true }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_advanced_emoji_button),
-                    subtitle = stringResource(R.string.settings_advanced_emoji_button_desc),
-                    checked = emojiButton,
-                    onChecked = { emojiButton = it; vm.settings.emojiButtonEnabled = it }
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Accessibility
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_accessibility_title),
-                    subtitle = stringResource(R.string.settings_accessibility_subtitle),
-                    checked = vm.a11y.enabled,
-                    onChecked = { vm.a11yEnabled = it }
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_accessibility_title),
+                checked = vm.a11y.enabled,
+                onChecked = { vm.a11yEnabled = it }
                 )
                 if (vm.a11y.enabled) {
-                    SettingsRow(
-                        title = stringResource(R.string.accessibility_options_title),
-                        subtitle = stringResource(R.string.accessibility_options_subtitle),
-                        onClick = onOpenAccessibility
-                    )
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.accessibility_options_title),
+                    onClick = onOpenAccessibility
+                )
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Auto-delete
-            SettingsGroup {
                 SettingsRow(
-                    title = stringResource(R.string.settings_retention_title),
-                    subtitle = stringResource(R.string.settings_retention_subtitle),
-                    checked = retentionOn,
-                    onChecked = { retentionOn = it; vm.settings.retentionEnabled = it }
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_retention_title),
+                subtitle = stringResource(R.string.settings_retention_subtitle),
+                onClick = onOpenAutoDelete
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_retention_trash),
-                    subtitle = stringResource(R.string.settings_retention_trash_desc),
-                    checked = retentionTrash,
-                    enabled = retentionOn,
-                    onChecked = { retentionTrash = it; vm.settings.retentionTrash = it }
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.mms_check_title),
+                subtitle = stringResource(R.string.mms_check_subtitle),
+                onClick = onOpenMmsCheck
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_retention_keep_trash),
-                    subtitle = context.getString(
-                        R.string.settings_retention_days, retentionTrashDays
-                    ),
-                    enabled = retentionOn && retentionTrash,
-                    onClick = { retentionDaysDialog = true; daysTarget = DAYS_TRASH }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_retention_keyword),
-                    subtitle = stringResource(R.string.settings_retention_keyword_desc),
-                    checked = retentionKeyword,
-                    enabled = retentionOn,
-                    onChecked = { retentionKeyword = it; vm.settings.retentionKeywordMessages = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_retention_blocked),
-                    subtitle = stringResource(R.string.settings_retention_blocked_desc),
-                    checked = retentionBlocked,
-                    enabled = retentionOn,
-                    onChecked = { retentionBlocked = it; vm.settings.retentionBlockedSenders = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_retention_keep_spam),
-                    subtitle = context.getString(
-                        R.string.settings_retention_days, retentionSpamDays
-                    ),
-                    enabled = retentionOn && (retentionKeyword || retentionBlocked),
-                    onClick = { retentionDaysDialog = true; daysTarget = DAYS_SPAM }
+                position = RowPosition.LAST,
+                title = stringResource(R.string.diagnostics_title),
+                onClick = { vm.diagnosticsReport { diagReport = it } }
                 )
             }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Support
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.diagnostics_title),
-                    subtitle = stringResource(R.string.diagnostics_subtitle),
-                    onClick = { vm.diagnosticsReport { diagReport = it } }
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(SettingsLayout.GROUP_GAP))
         }
     }
 

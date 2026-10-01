@@ -73,11 +73,17 @@ import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.sms.SmsSender
 import com.anindra.messages.ui.ChatScreen
 import com.anindra.messages.ui.ConversationsScreen
+import com.anindra.messages.ui.AddPeopleScreen
 import com.anindra.messages.ui.ContactDetailsScreen
+import com.anindra.messages.ui.NotificationSettingsScreen
+import com.anindra.messages.ui.AutoDeleteSettingsScreen
+import com.anindra.messages.ui.LinkSettingsScreen
+import com.anindra.messages.ui.InboxSettingsScreen
 import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.SettingsScreen
 import com.anindra.messages.ui.AdvancedSettingsScreen
 import com.anindra.messages.ui.AccessibilityScreen
+import com.anindra.messages.ui.MmsSupportScreen
 import com.anindra.messages.ui.SpamBlockedScreen
 import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.isPhoneNumber
@@ -255,6 +261,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun markRead(id: Long) = scope.launch { repo.markReadSuspend(id) }
 
+    fun markUnread(id: Long) = scope.launch { repo.setReadSuspend(id, read = false) }
+
+    /** Restores a read state exactly, which is what an undo needs. */
+    fun setRead(id: Long, read: Boolean) = scope.launch { repo.setReadSuspend(id, read) }
+
     /** Clears unread state, returning how many messages were unread. */
     suspend fun consumeUnread(id: Long): Int = withContext(Dispatchers.IO) {
         val n = repo.conversationByIdSuspend(id)?.unreadCount ?: 0
@@ -332,21 +343,83 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setReactions(messageId: Long, reactions: Map<String, Int>) =
         scope.launch { repo.setReactionsSuspend(messageId, reactions) }
 
-    fun send(conversationId: Long, body: String, subId: Int = settings.simSubscriptionId) {
+    /** Everyone a conversation goes to, primary recipient first. */
+    suspend fun conversationRecipients(conversationId: Long): List<String> =
+        repo.conversationRecipients(conversationId)
+
+    suspend fun isGroup(conversationId: Long): Boolean = repo.isGroup(conversationId)
+
+    /**
+     * Bumped whenever a conversation's membership changes, so screens showing
+     * the participant list reload instead of keeping a stale count.
+     */
+    val membershipRevision = kotlinx.coroutines.flow.MutableStateFlow(0)
+
+    /**
+     * Adds people to a conversation, turning it into a group. [onDone] runs once
+     * the write has landed, so the caller can navigate to the new group.
+     */
+    fun addParticipants(
+        conversationId: Long,
+        addresses: List<String>,
+        onDone: () -> Unit = {}
+    ) = scope.launch {
+        repo.addParticipants(conversationId, addresses)
+        membershipRevision.value++
+        onDone()
+    }
+
+    /** Removes one person. The last remaining recipient cannot be removed. */
+    fun removeParticipant(conversationId: Long, address: String) =
         scope.launch {
-            val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
-            if (!isPhoneNumber(convo.address)) return@launch
-            val stored = repo.sendText(conversationId, body, subId) ?: return@launch
-            if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
-            val handedOff = SmsSender.send(
-                getApplication(), stored.id, convo.address, body,
+            repo.removeParticipant(conversationId, address)
+            membershipRevision.value++
+        }
+
+    /** Contacts name for an address, or null when it is not in Contacts. */
+    fun contactNameFor(address: String): String? = repo.contactNameFor(address)
+
+    /** A group's own name, or blank for a 1:1 conversation. */
+    fun conversationGroupTitle(conversationId: Long): String =
+        repo.groupTitleBlocking(conversationId)
+
+    /** Renames a group. Blank restores the default name. */
+    fun setGroupTitle(conversationId: Long, title: String) =
+        scope.launch {
+            repo.setGroupTitle(conversationId, title)
+            membershipRevision.value++
+        }
+
+    fun send(conversationId: Long, body: String, subId: Int = settings.simSubscriptionId) {
+        scope.launch { dispatchText(conversationId, body, subId) }
+    }
+
+    /**
+     * Store a message and hand it to the radio. Everything that puts a row on the
+     * wire goes through here: a forwarded message that only got stored stayed
+     * "Sending…" forever, because nothing was ever sent.
+     */
+    private suspend fun dispatchText(conversationId: Long, body: String, subId: Int) {
+        val convo = repo.conversationByIdSuspend(conversationId) ?: return
+        if (!isPhoneNumber(convo.address)) return
+        val stored = repo.sendText(conversationId, body, subId) ?: return
+        if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
+        val recipients = repo.conversationRecipients(conversationId)
+            .filter { isPhoneNumber(it) }
+            .ifEmpty { listOf(convo.address) }
+        // A group is one stored message sent once per recipient. The row is
+        // marked failed only when every hand-off failed, since a partial
+        // send is still a send.
+        val results = recipients.map { address ->
+            SmsSender.send(
+                getApplication(), stored.id, address, body,
                 subId, settings.deliveryReportsEnabled
             )
-            // accepted by framework; SmsStatusReceiver confirms sent/failed.
-            if (!handedOff) {
-                repo.markMessageStatusSuspend(stored.id, "failed")
-                NotificationHelper.showSendFailed(getApplication(), convo.address)
-            }
+        }
+        // accepted by framework; SmsStatusReceiver confirms sent/failed.
+        if (results.isNotEmpty() && results.none { it }) {
+            repo.markMessageStatusSuspend(stored.id, "failed")
+            NotificationHelper.showSendFailed(getApplication(), convo.address)
         }
     }
 
@@ -355,8 +428,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
             val stored = repo.sendMedia(conversationId, "image", uri.toString()) ?: return@launch
+            // A group MMS addresses every member in one PDU, unlike SMS which
+            // is sent once per person.
+            val recipients = repo.conversationRecipients(conversationId)
+                .filter { isPhoneNumber(it) }
+                .ifEmpty { listOf(convo.address) }
             val handedOff = SmsSender.sendMms(
-                getApplication(), stored.id, convo.address, uri, settings.simSubscriptionId,
+                getApplication(), stored.id, recipients, uri, settings.simSubscriptionId,
                 stored.body
             )
             if (!handedOff) {
@@ -405,13 +483,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val convo = repo.conversationByIdSuspend(msg.conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
             repo.markMessageStatusSuspend(messageId, "sending")
+            val recipients = repo.conversationRecipients(msg.conversationId)
+                .filter { isPhoneNumber(it) }
+                .ifEmpty { listOf(convo.address) }
             val handedOff = if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
-                SmsSender.sendMms(getApplication(), messageId, convo.address, Uri.parse(msg.mediaUri), simId)
+                SmsSender.sendMms(getApplication(), messageId, recipients, Uri.parse(msg.mediaUri), simId)
             } else {
-                SmsSender.send(
-                    getApplication(), messageId, convo.address, msg.body,
-                    simId, settings.deliveryReportsEnabled
-                )
+                val results = recipients.map { address ->
+                    SmsSender.send(
+                        getApplication(), messageId, address, msg.body,
+                        simId, settings.deliveryReportsEnabled
+                    )
+                }
+                results.isNotEmpty() && results.any { it }
             }
             if (!handedOff) repo.markMessageStatusSuspend(messageId, "failed")
         }
@@ -500,6 +584,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun unpinAll() = scope.launch { repo.unpinAll() }
 
+    fun unpin(id: Long) = scope.launch { repo.setPinnedSuspend(id, false) }
+
+    fun setPinned(id: Long, pinned: Boolean) = scope.launch { repo.setPinnedSuspend(id, pinned) }
+
     fun archiveConversation(id: Long) = scope.launch { repo.setArchivedSuspend(id, true) }
 
     fun unarchiveConversation(id: Long) = scope.launch { repo.setArchivedSuspend(id, false) }
@@ -511,9 +599,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Leaving a chat: persist the draft first, then trash the conversation if it
      *  ended up with nothing to show. Sequential so the emptiness check sees the
      *  draft we just wrote (and keeps a chat that still has one). */
-    fun saveDraftAndMaybeTrash(conversationId: Long, draft: String, draftsEnabled: Boolean) {
+    fun saveDraftAndMaybeTrash(conversationId: Long, draft: String) {
         scope.launch(Dispatchers.IO) {
-            if (draftsEnabled) repo.saveDraft(conversationId, draft)
+            repo.saveDraft(conversationId, draft)
             repo.trashConversationIfEmptySuspend(conversationId)
         }
     }
@@ -528,6 +616,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isNumberBlocked(number: String): Boolean = repo.isNumberBlocked(number)
 
+    fun blockedNumbers() = repo.blockedNumbers()
+
     fun conversationNotificationsEnabledFlow(conversationId: Long): Flow<Boolean> =
         repo.conversationNotificationsEnabledFlow(conversationId)
 
@@ -541,7 +631,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch {
             val msg = repo.messageByIdSuspend(messageId) ?: return@launch
             val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
-            repo.sendText(targetConversationId, text, settings.simSubscriptionId)
+            // An attachment with no caption has no text to forward, and sending
+            // the empty body would put a blank SMS on the wire.
+            if (text.isBlank()) return@launch
+            dispatchText(targetConversationId, text, settings.simSubscriptionId)
         }
     }
 
@@ -854,7 +947,12 @@ class MainActivity : FragmentActivity() {
                 androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
                     when (navRoute) {
                         "details" -> navRoute = "chat"
+                        "add-people" -> navRoute = "details"
                         "trash" -> navRoute = "settings"
+                        "inbox" -> navRoute = "settings"
+                        "notif-settings" -> navRoute = "advanced"
+                        "auto-delete" -> navRoute = "advanced"
+                        "links" -> navRoute = "advanced"
                         "advanced" -> navRoute = "settings"
                         "accessibility" -> navRoute = "advanced"
                         "spam" -> navRoute = "settings"
@@ -862,7 +960,9 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "advanced" to 2, "accessibility" to 3)
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "inbox" to 2, "advanced" to 2, "accessibility" to 3,
+                        "notif-settings" to 3, "auto-delete" to 3, "links" to 3,
+                        "add-people" to 3)
                 val reduceMotion = vm.a11y.reduceMotionEnabled
                 val navSlide = motionTween<IntOffset>(reduceMotion, Motion.DURATION_MEDIUM2)
                 val navFade = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
@@ -925,12 +1025,36 @@ class MainActivity : FragmentActivity() {
                                         onOpenTrash = { navRoute = "trash" },
                                         onOpenAdvanced = { navRoute = "advanced" },
                                         onOpenSpamBlocked = { navRoute = "spam" },
+                                        onOpenInbox = { navRoute = "inbox" },
                                         scrollState = settingsScroll
+                                    )
+                                    "inbox" -> InboxSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" }
                                     )
                                     "advanced" -> AdvancedSettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
-                                        onOpenAccessibility = { navRoute = "accessibility" }
+                                        onOpenAccessibility = { navRoute = "accessibility" },
+                                        onOpenNotifications = { navRoute = "notif-settings" },
+                                        onOpenAutoDelete = { navRoute = "auto-delete" },
+                                        onOpenLinks = { navRoute = "links" },
+                                        onOpenMmsCheck = { navRoute = "mms-check" }
+                                    )
+                                    "mms-check" -> MmsSupportScreen(
+                                        onBack = { navRoute = "advanced" }
+                                    )
+                                    "notif-settings" -> NotificationSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" }
+                                    )
+                                    "auto-delete" -> AutoDeleteSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" }
+                                    )
+                                    "links" -> LinkSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" }
                                     )
                                     "accessibility" -> AccessibilityScreen(
                                         vm = vm,
@@ -945,7 +1069,28 @@ class MainActivity : FragmentActivity() {
                                     "details" -> ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
-                                        onBack = { navRoute = "chat" }
+                                        onBack = { navRoute = "chat" },
+                                        onAddPeople = { navRoute = "add-people" }
+                                    )
+                                    "add-people" -> AddPeopleScreen(
+                                        vm = vm,
+                                        conversationId = detailsId,
+                                        onBack = { navRoute = "details" },
+                                        onDone = { picked, groupName ->
+                                            // Add them, name the group, then take
+                                            // the user into the new group chat so
+                                            // they can carry on writing.
+                                            vm.addParticipants(
+                                                detailsId, picked,
+                                                onDone = {
+                                                    if (groupName.isNotEmpty()) {
+                                                        vm.setGroupTitle(detailsId, groupName)
+                                                    }
+                                                    chatId = detailsId
+                                                    navRoute = "chat"
+                                                }
+                                            )
+                                        }
                                     )
                                     else -> ChatScreen(
                                         vm = vm,
@@ -992,6 +1137,9 @@ class MainActivity : FragmentActivity() {
             repo.refreshContactNames()
             lastResumeTime = now
         }
+        // A SIM swap or carrier change alters the MMS size and image limits, so the
+        // cached carrier config is dropped rather than pinned to the old SIM.
+        com.anindra.messages.sms.MmsCarrierConfig.invalidate()
         // Catch MMS whose WAP push was missed (e.g. the app was not the default
         // handler at the time); they stay announced in the provider until fetched.
         com.anindra.messages.sms.MmsDownloader.requestPending(this)

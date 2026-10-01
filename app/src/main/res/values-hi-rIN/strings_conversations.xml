@@ -31,4 +31,9 @@
     <string name="spam_conversation_deleted">अवरुद्ध बातचीत हटाई गई</string>
     <string name="spam_conversations_cleared">अवरुद्ध बातचीतें खाली की गईं</string>
     <string name="spam_messages_cleared">अवरुद्ध संदेश खाली किए गए</string>
+    <string name="convo_marked_read">पढ़ा चिह्नित किया</string>
+    <string name="convo_marked_unread">अपठा चिह्नित किया</string>
+    <string name="convo_pinned">पिन किया गया</string>
+    <string name="convo_unpinned">पिन हटाया गया</string>
+    <string name="convo_blocked">नंबर अवरुद्ध किया गया</string>
 </resources>

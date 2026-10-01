@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -14,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AddComment
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,10 +70,14 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
-            HorizontalDivider()
+            Spacer(Modifier.height(SettingsLayout.ROW_GAP))
 
             // Manual entry option
             val canSendToQuery = isPhoneNumber(query.trim())
+            GroupedRowCard(
+                position = RowPosition.SINGLE,
+                modifier = Modifier.padding(horizontal = SettingsLayout.SCREEN_PADDING)
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -81,7 +85,7 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
                     .clickable(enabled = canSendToQuery) {
                         onPick(query.trim(), query.trim())
                     }
-                    .padding(16.dp)
+                    .padding(SettingsLayout.ROW_CONTENT_PADDING)
             ) {
                 PersonAvatar("#", size = 40.dp)
                 Spacer(Modifier.width(16.dp))
@@ -97,7 +101,9 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
                     }
                 }
             }
-            HorizontalDivider()
+            }
+
+            Spacer(Modifier.height(SettingsLayout.GROUP_GAP))
 
             LazyColumn {
                 items(filtered, key = { it.number }) { contact ->

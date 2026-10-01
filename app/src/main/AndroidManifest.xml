@@ -17,6 +17,12 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
+    <!-- SMS/MMS/phone-state permissions imply telephony; this app degrades to a
+         simulated SIM on devices without a radio (ChromeOS, tablets). -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
     <application
         android:name=".MessagesApplication"
         android:allowBackup="false"
@@ -41,18 +47,20 @@
                 <category android:name="android.intent.category.APP_MESSAGING" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.SENDTO" />
-                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data android:scheme="sms" />
                 <data android:scheme="smsto" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.SENDTO" />
-                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data android:scheme="mms" />
                 <data android:scheme="mmsto" />
             </intent-filter>
