@@ -15,8 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewParameter
-import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.SimCard
@@ -47,19 +46,19 @@ import com.anindra.messages.ui.theme.MessagesTheme
  * maintaining a fake that drifts from the real thing. These components take
  * plain values, so what the pane draws is what ships.
  */
-/** Not private: Android Studio instantiates this reflectively to expand previews. */
-class ThemeModeProvider : PreviewParameterProvider<String> {
-    override val values = sequenceOf("light", "dark")
-}
-
-/** Every preview renders on the real theme background, as the app does. */
+/**
+ * Every preview renders on the real theme background, as the app does.
+ *
+ * [mode] is left on "system" so the theme follows the preview's `uiMode`: that
+ * is what lets `@PreviewLightDark` switch the whole set, rather than each
+ * preview having to pass a mode through a parameter.
+ */
 @Composable
-private fun Stage(
-    mode: String,
+internal fun Stage(
     a11y: A11yOptions = A11yOptions.DISABLED,
     content: @Composable () -> Unit
 ) {
-    MessagesTheme(mode = mode, a11y = a11y) {
+    MessagesTheme(mode = "system", a11y = a11y) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -72,12 +71,11 @@ private fun Stage(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Settings row (new UI)", showBackground = true, widthDp = 380)
 @Composable
-private fun SettingsRowNewUiPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    Stage(mode) {
+private fun SettingsRowNewUiPreview() {
+    Stage() {
         SettingsRow(
             title = "Notifications",
             subtitle = "Sound and alerts",
@@ -108,13 +106,12 @@ private fun SettingsRowNewUiPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Swipe action rows (new UI)", showBackground = true, widthDp = 380)
 @Composable
-private fun SwipeActionRowsPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
+private fun SwipeActionRowsPreview() {
     // The settings rows that carry a live preview of the gesture they configure.
-    Stage(mode) {
+    Stage() {
         SettingsRow(
             title = "Swipe left",
             subtitle = "Mark read/unread",
@@ -132,12 +129,11 @@ private fun SwipeActionRowsPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Settings row (legacy UI)", showBackground = true, widthDp = 380)
 @Composable
-private fun SettingsRowLegacyPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    MessagesTheme(mode = mode) {
+private fun SettingsRowLegacyPreview() {
+    MessagesTheme(mode = "system") {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -173,14 +169,13 @@ private fun SettingsRowLegacyPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Legacy row highlighted", showBackground = true, widthDp = 380)
 @Composable
-private fun LegacyRowHighlightedPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
+private fun LegacyRowHighlightedPreview() {
     // What a search result flashes when the jump lands on it. The highlighted
     // title is matched by string inside SettingsRow, so it is set by name here.
-    MessagesTheme(mode = mode) {
+    MessagesTheme(mode = "system") {
         androidx.compose.runtime.CompositionLocalProvider(
             com.anindra.messages.ui.legacy.LocalHighlightedSetting provides "Diagnostics"
         ) {
@@ -208,12 +203,11 @@ private fun LegacyRowHighlightedPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Swipe action previews", showBackground = true, widthDp = 380)
 @Composable
-private fun SwipeActionPreviewGrid(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    Stage(mode) {
+private fun SwipeActionPreviewGrid() {
+    Stage() {
         for (direction in SwipeDirection.entries) {
             for (action in SwipeAction.entries) {
                 Column {
@@ -225,12 +219,11 @@ private fun SwipeActionPreviewGrid(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Avatars and badges", showBackground = true, widthDp = 380)
 @Composable
-private fun AvatarsAndBadgesPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    Stage(mode) {
+private fun AvatarsAndBadgesPreview() {
+    Stage() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             listOf("+15551230001", "+15551230002", "+15551230003", "Sarah", "A").forEach {
                 PersonAvatar(key = it, size = 44.dp, modifier = Modifier.padding(end = 8.dp))
@@ -245,12 +238,11 @@ private fun AvatarsAndBadgesPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Avatars (large touch)", showBackground = true, widthDp = 380)
 @Composable
-private fun AvatarsLargeTouchPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    Stage(mode, a11y = A11yOptions(enabled = true, largeTouchTargets = true)) {
+private fun AvatarsLargeTouchPreview() {
+    Stage(a11y = A11yOptions(enabled = true, largeTouchTargets = true)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             PersonAvatar(key = "+15551230001", size = 56.dp)
             Spacer(Modifier.width(12.dp))
@@ -264,6 +256,64 @@ private fun AvatarsLargeTouchPreview(
                 onChecked = {}
             )
         }
+    }
+}
+
+/**
+ * Font scale is previewed through the app's own accessibility setting rather than
+ * `@PreviewFontScales`, because that is the multiplier that actually ships: the
+ * theme composes a Density from `A11yOptions.fontScalePercent` on top of the
+ * system scale. The extremes come from `PERCENT_OPTIONS`, so a value outside that
+ * range cannot be selected in the app and is not worth rendering.
+ */
+@PreviewLightDark
+@Preview(name = "Font scale 130% (largest)", showBackground = true, widthDp = 380)
+@Composable
+private fun FontScaleLargestPreview() {
+    Stage(a11y = A11yOptions(enabled = true, fontScalePercent = 130)) {
+        com.anindra.messages.ui.legacy.SettingsGroup {
+            com.anindra.messages.ui.legacy.SettingsRow(
+                title = "Notifications",
+                subtitle = "Sound, vibration and alerts",
+                checked = true,
+                onChecked = {}
+            )
+            com.anindra.messages.ui.legacy.SettingsRow(
+                title = "Message font size",
+                subtitle = "130% of the system size",
+                onClick = {}
+            )
+        }
+        ChatBubble(
+            msg = bubble("Does this still fit on one line at 130%?", isMe = false, id = 500L),
+            showTime = true,
+            onTap = {},
+            deliveryReports = true,
+            highlightLinks = true,
+            linkWarningEnabled = false,
+            hideLinks = false,
+            isUnlocked = true,
+            showSimIndicator = false
+        )
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Font scale 85% (smallest)", showBackground = true, widthDp = 380)
+@Composable
+private fun FontScaleSmallestPreview() {
+    Stage(a11y = A11yOptions(enabled = true, fontScalePercent = 85)) {
+        ChatBubble(
+            msg = bubble("And at 85%?", isMe = true, id = 501L),
+            showTime = true,
+            onTap = {},
+            deliveryReports = true,
+            highlightLinks = true,
+            linkWarningEnabled = false,
+            hideLinks = false,
+            isUnlocked = true,
+            showSimIndicator = false
+        )
     }
 }
 
@@ -296,12 +346,11 @@ private fun bubble(
 )
 
 @Composable
-private fun BubbleStage(
-    mode: String,
+internal fun BubbleStage(
     a11y: A11yOptions = A11yOptions.DISABLED,
     content: @Composable () -> Unit
 ) {
-    MessagesTheme(mode = mode, a11y = a11y) {
+    MessagesTheme(mode = "system", a11y = a11y) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -314,12 +363,11 @@ private fun BubbleStage(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Chat bubbles", showBackground = true, widthDp = 380)
 @Composable
-private fun ChatBubblesPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    BubbleStage(mode) {
+private fun ChatBubblesPreview() {
+    BubbleStage() {
         ChatBubble(
             msg = bubble("Are we still on for tomorrow?", isMe = false),
             showTime = true,
@@ -356,15 +404,14 @@ private fun ChatBubblesPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Bubble statuses", showBackground = true, widthDp = 380)
 @Composable
-private fun BubbleStatusesPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
+private fun BubbleStatusesPreview() {
     // The meta line under a bubble, which is the part most likely to regress:
     // transport label, delivery report, failure with its retry affordance, and
     // the SIM slot suffix for a dual-SIM send.
-    BubbleStage(mode) {
+    BubbleStage() {
         listOf("sending" to "Sending…", "sent" to "SMS", "delivered" to "Delivered").forEach {
             (status, body) ->
             ChatBubble(
@@ -396,15 +443,14 @@ private fun BubbleStatusesPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Bubble grouping and reactions", showBackground = true, widthDp = 380)
 @Composable
-private fun BubbleGroupingPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
+private fun BubbleGroupingPreview() {
     // BubblePosition drives which corners soften, so a run of same-sender
     // messages reads as one group. Reactions and the locked placeholder round
     // out the variants a conversation can actually show.
-    BubbleStage(mode) {
+    BubbleStage() {
         var id = 100L
         listOf(
             BubblePosition.FIRST,
@@ -451,12 +497,11 @@ private fun BubbleGroupingPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Bubble (large touch)", showBackground = true, widthDp = 380)
 @Composable
-private fun BubbleLargeTouchPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    BubbleStage(mode, a11y = A11yOptions(enabled = true, largeTouchTargets = true)) {
+private fun BubbleLargeTouchPreview() {
+    BubbleStage(a11y = A11yOptions(enabled = true, largeTouchTargets = true)) {
         ChatBubble(
             msg = bubble("Accessibility mode on", isMe = true),
             showTime = true,
@@ -471,12 +516,11 @@ private fun BubbleLargeTouchPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Message details", showBackground = true, widthDp = 380)
 @Composable
-private fun MessageDetailsPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    MessagesTheme(mode = mode) {
+private fun MessageDetailsPreview() {
+    MessagesTheme(mode = "system") {
         MessageDetailsDialog(
             message = bubble(
                 "Here is the tracking link you asked for",
@@ -489,12 +533,11 @@ private fun MessageDetailsPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Compose input bar", showBackground = true, widthDp = 380)
 @Composable
-private fun InputBarPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    MessagesTheme(mode = mode) {
+private fun InputBarPreview() {
+    MessagesTheme(mode = "system") {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -525,12 +568,11 @@ private fun InputBarPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Attach sheet", showBackground = true, widthDp = 380, heightDp = 640)
 @Composable
-private fun AttachSheetPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    MessagesTheme(mode = mode) {
+private fun AttachSheetPreview() {
+    MessagesTheme(mode = "system") {
         Box(
             Modifier
                 .fillMaxWidth()
@@ -541,12 +583,11 @@ private fun AttachSheetPreview(
     }
 }
 
+@PreviewLightDark
 @Preview(name = "Skeleton rows", showBackground = true, widthDp = 380)
 @Composable
-private fun SkeletonRowsPreview(
-    @PreviewParameter(ThemeModeProvider::class) mode: String
-) {
-    Stage(mode) {
+private fun SkeletonRowsPreview() {
+    Stage() {
         ProvideShimmer {
             repeat(4) { SkeletonConversationRow() }
         }

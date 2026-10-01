@@ -221,7 +221,7 @@ fun SpamBlockedScreen(
 }
 
 @Composable
-private fun ConversationsTab(
+internal fun ConversationsTab(
     blocked: List<Conversation>,
     listState: LazyListState,
     onOpenConversation: (Long) -> Unit,
@@ -296,7 +296,7 @@ private fun ConversationsTab(
 }
 
 @Composable
-private fun MessagesTab(
+internal fun MessagesTab(
     messages: List<BlockedMessage>,
     listState: LazyListState,
     restorable: (BlockedMessage) -> Boolean,
@@ -380,7 +380,7 @@ private fun MessagesTab(
 }
 
 @Composable
-private fun EmptyFolder(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+internal fun EmptyFolder(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
     Column(
         Modifier
             .fillMaxSize()

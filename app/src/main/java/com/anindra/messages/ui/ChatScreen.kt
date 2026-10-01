@@ -178,7 +178,7 @@ private const val LOAD_EARLIER_STEP = 200
  *  normally, and the chat keeps its own long-press behaviour instead of losing
  *  every contextual option. */
 @Composable
-private fun TextCopyDialog(
+internal fun TextCopyDialog(
     body: String,
     onDismiss: () -> Unit
 ) {
@@ -1233,7 +1233,7 @@ fun ChatScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MessageSelectionToolbar(
+internal fun MessageSelectionToolbar(
     count: Int,
     allLocked: Boolean,
     onSelectAll: () -> Unit,
@@ -1333,7 +1333,7 @@ private fun MessageSelectionToolbar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChatTopBar(
+internal fun ChatTopBar(
     convo: com.anindra.messages.data.Conversation?,
     workProfile: Boolean,
     sims: List<SimCard>,
@@ -1475,7 +1475,7 @@ private fun ChatTopBar(
 }
 
 @Composable
-private fun ChatMessageList(
+internal fun ChatMessageList(
     messages: List<com.anindra.messages.data.Message>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     deliveryReports: Boolean,
@@ -1546,7 +1546,7 @@ private fun ChatMessageList(
 
 /** Shimmer placeholder bubbles shown while earlier messages are still loading. */
 @Composable
-private fun SkeletonMessageRow() {
+internal fun SkeletonMessageRow() {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Box(
@@ -1572,7 +1572,7 @@ private fun SkeletonMessageRow() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChatSchedulePicker(
+internal fun ChatSchedulePicker(
     visible: Boolean,
     step: String,
     conversationId: Long,
@@ -1731,7 +1731,7 @@ private fun styledBody(
 
 
 @Composable
-private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> Unit) {
+internal fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> Unit) {
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1813,7 +1813,7 @@ internal fun MessageDetailsDialog(
 }
 
 @Composable
-private fun ConversationDetailsDialog(
+internal fun ConversationDetailsDialog(
     address: String,
     name: String?,
     messageCount: Int,
@@ -1852,7 +1852,7 @@ private fun ConversationDetailsDialog(
 }
 
 @Composable
-private fun DetailRow(label: String, value: String) {
+internal fun DetailRow(label: String, value: String) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween
@@ -2038,7 +2038,7 @@ fun MessageRow(
 }
 
 @Composable
-private fun ImageBubble(uri: String, isMe: Boolean) {
+internal fun ImageBubble(uri: String, isMe: Boolean) {
     coil3.compose.AsyncImage(
         model = uri,
         contentDescription = stringResource(R.string.access_photo),
@@ -2052,7 +2052,7 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
 
 /** Google-Messages-like input bar: pill field with emoji toggle + circular send. */
 @Composable
-private fun AlphanumericNotice(address: String) {
+internal fun AlphanumericNotice(address: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2227,7 +2227,7 @@ internal fun AttachSheet(
 }
 
 @Composable
-private fun SimPickerDialog(
+internal fun SimPickerDialog(
     sims: List<SimCard>,
     currentSimId: Int,
     onSelect: (Int) -> Unit,
@@ -2267,7 +2267,7 @@ private fun SimPickerDialog(
 }
 
 @Composable
-private fun ForwardPicker(
+internal fun ForwardPicker(
     contacts: List<Contact>,
     conversations: List<Conversation>,
     onPick: (String, String) -> Unit,

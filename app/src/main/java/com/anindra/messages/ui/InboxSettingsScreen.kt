@@ -52,7 +52,7 @@ import com.anindra.messages.data.SwipeAction
  * rather than a second control.
  */
 @Composable
-private fun ChangeAffordance() {
+internal fun ChangeAffordance() {
     Text(
         text = stringResource(R.string.settings_swipe_actions_change),
         style = MaterialTheme.typography.labelLarge,
@@ -283,7 +283,7 @@ fun InboxSettingsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeActionDialog(
+internal fun SwipeActionDialog(
     current: SwipeAction,
     onPick: (SwipeAction) -> Unit,
     onDismiss: () -> Unit

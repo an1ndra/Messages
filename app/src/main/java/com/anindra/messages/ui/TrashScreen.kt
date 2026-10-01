@@ -280,7 +280,7 @@ fun TrashScreen(
 }
 
 @Composable
-private fun EmptyTrash(title: String, message: String) {
+internal fun EmptyTrash(title: String, message: String) {
     Column(
         Modifier
             .fillMaxSize()
@@ -311,7 +311,7 @@ private fun EmptyTrash(title: String, message: String) {
 }
 
 @Composable
-private fun TrashRow(
+internal fun TrashRow(
     convo: Conversation,
     onRestore: () -> Unit,
     onDeleteForever: () -> Unit
@@ -369,7 +369,7 @@ private fun TrashRow(
 }
 
 @Composable
-private fun TrashMessageRow(
+internal fun TrashMessageRow(
     msg: TrashedMessage,
     onRestore: () -> Unit,
     onDeleteForever: () -> Unit
@@ -432,7 +432,7 @@ private fun formatTrashDate(ts: Long): String =
     if (ts <= 0) "" else DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(ts))
 
 @Composable
-private fun TrashReasonTag() {
+internal fun TrashReasonTag() {
     Surface(
         color = MaterialTheme.colorScheme.tertiaryContainer,
         shape = RoundedCornerShape(6.dp)

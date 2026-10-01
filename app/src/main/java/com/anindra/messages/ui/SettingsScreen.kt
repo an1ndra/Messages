@@ -875,7 +875,7 @@ private fun notificationSoundLabel(value: String, options: List<Pair<String, Str
  * confirm button does.
  */
 @Composable
-private fun ImportRadioGroup(
+internal fun ImportRadioGroup(
     options: List<Pair<String, String>>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit
