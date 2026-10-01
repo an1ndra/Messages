@@ -864,14 +864,9 @@ class MainActivity : FragmentActivity() {
         // screen while the conversation resolves, so the list never flashes first.
         if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
 
-        /** Result of the last "Set as default SMS app" request, so a refusal is visible. */
-var defaultSmsResult by mutableStateOf(Activity.RESULT_CANCELED)
-
-    val defaultSmsLauncher = registerForActivityResult(
+        val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            defaultSmsResult = result.resultCode
-        }
+        ) { }
 
         setContent {
             val vm: AppViewModel = viewModel()
@@ -1033,6 +1028,18 @@ var defaultSmsResult by mutableStateOf(Activity.RESULT_CANCELED)
                                 val roleManager = getSystemService(RoleManager::class.java)
                                 if (roleManager.isRoleAvailable(RoleManager.ROLE_SMS)) {
                                     defaultSmsLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS))
+                                } else {
+                                    // Roles are absent on some OEM builds. The legacy
+                                    // picker still works there; without this the
+                                    // button did nothing at all.
+                                    defaultSmsLauncher.launch(
+                                        android.content.Intent(
+                                            android.provider.Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT
+                                        ).putExtra(
+                                            android.provider.Telephony.Sms.Intents.EXTRA_PACKAGE_NAME,
+                                            packageName
+                                        )
+                                    )
                                 }
                             }) { androidx.compose.material3.Text(stringResource(R.string.default_sms_set)) }
                         },
