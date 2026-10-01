@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -305,7 +306,11 @@ private fun SwipeActionDialog(
                                 selected = current == option,
                                 onClick = { onPick(option) }
                             )
-                            .padding(vertical = 2.dp)
+                            // 2.dp left the six options ~25dp apart, so each
+                            // row's touch target overlapped its neighbours and
+                            // the list read as crowded. A choice row wants the
+                            // standard minimum.
+                            .heightIn(min = A11y.MIN_TOUCH_DP.dp)
                     ) {
                         RadioButton(selected = current == option, onClick = null)
                         Text(
