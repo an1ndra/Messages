@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">Las conversaciones eliminadas, los mensajes bloqueados y los remitentes bloqueados se trasladan a Spam y bloqueados antes de borrarse. No se borra nada mientras la eliminación automática esté desactivada.</string>
     <string name="settings_accessibility_footer">El modo de accesibilidad aumenta el texto, las áreas táctiles y el contraste. Los cambios se aplican a toda la app.</string>
     <string name="settings_inbox_footer">Archivar, gestos de deslizar, bloqueo y envío con retardo se aplican a las conversaciones de la lista de mensajes.</string>
+    <string name="settings_new_ui_title">Interfaz rediseñada</string>
+    <string name="settings_new_ui_subtitle">Usar el nuevo diseño de ajustes y listas</string>
 </resources>

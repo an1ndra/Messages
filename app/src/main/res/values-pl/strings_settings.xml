@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">Usunięte rozmowy, zablokowane wiadomości i zablokowani nadawcy są najpierw przenoszeni do Spam i zablokowani, a dopiero potem kasowani. Gdy automatyczne usuwanie jest wyłączone, nic nie zostaje skasowane.</string>
     <string name="settings_accessibility_footer">Tryb ułatwień dostępu powiększa tekst, obszary dotyku i kontrast. Zmiany dotyczą całej aplikacji.</string>
     <string name="settings_inbox_footer">Archiwizacja, gesty przesuwania, blokowanie i opóźnione wysyłanie dotyczą rozmów na liście wiadomości.</string>
+    <string name="settings_new_ui_title">Nowo zaprojektowany interfejs</string>
+    <string name="settings_new_ui_subtitle">Użyj nowego układu ustawień i list</string>
 </resources>

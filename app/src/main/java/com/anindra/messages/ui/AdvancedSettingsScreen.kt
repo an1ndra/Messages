@@ -161,6 +161,13 @@ onOpenAccessibility: () -> Unit = {},
                 onClick = onOpenMmsCheck
                 )
                 SettingsRow(
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_new_ui_title),
+                subtitle = stringResource(R.string.settings_new_ui_subtitle),
+                checked = vm.settings.useNewUi,
+                onChecked = { vm.settings.useNewUi = it }
+                )
+                SettingsRow(
                 position = RowPosition.LAST,
                 title = stringResource(R.string.diagnostics_title),
                 onClick = { vm.diagnosticsReport { diagReport = it } }

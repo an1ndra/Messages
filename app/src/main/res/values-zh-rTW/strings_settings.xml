@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">已刪除的對話、被封鎖的訊息和被封鎖的傳送者會先移至「垃圾郵件和已封鎖」，然後才徹底清除。關閉自動刪除時不會清除任何內容。</string>
     <string name="settings_accessibility_footer">無障礙模式會放大文字、點按區域和對比度。更改會套用至整個應用程式。</string>
     <string name="settings_inbox_footer">封存、滑動操作、封鎖和延遲傳送適用於訊息清單中的對話。</string>
+    <string name="settings_new_ui_title">重新設計的介面</string>
+    <string name="settings_new_ui_subtitle">使用新的設定與清單版面</string>
 </resources>

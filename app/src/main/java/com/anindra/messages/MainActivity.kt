@@ -974,6 +974,8 @@ class MainActivity : FragmentActivity() {
                 val accessibilityScroll = rememberScrollState()
                 val contactDetailsScroll = rememberScrollState()
                 val inboxScroll = rememberScrollState()
+                val settingsRevision by vm.settings.revision.collectAsState()
+                val useNewUi = settingsRevision.let { vm.settings.useNewUi }
                 val trashConversationList = rememberLazyListState()
                 val trashMessageList = rememberLazyListState()
                 val spamConversationList = rememberLazyListState()
@@ -1067,7 +1069,17 @@ class MainActivity : FragmentActivity() {
                 val navFade = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
 
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-                    ConversationsScreen(
+                    if (useNewUi) ConversationsScreen(
+                        vm = vm,
+                        onOpenConversation = { id ->
+                            com.anindra.messages.sms.NotificationHelper
+                                .clearConversationNotification(this@MainActivity, id)
+                            chatId = id
+                            navRoute = "chat"
+                        },
+                        onNewChat = { navRoute = "new" },
+                        onOpenSettings = { navRoute = "settings" }
+                    ) else com.anindra.messages.ui.legacy.ConversationsScreen(
                         vm = vm,
                         onOpenConversation = { id ->
                             com.anindra.messages.sms.NotificationHelper
@@ -1118,7 +1130,7 @@ class MainActivity : FragmentActivity() {
                                             }
                                         }
                                     )
-                                    "settings" -> SettingsScreen(
+                                    "settings" -> if (useNewUi) SettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "list" },
                                         onOpenTrash = { navRoute = "trash" },
@@ -1127,13 +1139,21 @@ class MainActivity : FragmentActivity() {
                                         onOpenInbox = { navRoute = "inbox" },
                                         onOpenScheduled = { navRoute = "scheduled" },
                                         scrollState = settingsScroll
+                                    ) else com.anindra.messages.ui.legacy.SettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "list" },
+                                        onOpenTrash = { navRoute = "trash" },
+                                        onOpenAdvanced = { navRoute = "advanced" },
+                                        onOpenSpamBlocked = { navRoute = "spam" },
+                                        onOpenScheduled = { navRoute = "scheduled" },
+                                        scrollState = settingsScroll
                                     )
                                     "inbox" -> InboxSettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
                                         scrollState = inboxScroll
                                     )
-                                    "advanced" -> AdvancedSettingsScreen(
+                                    "advanced" -> if (useNewUi) AdvancedSettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
 onOpenAccessibility = { navRoute = "accessibility" },
@@ -1142,6 +1162,10 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         onOpenLinks = { navRoute = "links" },
                                         onOpenMmsCheck = { navRoute = "mms-check" },
                                         scrollState = advancedScroll
+                                    ) else com.anindra.messages.ui.legacy.AdvancedSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" },
+                                        onOpenAccessibility = { navRoute = "accessibility" },
                                     )
                                     "scheduled" -> ScheduledMessagesScreen(
                                         vm = vm,
@@ -1166,10 +1190,13 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         vm = vm,
                                         onBack = { navRoute = "advanced" }
                                     )
-                                    "accessibility" -> AccessibilityScreen(
+                                    "accessibility" -> if (useNewUi) AccessibilityScreen(
                                         vm = vm,
                                         onBack = { navRoute = "advanced" },
                                         scrollState = accessibilityScroll
+                                    ) else com.anindra.messages.ui.legacy.AccessibilityScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" },
                                     )
                                     "trash" -> TrashScreen(
                                         vm = vm,
@@ -1184,12 +1211,16 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         conversationListState = spamConversationList,
                                         messageListState = spamMessageList
                                     )
-                                    "details" -> ContactDetailsScreen(
+                                    "details" -> if (useNewUi) ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
 onBack = { navRoute = "chat" },
                                         onAddPeople = { navRoute = "add-people" },
                                         scrollState = contactDetailsScroll
+                                    ) else com.anindra.messages.ui.legacy.ContactDetailsScreen(
+                                        vm = vm,
+                                        conversationId = detailsId,
+                                        onBack = { navRoute = "chat" },
                                     )
                                     "add-people" -> AddPeopleScreen(
                                         vm = vm,

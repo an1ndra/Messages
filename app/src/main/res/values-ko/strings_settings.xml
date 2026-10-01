@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">삭제한 대화, 차단한 메시지와 차단한 발신자는 완전히 지우기 전에 스팸 및 차단으로 이동됩니다. 자동 삭제가 꺼져 있으면 아무것도 지워지지 않습니다.</string>
     <string name="settings_accessibility_footer">접근성 모드는 글자, 터치 영역, 대비를 크게 합니다. 변경 사항은 앱 전체에 적용됩니다.</string>
     <string name="settings_inbox_footer">보관, 스와이프 동작, 차단, 예약 전송은 메시지 목록의 대화에 적용됩니다.</string>
+    <string name="settings_new_ui_title">재설계된 인터페이스</string>
+    <string name="settings_new_ui_subtitle">새 설정 및 목록 레이아웃 사용</string>
 </resources>

@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">हटाई गई बातचीत, अवरुद्ध संदेश और अवरुद्ध प्रेषक पहले स्पैम और अवरुद्ध में भेजे जाते हैं, फिर मिटाए जाते हैं। स्वतः-हटाना बंद होने पर कुछ भी नहीं मिटता।</string>
     <string name="settings_accessibility_footer">सुगम्यता मोड्यूल पाठ, स्पर्श क्षेत्र और कंट्रास्ट बड़ा करता है। बदलाव पूरे ऐप पर लागू होते हैं।</string>
     <string name="settings_inbox_footer">अभिलेखन, स्वाइप क्रियाएँ, अवरुद्ध करना और विलंबित भेजना संदेश सूची की बातचीतों पर लागू होते हैं।</string>
+    <string name="settings_new_ui_title">पुनः डिज़ाइन किया गया इंटरफ़ेस</string>
+    <string name="settings_new_ui_subtitle">नई सेटिंग्स और सूची लेआउट का उपयोग करें</string>
 </resources>
