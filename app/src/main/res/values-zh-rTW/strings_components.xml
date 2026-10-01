@@ -68,4 +68,5 @@
     <string name="contact_group_name">群組名稱</string>
     <string name="contact_create_group">建立群組</string>
     <string name="contact_group_name_optional">選填 - 我們會自動命名</string>
+    <string name="action_add">新增</string>
 </resources>

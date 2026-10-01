@@ -885,6 +885,9 @@ fun SwipeAction.a11yLabelRes(unread: Boolean): Int = when (this) {
 
 internal data class RowSettings(
     val pinnedEnabled: Boolean,
+    /** Legacy rows gate on these; the redesigned list treats them as always on. */
+    val draftsEnabled: Boolean = true,
+    val reverseSwipe: Boolean = false,
     val archivingEnabled: Boolean,
     val blockingEnabled: Boolean,
     val swipeEnabled: Boolean,

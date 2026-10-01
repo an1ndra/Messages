@@ -76,4 +76,5 @@
     <string name="contact_group_name">Group name</string>
     <string name="contact_create_group">Create group</string>
     <string name="contact_group_name_optional">Optional - we\'ll name it for you</string>
+    <string name="action_add">Add</string>
 </resources>

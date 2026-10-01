@@ -76,4 +76,5 @@
     <string name="contact_group_name">Название группы</string>
     <string name="contact_create_group">Создать группу</string>
     <string name="contact_group_name_optional">Необязательно - мы назовём её сами</string>
+    <string name="action_add">Добавить</string>
 </resources>
