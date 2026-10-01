@@ -38,13 +38,29 @@ data class SimMmsCheck(
     val callingCode: String?,
     val region: String?,
     val mmsEnabledByCarrier: Boolean?,
-    val maxMessageBytes: Int?
+    val maxMessageBytes: Int?,
+    /**
+     * Whether the SIM is attached to a network at all. Taken from the SIM's
+     * MCC/MNC, which is blank when it has none.
+     */
+    val hasNetwork: Boolean = true
 ) {
+    /**
+     * The verdict reads the carrier's own MMS flag and nothing else.
+     *
+     * The country code and region are carried alongside as context, but they
+     * are not capability facts: two carriers in one country disagree, and the
+     * region is often a guess derived from the number. Stock Messages likewise
+     * keys the whole thing off `enabledMMS`. The one deliberate divergence is
+     * that a carrier which never published the flag reads as UNKNOWN rather
+     * than supported -- there is no server-side override layer here to patch a
+     * carrier's silence, so silence cannot be read as consent.
+     */
     val verdict: MmsVerdict
         get() = when {
+            !hasNetwork -> MmsVerdict.NO_CARRIER
             mmsEnabledByCarrier == null -> MmsVerdict.UNKNOWN
             !mmsEnabledByCarrier -> MmsVerdict.CARRIER_DISABLED
-            region.isNullOrBlank() -> MmsVerdict.NO_CARRIER
             else -> MmsVerdict.SUPPORTED
         }
 

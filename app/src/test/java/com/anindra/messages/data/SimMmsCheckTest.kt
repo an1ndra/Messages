@@ -12,7 +12,8 @@ class SimMmsCheckTest {
         region: String? = "GB",
         carrierMms: Boolean? = true,
         number: String? = null,
-        callingCode: String? = "+44"
+        callingCode: String? = "+44",
+        hasNetwork: Boolean = true
     ) = SimMmsCheck(
         subscriptionId = 1,
         slotIndex = 0,
@@ -21,7 +22,8 @@ class SimMmsCheckTest {
         callingCode = callingCode,
         region = region,
         mmsEnabledByCarrier = carrierMms,
-        maxMessageBytes = MmsConfig.DEFAULT_MAX_MESSAGE_SIZE
+        maxMessageBytes = MmsConfig.DEFAULT_MAX_MESSAGE_SIZE,
+        hasNetwork = hasNetwork
     )
 
     @Test
@@ -47,15 +49,33 @@ class SimMmsCheckTest {
 
     @Test
     fun aSimWithNoNetworkCannotBeChecked() {
-        assertEquals(MmsVerdict.NO_CARRIER, check(region = null).verdict)
-        assertEquals(MmsVerdict.NO_CARRIER, check(region = "").verdict)
+        assertEquals(MmsVerdict.NO_CARRIER, check(hasNetwork = false).verdict)
     }
 
     @Test
-    fun carrierOffBeatsAMissingRegion() {
-        // The carrier's own answer is the more specific one, so it wins over the
-        // "nothing to check" case.
-        assertEquals(MmsVerdict.CARRIER_DISABLED, check(region = null, carrierMms = false).verdict)
+    fun anUnknownRegionDoesNotStandInForAnUnknownNetwork() {
+        // The region is a country guess derived from the number; the SIM's
+        // MCC/MNC is the actual network attachment. Gating the verdict on the
+        // region reported "no network" for SIMs that were plainly online.
+        assertEquals(MmsVerdict.SUPPORTED, check(region = null).verdict)
+        assertEquals(MmsVerdict.SUPPORTED, check(region = "").verdict)
+    }
+
+    @Test
+    fun theCountryNeverChangesTheVerdict() {
+        val gb = check(region = "GB", carrierMms = true).verdict
+        val ind = check(region = "IN", carrierMms = true).verdict
+        assertEquals(gb, ind)
+    }
+
+    @Test
+    fun noNetworkBeatsAnUnreadableCarrierConfig() {
+        // With nothing to check at all, "no network" is the more useful thing to
+        // say than "could not be checked".
+        assertEquals(
+            MmsVerdict.NO_CARRIER,
+            check(carrierMms = null, hasNetwork = false).verdict
+        )
     }
 
     @Test

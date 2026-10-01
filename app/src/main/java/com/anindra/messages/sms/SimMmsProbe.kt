@@ -42,7 +42,8 @@ object SimMmsProbe {
             maxMessageBytes = config?.getInt(
                 CarrierConfigManager.KEY_MMS_MAX_MESSAGE_SIZE_INT,
                 MmsConfig.DEFAULT_MAX_MESSAGE_SIZE
-            )
+            ),
+            hasNetwork = !sim.mccMnc.isNullOrBlank()
         )
         Log.i(TAG, "SIM ${sim.subscriptionId} (${sim.carrierName}): ${result.verdict}")
         return result
