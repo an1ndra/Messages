@@ -142,4 +142,5 @@
     <string name="settings_inbox_footer">ينطبق الأرشفة وإجراءات السحب والحظر والإرسال المؤجل على المحادثات في قائمة الرسائل.</string>
     <string name="settings_new_ui_title">واجهة معاد تصميمها</string>
     <string name="settings_new_ui_subtitle">استخدام تخطيط الإعدادات والقوائم الجديد</string>
+    <string name="settings_scheduled_manage_title">إدارة الرسائل المجدولة</string>
 </resources>

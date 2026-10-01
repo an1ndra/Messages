@@ -142,4 +142,5 @@
     <string name="settings_inbox_footer">Archivar, gestos de deslizar, bloqueo y envío con retardo se aplican a las conversaciones de la lista de mensajes.</string>
     <string name="settings_new_ui_title">Interfaz rediseñada</string>
     <string name="settings_new_ui_subtitle">Usar el nuevo diseño de ajustes y listas</string>
+    <string name="settings_scheduled_manage_title">Gestionar mensajes programados</string>
 </resources>

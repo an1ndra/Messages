@@ -360,7 +360,7 @@ fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
                 SettingsGroup {
                     SettingsRow(
-                        title = stringResource(R.string.settings_scheduled_title),
+                        title = stringResource(R.string.settings_scheduled_manage_title),
                         subtitle = context.getString(
                             R.string.settings_scheduled_count, scheduledAll.size
                         ),

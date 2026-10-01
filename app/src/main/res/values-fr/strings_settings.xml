@@ -142,4 +142,5 @@
     <string name="settings_inbox_footer">L’archivage, les gestes de balayage, le blocage et l’envoi différé s’appliquent aux conversations de la liste des messages.</string>
     <string name="settings_new_ui_title">Interface redessinée</string>
     <string name="settings_new_ui_subtitle">Utiliser la nouvelle mise en page des réglages et listes</string>
+    <string name="settings_scheduled_manage_title">Gérer les messages programmés</string>
 </resources>

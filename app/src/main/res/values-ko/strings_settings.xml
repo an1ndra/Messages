@@ -142,4 +142,5 @@
     <string name="settings_inbox_footer">보관, 스와이프 동작, 차단, 예약 전송은 메시지 목록의 대화에 적용됩니다.</string>
     <string name="settings_new_ui_title">재설계된 인터페이스</string>
     <string name="settings_new_ui_subtitle">새 설정 및 목록 레이아웃 사용</string>
+    <string name="settings_scheduled_manage_title">예약 메시지 관리</string>
 </resources>

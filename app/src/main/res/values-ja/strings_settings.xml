@@ -142,4 +142,5 @@
     <string name="settings_inbox_footer">アーカイブ、スワイプ操作、ブロック、遅延送信は、メッセージ一覧の会話に適用されます。</string>
     <string name="settings_new_ui_title">再設計されたインターフェース</string>
     <string name="settings_new_ui_subtitle">新しい設定・一覧レイアウトを使用</string>
+    <string name="settings_scheduled_manage_title">予約済みメッセージを管理</string>
 </resources>
