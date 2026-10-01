@@ -101,4 +101,68 @@ class SimMmsCheckTest {
         assertEquals("", SimMmsCountry.regionOf(null))
         assertEquals("", SimMmsCountry.regionOf(""))
     }
+
+    @Test
+    fun aNationalNumberTakesItsCallingCodeFromTheSimsCountry() {
+        // Carriers hand out national numbers with no country code. Reading the
+        // leading digits as one put an Indian SIM in China (+86) and Iran (+98).
+        assertEquals("+91", SimMmsCountry.callingCodeOf("8633333333", "IN"))
+        assertEquals("+91", SimMmsCountry.callingCodeOf("9876543210", "IN"))
+        assertEquals("IN", SimMmsCountry.regionOf("8633333333", "IN"))
+    }
+
+    @Test
+    fun aNationalNumberWithNoSimCountryReportsNothingRatherThanAWrongCountry() {
+        // There is no honest answer here: the digits alone do not say where the
+        // number is, and guessing is what produced "+86" for an Indian SIM.
+        assertNull(SimMmsCountry.callingCodeOf("8633333333"))
+        assertNull(SimMmsCountry.callingCodeOf("8633333333", null))
+        assertNull(SimMmsCountry.callingCodeOf("8633333333", ""))
+        assertNull(SimMmsCountry.callingCodeOf("8633333333", "ZZ"))
+        assertEquals("", SimMmsCountry.regionOf("8633333333"))
+    }
+
+    @Test
+    fun anInternationalNumberStillStatesItsOwnCountry() {
+        // The SIM's country must not override a country the number already gives.
+        assertEquals("+44", SimMmsCountry.callingCodeOf("+442071838750", "IN"))
+        assertEquals("GB", SimMmsCountry.regionOf("+442071838750", "IN"))
+        assertEquals("+1", SimMmsCountry.callingCodeOf("+15551234567", "IN"))
+    }
+
+    @Test
+    fun aReservedRangeStaysRejectedWhenTheSimCountryIsKnown() {
+        assertEquals("", SimMmsCountry.regionOf("+15551234567", "IN"))
+    }
+
+    private fun carrier(hasKey: Boolean, enabled: Boolean) = object : CarrierMmsValues {
+        override fun hasMmsKey() = hasKey
+        override fun mmsEnabled() = enabled
+    }
+
+    @Test
+    fun aCarrierThatOmitsTheMmsKeyIsUnknownRatherThanSupported() {
+        // The bug: an absent key was read with a `true` fallback, so every
+        // carrier that never declared the key reported "Supported".
+        assertNull(SimMmsVerdict.carrierEnabled(carrier(hasKey = false, enabled = true)))
+    }
+
+    @Test
+    fun aCarrierThatStatesMmsIsTakenAtItsWord() {
+        assertEquals(true, SimMmsVerdict.carrierEnabled(carrier(hasKey = true, enabled = true)))
+        assertEquals(false, SimMmsVerdict.carrierEnabled(carrier(hasKey = true, enabled = false)))
+    }
+
+    @Test
+    fun anUnreadableCarrierConfigIsNotSupported() {
+        assertNull(SimMmsVerdict.carrierEnabled(null))
+    }
+
+    @Test
+    fun aCarrierThatSaysNothingNeverReadsAsSupported() {
+        // End to end through the verdict, which is what the screen renders.
+        val silent = check(carrierMms = SimMmsVerdict.carrierEnabled(carrier(false, true)))
+        assertEquals(MmsVerdict.UNKNOWN, silent.verdict)
+        assertFalse(silent.supported)
+    }
 }
