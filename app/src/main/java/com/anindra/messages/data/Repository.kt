@@ -23,8 +23,19 @@ import java.io.File
 import java.io.FileOutputStream
 
 private const val DB_NAME = "messages.db"
-enum class BackupFormat { PIN, LEGACY }
+/**
+ * How a backup file is encoded.
+ *
+ * [RAW] is a plain SQLite database, which is what an unencrypted backup is, and
+ * what most of them are. It has to be told apart from [LEGACY] before any
+ * decryption is attempted, because feeding a plaintext database to the keystore
+ * cipher produces garbage rather than a clean failure.
+ */
+enum class BackupFormat { PIN, LEGACY, RAW }
 enum class ImportMode { REPLACE, MERGE }
+
+/** Rows written per transaction while streaming a large backup. */
+private const val TAG_IMPORT = "BackupImport"
 
 /** Rows written per transaction while streaming a large backup. */
 private const val IMPORT_BATCH = 500
@@ -1690,9 +1701,17 @@ class Repository(private val context: Context) {
     fun peekBackupFormat(context: Context, sourceUri: android.net.Uri): BackupFormat {
         return try {
             context.contentResolver.openInputStream(sourceUri)?.use { inp ->
-                val magic = ByteArray(4)
-                if (inp.read(magic) == 4 && BackupCrypto.isPinMagic(magic)) BackupFormat.PIN
-                else BackupFormat.LEGACY
+                val magic = ByteArray(16)
+                val read = inp.read(magic)
+                when {
+                    read >= 4 && BackupCrypto.isPinMagic(magic.copyOf(4)) -> BackupFormat.PIN
+                    // A SQLite database names itself in its first 16 bytes, so an
+                    // unencrypted backup is recognisable without trying to
+                    // decrypt it.
+                    read == 16 && String(magic).startsWith("SQLite format 3") ->
+                        BackupFormat.RAW
+                    else -> BackupFormat.LEGACY
+                }
             } ?: BackupFormat.LEGACY
         } catch (_: Exception) {
             BackupFormat.LEGACY
@@ -1946,29 +1965,55 @@ class Repository(private val context: Context) {
             if (isPin && pin == null) {
                 return ImportResult.Error("Backup is PIN-protected. Enter the PIN to import.")
             }
-            // Decrypt to temp file first (never touch the live DB until we have a valid file)
-            val decrypted = context.contentResolver.openInputStream(sourceUri)?.use { inp ->
+            // Stage the file first, and never touch the live DB until it is
+            // verified. A plain SQLite backup is copied as-is: attempting to
+            // decrypt it and then re-opening the source to recover was how a
+            // perfectly good backup came back as "corrupted", because the second
+            // read produced nothing and the check then saw an empty file.
+            val format = peekBackupFormat(context, sourceUri)
+            if (format == BackupFormat.PIN && pin == null) {
+                return ImportResult.Error("Backup is PIN-protected. Enter the PIN to import.")
+            }
+
+            val staged = context.contentResolver.openInputStream(sourceUri)?.use { inp ->
                 FileOutputStream(tempFile).use { out ->
-                    if (isPin) BackupCrypto.decryptWithPin(inp, out, pin!!)
-                    else BackupCrypto.decrypt(inp, out)
+                    when (format) {
+                        BackupFormat.PIN -> BackupCrypto.decryptWithPin(inp, out, pin!!)
+                        BackupFormat.RAW -> {
+                            inp.copyTo(out)
+                            true
+                        }
+                        // Legacy keystore-bound. A wrong or absent key fails the
+                        // GCM tag, which is the correct outcome rather than
+                        // silently importing an empty database.
+                        BackupFormat.LEGACY -> BackupCrypto.decrypt(inp, out)
+                    }
                 }
             } ?: return ImportResult.Error("Cannot open backup file")
 
-            if (!decrypted) {
-                if (isPin) {
-                    // Wrong PIN (or tampered). A PIN file is never a raw sqlite dump.
-                    tempFile.delete()
-                    return ImportResult.Error("Wrong PIN or corrupted file")
-                }
-                // Legacy (or raw) backup that doesn't decrypt — try a raw import
+            if (!staged) {
                 tempFile.delete()
-                context.contentResolver.openInputStream(sourceUri)?.use { raw ->
-                    FileOutputStream(tempFile).use { raw::copyTo }
-                }
+                return ImportResult.Error(
+                    if (format == BackupFormat.PIN) "Wrong PIN or corrupted file"
+                    else "Cannot decrypt this backup on this device"
+                )
             }
+            Log.i(
+                TAG_IMPORT,
+                "staged ${tempFile.length()} bytes from ${sourceUri.lastPathSegment} ($format)"
+            )
 
             // Validate the temp file is a real SQLite database
             if (!isValidSqliteFile(tempFile)) {
+                Log.e(
+                    TAG_IMPORT,
+                    "temp file is not a SQLite database: ${tempFile.length()} bytes " +
+                        "header=${runCatching {
+                            RandomAccessFile(tempFile, "r").use { raf ->
+                                ByteArray(16).also { raf.readFully(it) }
+                            }.joinToString("") { b -> "%02x".format(b) }
+                        }.getOrNull()}"
+                )
                 tempFile.delete()
                 return ImportResult.Error("Invalid or corrupted backup file")
             }
@@ -2039,6 +2084,30 @@ class Repository(private val context: Context) {
         val target = db.writableDatabase
         var added = 0
         SQLiteDatabase.openDatabase(backupFile.path, null, SQLiteDatabase.OPEN_READONLY).use { backup ->
+            // Ids this device's provider actually holds. A backup carries ids from
+            // wherever it was made, and those mean nothing here.
+            val liveProviderIds = HashSet<Long>()
+            runCatching {
+                context.contentResolver.query(
+                    android.provider.Telephony.Sms.CONTENT_URI,
+                    arrayOf(android.provider.Telephony.Sms._ID), null, null, null
+                )?.use { c -> while (c.moveToNext()) liveProviderIds.add(c.getLong(0)) }
+            }
+            val carriedIds = ArrayList<Long>()
+            runCatching {
+                backup.rawQuery(
+                    "SELECT sys_id FROM messages WHERE sys_id>0", null
+                ).use { c -> while (c.moveToNext()) carriedIds.add(c.getLong(0)) }
+            }
+            val adopted = LegacyBackupSchema.adoptProviderIds(carriedIds, liveProviderIds)
+            if (carriedIds.isNotEmpty() && adopted.size < carriedIds.distinct().size) {
+                Log.i(
+                    TAG_IMPORT,
+                    "dropped ${carriedIds.distinct().size - adopted.size} provider id(s) " +
+                        "from another device; ${adopted.size} kept"
+                )
+            }
+
             val existing = HashSet<String>()
             target.rawQuery("SELECT address FROM conversations", null).use { c ->
                 while (c.moveToNext()) existing.add(c.getString(0))
@@ -2095,18 +2164,14 @@ class Repository(private val context: Context) {
                 backup.rawQuery("PRAGMA table_info(messages)", null).use { columns ->
                     while (columns.moveToNext()) backupColumns.add(columns.getString(1))
                 }
-                val transportColumn = if ("transport" in backupColumns) "transport" else "'sms'"
-                backup.rawQuery(
-                    """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,
-                       reactions,sys_id,locked,sub_id,$transportColumn FROM messages
-                       WHERE deleted_at=0 ORDER BY timestamp""", null
-                ).use { m ->
+                val messageQuery = LegacyBackupSchema.messagesQuery(backupColumns)
+                backup.rawQuery(messageQuery, null).use { m ->
                     while (m.moveToNext()) {
                         val tId = convoMap[m.getLong(0)] ?: continue
                         val body = m.getString(1)
                         val ts = m.getLong(2)
                         val isMe = m.getInt(3)
-                        val transport = m.getString(11)
+                        val transport = m.getString(LegacyBackupSchema.TRANSPORT_INDEX)
                         val dup = target.rawQuery(
                             """SELECT 1 FROM messages WHERE conversation_id=? AND timestamp=?
                                AND is_me=? AND body=? AND transport=? AND media_type=? AND media_uri=?
@@ -2115,7 +2180,14 @@ class Repository(private val context: Context) {
                                 m.getString(5), m.getString(6), transport, m.getLong(8).toString())
                         ).use { q -> q.moveToFirst() }
                         if (dup) continue
-                        val sysId = m.getLong(8)
+                        // A provider id only means something on the device that
+                        // issued it. Carrying it from a backup made on another
+                        // phone leaves rows whose ids match nothing here, and the
+                        // next reconcile then deletes the import as though the
+                        // messages had been removed. Kept only when this device's
+                        // provider really has the row.
+                        val carried = m.getLong(8)
+                        val sysId = if (carried in liveProviderIds) carried else 0L
                         if (sysId > 0) {
                             val dupSys = target.rawQuery(
                                 "SELECT 1 FROM messages WHERE transport=? AND sys_id=?",
@@ -2180,16 +2252,24 @@ class Repository(private val context: Context) {
                     }
                 }
 
-                backup.rawQuery(
-                    "SELECT conversation_id,notifications_enabled FROM conversation_notifications", null
-                ).use { c ->
-                    while (c.moveToNext()) {
-                        val tId = convoMap[c.getLong(0)] ?: continue
-                        target.execSQL(
-                            "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled) VALUES(?,?)",
-                            arrayOf<Any?>(tId, c.getInt(1))
-                        )
+                // conversation_notifications arrived after v8, so a backup from an
+                // older build simply does not have the table. Per-conversation
+                // notification settings are then left at their default, which is
+                // what a fresh conversation gets anyway.
+                if (backupHasTable(backup, "conversation_notifications")) {
+                    backup.rawQuery(
+                        "SELECT conversation_id,notifications_enabled FROM conversation_notifications", null
+                    ).use { c ->
+                        while (c.moveToNext()) {
+                            val tId = convoMap[c.getLong(0)] ?: continue
+                            target.execSQL(
+                                "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled) VALUES(?,?)",
+                                arrayOf<Any?>(tId, c.getInt(1))
+                            )
+                        }
                     }
+                } else {
+                    Log.i(TAG_IMPORT, "backup predates conversation_notifications; using defaults")
                 }
 
                 target.setTransactionSuccessful()
@@ -2199,6 +2279,15 @@ class Repository(private val context: Context) {
         }
         return added
     }
+
+    /** True when the incoming backup has the named table; older ones do not. */
+    private fun backupHasTable(backup: SQLiteDatabase, name: String): Boolean =
+        runCatching {
+            backup.rawQuery(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                arrayOf(name)
+            ).use { it.moveToFirst() }
+        }.getOrDefault(false)
 
     private fun isValidSqliteFile(file: File): Boolean {
         return try {

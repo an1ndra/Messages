@@ -824,6 +824,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         applyFakeDualSim(intent)
         applySmsIeProbe(intent)
+        applyBackupProbe(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
 
@@ -1366,6 +1367,31 @@ onBack = { navRoute = "chat" },
     /** Debug builds only: `--es sms_ie_probe <uri>` runs the sms-ie import so
      *  the end-to-end path can be asserted on an emulator (the SAF picker is
      *  not scriptable). */
+    /** Debug builds only: `--es backup_probe <uri> [--es backup_probe_pin <pin>]`
+     *  runs the backup restore so the end-to-end path can be asserted on an
+     *  emulator, where the SAF picker is not scriptable. */
+    private fun applyBackupProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val uri = intent.getStringExtra("backup_probe") ?: return
+        val pin = intent.getStringExtra("backup_probe_pin")
+        val mode = if (intent.getStringExtra("backup_probe_mode") == "merge") {
+            com.anindra.messages.data.ImportMode.MERGE
+        } else {
+            com.anindra.messages.data.ImportMode.REPLACE
+        }
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
+        vm.importDatabase(Uri.parse(uri), pin, mode) { result ->
+            when (result) {
+                is com.anindra.messages.data.Repository.ImportResult.Success ->
+                    android.util.Log.i("BackupProbe", "restore ok merged=${result.merged}")
+                is com.anindra.messages.data.Repository.ImportResult.Error ->
+                    android.util.Log.e("BackupProbe", "restore failed: ${result.message}")
+            }
+        }
+    }
+
     private fun applySmsIeProbe(intent: Intent) {
         val debuggable =
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -1388,6 +1414,7 @@ onBack = { navRoute = "chat" },
         applyFakeDualSim(intent)
         applyMmsProbe(intent)
         applySmsIeProbe(intent)
+        applyBackupProbe(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system", "amoled" -> vm.themeMode = intent.getStringExtra("set_theme")!!
