@@ -331,6 +331,14 @@ fun AdvancedSettingsScreen(
 
             // Support
             SettingsGroup {
+                // Mirrors the switch in the redesigned screen. Without it here the
+                // legacy UI is a one-way door: switch off, no way back.
+                SettingsRow(
+                    title = stringResource(R.string.settings_new_ui_title),
+                    subtitle = stringResource(R.string.settings_new_ui_subtitle),
+                    checked = vm.settings.useNewUi,
+                    onChecked = { vm.settings.useNewUi = it }
+                )
                 SettingsRow(
                     title = stringResource(R.string.diagnostics_title),
                     subtitle = stringResource(R.string.diagnostics_subtitle),
