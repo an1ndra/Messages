@@ -200,7 +200,7 @@ private fun TextCopyDialog(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ChatBubble(
+internal fun ChatBubble(
     msg: Message,
     showTime: Boolean,
     senderName: String? = null,
@@ -1773,7 +1773,7 @@ private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> 
 }
 
 @Composable
-private fun MessageDetailsDialog(
+internal fun MessageDetailsDialog(
     message: Message,
     address: String,
     onDismiss: () -> Unit
@@ -2077,7 +2077,7 @@ private fun AlphanumericNotice(address: String) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun InputBar(
+internal fun InputBar(
     draft: String,
     placeholder: String,
     onDraftChange: (String) -> Unit,
@@ -2190,7 +2190,7 @@ private fun InputBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AttachSheet(
+internal fun AttachSheet(
     onGallery: () -> Unit,
     onCamera: () -> Unit,
     onDismiss: () -> Unit
