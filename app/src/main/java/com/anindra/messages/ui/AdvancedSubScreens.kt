@@ -407,7 +407,7 @@ private fun mmsCheckSubtitle(check: SimMmsCheck): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsScaffold(
+internal fun SettingsScaffold(
     title: String,
     onBack: () -> Unit,
     content: @Composable () -> Unit

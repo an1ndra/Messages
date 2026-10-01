@@ -393,7 +393,7 @@ onBack: () -> Unit,
 }
 
 @Composable
-private fun DetailActionButton(
+internal fun DetailActionButton(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit
@@ -425,7 +425,7 @@ private fun DetailActionButton(
 }
 
 @Composable
-private fun DetailCardRow(
+internal fun DetailCardRow(
     icon: ImageVector,
     title: String,
     titleColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,

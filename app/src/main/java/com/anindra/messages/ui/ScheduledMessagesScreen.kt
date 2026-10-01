@@ -205,7 +205,7 @@ fun ScheduledMessagesScreen(
 }
 
 @Composable
-private fun ScheduledRow(
+internal fun ScheduledRow(
     address: String,
     label: String,
     body: String,
@@ -285,7 +285,7 @@ private fun ScheduledRow(
 /** Date + time sheets that re-arm an existing schedule. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ReschedulePicker(timestamp: Long, onDone: (Long) -> Unit, onDismiss: () -> Unit) {
+internal fun ReschedulePicker(timestamp: Long, onDone: (Long) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val zone = ZoneId.systemDefault()
     val current = Instant.ofEpochMilli(timestamp).atZone(zone)

@@ -587,7 +587,7 @@ fun ConversationsScreen(
 }
 
 @Composable
-private fun SwipeableConversationItem(
+internal fun SwipeableConversationItem(
     context: android.content.Context,
     settings: RowSettings,
     swipeEnabled: Boolean,
@@ -620,7 +620,7 @@ private fun SwipeableConversationItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeConversationItem(
+internal fun SwipeConversationItem(
     context: android.content.Context,
     settings: RowSettings,
     convo: Conversation,
@@ -745,7 +745,7 @@ private fun SwipeConversationItem(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ConversationRow(
+internal fun ConversationRow(
     modifier: Modifier = Modifier,
     context: android.content.Context,
     settings: RowSettings,
@@ -878,7 +878,7 @@ private enum class ConversationAction {
 }
 
 @Composable
-private fun SheetActionRow(
+internal fun SheetActionRow(
     icon: ImageVector,
     label: String,
     tint: Color,
@@ -904,7 +904,7 @@ private fun SheetActionRow(
  * disappears first and "Start" last.
  */
 @Composable
-private fun StartChatFab(
+internal fun StartChatFab(
     expanded: Boolean,
     onClick: () -> Unit
 ) {
