@@ -9,35 +9,28 @@ import org.w3c.dom.Element
 
 class TranslationParityTest {
 
-    private val resDir: File by lazy {
-        var dir: File? = File(System.getProperty("user.dir"))
-        while (dir != null && !File(dir, "src/main/res").isDirectory) dir = dir.parentFile
-        dir?.let { File(it, "src/main/res") } ?: error("src/main/res not found")
-    }
+    private val resDir: File by lazy { LocaleCatalog.resDir() }
 
     private val baseStrings: Map<String, String> by lazy { readStrings(File(resDir, "values")) }
 
-    private val localeDirs: List<File> by lazy {
-        resDir.listFiles { f: File ->
-            f.isDirectory && f.name.matches(Regex("values-[a-z]{2}(-r[A-Z]{2})?"))
-        }.orEmpty().sortedBy { it.name }
-    }
+    private val localeDirs: List<File> by lazy { LocaleCatalog.localeDirs(resDir) }
+
+    /** Crowdin creates `values-<lang>/` as soon as a language is added to the
+     *  project, long before anyone translates it. Those are expected to be empty
+     *  and must not fail the build; a locale with any content must be complete. */
+    private val translatedDirs: List<File> by lazy { localeDirs.filter { readStrings(it).isNotEmpty() } }
 
     @Test
-    fun everyShippedLocaleIsDiscovered() {
-        assertEquals(
-            listOf(
-                "values-ar", "values-de", "values-es", "values-fr", "values-hi-rIN", "values-ja",
-                "values-ko", "values-pl", "values-pt-rBR", "values-ru", "values-zh-rCN", "values-zh-rTW",
-            ),
-            localeDirs.map { it.name },
-        )
+    fun shippedLocalesMatchTheDeclaredLocaleConfig() {
+        val declared = LocaleCatalog.declaredLocales(resDir) - LocaleCatalog.SOURCE_LANGUAGE
+        val shipped = localeDirs.map { LocaleCatalog.tagForDirName(it.name)!! }.toSet()
+        assertEquals("locales_config.xml and the values-* directories disagree", declared, shipped)
     }
 
     @Test
     fun localesDefineEveryBaseKeyAndNothingElse() {
         val problems = mutableListOf<String>()
-        for (dir in localeDirs) {
+        for (dir in translatedDirs) {
             val locale = readStrings(dir)
             val missing = baseStrings.keys - locale.keys
             val extra = locale.keys - baseStrings.keys
@@ -49,7 +42,7 @@ class TranslationParityTest {
 
     @Test
     fun localesDoNotDefineTheSameKeyTwice() {
-        val duplicates = localeDirs.mapNotNull { dir ->
+        val duplicates = translatedDirs.mapNotNull { dir ->
             val seen = mutableSetOf<String>()
             val dupes = mutableSetOf<String>()
             dir.listFiles { f: File -> f.name.startsWith("strings") && f.extension == "xml" }
@@ -68,7 +61,7 @@ class TranslationParityTest {
     fun localePlaceholdersMatchTheBaseValue() {
         val pattern = Regex("""%\d+\$[sd]""")
         val problems = mutableListOf<String>()
-        for (dir in localeDirs) {
+        for (dir in translatedDirs) {
             val locale = readStrings(dir)
             for ((key, base) in baseStrings) {
                 val translated = locale[key] ?: continue
@@ -100,7 +93,7 @@ class TranslationParityTest {
         )
         assertTrue("base must define the tracked keys", baseStrings.keys.containsAll(mustBeLocalized))
         val problems = mutableListOf<String>()
-        for (dir in localeDirs) {
+        for (dir in translatedDirs) {
             val locale = readStrings(dir)
             for (key in mustBeLocalized) {
                 if (locale[key] == baseStrings[key]) problems += "${dir.name}/$key still English"
@@ -112,7 +105,7 @@ class TranslationParityTest {
     @Test
     fun localeFilesFollowTheBaseKeyOrder() {
         val problems = mutableListOf<String>()
-        for (dir in localeDirs) {
+        for (dir in translatedDirs) {
             dir.listFiles { f: File -> f.name.startsWith("strings") && f.extension == "xml" }
                 .orEmpty()
                 .forEach { file ->
@@ -131,7 +124,7 @@ class TranslationParityTest {
     @Test
     fun noLocaleStringIsEmptyWhileTheBaseHasText() {
         val problems = mutableListOf<String>()
-        for (dir in localeDirs) {
+        for (dir in translatedDirs) {
             val locale = readStrings(dir)
             for ((key, base) in baseStrings) {
                 if (base.isNotBlank() && locale[key]?.isBlank() == true) problems += "${dir.name}/$key empty"
