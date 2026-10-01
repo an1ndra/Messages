@@ -125,7 +125,7 @@
     <string name="settings_sound_bubble">버블</string>
     <string name="settings_theme_light">밝게</string>
     <string name="settings_theme_dark">어둡게</string>
-    <string name="settings_theme_amoled">AMOLED (순수 검정)</string>
+    <string name="settings_theme_amoled">AMOLED</string>
     <string name="settings_theme_system">시스템 기본값</string>
     <string name="convo_your_prefix">"나: "</string>
     <string name="settings_restored_msg">%s개의 메시지가 복원되었습니다. 기존 대화가 유지됩니다.</string>

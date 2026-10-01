@@ -125,7 +125,7 @@
     <string name="settings_sound_bubble">Bolha</string>
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Escuro</string>
-    <string name="settings_theme_amoled">AMOLED (preto puro)</string>
+    <string name="settings_theme_amoled">AMOLED</string>
     <string name="settings_theme_system">Padrão do sistema</string>
     <string name="convo_your_prefix">"Você: "</string>
     <string name="settings_restored_msg">%s mensagens restauradas. Conversas existentes mantidas.</string>

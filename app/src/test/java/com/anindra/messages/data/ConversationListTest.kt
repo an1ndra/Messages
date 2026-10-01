@@ -38,9 +38,11 @@ class ConversationListTest {
     // --- default ---------------------------------------------------------
 
     @Test
-    fun unreadAtTopDefaultsToOff() {
+    fun unreadAtTopDefaultsToOn() {
+        // Unread conversations have to be visible without scrolling to the top,
+        // so this is the default rather than something to opt into.
         assertEquals("unread_at_top_enabled", SettingsStore.KEY_UNREAD_AT_TOP_ENABLED)
-        assertEquals(false, SettingsStore.DEFAULTS_UNREAD_AT_TOP)
+        assertEquals(true, SettingsStore.DEFAULTS_UNREAD_AT_TOP)
     }
 
     @Test

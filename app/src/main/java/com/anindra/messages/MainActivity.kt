@@ -1320,6 +1320,10 @@ onBack = { navRoute = "chat" },
         if (now - lastResumeTime > 5 * 60_000L) {
             repo.syncFromSystem()
             repo.refreshContactNames()
+            // Started here too, because on a fresh install the observer is
+            // registered in Application.onCreate only if SMS access was already
+            // granted; this covers access granted from the permission dialog.
+            repo.observeProviderChanges()
             lastResumeTime = now
         }
         // A SIM swap or carrier change alters the MMS size and image limits, so the

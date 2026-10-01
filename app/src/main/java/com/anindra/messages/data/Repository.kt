@@ -8,6 +8,7 @@ import android.os.Environment
 import android.os.Handler
 import android.os.HandlerThread
 import android.provider.MediaStore
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,12 @@ import java.io.FileOutputStream
 private const val DB_NAME = "messages.db"
 enum class BackupFormat { PIN, LEGACY }
 enum class ImportMode { REPLACE, MERGE }
+
+/** Rows written per transaction while streaming a large backup. */
+private const val IMPORT_BATCH = 500
+
+/** How often the importer reports progress, in records. */
+private const val IMPORT_PROGRESS_EVERY = 250
 
 private const val DB_VERSION = 24
 private const val PREFS_NAME = "messages_schema"
@@ -1738,52 +1745,18 @@ class Repository(private val context: Context) {
     }
 
     /**
-     * Imports an SMS Import / Export (sms-ie) backup. Messages are matched to
-     * existing conversations by canonical address; MMS attachments are copied
-     * into app storage so they survive the backup file going away.
+     * How a streaming import went.
+     *
+     * [skipped] and [truncated] are reported rather than swallowed: a 50k backup
+     * that silently loses records to a damaged line or an oversized photo is
+     * worse than one that says so.
      */
-    fun importSmsIe(messages: List<SmsIeBackup.Message>): Int {
-        if (messages.isEmpty()) return 0
-        val database = db.writableDatabase
-        var added = 0
-        database.beginTransaction()
-        try {
-            for (msg in messages.sortedBy { it.timestamp }) {
-                val address = canonical(msg.address).ifEmpty { msg.address }
-                val cid = matchConversationId(database, address) ?: database.insertOrThrow(
-                    "conversations", null, ContentValues().apply {
-                        put("address", address)
-                        put("name", contactNameFor(address) ?: address)
-                    }
-                )
-                val image = msg.imageBytes
-                database.insertOrThrow("messages", null, ContentValues().apply {
-                    put("conversation_id", cid)
-                    put("body", msg.body)
-                    put("timestamp", msg.timestamp)
-                    put("is_me", if (msg.isMe) 1 else 0)
-                    put("status", msg.status)
-                    put("transport", if (msg.isMms) MmsSupport.TRANSPORT_MMS else MmsSupport.TRANSPORT_SMS)
-                    put("media_type", if (image != null) "image" else "text")
-                    put("media_uri", if (image != null) storeImportedImage(image, msg) else "")
-                })
-                if (!msg.isMe && !msg.read) {
-                    database.execSQL(
-                        "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
-                    )
-                }
-                upsertParticipant(database, address)
-                added++
-            }
-            database.setTransactionSuccessful()
-        } finally {
-            database.endTransaction()
-        }
-        refreshConversationSnippets()
-        reMigrateParticipants()
-        notifyChanged()
-        return added
-    }
+    data class ImportReport(
+        val added: Int,
+        val seen: Int,
+        val skipped: Int,
+        val truncated: Boolean = false
+    )
 
     /** Copies an imported MMS attachment into app storage and returns its URI. */
     private fun storeImportedImage(bytes: ByteArray, msg: SmsIeBackup.Message): String {
@@ -1802,16 +1775,138 @@ class Repository(private val context: Context) {
     fun importSmsIeFrom(
         context: Context,
         uri: android.net.Uri,
-        mode: ImportMode = ImportMode.MERGE
+        mode: ImportMode = ImportMode.MERGE,
+        onProgress: ((done: Int, total: Int) -> Unit)? = null
     ): ImportResult {
-        val loaded = SmsIeReader.load(context, uri)
+        val staged = SmsIeReader.stage(context, uri, context.cacheDir)
             ?: return ImportResult.Error("Cannot read that backup file")
-        if (loaded.parsed.messages.isEmpty()) {
-            return ImportResult.Error("No messages found in that backup")
+        return staged.use {
+            val report = importStaged(staged, mode, onProgress)
+            when {
+                report.seen == 0 ->
+                    ImportResult.Error("No messages found in that backup")
+                // Partial success is still success: a backup with one unreadable
+                // record should not read as a total failure to the user.
+                else -> ImportResult.Success(report.added)
+            }
         }
+    }
+
+    /**
+     * Streams a staged backup into the database.
+     *
+     * Three things make this survive a 50k-message backup with images:
+     *
+     *  - records are read and written one at a time, in batches, so neither the
+     *    message list nor the MMS payload is ever fully resident;
+     *  - conversations are looked up through a map built once, instead of
+     *    re-scanning the whole table per message, which was quadratic;
+     *  - a record that fails to insert costs that record, not the batch and not
+     *    the import. One bad row used to discard everything with it.
+     */
+    fun importStaged(
+        staged: SmsIeReader.Staged,
+        mode: ImportMode = ImportMode.MERGE,
+        onProgress: ((done: Int, total: Int) -> Unit)? = null
+    ): ImportReport {
         if (SmsIeBackupPolicy.clearsExisting(mode)) clearAllMessages()
-        val added = importSmsIe(loaded.parsed.messages)
-        return ImportResult.Success(added)
+
+        val database = db.writableDatabase
+        val byAddress = HashMap<String, Long>()
+        database.rawQuery("SELECT id, address FROM conversations", null).use { c ->
+            while (c.moveToNext()) {
+                val id = c.getLong(0)
+                val address = c.getString(1) ?: continue
+                byAddress[address] = id
+                // Also key the canonical spelling, so a backup written with a
+                // different national/E.164 formatting still finds the thread.
+                val canon = canonical(address)
+                if (canon != address) byAddress.putIfAbsent(canon, id)
+            }
+        }
+
+        val batch = ArrayList<SmsIeBackup.Message>(IMPORT_BATCH)
+        var added = 0
+        var seen = 0
+        var skipped = 0
+        var truncated = staged.skippedParts.isNotEmpty()
+
+        fun flush() {
+            if (batch.isEmpty()) return
+            val rows = batch.sortedBy { it.timestamp }
+            batch.clear()
+            database.beginTransaction()
+            try {
+                for (msg in rows) {
+                    val address = canonical(msg.address).ifEmpty { msg.address }
+                    var cid = byAddress[address] ?: byAddress[msg.address]
+                    if (cid == null) {
+                        cid = database.insert("conversations", null, ContentValues().apply {
+                            put("address", address)
+                            put("name", contactNameFor(address) ?: address)
+                        })
+                        if (cid <= 0) {
+                            skipped++
+                            continue
+                        }
+                        byAddress[address] = cid
+                    }
+                    val image = msg.imageBytes
+                    val row = database.insert("messages", null, ContentValues().apply {
+                        put("conversation_id", cid)
+                        put("body", msg.body)
+                        put("timestamp", msg.timestamp)
+                        put("is_me", if (msg.isMe) 1 else 0)
+                        put("status", msg.status)
+                        put("transport", if (msg.isMms) MmsSupport.TRANSPORT_MMS else MmsSupport.TRANSPORT_SMS)
+                        put("media_type", if (image != null) "image" else "text")
+                        put("media_uri", if (image != null) storeImportedImage(image, msg) else "")
+                    })
+                    if (row <= 0) {
+                        skipped++
+                        continue
+                    }
+                    if (!msg.isMe && !msg.read) {
+                        database.execSQL(
+                            "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?",
+                            arrayOf(cid)
+                        )
+                    }
+                    upsertParticipant(database, address)
+                    added++
+                }
+                database.setTransactionSuccessful()
+            } catch (e: Exception) {
+                // A batch that blows up must not take the rest of the import
+                // with it; the rows already written in it are lost, and that is
+                // reported rather than hidden.
+                skipped += rows.size
+                Log.w("SmsIeImport", "batch failed: ${e.message}")
+            } finally {
+                database.endTransaction()
+            }
+        }
+
+        SmsIeReader.forEachRecord(staged) { json ->
+            val msg = SmsIeBackup.record(json) { name ->
+                if (staged.wasSkipped(name)) null else staged.partBytes(name)
+            }
+            seen++
+            if (msg == null) {
+                skipped++
+            } else {
+                batch.add(msg)
+                if (batch.size >= IMPORT_BATCH) flush()
+            }
+            if (seen % IMPORT_PROGRESS_EVERY == 0) onProgress?.invoke(seen, 0)
+        }
+        flush()
+
+        refreshConversationSnippets()
+        reMigrateParticipants()
+        notifyChanged()
+        onProgress?.invoke(seen, seen)
+        return ImportReport(added, seen, skipped, truncated)
     }
 
     /** Drops every stored message and conversation, leaving settings intact. */
@@ -2228,6 +2323,135 @@ class Repository(private val context: Context) {
     val needsInitialImport: Boolean get() = !settings.firstImportDone
 
     /** Imports system SMS into the local DB, grouped by address, deduped by sys_id. */
+    /**
+     * Deletes local message rows whose provider row no longer exists.
+     *
+     * The local database is the app's own store, not a view of the provider, so
+     * a delete performed by another app -- SMS Import / Export's "Wipe messages"
+     * being the one users hit -- left every message still on screen even though
+     * the phone had none of them.
+     *
+     * Only rows that came *from* the provider are considered: `sys_id = 0` marks
+     * a row that only ever existed locally (an import, or a message this app
+     * wrote while not being the default handler), and those must survive a
+     * provider that has never heard of them.
+     *
+     * Returns true when anything was removed.
+     */
+    fun pruneMessagesMissingFromProvider(): Boolean {
+        val resolver = context.contentResolver
+        val live = HashSet<Long>()
+        for ((uri, idColumn) in PROVIDER_MESSAGE_SOURCES) {
+            runCatching {
+                resolver.query(
+                    uri, arrayOf(idColumn), null, null, null
+                )?.use { c ->
+                    val i = c.getColumnIndex(idColumn)
+                    if (i >= 0) while (c.moveToNext()) live.add(c.getLong(i))
+                }
+            }.onFailure {
+                // Without permission the provider cannot be read, so nothing can
+                // be proven missing. Guessing here would delete real messages.
+                Log.w("RepoSync", "provider read failed, not pruning: ${it.message}")
+                return false
+            }
+        }
+
+        val database = db.writableDatabase
+        val doomed = ArrayList<Long>()
+        database.rawQuery("SELECT id, transport, sys_id FROM messages WHERE sys_id>0", null)
+            .use { c ->
+                while (c.moveToNext()) {
+                    val id = c.getLong(0)
+                    val transport = c.getString(1) ?: "sms"
+                    // SMS and MMS have independent id spaces, so a row only counts
+                    // as present if its own transport's id is still there.
+                    if (live.contains(providerKey(transport, c.getLong(2)))) continue
+                    doomed.add(id)
+                }
+            }
+        if (doomed.isEmpty()) return false
+
+        database.beginTransaction()
+        try {
+            doomed.forEach { database.delete("messages", "id=?", arrayOf(it.toString())) }
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+        removeEmptiedConversations()
+        Log.i("RepoSync", "pruned ${doomed.size} message(s) deleted outside the app")
+        return true
+    }
+
+    /** SMS and MMS ids overlap, so they are namespaced before comparison. */
+    private fun providerKey(transport: String, sysId: Long): Long =
+        if (transport == MmsSupport.TRANSPORT_MMS) -sysId else sysId
+
+    private var providerObserver: android.database.ContentObserver? = null
+    private var providerHandler: android.os.Handler? = null
+    private val resyncRunnable = Runnable { syncFromSystem() }
+
+    private val PROVIDER_MESSAGE_SOURCES = listOf(
+        android.provider.Telephony.Sms.CONTENT_URI to android.provider.Telephony.Sms._ID,
+        android.provider.Telephony.Mms.CONTENT_URI to android.provider.Telephony.Mms._ID
+    )
+
+    /** Drops conversations left with no messages, so the list has no empty rows. */
+    private fun removeEmptiedConversations() {
+        db.writableDatabase.execSQL(
+            "DELETE FROM conversations WHERE deleted_at=0 AND id NOT IN " +
+                "(SELECT DISTINCT conversation_id FROM messages)"
+        )
+    }
+
+    /**
+     * Watches the system SMS/MMS provider and re-syncs when another app changes it.
+     *
+     * Without this, a delete performed elsewhere -- SMS Import / Export's "Wipe
+     * messages" is the one users hit -- was invisible until the app was
+     * restarted, because the local database is a store of its own rather than a
+     * view of the provider.
+     *
+     * Notifications are coalesced with a short debounce, because wiping a phone
+     * produces one notification per deleted row and re-syncing on each of those
+     * would be a great deal of work for the same end state.
+     */
+    fun observeProviderChanges() {
+        if (providerObserver != null) return
+        if (providerHandler == null) {
+            providerHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        }
+        val resolver = context.contentResolver
+        val observer = object : android.database.ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                scheduleProviderResync()
+            }
+        }
+        runCatching {
+            for ((uri, _) in PROVIDER_MESSAGE_SOURCES) {
+                resolver.registerContentObserver(uri, true, observer)
+            }
+        }.onFailure {
+            Log.w("RepoSync", "could not observe provider: ${it.message}")
+            return
+        }
+        providerObserver = observer
+    }
+
+    private fun scheduleProviderResync() {
+        val handler = providerHandler ?: return
+        handler.removeCallbacks(resyncRunnable)
+        handler.postDelayed(resyncRunnable, PROVIDER_RESYNC_DEBOUNCE_MS)
+    }
+
+    private fun releaseProviderObserver() {
+        providerObserver?.let {
+            runCatching { context.contentResolver.unregisterContentObserver(it) }
+        }
+        providerObserver = null
+    }
+
     fun syncFromSystem() {
         if (syncRunning) return
         syncRunning = true
@@ -2374,6 +2598,13 @@ class Repository(private val context: Context) {
                        WHERE timestamp=0 AND id IN (SELECT DISTINCT conversation_id FROM messages)""",
                     null
                 ).use { c -> c.moveToFirst() && c.getLong(0) > 0 }
+
+                // Messages deleted in the system provider by another app -- most
+                // often SMS Import / Export's "Wipe messages" -- have to come out
+                // of the local database too. The sync only ever added rows, so
+                // without this the app keeps showing messages that no longer
+                // exist anywhere on the phone.
+                if (pruneMessagesMissingFromProvider()) changed = true
 
                 if (changed || stale) {
                     refreshConversationSnippets()
@@ -2875,6 +3106,12 @@ class Repository(private val context: Context) {
     }
 
     companion object {
+        /**
+         * A provider wipe emits one notification per deleted row, so the resync
+         * is debounced rather than run per notification.
+         */
+        const val PROVIDER_RESYNC_DEBOUNCE_MS = 2_000L
+
         fun serializeReactions(r: Map<String, Int>): String =
             r.entries.filter { it.value > 0 }
                 .joinToString(",") { "${it.key}:${it.value}" }

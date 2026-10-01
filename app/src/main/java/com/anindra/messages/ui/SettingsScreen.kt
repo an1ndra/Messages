@@ -13,7 +13,6 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.biometric.BiometricManager
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -319,19 +318,19 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_applock_subtitle),
                     checked = appLock,
                     onChecked = { enable ->
-                        val canAuth = BiometricManager.from(context).canAuthenticate(
-                            BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                                BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                        )
-                        if (enable && canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.lock_setup_needed),
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            appLock = enable
-                            vm.settings.appLockEnabled = enable
+                        verifyForAppLockChange(context) { verdict ->
+                            when (verdict) {
+                                AppLockVerdict.Verified -> {
+                                    appLock = enable
+                                    vm.settings.appLockEnabled = enable
+                                }
+                                AppLockVerdict.NoScreenLock -> Toast.makeText(
+                                    context,
+                                    context.getString(R.string.lock_setup_needed),
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                AppLockVerdict.Rejected -> Unit
+                            }
                         }
                     }
                 )

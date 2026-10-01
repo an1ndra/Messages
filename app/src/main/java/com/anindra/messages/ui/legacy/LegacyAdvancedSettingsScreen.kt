@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.biometric.BiometricManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,6 +44,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
+import com.anindra.messages.ui.AppLockVerdict
+import com.anindra.messages.ui.verifyForAppLockChange
 import com.anindra.messages.data.RetentionPolicy
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.diagnostics.DiagnosticsDialog
@@ -206,19 +207,19 @@ fun AdvancedSettingsScreen(
                     subtitle = stringResource(R.string.settings_applock_subtitle),
                     checked = appLock,
                     onChecked = { enable ->
-                        val canAuth = BiometricManager.from(context).canAuthenticate(
-                            BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                                BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                        )
-                        if (enable && canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.lock_setup_needed),
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            appLock = enable
-                            vm.settings.appLockEnabled = enable
+                        verifyForAppLockChange(context) { verdict ->
+                            when (verdict) {
+                                AppLockVerdict.Verified -> {
+                                    appLock = enable
+                                    vm.settings.appLockEnabled = enable
+                                }
+                                AppLockVerdict.NoScreenLock -> Toast.makeText(
+                                    context,
+                                    context.getString(R.string.lock_setup_needed),
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                AppLockVerdict.Rejected -> Unit
+                            }
                         }
                     }
                 )
@@ -297,43 +298,47 @@ fun AdvancedSettingsScreen(
                     checked = retentionOn,
                     onChecked = { retentionOn = it; vm.settings.retentionEnabled = it }
                 )
-                SettingsRow(
-                    title = stringResource(R.string.settings_retention_trash),
-                    subtitle = stringResource(R.string.settings_retention_trash_desc),
-                    checked = retentionTrash,
-                    enabled = retentionOn,
-                    onChecked = { retentionTrash = it; vm.settings.retentionTrash = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_retention_keep_trash),
-                    subtitle = context.getString(
-                        R.string.settings_retention_days, retentionTrashDays
-                    ),
-                    enabled = retentionOn && retentionTrash,
-                    onClick = { retentionDaysDialog = true; daysTarget = DAYS_TRASH }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_retention_keyword),
-                    subtitle = stringResource(R.string.settings_retention_keyword_desc),
-                    checked = retentionKeyword,
-                    enabled = retentionOn,
-                    onChecked = { retentionKeyword = it; vm.settings.retentionKeywordMessages = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_retention_blocked),
-                    subtitle = stringResource(R.string.settings_retention_blocked_desc),
-                    checked = retentionBlocked,
-                    enabled = retentionOn,
-                    onChecked = { retentionBlocked = it; vm.settings.retentionBlockedSenders = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_retention_keep_spam),
-                    subtitle = context.getString(
-                        R.string.settings_retention_days, retentionSpamDays
-                    ),
-                    enabled = retentionOn && (retentionKeyword || retentionBlocked),
-                    onClick = { retentionDaysDialog = true; daysTarget = DAYS_SPAM }
-                )
+                // Which buckets auto-delete covers is meaningless while it is
+                // off, so the run is hidden rather than greyed out. A disabled
+                // row that does nothing is a dead control.
+                if (retentionOn) {
+                    SettingsRow(
+                        title = stringResource(R.string.settings_retention_trash),
+                        subtitle = stringResource(R.string.settings_retention_trash_desc),
+                        checked = retentionTrash,
+                        onChecked = { retentionTrash = it; vm.settings.retentionTrash = it }
+                    )
+                    if (retentionTrash) {
+                        SettingsRow(
+                            title = stringResource(R.string.settings_retention_keep_trash),
+                            subtitle = context.getString(
+                                R.string.settings_retention_days, retentionTrashDays
+                            ),
+                            onClick = { retentionDaysDialog = true; daysTarget = DAYS_TRASH }
+                        )
+                    }
+                    SettingsRow(
+                        title = stringResource(R.string.settings_retention_keyword),
+                        subtitle = stringResource(R.string.settings_retention_keyword_desc),
+                        checked = retentionKeyword,
+                        onChecked = { retentionKeyword = it; vm.settings.retentionKeywordMessages = it }
+                    )
+                    SettingsRow(
+                        title = stringResource(R.string.settings_retention_blocked),
+                        subtitle = stringResource(R.string.settings_retention_blocked_desc),
+                        checked = retentionBlocked,
+                        onChecked = { retentionBlocked = it; vm.settings.retentionBlockedSenders = it }
+                    )
+                    if (retentionKeyword || retentionBlocked) {
+                        SettingsRow(
+                            title = stringResource(R.string.settings_retention_keep_spam),
+                            subtitle = context.getString(
+                                R.string.settings_retention_days, retentionSpamDays
+                            ),
+                            onClick = { retentionDaysDialog = true; daysTarget = DAYS_SPAM }
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(8.dp))

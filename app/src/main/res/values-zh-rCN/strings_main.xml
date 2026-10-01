@@ -5,6 +5,8 @@
     <string name="lock_title">验证以访问您的消息</string>
     <string name="lock_unlock_title">解锁消息</string>
     <string name="lock_auth_subtitle">验证以显示这些消息</string>
+    <string name="lock_change_app_lock_title">确认更改应用锁</string>
+    <string name="lock_change_app_lock_subtitle">用指纹、面部或 PIN 确认是您本人</string>
     <string name="lock_got_it">知道了</string>
     <string name="lock_not_now">现在不</string>
     <string name="lock_off">应用锁定已关闭</string>

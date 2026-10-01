@@ -6,6 +6,8 @@
     <string name="lock_title">Authentifiez-vous pour accéder à vos messages</string>
     <string name="lock_unlock_title">Déverrouiller Messages</string>
     <string name="lock_auth_subtitle">Authentifiez-vous pour révéler ces messages</string>
+    <string name="lock_change_app_lock_title">Confirmez pour modifier le verrouillage de l\'application</string>
+    <string name="lock_change_app_lock_subtitle">Votre empreinte, votre visage ou votre code confirme votre identité</string>
     <string name="lock_got_it">Compris</string>
     <string name="lock_not_now">Pas maintenant</string>
     <string name="lock_off">Le verrouillage de l\'application est désactivé</string>

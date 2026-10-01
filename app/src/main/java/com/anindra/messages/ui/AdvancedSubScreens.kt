@@ -173,8 +173,11 @@ fun AutoDeleteSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 checked = retentionOn,
                 onChecked = { retentionOn = it; vm.settings.retentionEnabled = it }
             )
+            // Permanent delete is not a child of auto-delete: it changes where a
+            // delete goes, not whether anything is deleted on a schedule, so it
+            // stays available either way.
             SettingsRow(
-                position = RowPosition.MIDDLE,
+                position = if (retentionOn) RowPosition.MIDDLE else RowPosition.LAST,
                 title = stringResource(R.string.settings_advanced_permanent_delete),
                 checked = permanentDelete,
                 onChecked = {
@@ -183,42 +186,44 @@ fun AutoDeleteSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                     if (!it) vm.settings.permanentDeleteWarn = true
                 }
             )
-            SettingsRow(
-                position = if (retentionOn) RowPosition.MIDDLE else RowPosition.LAST,
-                title = stringResource(R.string.settings_retention_trash),
-                checked = retentionTrash,
-                enabled = retentionOn,
-                onChecked = { retentionTrash = it; vm.settings.retentionTrash = it }
-            )
-            if (retentionOn && retentionTrash) {
+            // Which buckets auto-delete covers is meaningless while it is off, so
+            // the whole run is hidden rather than greyed out. The footer already
+            // says nothing is erased while it is off.
+            if (retentionOn) {
                 SettingsRow(
                     position = RowPosition.MIDDLE,
-                    title = stringResource(R.string.settings_retention_keep_trash),
-                    subtitle = context.getString(R.string.settings_retention_days, trashDays),
-                    onClick = { daysDialog = true; daysTarget = DAYS_TRASH }
+                    title = stringResource(R.string.settings_retention_trash),
+                    checked = retentionTrash,
+                    onChecked = { retentionTrash = it; vm.settings.retentionTrash = it }
                 )
-            }
-            SettingsRow(
-                position = if (!retentionOn) RowPosition.LAST else RowPosition.MIDDLE,
-                title = stringResource(R.string.settings_retention_keyword),
-                checked = retentionKeyword,
-                enabled = retentionOn,
-                onChecked = { retentionKeyword = it; vm.settings.retentionKeywordMessages = it }
-            )
-            SettingsRow(
-                position = if (!retentionOn) RowPosition.LAST else RowPosition.MIDDLE,
-                title = stringResource(R.string.settings_retention_blocked),
-                checked = retentionBlocked,
-                enabled = retentionOn,
-                onChecked = { retentionBlocked = it; vm.settings.retentionBlockedSenders = it }
-            )
-            if (retentionOn && retentionBlocked) {
+                if (retentionTrash) {
+                    SettingsRow(
+                        position = RowPosition.MIDDLE,
+                        title = stringResource(R.string.settings_retention_keep_trash),
+                        subtitle = context.getString(R.string.settings_retention_days, trashDays),
+                        onClick = { daysDialog = true; daysTarget = DAYS_TRASH }
+                    )
+                }
                 SettingsRow(
-                    position = RowPosition.LAST,
-                    title = stringResource(R.string.settings_retention_keep_spam),
-                    subtitle = context.getString(R.string.settings_retention_days, spamDays),
-                    onClick = { daysDialog = true; daysTarget = DAYS_SPAM }
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_retention_keyword),
+                    checked = retentionKeyword,
+                    onChecked = { retentionKeyword = it; vm.settings.retentionKeywordMessages = it }
                 )
+                SettingsRow(
+                    position = if (retentionBlocked) RowPosition.MIDDLE else RowPosition.LAST,
+                    title = stringResource(R.string.settings_retention_blocked),
+                    checked = retentionBlocked,
+                    onChecked = { retentionBlocked = it; vm.settings.retentionBlockedSenders = it }
+                )
+                if (retentionBlocked) {
+                    SettingsRow(
+                        position = RowPosition.LAST,
+                        title = stringResource(R.string.settings_retention_keep_spam),
+                        subtitle = context.getString(R.string.settings_retention_days, spamDays),
+                        onClick = { daysDialog = true; daysTarget = DAYS_SPAM }
+                    )
+                }
             }
         }
 
