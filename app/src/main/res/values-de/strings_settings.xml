@@ -143,4 +143,6 @@
     <string name="settings_new_ui_title">Neugestaltete Oberfläche</string>
     <string name="settings_new_ui_subtitle">Neues Layout für Einstellungen und Listen verwenden</string>
     <string name="settings_scheduled_manage_title">Geplante Nachrichten verwalten</string>
+    <string name="settings_search_hint">Einstellungen durchsuchen</string>
+    <string name="settings_search_none">Keine Einstellung passt</string>
 </resources>

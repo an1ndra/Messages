@@ -143,4 +143,6 @@
     <string name="settings_new_ui_title">पुनः डिज़ाइन किया गया इंटरफ़ेस</string>
     <string name="settings_new_ui_subtitle">नई सेटिंग्स और सूची लेआउट का उपयोग करें</string>
     <string name="settings_scheduled_manage_title">निर्धारित संदेश प्रबंधित करें</string>
+    <string name="settings_search_hint">सेटिंग खोजें</string>
+    <string name="settings_search_none">कोई सेटिंग मेल नहीं खाती</string>
 </resources>
