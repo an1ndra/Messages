@@ -41,13 +41,13 @@
 
     <string name="mms_check_title">MMS support</string>
     <string name="mms_check_subtitle">Check each SIM for MMS</string>
-    <string name="mms_check_summary">%1$d of %2$d SIMs support MMS</string>
-    <string name="mms_check_verdict_supported">Supported</string>
+    <string name="mms_check_summary">%1$d of %2$d SIMs have MMS enabled by their carrier</string>
+    <string name="mms_check_verdict_supported">Enabled by carrier</string>
     <string name="mms_check_verdict_disabled">Off on this carrier</string>
     <string name="mms_check_verdict_no_carrier">No network on this SIM</string>
     <string name="mms_check_verdict_unknown">Could not be checked</string>
     <string name="mms_check_number_hidden">Number not shared by carrier</string>
     <string name="mms_check_country">%1$s · %2$s</string>
-    <string name="mms_check_footer">Each SIM is checked against the MMS settings its own carrier publishes, because two carriers in the same country can disagree. The country code comes from the SIM number when the carrier shares it, and from the SIM network otherwise.</string>
+    <string name="mms_check_footer">Each SIM is checked against the MMS setting its own carrier publishes, because two carriers in the same country can disagree. This reports what the carrier declares, not a tested MMS service: verifying that needs the system APN settings, which only a privileged app can read. The country code comes from the SIM number when the carrier shares it, and from the SIM network otherwise.</string>
     <string name="mms_check_no_sims">No active SIM found</string>
 </resources>

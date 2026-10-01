@@ -37,13 +37,13 @@
     <string name="settings_sim_unknown">SIM inconnue</string>
     <string name="mms_check_title">Prise en charge des MMS</string>
     <string name="mms_check_subtitle">Vérifier les MMS pour chaque carte SIM</string>
-    <string name="mms_check_summary">%1$d carte(s) SIM sur %2$d prennent en charge les MMS</string>
-    <string name="mms_check_verdict_supported">Pris en charge</string>
+    <string name="mms_check_summary">MMS activé par l’opérateur sur %1$d SIM sur %2$d</string>
+    <string name="mms_check_verdict_supported">Activé par l’opérateur</string>
     <string name="mms_check_verdict_disabled">Désactivé chez cet opérateur</string>
     <string name="mms_check_verdict_no_carrier">Aucun réseau sur cette carte SIM</string>
     <string name="mms_check_verdict_unknown">Vérification impossible</string>
     <string name="mms_check_number_hidden">Numéro non fourni par l\'opérateur</string>
     <string name="mms_check_country">%1$s · %2$s</string>
-    <string name="mms_check_footer">Chaque carte SIM est vérifiée avec les paramètres MMS que publie son propre opérateur, car deux opérateurs d\'un même pays peuvent diverger. L\'indicatif du pays provient du numéro de la SIM lorsque l\'opérateur le communique, et du réseau SIM sinon.</string>
+    <string name="mms_check_footer">Chaque SIM est comparée au réglage MMS publié par son opérateur. Cela indique ce que déclare l’opérateur, et non un service MMS testé : le vérifier exige les paramètres APN du système, accessibles uniquement aux applications privilégiées.</string>
     <string name="mms_check_no_sims">Aucune carte SIM active trouvée</string>
 </resources>

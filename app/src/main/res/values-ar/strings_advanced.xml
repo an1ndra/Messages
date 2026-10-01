@@ -37,13 +37,13 @@
     <string name="settings_sim_unknown">شريحة SIM غير معروفة</string>
     <string name="mms_check_title">دعم MMS</string>
     <string name="mms_check_subtitle">فحص كل بطاقة SIM لخدمة MMS</string>
-    <string name="mms_check_summary">‏%1$d من %2$d من بطاقات SIM تدعم MMS</string>
-    <string name="mms_check_verdict_supported">مدعومة</string>
+    <string name="mms_check_summary">‏%1$d من %2$d بطاقة SIM مُفعّل MMS لدى مشغّلها</string>
+    <string name="mms_check_verdict_supported">مُفعّل لدى الشركة</string>
     <string name="mms_check_verdict_disabled">معطّلة لدى مشغّل الشبكة</string>
     <string name="mms_check_verdict_no_carrier">لا توجد شبكة على هذه البطاقة</string>
     <string name="mms_check_verdict_unknown">تعذّر الفحص</string>
     <string name="mms_check_number_hidden">المشغّل لا يشارك الرقم</string>
     <string name="mms_check_country">%1$s · %2$s</string>
-    <string name="mms_check_footer">تُفحص كل بطاقة SIM مقابل إعدادات MMS التي ينشرها مشغّلها، لأن مشغّلين في البلد نفسه قد يختلفان. يأتي رمز الدولة من رقم البطاقة عندما يشاركه المشغّل، ومن شبكة البطاقة في غير ذلك.</string>
+    <string name="mms_check_footer">تتم مطابقة كل بطاقة SIM مع إعداد MMS الذي ينشره مشغّلها. هذا يعرض ما يعلنه المشغّل وليس خدمة MMS مختبَرة: للتحقق يلزم الوصول إلى إعدادات APN في النظام، ولا يتاح ذلك إلا لتطبيقات ذات امتيازات. رمز الدولة يأتي من رقم SIM عندما يشاركه المشغّل، ومن شبكة SIM خلاف ذلك.</string>
     <string name="mms_check_no_sims">لم يُعثر على بطاقة SIM نشطة</string>
 </resources>
