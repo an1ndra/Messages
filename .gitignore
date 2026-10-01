@@ -18,3 +18,6 @@ release.keystore
 .cache/
 .opencode/
 demo.keystore
+
+# throwaway key for local demo/personal builds
+demo-sign.keystore
