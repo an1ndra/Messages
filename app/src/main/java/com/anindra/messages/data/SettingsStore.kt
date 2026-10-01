@@ -89,7 +89,7 @@ class SettingsStore(context: Context) {
         const val DEFAULTS_DELIVERY = false
         const val DEFAULTS_SIM_SUBSCRIPTION_ID = -1
         const val DEFAULTS_EMOJI_BUTTON = false
-        const val DEFAULTS_UNREAD_AT_TOP = false
+        const val DEFAULTS_UNREAD_AT_TOP = true
     }
 
     var themeMode: String

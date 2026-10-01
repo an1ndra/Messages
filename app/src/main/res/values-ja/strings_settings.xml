@@ -125,7 +125,7 @@
     <string name="settings_sound_bubble">バブル</string>
     <string name="settings_theme_light">ライト</string>
     <string name="settings_theme_dark">ダーク</string>
-    <string name="settings_theme_amoled">AMOLED (純黒)</string>
+    <string name="settings_theme_amoled">AMOLED</string>
     <string name="settings_theme_system">システム規定値</string>
     <string name="convo_your_prefix">"あなた: "</string>
     <string name="settings_restored_msg">%s件のメッセージを復元しました。既存の会話を保持。</string>

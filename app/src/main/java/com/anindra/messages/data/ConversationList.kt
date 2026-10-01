@@ -35,7 +35,9 @@ object ConversationList {
     /**
      * Unread-at-top: stable reorder — pinned stays on top, then unread
      * conversations above read ones, timestamp order preserved within a tier.
-     * Off (the default) and archived views keep the repository's own order.
+     * On by default, so anything unread is visible without scrolling; archived
+     * views keep the repository's own order, since "unread" is not what you are
+     * looking for there.
      */
     fun sort(
         conversations: List<Conversation>,

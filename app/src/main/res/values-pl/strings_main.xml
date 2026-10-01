@@ -6,6 +6,8 @@
     <string name="lock_title">Uwierzytelnij, aby uzyskać dostęp do wiadomości</string>
     <string name="lock_unlock_title">Odblokuj Wiadomości</string>
     <string name="lock_auth_subtitle">Uwierzytelnij, aby wyświetlić te wiadomości</string>
+    <string name="lock_change_app_lock_title">Potwierdź zmianę blokady aplikacji</string>
+    <string name="lock_change_app_lock_subtitle">Odcisk palca, twarz lub PIN potwierdzają, że to Ty</string>
     <string name="lock_got_it">Zrozumiano</string>
     <string name="lock_not_now">Nie teraz</string>
     <string name="lock_off">Blokada aplikacji jest wyłączona</string>

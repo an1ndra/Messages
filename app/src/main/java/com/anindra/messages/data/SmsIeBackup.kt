@@ -90,12 +90,27 @@ object SmsIeBackup {
                 .mapNotNull { runCatching { JSONObject(it) }.getOrNull() }
                 .toList()
         }
-        val messages = records.mapNotNull { record ->
-            val isMms = record.has("m_type") || record.has("__parts") ||
-                record.has("__sender_address")
-            if (isMms) mms(record, partBytes) else sms(record)
-        }
+        val messages = records.mapNotNull { record -> record(record, partBytes) }
         return Parsed(messages, version)
+    }
+
+    /**
+     * One record, for the streaming importer.
+     *
+     * Kept separate from [parse] so a 50k backup can be read a record at a time
+     * instead of being turned into a list of every message before the first row
+     * is written. Returns null for anything unreadable, so one damaged record
+     * costs that record rather than the import.
+     */
+    fun record(json: String, partBytes: (String) -> ByteArray? = { null }): Message? {
+        val obj = runCatching { JSONObject(json) }.getOrNull() ?: return null
+        return record(obj, partBytes)
+    }
+
+    private fun record(record: JSONObject, partBytes: (String) -> ByteArray?): Message? {
+        val isMms = record.has("m_type") || record.has("__parts") ||
+            record.has("__sender_address")
+        return if (isMms) mms(record, partBytes) else sms(record)
     }
 
     private fun sms(record: JSONObject): Message? {

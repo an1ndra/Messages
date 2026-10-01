@@ -36,6 +36,9 @@ class MessagesApplication : Application() {
             // skip until SMS access is granted; MainActivity re-imports then
             if (checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
                 repository.syncFromSystem()
+                // Watch for changes made by other apps -- a wipe in SMS Import /
+                // Export has to be noticed without waiting for a restart.
+                repository.observeProviderChanges()
             }
         }
     }

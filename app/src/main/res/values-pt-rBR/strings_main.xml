@@ -6,6 +6,8 @@
     <string name="lock_title">Autentique para acessar suas mensagens</string>
     <string name="lock_unlock_title">Desbloquear Messages</string>
     <string name="lock_auth_subtitle">Autentique para revelar estas mensagens</string>
+    <string name="lock_change_app_lock_title">Confirme para alterar o bloqueio do app</string>
+    <string name="lock_change_app_lock_subtitle">Sua digital, seu rosto ou seu PIN confirma que é você</string>
     <string name="lock_got_it">Entendi</string>
     <string name="lock_not_now">Agora não</string>
     <string name="lock_off">Bloqueio do app está desativado</string>

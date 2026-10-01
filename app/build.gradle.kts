@@ -62,6 +62,13 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // android.util.Log and friends throw in local unit tests, which makes
+        // any code that only logs a problem untestable. Returning defaults keeps
+        // the logging (which is how import problems get diagnosed on a device)
+        // without needing a Robolectric runner for pure-logic tests.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {

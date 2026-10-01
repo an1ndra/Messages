@@ -125,7 +125,7 @@
     <string name="settings_sound_bubble">Пузырёк</string>
     <string name="settings_theme_light">Светлая</string>
     <string name="settings_theme_dark">Тёмная</string>
-    <string name="settings_theme_amoled">AMOLED (чистый чёрный)</string>
+    <string name="settings_theme_amoled">AMOLED</string>
     <string name="settings_theme_system">Системные</string>
     <string name="convo_your_prefix">"Вы: "</string>
     <string name="settings_restored_msg">Восстановлено %s сообщений. Существующие переписки сохранены.</string>
