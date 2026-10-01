@@ -143,4 +143,6 @@
     <string name="settings_new_ui_title">Interfaz rediseñada</string>
     <string name="settings_new_ui_subtitle">Usar el nuevo diseño de ajustes y listas</string>
     <string name="settings_scheduled_manage_title">Gestionar mensajes programados</string>
+    <string name="settings_search_hint">Buscar en ajustes</string>
+    <string name="settings_search_none">Ningún ajuste coincide</string>
 </resources>

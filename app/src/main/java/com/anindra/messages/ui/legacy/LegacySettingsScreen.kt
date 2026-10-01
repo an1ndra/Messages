@@ -84,6 +84,21 @@ import com.anindra.messages.ui.formatPhoneNumber
 import com.anindra.messages.ui.formatDateTime
 import com.anindra.messages.ui.is24HourFormat
 import com.anindra.messages.ui.BackupLocation
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material.icons.outlined.Search
+import kotlinx.coroutines.delay
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.background
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.animateColorAsState
+import com.anindra.messages.ui.SettingsSearch
 
 private enum class PinDialogMode { SET, ENTER }
 
@@ -227,18 +242,112 @@ fun SettingsScreen(
         }
     }
 
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    var pendingJump by remember { mutableStateOf<Int?>(null) }
+    var highlightTitle by remember { mutableStateOf<String?>(null) }
+
+    // Each card records where it landed so a search result can scroll to it.
+    val cardOffsets = remember { mutableMapOf<Int, Int>() }
+
+    // Labels are resolved here, not inside remember: stringResource is composable
+    // and cannot be called from remember's lambda.
+    val labels = SettingsSearch.LegacySettingsIndex.ALL.associateWith { stringResource(it) }
+    val results = remember(query, labels) {
+        if (query.isBlank()) emptyList() else SettingsSearch.LegacySettingsIndex.ALL
+            .filter { SettingsSearch.matches(query, labels[it]) }
+    }
+    val showingResults = searching && query.isNotBlank()
+    val pendingTitle = pendingJump?.let { stringResource(it) }
+
+    BackHandler(enabled = searching) {
+        searching = false
+        query = ""
+    }
+
+    fun jumpTo(rowRes: Int) {
+        searching = false
+        query = ""
+        pendingJump = rowRes
+    }
+
+    // Runs once the query has cleared and the cards are laid out again.
+    // bringIntoView() proved unreliable here and silently left the target
+    // off-screen, so the scroll is driven from a measured position instead.
+    LaunchedEffect(pendingJump, pendingTitle) {
+        val target = pendingJump ?: return@LaunchedEffect
+        val card = SettingsSearch.LegacySettingsIndex.groupOf(target)
+        for (attempt in 0 until 15) {
+            val y = cardOffsets[card]
+            if (y != null && scrollState.maxValue > 0) {
+                scrollState.animateScrollTo(y)
+                break
+            }
+            delay(50)
+        }
+        highlightTitle = pendingTitle
+        delay(1400)
+        highlightTitle = null
+        pendingJump = null
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_general)) },
+                title = {
+                    if (searching) {
+                        val focusRequester = remember { FocusRequester() }
+                        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            placeholder = { Text(stringResource(R.string.settings_search_hint)) },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                        )
+                    } else {
+                        Text(stringResource(R.string.settings_general))
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
+                    IconButton(onClick = {
+                        if (searching) { searching = false; query = "" } else onBack()
+                    }) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            stringResource(
+                                if (searching) R.string.icon_close_search else R.string.icon_back
+                            )
+                        )
+                    }
+                },
+                actions = {
+                    if (!searching) {
+                        IconButton(onClick = { searching = true }) {
+                            Icon(Icons.Outlined.Search, stringResource(R.string.icon_search))
+                        }
                     }
                 }
             )
         }
     ) { padding ->
+        CompositionLocalProvider(
+            LocalHighlightedSetting provides highlightTitle,
+            LocalCardOffsets provides cardOffsets
+        ) {
+        if (showingResults) {
+            SettingsSearchResults(
+                results = results,
+                onPick = { jumpTo(it) },
+                modifier = Modifier.padding(padding)
+            )
+        } else {
         Column(
             Modifier
                 .padding(padding)
@@ -248,7 +357,7 @@ fun SettingsScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+        SettingsCard(0) {
                 SettingsRow(
                     title = stringResource(R.string.settings_notif_title),
                     subtitle = stringResource(R.string.settings_notif_subtitle),
@@ -281,7 +390,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+        SettingsCard(1) {
                 SettingsRow(
                     title = stringResource(R.string.settings_theme_title),
                     subtitle = themeLabel(themeMode, context),
@@ -328,7 +437,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+        SettingsCard(2) {
                 SettingsRow(
                     title = stringResource(R.string.settings_archiving_title),
                     subtitle = stringResource(R.string.settings_archiving_subtitle),
@@ -358,7 +467,7 @@ fun SettingsScreen(
             val scheduledAll by vm.scheduledMessages().collectAsState(initial = emptyList())
             if (scheduledAll.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
-                SettingsGroup {
+                SettingsCard(3) {
                     SettingsRow(
                         title = stringResource(R.string.settings_scheduled_manage_title),
                         subtitle = context.getString(
@@ -371,7 +480,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+        SettingsCard(4) {
                 SettingsRow(
                     title = stringResource(R.string.settings_forwarding_title),
                     subtitle = stringResource(R.string.settings_forwarding_subtitle),
@@ -404,7 +513,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+        SettingsCard(5) {
                 SettingsRow(
                     title = stringResource(R.string.settings_blocking_title),
                     subtitle = stringResource(R.string.settings_blocking_subtitle),
@@ -445,7 +554,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+        SettingsCard(6) {
                 SettingsRow(
                     title = stringResource(R.string.settings_advanced_title),
                     subtitle = stringResource(R.string.settings_advanced_subtitle),
@@ -465,6 +574,8 @@ fun SettingsScreen(
                     .padding(horizontal = 16.dp, vertical = 16.dp)
                     .padding(bottom = 16.dp)
             )
+        }
+        }
         }
     }
 
@@ -923,15 +1034,65 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SettingsGroup(content: @Composable () -> Unit) {
+fun SettingsGroup(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         content()
+    }
+}
+
+/**
+ * Search results as a plain list of names, the way a dialler suggests contacts.
+ *
+ * The point is to get to a setting rather than to re-show the settings list
+ * filtered: picking a name closes search and scrolls the real card into view, so
+ * the switch the user was after is the one they land on.
+ */
+@Composable
+private fun SettingsSearchResults(
+    results: List<Int>,
+    onPick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp)
+    ) {
+        Spacer(Modifier.height(8.dp))
+        if (results.isEmpty()) {
+            Text(
+                stringResource(R.string.settings_search_none),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp)
+            )
+        } else {
+            SettingsGroup {
+                results.forEach { rowRes ->
+                    val label = stringResource(rowRes)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(rowRes) }
+                            .heightIn(min = if (LocalLargeTouchTargets.current) 72.dp else 60.dp)
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -981,6 +1142,27 @@ private fun ImportRadioGroup(
     }
 }
 
+/**
+ * Title of the option a search result just jumped to, so the row can flash
+ * itself. Read inside [SettingsRow] rather than passed in, so pointing at an
+ * option does not mean editing every call site on the screen.
+ */
+private val LocalHighlightedSetting = compositionLocalOf<String?> { null }
+
+/** Records where each card landed so a search result can scroll to it. */
+val LocalCardOffsets = compositionLocalOf<MutableMap<Int, Int>> { mutableMapOf() }
+
+@Composable
+private fun SettingsCard(card: Int, content: @Composable () -> Unit) {
+    val offsets = LocalCardOffsets.current
+    SettingsGroup(
+        modifier = Modifier.onGloballyPositioned {
+            offsets[card] = it.positionInParent().y.toInt()
+        },
+        content = content
+    )
+}
+
 @Composable
 fun SettingsRow(
     title: String,
@@ -991,15 +1173,32 @@ fun SettingsRow(
     enabled: Boolean = true
 ) {
     val contentAlpha = if (enabled) 1f else 0.38f
+    // A flat full-width band of primaryContainer read as a broken card. Inset,
+    // rounded and low-alpha, it reads as a pointer at one row.
+    val highlightColor by animateColorAsState(
+        targetValue = if (LocalHighlightedSetting.current == title) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(
+            durationMillis = 220,
+            easing = FastOutSlowInEasing
+        ),
+        label = "settings-row-highlight"
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = if (LocalLargeTouchTargets.current) 72.dp else 60.dp)
+            .padding(horizontal = 6.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(highlightColor)
             .clickable(enabled = enabled && (onClick != null || checked != null)) {
                 if (checked != null && onChecked != null) onChecked(!checked) else onClick?.invoke()
             }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .heightIn(min = if (LocalLargeTouchTargets.current) 72.dp else 60.dp)
+            .padding(horizontal = 10.dp, vertical = 12.dp)
     ) {
         Column(Modifier.weight(1f).alpha(contentAlpha)) {
             Text(

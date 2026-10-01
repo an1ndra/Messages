@@ -143,4 +143,6 @@
     <string name="settings_new_ui_title">重新设计的界面</string>
     <string name="settings_new_ui_subtitle">使用新的设置和列表布局</string>
     <string name="settings_scheduled_manage_title">管理定时消息</string>
+    <string name="settings_search_hint">搜索设置</string>
+    <string name="settings_search_none">没有匹配��设置</string>
 </resources>

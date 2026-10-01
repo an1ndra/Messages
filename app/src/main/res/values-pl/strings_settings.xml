@@ -143,4 +143,6 @@
     <string name="settings_new_ui_title">Nowo zaprojektowany interfejs</string>
     <string name="settings_new_ui_subtitle">Użyj nowego układu ustawień i list</string>
     <string name="settings_scheduled_manage_title">Zarządzaj zaplanowanymi wiadomościami</string>
+    <string name="settings_search_hint">Szukaj w ustawieniach</string>
+    <string name="settings_search_none">Żadne ustawienie nie pasuje</string>
 </resources>

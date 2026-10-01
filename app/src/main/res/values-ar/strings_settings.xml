@@ -143,4 +143,6 @@
     <string name="settings_new_ui_title">واجهة معاد تصميمها</string>
     <string name="settings_new_ui_subtitle">استخدام تخطيط الإعدادات والقوائم الجديد</string>
     <string name="settings_scheduled_manage_title">إدارة الرسائل المجدولة</string>
+    <string name="settings_search_hint">البحث في الإعدادات</string>
+    <string name="settings_search_none">لا توجد إعدادات مطابقة</string>
 </resources>

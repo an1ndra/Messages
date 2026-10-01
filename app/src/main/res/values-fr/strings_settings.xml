@@ -143,4 +143,6 @@
     <string name="settings_new_ui_title">Interface redessinée</string>
     <string name="settings_new_ui_subtitle">Utiliser la nouvelle mise en page des réglages et listes</string>
     <string name="settings_scheduled_manage_title">Gérer les messages programmés</string>
+    <string name="settings_search_hint">Rechercher dans les paramètres</string>
+    <string name="settings_search_none">Aucun paramètre ne correspond</string>
 </resources>
