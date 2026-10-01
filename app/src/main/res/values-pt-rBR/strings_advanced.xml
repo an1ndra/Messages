@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_advanced_reverse_swipe">Inverter ações ao deslizar</string>
     <string name="settings_advanced_reverse_swipe_desc">Deslizar para esquerda para arquivar e para direita para excluir</string>
     <string name="settings_advanced_hide_links">Ocultar links das mensagens</string>
     <string name="settings_advanced_hide_links_desc">Nunca converter links em mensagens em links clicáveis</string>
@@ -10,7 +11,6 @@
     <string name="settings_advanced_turn_off">Desative "</string>
     <string name="settings_advanced_turn_off_suffix">" primeiro</string>
     <string name="settings_advanced_permanent_delete_on">A exclusão permanente está ativada. Esta conversa e suas mensagens serão removidas do seu dispositivo imediatamente — não movidas para a lixeira — e não poderão ser restauradas.</string>
-
     <string name="settings_font_title">Fonte</string>
     <string name="settings_advanced_emoji_button">Botão de emoji</string>
     <string name="settings_advanced_emoji_button_desc">Mostrar o botão de emoji no campo de mensagem</string>
@@ -20,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Padrão do sistema</string>
-
     <string name="keywords_title">Palavras-chave bloqueadas</string>
     <string name="keywords_hint">Mensagens que contiverem qualquer uma destas palavras vão para a Lixeira: não aparecem na caixa de entrada e não tocam o som da notificação.</string>
     <string name="keywords_add_hint">Adicionar palavra-chave</string>
@@ -29,7 +28,6 @@
     <string name="keywords_remove">Remover palavra-chave</string>
     <string name="keywords_subtitle_none">Nenhuma</string>
     <string name="keywords_subtitle_count">%1$d bloqueadas</string>
-
     <string name="diagnostics_title">Diagnóstico</string>
     <string name="diagnostics_subtitle">Diagnóstico do dispositivo e do app para solução de problemas</string>
     <string name="diagnostics_save">Salvar</string>
@@ -37,7 +35,6 @@
     <string name="diagnostics_close">Fechar</string>
     <string name="diagnostics_clip_label">Diagnóstico do Messages</string>
     <string name="settings_sim_unknown">SIM desconhecido</string>
-
     <string name="mms_check_title">Suporte a MMS</string>
     <string name="mms_check_subtitle">Verificar o suporte a MMS em cada chip</string>
     <string name="mms_check_summary">%1$d de %2$d chips aceitam MMS</string>

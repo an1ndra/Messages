@@ -883,7 +883,7 @@ fun SwipeAction.a11yLabelRes(unread: Boolean): Int = when (this) {
     else -> labelRes()
 }
 
-private data class RowSettings(
+internal data class RowSettings(
     val pinnedEnabled: Boolean,
     val archivingEnabled: Boolean,
     val blockingEnabled: Boolean,

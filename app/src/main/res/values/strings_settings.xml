@@ -40,6 +40,8 @@
     <string name="settings_unread_top_subtitle">Sort unread messages at top</string>
     <string name="settings_forwarding_title">Forwarding</string>
     <string name="settings_forwarding_subtitle">Enable message forwarding</string>
+    <string name="settings_drafts_title">Drafts</string>
+    <string name="settings_drafts_subtitle">Auto-save unsent text as drafts</string>
     <string name="settings_scheduled_title">Scheduled messages</string>
     <string name="settings_scheduled_subtitle">Enable scheduling messages</string>
     <string name="settings_delayed_title">Delayed sending</string>

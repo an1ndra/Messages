@@ -40,6 +40,8 @@
     <string name="settings_unread_top_subtitle">अपढ़े संदेशों को शीर्ष पर क्रमबद्ध करें</string>
     <string name="settings_forwarding_title">आगे भेजना</string>
     <string name="settings_forwarding_subtitle">संदेश आगे भेजना सक्षम करें</string>
+    <string name="settings_drafts_title">ड्राफ्ट</string>
+    <string name="settings_drafts_subtitle">अभेजे गए पाठ को ड्राफ्ट के रूप में ऑटो-सहेजें</string>
     <string name="settings_scheduled_title">शीड्यूल किए गए संदेश</string>
     <string name="settings_scheduled_subtitle">संदेश शीड्यूल करना सक्षम करें</string>
     <string name="settings_delayed_title">विलंबित भेजना</string>
@@ -81,7 +83,6 @@
     <string name="settings_trash_subtitle">हटाए गए संवाद · 30 दिनों बाद हटाए जाएंगे</string>
     <string name="settings_spam_blocked_subtitle">ब्लॉक किए गए संवाद यहां रखे जाते हैं</string>
     <string name="settings_retention_title">स्वतः हटाएं</string>
-
     <string name="settings_choose_retention">कूड़ा, ब्लॉक किए गए संदेश और ब्लॉक किए गए प्रेषक पर लागू:</string>
     <string name="settings_retention_subtitle">कूड़ा, ब्लॉक किए गए संदेश और ब्लॉक किए गए प्रेषक स्वतः हटा दिए जाते हैं</string>
     <string name="settings_retention_days">%d दिन</string>

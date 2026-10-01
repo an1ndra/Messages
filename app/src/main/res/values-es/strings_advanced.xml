@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_advanced_reverse_swipe">Invertir acciones al deslizar</string>
     <string name="settings_advanced_reverse_swipe_desc">Deslizar a la izquierda para archivar y a la derecha para eliminar</string>
     <string name="settings_advanced_hide_links">Ocultar enlaces de los mensajes</string>
     <string name="settings_advanced_hide_links_desc">Nunca convertir los enlaces en los mensajes en enlaces seleccionables</string>
@@ -10,7 +11,6 @@
     <string name="settings_advanced_turn_off">Desactivar «</string>
     <string name="settings_advanced_turn_off_suffix">" primero</string>
     <string name="settings_advanced_permanent_delete_on">La eliminación permanente está activada. Esta conversación y sus mensajes se eliminarán de tu dispositivo de inmediato — no se moverán a la papelera — y no podrán ser restaurados.</string>
-
     <string name="settings_font_title">Fuente</string>
     <string name="settings_advanced_emoji_button">Botón de emoji</string>
     <string name="settings_advanced_emoji_button_desc">Mostrar el botón de emoji en el campo de mensaje</string>
@@ -20,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Predeterminada del sistema</string>
-
     <string name="keywords_title">Palabras clave bloqueadas</string>
     <string name="keywords_hint">Los mensajes que contengan alguna de estas palabras se mueven a la papelera: no aparecen en la bandeja de entrada ni suena la notificación.</string>
     <string name="keywords_add_hint">Añadir palabra clave</string>
@@ -29,7 +28,6 @@
     <string name="keywords_remove">Quitar palabra clave</string>
     <string name="keywords_subtitle_none">Ninguna</string>
     <string name="keywords_subtitle_count">%1$d bloqueadas</string>
-
     <string name="diagnostics_title">Diagnóstico</string>
     <string name="diagnostics_subtitle">Diagnóstico del dispositivo y de la app para solucionar problemas</string>
     <string name="diagnostics_save">Guardar</string>
@@ -37,7 +35,6 @@
     <string name="diagnostics_close">Cerrar</string>
     <string name="diagnostics_clip_label">Diagnóstico de Messages</string>
     <string name="settings_sim_unknown">SIM desconocida</string>
-
     <string name="mms_check_title">Compatibilidad con MMS</string>
     <string name="mms_check_subtitle">Comprobar la compatibilidad con MMS de cada SIM</string>
     <string name="mms_check_summary">%1$d de %2$d tarjetas SIM admiten MMS</string>

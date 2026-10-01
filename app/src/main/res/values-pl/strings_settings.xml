@@ -40,6 +40,8 @@
     <string name="settings_unread_top_subtitle">Sortuj nieprzeczytane wiadomości na górze</string>
     <string name="settings_forwarding_title">Przekazywanie</string>
     <string name="settings_forwarding_subtitle">Włącz przekazywanie wiadomości</string>
+    <string name="settings_drafts_title">Wersje robocze</string>
+    <string name="settings_drafts_subtitle">Automatycznie zapisuj niewysłane teksty jako wersje robocze</string>
     <string name="settings_scheduled_title">Wiadomości zaplanowane</string>
     <string name="settings_scheduled_subtitle">Włącz planowanie wiadomości</string>
     <string name="settings_delayed_title">Opóźnione wysyłanie</string>
@@ -81,7 +83,6 @@
     <string name="settings_trash_subtitle">Usunięte rozmowy · usuwane po 30 dniach</string>
     <string name="settings_spam_blocked_subtitle">Zablokowane rozmowy są przechowywane tutaj</string>
     <string name="settings_retention_title">Automatyczne usuwanie</string>
-
     <string name="settings_choose_retention">Dotyczy Kosza, zablokowanych wiadomości i zablokowanych nadawców:</string>
     <string name="settings_retention_subtitle">Kosz, zablokowane wiadomości i zablokowani nadawcy są usuwane automatycznie</string>
     <string name="settings_retention_days">%d dni</string>

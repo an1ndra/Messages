@@ -40,6 +40,8 @@
     <string name="settings_unread_top_subtitle">ترتيب الرسائل غير المقروءة في الأعلى</string>
     <string name="settings_forwarding_title">إعادة التوجيه</string>
     <string name="settings_forwarding_subtitle">تمكين إعادة توجيه الرسائل</string>
+    <string name="settings_drafts_title">المسودات</string>
+    <string name="settings_drafts_subtitle">حفظ تلقائي للرسائل غير المرسَلة كمسودات</string>
     <string name="settings_scheduled_title">الرسائل المجدولة</string>
     <string name="settings_scheduled_subtitle">تمكين جدولة الرسائل</string>
     <string name="settings_delayed_title">الإرسال المتأخر</string>
@@ -81,7 +83,6 @@
     <string name="settings_trash_subtitle">المحادثات المحذوفة · تُحذف نهائيًا بعد 30 يومًا</string>
     <string name="settings_spam_blocked_subtitle">تُحفظ المحادثات المحظورة هنا</string>
     <string name="settings_retention_title">حذف تلقائي</string>
-
     <string name="settings_choose_retention">ينطبق على سلة المحذوفات والرسائل المحظورة والمرسلين المحظورين:</string>
     <string name="settings_retention_subtitle">يتم حذف سلة المحذوفات والرسائل المحظورة والمرسلين المحظورين تلقائيًا</string>
     <string name="settings_retention_days">%d يومًا</string>

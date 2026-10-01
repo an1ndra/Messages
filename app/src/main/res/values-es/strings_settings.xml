@@ -40,6 +40,8 @@
     <string name="settings_unread_top_subtitle">Ordenar mensajes no leídos en la parte superior</string>
     <string name="settings_forwarding_title">Reenvío</string>
     <string name="settings_forwarding_subtitle">Habilitar reenvío de mensajes</string>
+    <string name="settings_drafts_title">Borradores</string>
+    <string name="settings_drafts_subtitle">Guardar automáticamente el texto no enviado como borrador</string>
     <string name="settings_scheduled_title">Mensajes programados</string>
     <string name="settings_scheduled_subtitle">Habilitar programación de mensajes</string>
     <string name="settings_delayed_title">Envío diferido</string>
@@ -81,7 +83,6 @@
     <string name="settings_trash_subtitle">Conversaciones eliminadas · se eliminan después de 30 días</string>
     <string name="settings_spam_blocked_subtitle">Las conversaciones bloqueadas se conservan aquí</string>
     <string name="settings_retention_title">Eliminación automática</string>
-
     <string name="settings_choose_retention">Se aplica a la papelera, los mensajes bloqueados y los remitentes bloqueados:</string>
     <string name="settings_retention_subtitle">La papelera, los mensajes bloqueados y los remitentes bloqueados se eliminan automáticamente</string>
     <string name="settings_retention_days">%d días</string>

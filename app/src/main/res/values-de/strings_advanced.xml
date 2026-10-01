@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_advanced_reverse_swipe">Wischaktionen umkehren</string>
     <string name="settings_advanced_reverse_swipe_desc">Nach links wischen zum Archivieren und nach rechts wischen zum Löschen</string>
     <string name="settings_advanced_hide_links">Links in Nachrichten verstecken</string>
     <string name="settings_advanced_hide_links_desc">Links in Nachrichten niemals klickbar machen</string>
@@ -10,7 +11,6 @@
     <string name="settings_advanced_turn_off">"„"</string>
     <string name="settings_advanced_turn_off_suffix">" "aktivieren zuerst</string>
     <string name="settings_advanced_permanent_delete_on">Endgültiges Löschen ist aktiviert. Diese Unterhaltung und ihre Nachrichten werden sofort von Ihrem Gerät entfernt — nicht in den Papierkorb verschoben — und können nicht wiederhergestellt werden.</string>
-
     <string name="settings_font_title">Schriftart</string>
     <string name="settings_advanced_emoji_button">Emoji-Schaltfläche</string>
     <string name="settings_advanced_emoji_button_desc">Emoji-Schaltfläche im Nachrichtenfeld anzeigen</string>
@@ -20,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Systemstandard</string>
-
     <string name="keywords_title">Blockierte Stichwörter</string>
     <string name="keywords_hint">Nachrichten, die eines dieser Wörter enthalten, werden in den Papierkorb verschoben: Sie erscheinen nicht im Posteingang und es ertönt kein Benachrichtigungston.</string>
     <string name="keywords_add_hint">Stichwort hinzufügen</string>
@@ -29,7 +28,6 @@
     <string name="keywords_remove">Stichwort entfernen</string>
     <string name="keywords_subtitle_none">Keine</string>
     <string name="keywords_subtitle_count">%1$d blockiert</string>
-
     <string name="diagnostics_title">Diagnose</string>
     <string name="diagnostics_subtitle">Geräte- und App-Diagnose zur Fehlersuche</string>
     <string name="diagnostics_save">Speichern</string>
@@ -37,7 +35,6 @@
     <string name="diagnostics_close">Schließen</string>
     <string name="diagnostics_clip_label">Messages-Diagnose</string>
     <string name="settings_sim_unknown">Unbekannte SIM</string>
-
     <string name="mms_check_title">MMS-Unterstützung</string>
     <string name="mms_check_subtitle">Jede SIM-Karte auf MMS prüfen</string>
     <string name="mms_check_summary">%1$d von %2$d SIM-Karten unterstützen MMS</string>
