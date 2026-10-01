@@ -64,6 +64,18 @@
                 <data android:scheme="mms" />
                 <data android:scheme="mmsto" />
             </intent-filter>
+            <!-- RoleManager qualifies the SMS role against SENDTO+smsto. The VIEW
+                 filter above does not satisfy it, so "Set as default" silently did
+                 nothing. DEFAULT is required: the role check resolves with
+                 MATCH_DEFAULT_ONLY, so a filter without it never qualifies. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SENDTO" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="smsto" />
+            </intent-filter>
         </activity>
 
         <receiver

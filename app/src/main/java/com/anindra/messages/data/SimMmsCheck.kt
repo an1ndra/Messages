@@ -51,20 +51,58 @@ data class SimMmsCheck(
     val supported: Boolean get() = verdict == MmsVerdict.SUPPORTED
 }
 
+/** Carrier MMS flag, narrowed to what the verdict needs so it can be faked. */
+interface CarrierMmsValues {
+    /** Whether the carrier config states MMS on/off at all. */
+    fun hasMmsKey(): Boolean
+    fun mmsEnabled(): Boolean
+}
+
+object SimMmsVerdict {
+    /**
+     * A carrier whose config omits the MMS key has not said MMS works. Reading
+     * the absent key with a `true` fallback reported "Supported" for exactly
+     * the carriers that never declared it, which is the common case. Silence is
+     * [MmsVerdict.UNKNOWN], not consent.
+     */
+    fun carrierEnabled(values: CarrierMmsValues?): Boolean? = when {
+        values == null -> null
+        !values.hasMmsKey() -> null
+        else -> values.mmsEnabled()
+    }
+}
+
 /** Country calling code ("+44") and ISO region ("GB") for a SIM's number, or
  *  the SIM's own network country when the number is not exposed. */
 object SimMmsCountry {
     private val util: PhoneNumberUtil by lazy { PhoneNumberUtil.getInstance() }
 
-    private val PLUS = Regex("^\\+?[0-9]{1,4}$")
+    /**
+     * A carrier-supplied SIM number is national: it carries no country of its
+     * own. Prepending a "+" to it is worse than reporting nothing, because the
+     * digits then read as whichever country happens to claim them — an Indian
+     * 8633333333 becomes China's +86 and 9876543210 becomes Iran's +98. So a
+     * number states its own country only when it already says "+"; otherwise it
+     * can only be placed against [networkRegion], the SIM's own country.
+     */
+    private fun statesItsOwnCountry(number: String): Boolean =
+        number.trim().startsWith("+")
 
-    /** Calling code of [number] including the plus, or null when it is not one. */
-    fun callingCodeOf(number: String?): String? {
-        val digits = number?.filter { it.isDigit() }.orEmpty()
-        if (digits.isEmpty() || !PLUS.matches(digits.take(4))) return null
+    private fun usableRegion(networkRegion: String?): String? =
+        networkRegion?.trim()?.uppercase()?.takeIf { it.length == 2 && it != "ZZ" }
+
+    /** Calling code of [number] including the plus, or null when it is not one.
+     *  [networkRegion] is the SIM's ISO country, used only for national numbers. */
+    fun callingCodeOf(number: String?, networkRegion: String? = null): String? {
+        val raw = number?.trim().orEmpty()
+        val digits = raw.filter { it.isDigit() }
+        if (digits.isEmpty()) return null
+        val region = usableRegion(networkRegion)
+        if (!statesItsOwnCountry(raw) && region == null) return null
         return try {
-            val code = util.parse("+$digits", null).countryCode
-            if (code <= 0) null else "+$code"
+            val parsed = if (statesItsOwnCountry(raw)) util.parse(raw, null)
+            else util.parse(digits, region)
+            if (parsed.countryCode <= 0) null else "+${parsed.countryCode}"
         } catch (_: Exception) {
             null
         }
@@ -74,16 +112,23 @@ object SimMmsCountry {
      *  it. A region whose own country calling code disagrees with the number's
      *  is rejected: reserved ranges such as NANP 555 are attributed to a country
      *  that does not use that code at all, and the caller falls back to the
-     *  SIM's own network country rather than trusting it. */
-    fun regionOf(number: String?): String {
-        if (number.isNullOrBlank()) return ""
+     *  SIM's own network country rather than trusting it.
+     *
+     *  A national number is placed against [networkRegion]; it names no country
+     *  itself, so without the SIM's country there is nothing to report. */
+    fun regionOf(number: String?, networkRegion: String? = null): String {
+        val raw = number?.trim().orEmpty()
+        if (raw.isEmpty()) return ""
+        val region = usableRegion(networkRegion)
+        if (!statesItsOwnCountry(raw) && region == null) return ""
         return try {
-            val parsed = util.parse(number.trim(), null)
-            val region = util.getRegionCodeForNumber(parsed)
+            val parsed = if (statesItsOwnCountry(raw)) util.parse(raw, null)
+            else util.parse(raw.filter { it.isDigit() }, region)
+            val found = util.getRegionCodeForNumber(parsed)
             when {
-                region.isNullOrBlank() || region == "ZZ" -> ""
-                util.getCountryCodeForRegion(region) != parsed.countryCode -> ""
-                else -> region
+                found.isNullOrBlank() || found == "ZZ" -> ""
+                util.getCountryCodeForRegion(found) != parsed.countryCode -> ""
+                else -> found
             }
         } catch (_: Exception) {
             ""

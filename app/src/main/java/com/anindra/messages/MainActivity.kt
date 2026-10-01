@@ -864,9 +864,14 @@ class MainActivity : FragmentActivity() {
         // screen while the conversation resolves, so the list never flashes first.
         if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
 
-        val defaultSmsLauncher = registerForActivityResult(
+        /** Result of the last "Set as default SMS app" request, so a refusal is visible. */
+var defaultSmsResult by mutableStateOf(Activity.RESULT_CANCELED)
+
+    val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
-        ) { }
+        ) { result ->
+            defaultSmsResult = result.resultCode
+        }
 
         setContent {
             val vm: AppViewModel = viewModel()
@@ -980,6 +985,18 @@ class MainActivity : FragmentActivity() {
                 val trashMessageList = rememberLazyListState()
                 val spamConversationList = rememberLazyListState()
                 val spamMessageList = rememberLazyListState()
+
+                // Entering Settings from the list starts at the top; returning from
+                // a sub-screen keeps the position, so #265 stays fixed.
+                var lastRoute by androidx.compose.runtime.remember {
+                    androidx.compose.runtime.mutableStateOf("list")
+                }
+                androidx.compose.runtime.LaunchedEffect(navRoute) {
+                    if (com.anindra.messages.ui.ScrollReset.shouldResetToTop(lastRoute, navRoute)) {
+                        settingsScroll.scrollTo(0)
+                    }
+                    lastRoute = navRoute
+                }
 
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     if (navRoute != "settings") {

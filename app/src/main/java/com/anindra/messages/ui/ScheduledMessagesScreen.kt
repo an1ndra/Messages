@@ -32,12 +32,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,6 +98,12 @@ fun ScheduledMessagesScreen(
     BackHandler(enabled = searching) { searching = false; query = "" }
     BackHandler(enabled = !searching, onBack = onBack)
 
+    // This screen builds its header by hand and so has no Surface to derive a
+    // content colour from. Left unset, LocalContentColor is Color.Black, which
+    // renders the title, back arrow and search icon invisible in dark mode.
+    CompositionLocalProvider(
+        LocalContentColor provides MaterialTheme.colorScheme.onSurface
+    ) {
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         // same header shape as the conversation list: the title is replaced in
         // place by the field, so the screen never grows a second row
@@ -181,6 +189,7 @@ fun ScheduledMessagesScreen(
                 }
             }
         }
+    }
     }
 
     editing?.let { sm ->
