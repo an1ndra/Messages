@@ -125,6 +125,7 @@
     <string name="settings_sound_bubble">فقاعة</string>
     <string name="settings_theme_light">فاتح</string>
     <string name="settings_theme_dark">داكن</string>
+    <string name="settings_theme_amoled">AMOLED (أسود خالص)</string>
     <string name="settings_theme_system">تفضيلات النظام</string>
     <string name="convo_your_prefix">"أنت: "</string>
     <string name="settings_restored_msg">تم استعادة %s رسائل. تم الحفاظ على المحادثات الحالية.</string>

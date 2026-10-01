@@ -384,6 +384,7 @@ fun SettingsScreen(
                     listOf(
                         "light" to stringResource(R.string.settings_theme_light),
                         "dark" to stringResource(R.string.settings_theme_dark),
+                        "amoled" to stringResource(R.string.settings_theme_amoled),
                         "system" to stringResource(R.string.settings_theme_system)
                     ).forEach { (value, label) ->
                         Row(
@@ -859,6 +860,7 @@ private fun openSystemNotificationSettings(context: android.content.Context) {
 private fun themeLabel(mode: String, context: android.content.Context) = when (mode) {
     "light" -> context.getString(R.string.settings_theme_light)
     "dark" -> context.getString(R.string.settings_theme_dark)
+    "amoled" -> context.getString(R.string.settings_theme_amoled)
     else -> context.getString(R.string.settings_theme_system)
 }
 

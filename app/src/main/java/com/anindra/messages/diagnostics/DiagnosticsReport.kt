@@ -5,6 +5,8 @@ import android.app.ActivityManager
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.hardware.display.DisplayManager
 import android.os.BatteryManager
 import android.os.Build
@@ -19,6 +21,9 @@ import com.anindra.messages.data.DownloadsStore
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
+import com.anindra.messages.ui.theme.A11yOptions
+import com.anindra.messages.ui.theme.schemeFor
+import com.anindra.messages.ui.theme.themeIsDark
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,6 +40,15 @@ data class AppDetails(
     val locale: String,
     val timeZone: String,
     val themeMode: String,
+    /**
+     * The page colour the theme mode actually resolves to, as #RRGGBB.
+     *
+     * The stored mode string on its own does not say what is on screen: a
+     * theme that was wired up to fall through to the dark scheme would still
+     * report "amoled" here while painting #131314. Reporting the resolved
+     * colour makes that visible without a screenshot.
+     */
+    val resolvedBackground: String = "",
     val notificationsEnabled: Boolean,
     val fontFamily: String = "",
     val sendSound: Boolean = false,
@@ -157,6 +171,7 @@ object DiagnosticsReport {
             appendLine("Locale: ${data.appDetails.locale}")
             appendLine("Time zone: ${data.appDetails.timeZone}")
             appendLine("Theme mode: ${data.appDetails.themeMode}")
+            appendLine("Resolved page colour: ${data.appDetails.resolvedBackground}")
             appendLine("Font: ${data.appDetails.fontFamily}")
             appendLine("Accessibility mode: ${data.appDetails.accessibilityMode}")
             if (data.appDetails.accessibilityMode) {
@@ -423,6 +438,7 @@ object DiagnosticsReport {
             locale = Locale.getDefault().toString(),
             timeZone = TimeZone.getDefault().id,
             themeMode = settings.themeMode,
+            resolvedBackground = resolvedBackgroundHex(settings.themeMode, systemIsDark()),
             notificationsEnabled = settings.notificationsEnabled,
             fontFamily = settings.fontFamily,
             sendSound = settings.sendSoundEnabled,
@@ -443,3 +459,32 @@ object DiagnosticsReport {
 
 internal fun phoneCountForSdk(sdkInt: Int, activeModemCount: Int?, maxSubscriptions: Int?): Int =
     if (sdkInt >= 30) activeModemCount ?: 0 else maxSubscriptions ?: 0
+
+/**
+ * The page colour a theme mode resolves to, as #RRGGBB, mirroring the branch
+ * MessagesTheme uses. [systemIsDark] stands in for `isSystemInDarkTheme()`,
+ * which is composable-only and cannot be called from here.
+ *
+ * Kept in step with Theme.kt deliberately: a theme wired up to fall through to
+ * the dark scheme would still store "amoled", and this is what would show it.
+ */
+/**
+ * The page colour a theme mode resolves to, as #RRGGBB.
+ *
+ * Deliberately built on the same [schemeFor] the app renders through, rather
+ * than repeating the branch: a second copy here would keep reporting black
+ * after the theme itself stopped selecting it, which is exactly the failure
+ * the regression script exists to catch.
+ */
+internal fun resolvedBackgroundHex(mode: String, systemIsDark: Boolean): String {
+    val color = schemeFor(mode, A11yOptions.DISABLED, themeIsDark(mode, systemIsDark)).background
+    // Compose's Color channels are Floats in 0..1, not the packed ARGB Int, so
+    // each has to be scaled and rounded before it can be formatted as hex.
+    fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
+    return "#%02X%02X%02X".format(channel(color.red), channel(color.green), channel(color.blue))
+}
+
+/** The device's night setting, read without a Context. */
+private fun systemIsDark(): Boolean =
+    Resources.getSystem().configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+        Configuration.UI_MODE_NIGHT_YES
