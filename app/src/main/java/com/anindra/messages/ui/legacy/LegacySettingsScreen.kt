@@ -98,6 +98,7 @@ fun SettingsScreen(
     onOpenTrash: () -> Unit = {},
     onOpenAdvanced: () -> Unit = {},
     onOpenSpamBlocked: () -> Unit = {},
+    onOpenScheduled: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
@@ -352,6 +353,20 @@ fun SettingsScreen(
                     checked = unreadAtTop,
                     onChecked = { unreadAtTop = it; vm.settings.unreadAtTopEnabled = it }
                 )
+            }
+
+            val scheduledAll by vm.scheduledMessages().collectAsState(initial = emptyList())
+            if (scheduledAll.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                SettingsGroup {
+                    SettingsRow(
+                        title = stringResource(R.string.settings_scheduled_title),
+                        subtitle = context.getString(
+                            R.string.settings_scheduled_count, scheduledAll.size
+                        ),
+                        onClick = onOpenScheduled
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))

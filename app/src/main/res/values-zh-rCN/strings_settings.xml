@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">已删除的对话、被屏蔽的消息和被屏蔽的发送者会先移至“垃圾邮件和已屏蔽”，然后才彻底清除。关闭自动删除时不会清除任何内容。</string>
     <string name="settings_accessibility_footer">无障碍模式会放大文字、点按区域和对比度。更改会应用到整个应用。</string>
     <string name="settings_inbox_footer">归档、滑动操作、屏蔽和延迟发送适用于信息列表中的对话。</string>
+    <string name="settings_new_ui_title">重新设计的界面</string>
+    <string name="settings_new_ui_subtitle">使用新的设置和列表布局</string>
 </resources>

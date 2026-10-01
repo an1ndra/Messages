@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">削除した会話、ブロックしたメッセージと送信者は、完全に消去される前に「スパムとブロック」へ移動されます。自動削除がオフの間は何も消去されません。</string>
     <string name="settings_accessibility_footer">アクセシビリティモードは文字、タッチ領域、コントラストを大きくします。変更はアプリ全体に適用されます。</string>
     <string name="settings_inbox_footer">アーカイブ、スワイプ操作、ブロック、遅延送信は、メッセージ一覧の会話に適用されます。</string>
+    <string name="settings_new_ui_title">再設計されたインターフェース</string>
+    <string name="settings_new_ui_subtitle">新しい設定・一覧レイアウトを使用</string>
 </resources>

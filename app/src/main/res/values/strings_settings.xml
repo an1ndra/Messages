@@ -141,4 +141,6 @@
     <string name="settings_auto_delete_footer">Deleted conversations, blocked messages and blocked senders are moved to Spam &amp; blocked before they are erased. Nothing is erased while Auto-delete is off.</string>
     <string name="settings_accessibility_footer">Accessibility mode enlarges text, tap targets and contrast. Changes apply across the whole app.</string>
     <string name="settings_inbox_footer">Archiving, swipe actions, blocking and delayed sending apply to conversations in the Messages list.</string>
+    <string name="settings_new_ui_title">Redesigned interface</string>
+    <string name="settings_new_ui_subtitle">Use the new settings and list layout</string>
 </resources>

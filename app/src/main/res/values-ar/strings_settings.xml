@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">لا ُحذف المحادثات والرسائل المحظورة والمرسلون المحظورون إلا بعد نقلهم إلى البريد غير المرغوب والمحظور. لا شيء يُحذف إلا إيقاف الحذف التلقائي.</string>
     <string name="settings_accessibility_footer">يكبّر وضع إمكانية الوصول النص ومناطق اللمس والتباين. تسري التغييرات على التطبيق كله.</string>
     <string name="settings_inbox_footer">ينطبق الأرشفة وإجراءات السحب والحظر والإرسال المؤجل على المحادثات في قائمة الرسائل.</string>
+    <string name="settings_new_ui_title">واجهة معاد تصميمها</string>
+    <string name="settings_new_ui_subtitle">استخدام تخطيط الإعدادات والقوائم الجديد</string>
 </resources>

@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">Les conversations supprimées, les messages bloqués et les expéditeurs bloqués sont déplacés vers « Spam et bloqués » avant d’être effacés. Rien n’est effacé tant que la suppression automatique est désactivée.</string>
     <string name="settings_accessibility_footer">Le mode accessibilité agrandit le texte, les zones tactiles et le contraste. Les changements s’appliquent à toute l’application.</string>
     <string name="settings_inbox_footer">L’archivage, les gestes de balayage, le blocage et l’envoi différé s’appliquent aux conversations de la liste des messages.</string>
+    <string name="settings_new_ui_title">Interface redessinée</string>
+    <string name="settings_new_ui_subtitle">Utiliser la nouvelle mise en page des réglages et listes</string>
 </resources>

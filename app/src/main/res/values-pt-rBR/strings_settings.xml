@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">Conversas excluídas, mensagens e remetentes bloqueados vão primeiro para Spam e bloqueados antes de serem apagados. Nada é apagado enquanto a exclusão automática estiver desligada.</string>
     <string name="settings_accessibility_footer">O modo de acessibilidade aumenta o texto, as áreas de toque e o contraste. As mudanças valem para todo o app.</string>
     <string name="settings_inbox_footer">Arquivar, gestos de deslizar, bloqueio e envio atrasado valem para as conversas na lista de mensagens.</string>
+    <string name="settings_new_ui_title">Interface redesenhada</string>
+    <string name="settings_new_ui_subtitle">Usar o novo layout de configurações e listas</string>
 </resources>

@@ -140,4 +140,6 @@
     <string name="settings_auto_delete_footer">Gelöschte Konversationen, blockierte Nachrichten und blockierte Absender werden in „Spam &amp; blockiert“ verschoben, bevor sie endgültig gelöscht werden. Bei ausgeschalteter automatischer Löschung wird nichts gelöscht.</string>
     <string name="settings_accessibility_footer">Der Barrierefreiheitsmodus vergrößert Text, Bedienflächen und Kontrast. Die Änderungen gelten für die gesamte App.</string>
     <string name="settings_inbox_footer">Archivieren, Wischaktionen, Blockieren und verzögertes Senden gelten für Konversationen in der Nachrichtenliste.</string>
+    <string name="settings_new_ui_title">Neugestaltete Oberfläche</string>
+    <string name="settings_new_ui_subtitle">Neues Layout für Einstellungen und Listen verwenden</string>
 </resources>
