@@ -81,4 +81,32 @@ object SimMmsProbe {
         Log.w(TAG, "carrier config unavailable for sub=$subscriptionId", e)
         null
     }
+
+    /**
+     * The MMS-related carrier-config values for [subscriptionId], verbatim, for
+     * the diagnostics report.
+     *
+     * `KEY_MMS_MMS_ENABLED_BOOL` is the only capability signal a normal app can
+     * read: the MMSC itself lives in the APN table, which is behind a
+     * privileged permission. So when a carrier's verdict disagrees with the
+     * platform's own messaging app, this is the evidence needed to see what the
+     * carrier actually declared. Read from the on-device config only — nothing
+     * here touches the network.
+     */
+    fun carrierFacts(context: Context, subscriptionId: Int): List<String> {
+        val config = carrierConfig(context, subscriptionId)
+            ?: return listOf("carrierConfig: unreadable")
+        fun bool(key: String) =
+            if (config.containsKey(key)) config.getBoolean(key, false).toString() else "absent"
+        fun int(key: String) =
+            if (config.containsKey(key)) config.getInt(key, 0).toString() else "absent"
+        return listOf(
+            "verdict: ${run(context).firstOrNull { it.subscriptionId == subscriptionId }?.verdict}",
+            "${CarrierConfigManager.KEY_MMS_MMS_ENABLED_BOOL}: ${bool(CarrierConfigManager.KEY_MMS_MMS_ENABLED_BOOL)}",
+            "${CarrierConfigManager.KEY_MMS_MAX_MESSAGE_SIZE_INT}: ${int(CarrierConfigManager.KEY_MMS_MAX_MESSAGE_SIZE_INT)}",
+            "${CarrierConfigManager.KEY_MMS_SMS_TO_MMS_TEXT_THRESHOLD_INT}: ${int(CarrierConfigManager.KEY_MMS_SMS_TO_MMS_TEXT_THRESHOLD_INT)}",
+            "${CarrierConfigManager.KEY_MMS_SMS_TO_MMS_TEXT_LENGTH_THRESHOLD_INT}: ${int(CarrierConfigManager.KEY_MMS_SMS_TO_MMS_TEXT_LENGTH_THRESHOLD_INT)}",
+            "${CarrierConfigManager.KEY_MMS_RECIPIENT_LIMIT_INT}: ${int(CarrierConfigManager.KEY_MMS_RECIPIENT_LIMIT_INT)}"
+        )
+    }
 }

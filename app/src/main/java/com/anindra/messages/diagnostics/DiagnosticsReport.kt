@@ -133,7 +133,9 @@ data class DiagnosticsData(
     val phoneCount: Int,
     val sims: List<SimCard>,
     val display: DisplayInfo,
-    val timestamp: Long
+    val timestamp: Long,
+    /** MMS carrier-config values per subscriptionId; see SimMmsProbe.carrierFacts. */
+    val mmsFacts: Map<Int, List<String>> = emptyMap()
 )
 
 object DiagnosticsReport {
@@ -232,6 +234,10 @@ object DiagnosticsReport {
                     appendLine("  mccMnc: ${s.mccMnc ?: "null"}")
                     appendLine("  countryIso: ${s.countryIso ?: "null"}")
                     appendLine("  embedded: ${s.embedded}")
+                    appendLine("  MMS carrier config:")
+                    data.mmsFacts[s.subscriptionId].orEmpty().forEach {
+                        appendLine("    $it")
+                    }
                 }
             }
             appendLine()
@@ -381,7 +387,11 @@ object DiagnosticsReport {
                 phoneCount = phoneCount,
                 sims = sims,
                 display = displayInfo,
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                mmsFacts = sims.associate { s ->
+                    s.subscriptionId to
+                        com.anindra.messages.sms.SimMmsProbe.carrierFacts(context, s.subscriptionId)
+                }
             )
         )
     }
