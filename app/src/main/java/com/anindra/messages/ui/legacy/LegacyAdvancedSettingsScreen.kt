@@ -57,11 +57,16 @@ import com.anindra.messages.ui.BlockedKeywordsDialog
 fun AdvancedSettingsScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
-    onOpenAccessibility: () -> Unit = {}
+    onOpenAccessibility: () -> Unit = {},
+    searchRow: Int? = null,
+    onSearchRowHandled: () -> Unit = {}
 ) {
     BackHandler(onBack = onBack)
 
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
+    val cardOffsets = remember { mutableMapOf<Int, Int>() }
+    var highlightTitle by remember { mutableStateOf<String?>(null) }
     val revision by vm.settings.revision.collectAsState()
     var permanentDelete by remember(revision) { mutableStateOf(vm.settings.permanentDeleteEnabled) }
     var reverseSwipe by remember(revision) { mutableStateOf(vm.settings.reverseSwipeEnabled) }
@@ -98,17 +103,21 @@ fun AdvancedSettingsScreen(
             )
         }
     ) { padding ->
+      androidx.compose.runtime.CompositionLocalProvider(
+        LocalHighlightedSetting provides highlightTitle,
+        LocalCardOffsets provides cardOffsets
+      ) {
         Column(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 12.dp)
         ) {
             Spacer(Modifier.height(8.dp))
 
             // Conversations
-            SettingsGroup {
+        SettingsCard(7) {
                 SettingsRow(
                     title = stringResource(R.string.settings_drafts_title),
                     subtitle = stringResource(R.string.settings_drafts_subtitle),
@@ -139,7 +148,7 @@ fun AdvancedSettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // Links
-            SettingsGroup {
+        SettingsCard(8) {
                 SettingsRow(
                     title = stringResource(R.string.settings_advanced_hide_links),
                     subtitle = stringResource(R.string.settings_advanced_hide_links_desc),
@@ -182,7 +191,7 @@ fun AdvancedSettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // Privacy & security
-            SettingsGroup {
+        SettingsCard(9) {
                 SettingsRow(
                     title = stringResource(R.string.settings_privacy_title),
                     subtitle = stringResource(R.string.settings_privacy_subtitle),
@@ -223,7 +232,7 @@ fun AdvancedSettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // Notifications
-            SettingsGroup {
+        SettingsCard(10) {
                 SettingsRow(
                     title = stringResource(R.string.settings_send_sound_title),
                     subtitle = stringResource(R.string.settings_send_sound_subtitle),
@@ -245,7 +254,7 @@ fun AdvancedSettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // Appearance
-            SettingsGroup {
+        SettingsCard(11) {
                 SettingsRow(
                     title = stringResource(R.string.settings_font_title),
                     subtitle = fontLabel(vm.fontFamily),
@@ -262,7 +271,7 @@ fun AdvancedSettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // Accessibility
-            SettingsGroup {
+        SettingsCard(12) {
                 SettingsRow(
                     title = stringResource(R.string.settings_accessibility_title),
                     subtitle = stringResource(R.string.settings_accessibility_subtitle),
@@ -281,7 +290,7 @@ fun AdvancedSettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // Auto-delete
-            SettingsGroup {
+        SettingsCard(13) {
                 SettingsRow(
                     title = stringResource(R.string.settings_retention_title),
                     subtitle = stringResource(R.string.settings_retention_subtitle),
@@ -330,7 +339,7 @@ fun AdvancedSettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // Support
-            SettingsGroup {
+        SettingsCard(14) {
                 // Mirrors the switch in the redesigned screen. Without it here the
                 // legacy UI is a one-way door: switch off, no way back.
                 SettingsRow(
@@ -348,6 +357,14 @@ fun AdvancedSettingsScreen(
 
             Spacer(Modifier.height(8.dp))
         }
+        SettingsJumpEffect(
+            pendingRowRes = searchRow,
+            cardOffsets = cardOffsets,
+            scrollState = scrollState,
+            setHighlight = { highlightTitle = it },
+            onHandled = onSearchRowHandled
+        )
+      }
     }
 
     if (retentionDaysDialog) {

@@ -114,6 +114,8 @@ fun SettingsScreen(
     onOpenAdvanced: () -> Unit = {},
     onOpenSpamBlocked: () -> Unit = {},
     onOpenScheduled: () -> Unit = {},
+    onOpenRoute: (String) -> Unit = {},
+    onOpenJumpTarget: (Int) -> Unit = {},
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
@@ -252,13 +254,12 @@ fun SettingsScreen(
 
     // Labels are resolved here, not inside remember: stringResource is composable
     // and cannot be called from remember's lambda.
-    val labels = SettingsSearch.LegacySettingsIndex.ALL.associateWith { stringResource(it) }
+    val labels = SettingsSearch.LEGACY_ROWS.associateWith { stringResource(it) }
     val results = remember(query, labels) {
-        if (query.isBlank()) emptyList() else SettingsSearch.LegacySettingsIndex.ALL
+        if (query.isBlank()) emptyList() else SettingsSearch.LEGACY_ROWS
             .filter { SettingsSearch.matches(query, labels[it]) }
     }
     val showingResults = searching && query.isNotBlank()
-    val pendingTitle = pendingJump?.let { stringResource(it) }
 
     BackHandler(enabled = searching) {
         searching = false
@@ -268,28 +269,15 @@ fun SettingsScreen(
     fun jumpTo(rowRes: Int) {
         searching = false
         query = ""
-        pendingJump = rowRes
+        val route = SettingsSearch.routeOf(rowRes)
+        if (route == SettingsSearch.Route.SETTINGS) {
+            pendingJump = rowRes
+        } else {
+            onOpenRoute(route)
+            onOpenJumpTarget(rowRes)
+        }
     }
 
-    // Runs once the query has cleared and the cards are laid out again.
-    // bringIntoView() proved unreliable here and silently left the target
-    // off-screen, so the scroll is driven from a measured position instead.
-    LaunchedEffect(pendingJump, pendingTitle) {
-        val target = pendingJump ?: return@LaunchedEffect
-        val card = SettingsSearch.LegacySettingsIndex.groupOf(target)
-        for (attempt in 0 until 15) {
-            val y = cardOffsets[card]
-            if (y != null && scrollState.maxValue > 0) {
-                scrollState.animateScrollTo(y)
-                break
-            }
-            delay(50)
-        }
-        highlightTitle = pendingTitle
-        delay(1400)
-        highlightTitle = null
-        pendingJump = null
-    }
 
     Scaffold(
         topBar = {
@@ -577,6 +565,13 @@ fun SettingsScreen(
         }
         }
         }
+        SettingsJumpEffect(
+            pendingRowRes = pendingJump,
+            cardOffsets = cardOffsets,
+            scrollState = scrollState,
+            setHighlight = { highlightTitle = it },
+            onHandled = { pendingJump = null }
+        )
     }
 
     if (themeDialog) {
@@ -1140,27 +1135,6 @@ private fun ImportRadioGroup(
             }
         }
     }
-}
-
-/**
- * Title of the option a search result just jumped to, so the row can flash
- * itself. Read inside [SettingsRow] rather than passed in, so pointing at an
- * option does not mean editing every call site on the screen.
- */
-private val LocalHighlightedSetting = compositionLocalOf<String?> { null }
-
-/** Records where each card landed so a search result can scroll to it. */
-val LocalCardOffsets = compositionLocalOf<MutableMap<Int, Int>> { mutableMapOf() }
-
-@Composable
-private fun SettingsCard(card: Int, content: @Composable () -> Unit) {
-    val offsets = LocalCardOffsets.current
-    SettingsGroup(
-        modifier = Modifier.onGloballyPositioned {
-            offsets[card] = it.positionInParent().y.toInt()
-        },
-        content = content
-    )
 }
 
 @Composable

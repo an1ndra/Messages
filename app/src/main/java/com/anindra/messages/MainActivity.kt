@@ -973,6 +973,8 @@ class MainActivity : FragmentActivity() {
                 // its scroll position when navigating into a nested screen and
                 // back; inline remember* state would be rebuilt at 0 on re-entry.
                 val settingsScroll = rememberScrollState()
+                // Row a search result asked a sub-screen to scroll to and flash.
+                var settingsJumpTarget by remember { mutableStateOf<Int?>(null) }
                 val advancedScroll = rememberScrollState()
                 val accessibilityScroll = rememberScrollState()
                 val contactDetailsScroll = rememberScrollState()
@@ -1167,6 +1169,8 @@ class MainActivity : FragmentActivity() {
                                         onOpenScheduled = { navRoute = "scheduled" },
                                         scrollState = settingsScroll
                                     ) else com.anindra.messages.ui.legacy.SettingsScreen(
+                                        onOpenRoute = { route -> navRoute = route },
+                                        onOpenJumpTarget = { row -> settingsJumpTarget = row },
                                         vm = vm,
                                         onBack = { navRoute = "list" },
                                         onOpenTrash = { navRoute = "trash" },
@@ -1193,6 +1197,8 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
                                         onOpenAccessibility = { navRoute = "accessibility" },
+                                        searchRow = settingsJumpTarget,
+                                        onSearchRowHandled = { settingsJumpTarget = null },
                                     )
                                     "scheduled" -> ScheduledMessagesScreen(
                                         vm = vm,
@@ -1224,6 +1230,8 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                     ) else com.anindra.messages.ui.legacy.AccessibilityScreen(
                                         vm = vm,
                                         onBack = { navRoute = "advanced" },
+                                        searchRow = settingsJumpTarget,
+                                        onSearchRowHandled = { settingsJumpTarget = null },
                                     )
                                     "trash" -> TrashScreen(
                                         vm = vm,

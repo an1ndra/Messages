@@ -41,11 +41,16 @@ import com.anindra.messages.ui.theme.A11yOptions
 @Composable
 fun AccessibilityScreen(
     vm: AppViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    searchRow: Int? = null,
+    onSearchRowHandled: () -> Unit = {}
 ) {
     BackHandler(onBack = onBack)
 
     var fontDialog by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    val cardOffsets = remember { mutableMapOf<Int, Int>() }
+    var highlightTitle by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -59,16 +64,20 @@ fun AccessibilityScreen(
             )
         }
     ) { padding ->
+      androidx.compose.runtime.CompositionLocalProvider(
+        LocalHighlightedSetting provides highlightTitle,
+        LocalCardOffsets provides cardOffsets
+      ) {
         Column(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 12.dp)
         ) {
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+        SettingsCard(15) {
                 SettingsRow(
                     title = stringResource(R.string.a11y_font_size_title),
                     subtitle = fontScaleLabel(vm.a11yFontScalePercent),
@@ -84,7 +93,7 @@ fun AccessibilityScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+        SettingsCard(16) {
                 SettingsRow(
                     title = stringResource(R.string.a11y_high_contrast_title),
                     subtitle = stringResource(R.string.a11y_high_contrast_desc),
@@ -101,7 +110,7 @@ fun AccessibilityScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+        SettingsCard(17) {
                 SettingsRow(
                     title = stringResource(R.string.a11y_reduce_motion_title),
                     subtitle = stringResource(R.string.a11y_reduce_motion_desc),
@@ -112,6 +121,14 @@ fun AccessibilityScreen(
 
             Spacer(Modifier.height(16.dp))
         }
+        SettingsJumpEffect(
+            pendingRowRes = searchRow,
+            cardOffsets = cardOffsets,
+            scrollState = scrollState,
+            setHighlight = { highlightTitle = it },
+            onHandled = onSearchRowHandled
+        )
+      }
     }
 
     if (fontDialog) {
