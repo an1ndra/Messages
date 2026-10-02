@@ -78,6 +78,8 @@ jobs:
           # verified address on the account. The action defaults to
           # support+bot@crowdin.com, which is not ours, so a valid signature
           # would still render Unverified.
+          # Drop the custom message: %original_file_name% / %language% are
+          # crowdin.yml tokens the Action does not expand, and replacing the
+          # default loses its [ci skip] tag, which suppresses a build per file.
           github_user_name: Anindra
           github_user_email: anindrakarmakar+git@proton.me
-          commit_message: "New translations %original_file_name% (%language%)"
