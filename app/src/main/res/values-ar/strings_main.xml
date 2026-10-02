@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">الرسائل</string>
-
     <!-- App lock & permissions -->
     <string name="lock_title">اعتماد هويتك للوصول إلى رسائلك</string>
     <string name="lock_unlock_title">فتح قفل الرسائل</string>
@@ -12,16 +11,13 @@
     <string name="lock_setup_needed">أنشئ أولاً قفل شاشة (بصمة وجه، بصمة إصبع، أو رقم سري) على جهازك</string>
     <string name="lock_turn_on">إعداد قفل الشاشة</string>
     <string name="lock_turn_on_hint">أنشئ قفل شاشة لإعادة تفعيل قفل التطبيق.</string>
-
     <!-- Default SMS app prompt -->
     <string name="default_sms_title">تعيين كتطبيق رسائل SMS الافتراضي؟</string>
     <string name="default_sms_message">لإرسال الرسائل واستلامها، يجب أن يكون الرسائل هو تطبيق SMS الافتراضي لديك.</string>
     <string name="default_sms_set">تعيين الافتراضي</string>
     <string name="default_sms_not_now">ليس الآن</string>
-
     <!-- Notifications -->
     <string name="notifications_disabled">الإشعارات معطّلة - لن تتلقّى تنبيّهات بالرسائل الجديدة</string>
-
     <string name="messages_footer">الرسائل 1.0 - رسائل SMS بدون إنترنت</string>
     <string name="settings_light_mode">فاتح</string>
     <string name="settings_dark_mode">داكن</string>
@@ -53,7 +49,6 @@
     <string name="notif_send_fail_private">فشل إرسال الرسالة. انقر للمحاولة مرة أخرى.</string>
     <string name="notif_send_fail">فشل إرسال الرسالة إلى %s. انقر للمحاولة مرة أخرى.</string>
     <string name="notif_not_delivered">لم تُسلّم الرسالة</string>
-
     <!-- Crash reports -->
     <string name="crash_report_title">تقرير الأعطال</string>
     <string name="crash_report_message">تعطل التطبيق في المرة الأخيرة. تم حفظ السجل في Downloads/Messages — أرفقه بمشكلة على GitHub للمساعدة في حل المشكلة.</string>
