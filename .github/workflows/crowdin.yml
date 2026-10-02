@@ -75,6 +75,10 @@ jobs:
           # committing to main, so TranslationParityTest and LocaleConfigTest
           # run against the inbound translations first.
           download_translations: true
+          # Crowdin exports the source text for untranslated strings, so a
+          # language with gaps would write English over good translations.
+          # Omitting unfinished files entirely makes that impossible.
+          skip_untranslated_files: true
           localization_branch_name: l10n_crowdin
           create_pull_request: true
           pull_request_title: "New Crowdin translations"
