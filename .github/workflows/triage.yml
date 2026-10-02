@@ -38,7 +38,7 @@ jobs:
       - uses: crmne/copilot-triage@v0
         with:
           copilot-token: ${{ github.token }}
-          github-token: ${{ secrets.PEREGRINEBOT_TOKEN }}
+          github-token: ${{ github.token }}
           model: ${{ vars.TRIAGE_MODEL }}
           reasoning-effort: ${{ vars.TRIAGE_REASONING_EFFORT }}
           dry-run: ${{ vars.TRIAGE_DRY_RUN }}
