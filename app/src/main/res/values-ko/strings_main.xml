@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Messages</string>
-
     <!-- App lock & permissions -->
     <string name="lock_title">메시지에 액세스하려면 인증하세요</string>
     <string name="lock_unlock_title">Messages 잠금 해제</string>
@@ -12,16 +11,13 @@
     <string name="lock_setup_needed">먼저 기기에서 화면 잠금(지문, 얼굴 또는 PIN)을 설정하세요</string>
     <string name="lock_turn_on">화면 잠금 설정</string>
     <string name="lock_turn_on_hint">앱 잠금을 다시 켜려면 하나 설정하세요.</string>
-
     <!-- Default SMS app prompt -->
     <string name="default_sms_title">기본 SMS 앱으로 설정하시겠습니까?</string>
     <string name="default_sms_message">메시지를 보내고 받으려면 Messages가 기본 SMS 앱이어야 합니다.</string>
     <string name="default_sms_set">기본값 설정</string>
     <string name="default_sms_not_now">나중에</string>
-
     <!-- Notifications -->
     <string name="notifications_disabled">알림이 비활성화되었습니다 - 새 메시지에 대해 알림이 표시되지 않습니다</string>
-
     <string name="messages_footer">Messages 1.0 - 오프라인 SMS</string>
     <string name="settings_light_mode">밝게</string>
     <string name="settings_dark_mode">어둡게</string>
@@ -53,7 +49,6 @@
     <string name="notif_send_fail_private">메시지를 보낼 수 없습니다. 다시 시도하려면 탭하세요.</string>
     <string name="notif_send_fail">%s(으)로 메시지를 보낼 수 없습니다. 다시 시도하려면 탭하세요.</string>
     <string name="notif_not_delivered">메시지가 전달되지 않았습니다</string>
-
     <!-- Crash reports -->
     <string name="crash_report_title">크래시 보고서</string>
     <string name="crash_report_message">마지막에 앱이 충돌했습니다. 로그가 Downloads/Messages에 저장되었으니, 수정을 돕기 위해 GitHub 이슈에 첨부하세요.</string>
