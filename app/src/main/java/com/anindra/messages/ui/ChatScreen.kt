@@ -960,7 +960,11 @@ fun ChatScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    formatGroupLabel(msg.timestamp, is24HourFormat(context)),
+                                    formatGroupLabel(
+                                        msg.timestamp,
+                                        is24HourFormat(context),
+                                        stringResource(R.string.time_yesterday)
+                                    ),
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = ChatMetaWeight
                                     ),

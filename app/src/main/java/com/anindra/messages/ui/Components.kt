@@ -47,8 +47,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 // Google Messages avatar palette
 private val avatarColors = listOf(
@@ -145,9 +143,6 @@ fun WorkProfileBadge(modifier: Modifier = Modifier) {
     )
 }
 
-private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
-private val dividerFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())
-
 private val zone: ZoneId get() = ZoneId.systemDefault()
 
 private fun zoned(ts: Long): ZonedDateTime = Instant.ofEpochMilli(ts).atZone(zone)
@@ -163,7 +158,7 @@ fun formatListTime(ts: Long, now: Long = System.currentTimeMillis(), ctx: androi
         now - ts < 3_600_000L -> String.format(ctx.getString(R.string.time_minutes), (now - ts) / 60_000)
         sameDay(ts, now) -> timeOnlyFormatter(is24HourFormat(ctx)).format(zoned(ts))
         isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
-        else -> dayFmt.format(zoned(ts))
+        else -> dateFormatter(DateStyle.Day).format(zoned(ts))
     }
 }
 
@@ -171,7 +166,7 @@ fun formatDividerTime(ts: Long, ctx: android.content.Context): String {
     return when {
         sameDay(ts, System.currentTimeMillis()) -> ctx.getString(R.string.time_today)
         isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
-        else -> dividerFmt.format(zoned(ts))
+        else -> dateFormatter(DateStyle.DayWithAbbrevWeekday).format(zoned(ts))
     }
 }
 

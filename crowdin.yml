@@ -1,0 +1,44 @@
+# Crowdin configuration, read by .github/workflows/crowdin.yml.
+# No credentials here: the workflow passes the project ID and token, and the
+# CLI / Android Studio plugin should read CROWDIN_PROJECT_ID and CROWDIN_TOKEN.
+# VCS integrations default this to true; the CLI/Action defaults to false, which
+# flattens app/src/main/res/values/strings.xml to a second copy at the project
+# root and doubles every string (411 -> 822). Set explicitly.
+preserve_hierarchy: true
+
+files:
+  - source: "/app/src/main/res/values/strings*.xml"
+    translation: "/app/src/main/res/values-%android_code%/%original_file_name%"
+    update_option: "update_as_unapproved"
+    # 2 = backslash escape, matching the existing \' in the repo. French uses
+    # apostrophes in nearly every string, and the default ('' doubling) would
+    # break them.
+    escape_quotes: 2
+    # %android_code% expands a bare code to a region-qualified identifier
+    # (ar -> ar-rSA, fr -> fr-rFR). This repo ships bare qualifiers
+    # (values-ar, values-fr), so unpinned codes looked for directories that do
+    # not exist: the import came back empty and the export invented new ones
+    # full of English. Pin every shipped locale to the directory actually used.
+    languages_mapping:
+      android_code:
+        ar: ar
+        de: de
+        es-ES: es
+        fr: fr
+        hi: hi
+        ja: ja
+        ko: ko
+        pl: pl
+        pt-BR: pt-rBR
+        ru: ru
+        zh-CN: zh-rCN
+        zh-TW: zh-rTW
+
+# The 12 locales already in the repo are shipped, so import them as approved
+# rather than as fresh untranslated strings.
+import_eq_suggestions: false
+auto_approve_imported: true
+
+pull_request_title: "New Crowdin translations"
+pull_request_labels:
+  - l10n

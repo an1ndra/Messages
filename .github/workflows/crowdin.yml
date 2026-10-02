@@ -1,0 +1,102 @@
+name: Crowdin
+
+# Replaces the built-in Crowdin GitHub integration. The integration pushes
+# through the REST API rather than Git, so its commits are unsigned and GitHub
+# marks them Unverified. This Action commits with the project GPG key instead.
+#
+# Do not run both at once: the integration and this workflow would each push
+# translations to their own service branch and open duplicate PRs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/src/main/res/values/**"
+      - "crowdin.yml"
+  schedule:
+    # Pull translations even when the repo is quiet: source strings can change
+    # in Crowdin before anyone touches values/.
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: crowdin-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+  CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+  CROWDIN_GPG_PRIVATE_KEY: ${{ secrets.CROWDIN_GPG_PRIVATE_KEY }}
+  # The action needs this to push the branch and open the PR. It is not set
+  # automatically, and without it the run dies after the GPG import with
+  # "Either 'GITHUB_TOKEN' or 'GH_TOKEN' must be set".
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Kept out of the workflow: this repo is public, so a hardcoded address would
+  # be scraped. The Action defaults to support+bot@crowdin.com, and GitHub only
+  # marks a commit Verified when the signature email is one verified on the
+  # account, so these have to be the real values.
+  GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+  GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+
+jobs:
+  crowdin:
+    name: Sync sources and translations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check secrets
+        run: |
+          missing=""
+          [ -n "$CROWDIN_PROJECT_ID" ]      || missing="$missing CROWDIN_PROJECT_ID"
+          [ -n "$CROWDIN_PERSONAL_TOKEN" ]  || missing="$missing CROWDIN_PERSONAL_TOKEN"
+          [ -n "$CROWDIN_GPG_PRIVATE_KEY" ] || missing="$missing CROWDIN_GPG_PRIVATE_KEY"
+          [ -n "$GIT_USER_NAME" ]           || missing="$missing GIT_USER_NAME"
+          [ -n "$GIT_USER_EMAIL" ]          || missing="$missing GIT_USER_EMAIL"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Sync with Crowdin
+        uses: crowdin/github-action@9c23991700c0ec5256fd41089b9d9d7d540e424e # v3.3.0
+        with:
+          project_id: ${{ env.CROWDIN_PROJECT_ID }}
+          token: ${{ env.CROWDIN_PERSONAL_TOKEN }}
+          config: crowdin.yml
+          upload_sources: true
+          # Deliberately NOT upload_translations. That flag pushes the repo's
+          # locale files into Crowdin, so any string a translator improved in
+          # Crowdin but has not yet merged would be reverted on the next run.
+          # Scripts/test-translations.sh fails the build if it is ever set.
+          #
+          # Push translations into a service branch and open a PR rather than
+          # committing to main, so TranslationParityTest and LocaleConfigTest
+          # run against the inbound translations first.
+          download_translations: true
+          # Crowdin exports the source text for untranslated strings, so a
+          # language with gaps would write English over good translations.
+          # Omitting unfinished files entirely makes that impossible.
+          skip_untranslated_files: true
+          localization_branch_name: l10n_crowdin
+          create_pull_request: true
+          pull_request_title: "New Crowdin translations"
+          pull_request_labels: l10n
+          # An unsigned key or a key GitHub cannot match produces Unverified
+          # commits. Failing here is clearer than silently losing the badge.
+          gpg_private_key: ${{ env.CROWDIN_GPG_PRIVATE_KEY }}
+          # GitHub only shows "Verified" when the signature email matches a
+          # verified address on the account. The action defaults to
+          # support+bot@crowdin.com, which is not ours, so a valid signature
+          # would still render Unverified.
+          # Drop the custom message: %original_file_name% / %language% are
+          # crowdin.yml tokens the Action does not expand, and replacing the
+          # default loses its [ci skip] tag, which suppresses a build per file.
+          github_user_name: ${{ env.GIT_USER_NAME }}
+          github_user_email: ${{ env.GIT_USER_EMAIL }}
