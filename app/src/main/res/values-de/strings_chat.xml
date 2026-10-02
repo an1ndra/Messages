@@ -22,7 +22,6 @@
     <string name="chat_save_image">Bild speichern</string>
     <string name="chat_image_saved">Bild in Pictures/Messages gespeichert</string>
     <string name="chat_image_save_failed">Bild konnte nicht gespeichert werden</string>
-
     <!-- Status messages -->
     <string name="chat_cant_send">Nachricht kann nicht gesendet werden</string>
     <string name="chat_archived">Unterhaltung archiviert</string>
@@ -41,7 +40,6 @@
     <string name="chat_search_contacts">Kontakte durchsuchen</string>
     <string name="chat_add_people">Personen hinzufügen</string>
     <string name="chat_locked">Gesperrt</string>
-
     <!-- Copy & links -->
     <string name="chat_copied">Kopiert</string>
     <string name="chat_link_copied">Link kopiert</string>
@@ -51,7 +49,6 @@
     <string name="chat_link_no_dont_show">Diese Warnung nicht wieder anzeigen</string>
     <string name="chat_link_label">Link</string>
     <string name="chat_messages_label">Nachrichten</string>
-
     <!-- General -->
     <string name="chat_close">Schließen</string>
     <string name="chat_open">Öffnen</string>
@@ -72,7 +69,6 @@
     <string name="message_status_delivered">Zugestellt</string>
     <string name="message_status_received">Empfangen</string>
     <string name="message_status_failed">Nicht gesendet</string>
-
     <string name="chat_status_not_sent">Nicht gesendet</string>
     <string name="chat_status_retry">Tippen zum wiederholen</string>
     <string name="chat_draft_prefix">Entwurf: </string>
