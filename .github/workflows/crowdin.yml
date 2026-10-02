@@ -1,0 +1,75 @@
+name: Crowdin
+
+# Replaces the built-in Crowdin GitHub integration. The integration pushes
+# through the REST API rather than Git, so its commits are unsigned and GitHub
+# marks them Unverified. This Action commits with the project GPG key instead.
+#
+# Do not run both at once: the integration and this workflow would each push
+# translations to their own service branch and open duplicate PRs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/src/main/res/values/**"
+      - "crowdin.yml"
+  schedule:
+    # Pull translations even when the repo is quiet: source strings can change
+    # in Crowdin before anyone touches values/.
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: crowdin-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+  CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+  GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+  GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+jobs:
+  crowdin:
+    name: Sync sources and translations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check secrets
+        run: |
+          missing=""
+          [ -n "$CROWDIN_PROJECT_ID" ]      || missing="$missing CROWDIN_PROJECT_ID"
+          [ -n "$CROWDIN_PERSONAL_TOKEN" ]  || missing="$missing CROWDIN_PERSONAL_TOKEN"
+          [ -n "$GPG_PRIVATE_KEY" ]         || missing="$missing GPG_PRIVATE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Sync with Crowdin
+        uses: crowdin/github-action@9c23991700c0ec5256fd41089b9d9d7d540e424e # v3.3.0
+        with:
+          project_id: ${{ env.CROWDIN_PROJECT_ID }}
+          token: ${{ env.CROWDIN_PERSONAL_TOKEN }}
+          config: crowdin.yml
+          upload_sources: true
+          # Push translations into a service branch and open a PR rather than
+          # committing to main, so TranslationParityTest and LocaleConfigTest
+          # run against the inbound translations first.
+          download_translations: true
+          localization_branch_name: l10n_crowdin
+          create_pull_request: true
+          pull_request_title: "New Crowdin translations"
+          pull_request_labels: l10n
+          # An unsigned key or a key GitHub cannot match produces Unverified
+          # commits. Failing here is clearer than silently losing the badge.
+          gpg_private_key: ${{ env.GPG_PRIVATE_KEY }}
+          gpg_passphrase: ${{ env.GPG_PASSPHRASE }}
+          commit_message: "New translations %original_file_name% (%language%)"
