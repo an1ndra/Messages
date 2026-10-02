@@ -1,6 +1,11 @@
 # Crowdin configuration, read by .github/workflows/crowdin.yml.
 # No credentials here: the workflow passes the project ID and token, and the
 # CLI / Android Studio plugin should read CROWDIN_PROJECT_ID and CROWDIN_TOKEN.
+# VCS integrations default this to true; the CLI/Action defaults to false, which
+# flattens app/src/main/res/values/strings.xml to a second copy at the project
+# root and doubles every string (411 -> 822). Set explicitly.
+preserve_hierarchy: true
+
 files:
   - source: "/app/src/main/res/values/strings*.xml"
     translation: "/app/src/main/res/values-%android_code%/%original_file_name%"
