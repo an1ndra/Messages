@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Messages</string>
-
     <!-- App lock & permissions -->
     <string name="lock_title">Authentifizieren, um auf Ihre Nachrichten zuzugreifen</string>
     <string name="lock_unlock_title">Messages entsperren</string>
@@ -12,16 +11,13 @@
     <string name="lock_setup_needed">Richten Sie zuerst einen Bildschirmsperre (Fingerabdruck, Gesicht oder PIN) auf Ihrem Gerät ein</string>
     <string name="lock_turn_on">Bildschirmsperre einrichten</string>
     <string name="lock_turn_on_hint">Richten Sie eine ein, um die App-Sperre wieder zu aktivieren.</string>
-
     <!-- Default SMS app prompt -->
     <string name="default_sms_title">Als Standard-SMS-App festlegen?</string>
     <string name="default_sms_message">Um Nachrichten zu senden und zu empfangen, muss Messages Ihre Standard-SMS-App sein.</string>
     <string name="default_sms_set">Als Standard festlegen</string>
     <string name="default_sms_not_now">Nicht jetzt</string>
-
     <!-- Notifications -->
     <string name="notifications_disabled">Benachrichtigungen deaktiviert — Sie werden nicht über neue Nachrichten informiert</string>
-
     <string name="messages_footer">Messages 1.0 - Offline-SMS</string>
     <string name="settings_light_mode">Hell</string>
     <string name="settings_dark_mode">Dunkel</string>
@@ -53,7 +49,6 @@
     <string name="notif_send_fail_private">Nachricht konnte nicht gesendet werden. Tippen zum wiederholen.</string>
     <string name="notif_send_fail">Nachricht an %s konnte nicht gesendet werden. Tippen zum wiederholen.</string>
     <string name="notif_not_delivered">Nachricht nicht zugestellt</string>
-
     <!-- Crash reports -->
     <string name="crash_report_title">Absturzbericht</string>
     <string name="crash_report_message">Die App ist beim letzten Mal abgestürzt. Das Protokoll wurde in Downloads/Messages gespeichert – hängen Sie es an ein GitHub-Issue an, um bei der Behebung zu helfen.</string>
