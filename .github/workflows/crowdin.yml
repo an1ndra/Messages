@@ -72,4 +72,10 @@ jobs:
           # commits. Failing here is clearer than silently losing the badge.
           gpg_private_key: ${{ env.GPG_PRIVATE_KEY }}
           gpg_passphrase: ${{ env.GPG_PASSPHRASE }}
+          # GitHub only shows "Verified" when the signature email matches a
+          # verified address on the account. The action defaults to
+          # support+bot@crowdin.com, which is not ours, so a valid signature
+          # would still render Unverified.
+          github_user_name: Anindra
+          github_user_email: anindrakarmakar+git@proton.me
           commit_message: "New translations %original_file_name% (%language%)"
