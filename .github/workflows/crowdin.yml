@@ -31,6 +31,10 @@ env:
   CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
   CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
   CROWDIN_GPG_PRIVATE_KEY: ${{ secrets.CROWDIN_GPG_PRIVATE_KEY }}
+  # The action needs this to push the branch and open the PR. It is not set
+  # automatically, and without it the run dies after the GPG import with
+  # "Either 'GITHUB_TOKEN' or 'GH_TOKEN' must be set".
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   crowdin:
