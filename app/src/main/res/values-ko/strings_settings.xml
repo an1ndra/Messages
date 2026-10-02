@@ -67,7 +67,6 @@
     <string name="settings_trash_subtitle">삭제된 대화 · 30일 후 영구 삭제</string>
     <string name="settings_spam_blocked_subtitle">차단된 대화는 여기에 보관됩니다</string>
     <string name="settings_retention_title">자동 삭제</string>
-
     <string name="settings_choose_retention">휴지통, 차단된 메시지 및 차단된 발신자에 적용됩니다:</string>
     <string name="settings_retention_subtitle">휴지통, 차단된 메시지 및 차단된 발신자는 자동으로 삭제됩니다</string>
     <string name="settings_retention_days">%d일</string>
