@@ -67,7 +67,6 @@
     <string name="settings_trash_subtitle">Gelöschte Unterhaltungen · nach 30 Tagen endgültig gelöscht</string>
     <string name="settings_spam_blocked_subtitle">Blockierte Unterhaltungen werden hier aufbewahrt</string>
     <string name="settings_retention_title">Automatisches Löschen</string>
-
     <string name="settings_choose_retention">Gilt für Papierkorb, blockierte Nachrichten und blockierte Absender:</string>
     <string name="settings_retention_subtitle">Papierkorb, blockierte Nachrichten und blockierte Absender werden automatisch gelöscht</string>
     <string name="settings_retention_days">%d Tage</string>
