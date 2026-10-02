@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Messages</string>
-
     <!-- App lock & permissions -->
     <string name="lock_title">Аутентификация для доступа к сообщениям</string>
     <string name="lock_unlock_title">Разблокировать Messages</string>
@@ -12,16 +11,13 @@
     <string name="lock_setup_needed">Сначала настройте блокировку экрана (отпечаток, лицо или PIN) на устройстве</string>
     <string name="lock_turn_on">Настроить блокировку экрана</string>
     <string name="lock_turn_on_hint">Настройте одну из них, чтобы снова включить блокировку приложения.</string>
-
     <!-- Default SMS app prompt -->
     <string name="default_sms_title">Сделать приложением SMS по умолчанию?</string>
     <string name="default_sms_message">Для отправки и получения сообщений Messages должен быть вашим основным приложением для SMS.</string>
     <string name="default_sms_set">Сделать основным</string>
     <string name="default_sms_not_now">Не сейчас</string>
-
     <!-- Notifications -->
     <string name="notifications_disabled">Уведомления отключены — вы не будете получать оповещения о новых сообщениях</string>
-
     <string name="messages_footer">Messages 1.0 — офлайн SMS</string>
     <string name="settings_light_mode">Светлая</string>
     <string name="settings_dark_mode">Тёмная</string>
@@ -53,7 +49,6 @@
     <string name="notif_send_fail_private">Не удалось отправить сообщение. Нажмите для повтора.</string>
     <string name="notif_send_fail">Не удалось отправить сообщение адресату %s. Нажмите для повтора.</string>
     <string name="notif_not_delivered">Сообщение не доставлено</string>
-
     <!-- Crash reports -->
     <string name="crash_report_title">Отчёт о сбое</string>
     <string name="crash_report_message">В прошлый раз приложение завершилось со сбоем. Журнал сохранён в Downloads/Messages — приложите его к задаче на GitHub, чтобы помочь с исправлением.</string>
