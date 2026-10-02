@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Shared action labels -->
     <string name="common_cancel">取消</string>
     <string name="common_continue">继续</string>
     <string name="common_ok">确定</string>
@@ -7,16 +8,16 @@
     <string name="common_open">打开</string>
     <string name="common_close">关闭</string>
     <string name="common_next">下一步</string>
-
+    <!-- Time formatting -->
     <string name="time_now">现在</string>
     <string name="time_today">今天</string>
     <string name="time_minutes">%s 分钟</string>
     <string name="time_format_hour">h:mm a</string>
     <string name="time_format_date">MMM d</string>
     <string name="time_format_divider">EEE, MMM d</string>
-
+    <!-- Contacts -->
     <string name="contact_work_profile">工作资料联系人</string>
-
+    <!-- Accessibility -->
     <string name="access_restore">还原</string>
     <string name="access_delete_forever">彻底删除</string>
     <string name="access_delete">删除</string>
@@ -31,6 +32,7 @@
     <string name="access_chat_top_bar">对话顶部栏</string>
     <string name="access_swipe_background">滑动背景</string>
     <string name="access_nav">导航抽屉</string>
+    <!-- Icon content descriptions -->
     <string name="icon_back">返回</string>
     <string name="icon_cancel_selection">取消选择</string>
     <string name="icon_copy">复制</string>
@@ -44,15 +46,18 @@
     <string name="icon_back_to_inbox">返回收件箱</string>
     <string name="icon_search">搜索</string>
     <string name="icon_cancel">取消</string>
+    <!-- Message statuses -->
     <string name="status_delivered">已送达</string>
     <string name="status_sending">发送中…</string>
     <string name="status_sms">短信</string>
+    <!-- Sheet actions -->
     <string name="sheet_unarchive">取消归档</string>
     <string name="sheet_unpin">取消置顶</string>
     <string name="sheet_pin">置顶</string>
     <string name="sheet_archive">归档</string>
     <string name="sheet_delete">删除</string>
     <string name="sheet_block">阻止</string>
+    <!-- Detail row labels -->
     <string name="detail_phone_number">电话号码</string>
     <string name="detail_messages">消息</string>
 </resources>
