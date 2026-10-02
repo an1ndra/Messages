@@ -17,6 +17,13 @@ internal object LocaleCatalog {
         return dir?.let { File(it, "src/main/res") } ?: error("src/main/res not found")
     }
 
+    /** Repository root, for tests that check config files above `app/`. */
+    fun repoRoot(): File {
+        var dir: File? = resDir().absoluteFile
+        while (dir != null && !File(dir, ".github").isDirectory) dir = dir.parentFile
+        return dir ?: error("repo root (.github) not found above ${resDir()}")
+    }
+
     private fun parse(file: File): Element =
         DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
             .newDocumentBuilder().parse(file).documentElement
