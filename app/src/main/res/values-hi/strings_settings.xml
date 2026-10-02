@@ -67,7 +67,6 @@
     <string name="settings_trash_subtitle">हटाए गए संवाद · 30 दिनों बाद हटाए जाएंगे</string>
     <string name="settings_spam_blocked_subtitle">ब्लॉक किए गए संवाद यहां रखे जाते हैं</string>
     <string name="settings_retention_title">स्वतः हटाएं</string>
-
     <string name="settings_choose_retention">कूड़ा, ब्लॉक किए गए संदेश और ब्लॉक किए गए प्रेषक पर लागू:</string>
     <string name="settings_retention_subtitle">कूड़ा, ब्लॉक किए गए संदेश और ब्लॉक किए गए प्रेषक स्वतः हटा दिए जाते हैं</string>
     <string name="settings_retention_days">%d दिन</string>
@@ -118,5 +117,5 @@
     <string name="settings_backup_failed">बैकअप विफल</string>
     <string name="settings_save">सहेजें</string>
     <string name="settings_import">आयात करें</string>
-    <string name="advanced_turn_on_links">पहले "लिंक हाइलाइट करें" चालू करें</string>
+    <string name="advanced_turn_on_links">पहले \"लिंक हाइलाइट करें\" चालू करें</string>
 </resources>
