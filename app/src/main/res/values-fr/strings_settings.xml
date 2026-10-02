@@ -67,7 +67,6 @@
     <string name="settings_trash_subtitle">Conversations supprimées · purgées après 30 jours</string>
     <string name="settings_spam_blocked_subtitle">Les conversations bloquées sont conservées ici</string>
     <string name="settings_retention_title">Suppression automatique</string>
-
     <string name="settings_choose_retention">S\'applique à la corbeille, aux messages bloqués et aux expéditeurs bloqués :</string>
     <string name="settings_retention_subtitle">La corbeille, les messages bloqués et les expéditeurs bloqués sont supprimés automatiquement</string>
     <string name="settings_retention_days">%d jours</string>
