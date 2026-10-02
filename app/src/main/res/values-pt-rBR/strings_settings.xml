@@ -67,7 +67,6 @@
     <string name="settings_trash_subtitle">Conversas excluídas · removidas após 30 dias</string>
     <string name="settings_spam_blocked_subtitle">Conversas bloqueadas ficam guardadas aqui</string>
     <string name="settings_retention_title">Exclusão automática</string>
-
     <string name="settings_choose_retention">Aplica-se à lixeira, às mensagens bloqueadas e aos remetentes bloqueados:</string>
     <string name="settings_retention_subtitle">A lixeira, as mensagens bloqueadas e os remetentes bloqueados são removidos automaticamente</string>
     <string name="settings_retention_days">%d dias</string>
@@ -118,5 +117,5 @@
     <string name="settings_backup_failed">Falha no backup</string>
     <string name="settings_save">Salvar</string>
     <string name="settings_import">Importar</string>
-    <string name="advanced_turn_on_links">Ative "Destacar links" primeiro</string>
+    <string name="advanced_turn_on_links">Ative \"Destacar links\" primeiro</string>
 </resources>
