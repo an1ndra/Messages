@@ -9,9 +9,8 @@
     <string name="settings_advanced_permanent_delete">Удаление безвозвратно</string>
     <string name="settings_advanced_permanent_delete_desc">Удалять сообщения сразу, не перемещая в корзину</string>
     <string name="settings_advanced_turn_off">Сначала отключите «</string>
-    <string name="settings_advanced_turn_off_suffix">"»</string>
+    <string name="settings_advanced_turn_off_suffix">\"»</string>
     <string name="settings_advanced_permanent_delete_on">Удаление безвозвратно включено. Эта переписка и её сообщения будут немедленно удалены с устройства — без перемещения в корзину — и не могут быть восстановлены.</string>
-
     <string name="settings_font_title">Шрифт</string>
     <string name="settings_advanced_emoji_button">Кнопка эмодзи</string>
     <string name="settings_advanced_emoji_button_desc">Показывать кнопку эмодзи в поле сообщения</string>
@@ -21,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Системный шрифт</string>
-
     <string name="keywords_title">Заблокированные ключевые слова</string>
     <string name="keywords_hint">Сообщения, содержащие любое из этих слов, перемещаются в корзину: они не отображаются во входящих и не воспроизводят звук уведомления.</string>
     <string name="keywords_add_hint">Добавить ключевое слово</string>
@@ -30,7 +28,6 @@
     <string name="keywords_remove">Удалить ключевое слово</string>
     <string name="keywords_subtitle_none">Нет</string>
     <string name="keywords_subtitle_count">%1$d заблокировано</string>
-
     <string name="diagnostics_title">Диагностика</string>
     <string name="diagnostics_subtitle">Диагностика устройства и приложения для устранения неполадок</string>
     <string name="diagnostics_save">Сохранить</string>
