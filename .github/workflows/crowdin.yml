@@ -71,11 +71,11 @@ jobs:
           token: ${{ env.CROWDIN_PERSONAL_TOKEN }}
           config: crowdin.yml
           upload_sources: true
-          # TEMPORARY: re-seeds Crowdin from the translations already committed
-          # in the repo. Only needed after wiping the duplicated file trees;
-          # remove it afterwards, or it will overwrite translator work on every
-          # run with whatever is in the repo.
-          upload_translations: true
+          # Deliberately NOT upload_translations. That flag pushes the repo's
+          # locale files into Crowdin, so any string a translator improved in
+          # Crowdin but has not yet merged would be reverted on the next run.
+          # Scripts/test-translations.sh fails the build if it is ever set.
+          #
           # Push translations into a service branch and open a PR rather than
           # committing to main, so TranslationParityTest and LocaleConfigTest
           # run against the inbound translations first.
