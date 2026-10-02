@@ -8,10 +8,9 @@
     <string name="settings_advanced_link_warning">Link-Öffnen-Warnung</string>
     <string name="settings_advanced_permanent_delete">Endgültig löschen</string>
     <string name="settings_advanced_permanent_delete_desc">Nachrichten sofort löschen statt in den Papierkorb verschieben</string>
-    <string name="settings_advanced_turn_off">"„"</string>
-    <string name="settings_advanced_turn_off_suffix">" "aktivieren zuerst</string>
+    <string name="settings_advanced_turn_off">„</string>
+    <string name="settings_advanced_turn_off_suffix">\" \"aktivieren zuerst</string>
     <string name="settings_advanced_permanent_delete_on">Endgültiges Löschen ist aktiviert. Diese Unterhaltung und ihre Nachrichten werden sofort von Ihrem Gerät entfernt — nicht in den Papierkorb verschoben — und können nicht wiederhergestellt werden.</string>
-
     <string name="settings_font_title">Schriftart</string>
     <string name="settings_advanced_emoji_button">Emoji-Schaltfläche</string>
     <string name="settings_advanced_emoji_button_desc">Emoji-Schaltfläche im Nachrichtenfeld anzeigen</string>
@@ -21,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Systemstandard</string>
-
     <string name="keywords_title">Blockierte Stichwörter</string>
     <string name="keywords_hint">Nachrichten, die eines dieser Wörter enthalten, werden in den Papierkorb verschoben: Sie erscheinen nicht im Posteingang und es ertönt kein Benachrichtigungston.</string>
     <string name="keywords_add_hint">Stichwort hinzufügen</string>
@@ -30,7 +28,6 @@
     <string name="keywords_remove">Stichwort entfernen</string>
     <string name="keywords_subtitle_none">Keine</string>
     <string name="keywords_subtitle_count">%1$d blockiert</string>
-
     <string name="diagnostics_title">Diagnose</string>
     <string name="diagnostics_subtitle">Geräte- und App-Diagnose zur Fehlersuche</string>
     <string name="diagnostics_save">Speichern</string>
