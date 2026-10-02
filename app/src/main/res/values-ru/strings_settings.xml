@@ -67,7 +67,6 @@
     <string name="settings_trash_subtitle">Удалённые переписки · удаляются через 30 дней</string>
     <string name="settings_spam_blocked_subtitle">Заблокированные переписки хранятся здесь</string>
     <string name="settings_retention_title">Автоудаление</string>
-
     <string name="settings_choose_retention">Применяется к корзине, заблокированным сообщениям и заблокированным отправителям:</string>
     <string name="settings_retention_subtitle">Корзина, заблокированные сообщения и заблокированные отправители удаляются автоматически</string>
     <string name="settings_retention_days">%d дней</string>
