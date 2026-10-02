@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Messages</string>
-
     <!-- App lock & permissions -->
     <string name="lock_title">Authentifiez-vous pour accéder à vos messages</string>
     <string name="lock_unlock_title">Déverrouiller Messages</string>
@@ -12,16 +11,13 @@
     <string name="lock_setup_needed">Configurez d\'abord un verrouillage d\'écran (empreinte digitale, visage ou PIN) sur votre appareil</string>
     <string name="lock_turn_on">Configurer le verrouillage d\'écran</string>
     <string name="lock_turn_on_hint">Configurez-en un pour réactiver le verrouillage de l\'application.</string>
-
     <!-- Default SMS app prompt -->
     <string name="default_sms_title">Définir comme application SMS par défaut ?</string>
     <string name="default_sms_message">Pour envoyer et recevoir des messages, Messages doit être votre application SMS par défaut.</string>
     <string name="default_sms_set">Définir par défaut</string>
     <string name="default_sms_not_now">Pas maintenant</string>
-
     <!-- Notifications -->
     <string name="notifications_disabled">Notifications désactivées — vous ne serez pas alerté des nouveaux messages</string>
-
     <string name="messages_footer">Messages 1.0 - SMS hors ligne</string>
     <string name="settings_light_mode">Clair</string>
     <string name="settings_dark_mode">Sombre</string>
@@ -53,7 +49,6 @@
     <string name="notif_send_fail_private">Échec de l\'envoi du message. Appuyez pour réessayer.</string>
     <string name="notif_send_fail">Échec de l\'envoi du message à %s. Appuyez pour réessayer.</string>
     <string name="notif_not_delivered">Message non remis</string>
-
     <!-- Crash reports -->
     <string name="crash_report_title">Rapport d\'incident</string>
     <string name="crash_report_message">L\'application a planté la dernière fois. Le journal est enregistré dans Downloads/Messages — joignez-le à un ticket GitHub pour aider à résoudre le problème.</string>
