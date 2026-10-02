@@ -30,7 +30,7 @@ concurrency:
 env:
   CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
   CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-  GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+  CROWDIN_GPG_PRIVATE_KEY: ${{ secrets.CROWDIN_GPG_PRIVATE_KEY }}
 
 jobs:
   crowdin:
@@ -43,7 +43,7 @@ jobs:
           missing=""
           [ -n "$CROWDIN_PROJECT_ID" ]      || missing="$missing CROWDIN_PROJECT_ID"
           [ -n "$CROWDIN_PERSONAL_TOKEN" ]  || missing="$missing CROWDIN_PERSONAL_TOKEN"
-          [ -n "$GPG_PRIVATE_KEY" ]         || missing="$missing GPG_PRIVATE_KEY"
+          [ -n "$CROWDIN_GPG_PRIVATE_KEY" ] || missing="$missing CROWDIN_GPG_PRIVATE_KEY"
           if [ -n "$missing" ]; then
             echo "::error::Missing repository secret(s):$missing"
             exit 1
@@ -69,7 +69,7 @@ jobs:
           pull_request_labels: l10n
           # An unsigned key or a key GitHub cannot match produces Unverified
           # commits. Failing here is clearer than silently losing the badge.
-          gpg_private_key: ${{ env.GPG_PRIVATE_KEY }}
+          gpg_private_key: ${{ env.CROWDIN_GPG_PRIVATE_KEY }}
           # GitHub only shows "Verified" when the signature email matches a
           # verified address on the account. The action defaults to
           # support+bot@crowdin.com, which is not ours, so a valid signature
