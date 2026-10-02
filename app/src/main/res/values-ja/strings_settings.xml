@@ -67,7 +67,6 @@
     <string name="settings_trash_subtitle">削除された会話 · 30日後に消去</string>
     <string name="settings_spam_blocked_subtitle">ブロックされた会話はここに保管されます</string>
     <string name="settings_retention_title">自動削除</string>
-
     <string name="settings_choose_retention">ゴミ箱、ブロックしたメッセージ、ブロックした送信者に適用されます:</string>
     <string name="settings_retention_subtitle">ゴミ箱、ブロックしたメッセージ、ブロックした送信者は自動的に削除されます</string>
     <string name="settings_retention_days">%d 日</string>
