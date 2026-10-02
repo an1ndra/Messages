@@ -35,6 +35,12 @@ env:
   # automatically, and without it the run dies after the GPG import with
   # "Either 'GITHUB_TOKEN' or 'GH_TOKEN' must be set".
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Kept out of the workflow: this repo is public, so a hardcoded address would
+  # be scraped. The Action defaults to support+bot@crowdin.com, and GitHub only
+  # marks a commit Verified when the signature email is one verified on the
+  # account, so these have to be the real values.
+  GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+  GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
 
 jobs:
   crowdin:
@@ -48,6 +54,8 @@ jobs:
           [ -n "$CROWDIN_PROJECT_ID" ]      || missing="$missing CROWDIN_PROJECT_ID"
           [ -n "$CROWDIN_PERSONAL_TOKEN" ]  || missing="$missing CROWDIN_PERSONAL_TOKEN"
           [ -n "$CROWDIN_GPG_PRIVATE_KEY" ] || missing="$missing CROWDIN_GPG_PRIVATE_KEY"
+          [ -n "$GIT_USER_NAME" ]           || missing="$missing GIT_USER_NAME"
+          [ -n "$GIT_USER_EMAIL" ]          || missing="$missing GIT_USER_EMAIL"
           if [ -n "$missing" ]; then
             echo "::error::Missing repository secret(s):$missing"
             exit 1
@@ -81,5 +89,5 @@ jobs:
           # Drop the custom message: %original_file_name% / %language% are
           # crowdin.yml tokens the Action does not expand, and replacing the
           # default loses its [ci skip] tag, which suppresses a build per file.
-          github_user_name: Anindra
-          github_user_email: anindrakarmakar+git@proton.me
+          github_user_name: ${{ env.GIT_USER_NAME }}
+          github_user_email: ${{ env.GIT_USER_EMAIL }}
