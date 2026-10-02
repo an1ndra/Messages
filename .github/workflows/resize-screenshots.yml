@@ -1,31 +1,38 @@
 name: Resize screenshots
 
+# Full-phone screenshots pasted into the issue box render at full width and
+# push the rest of the report below the fold. Convert them to a percentage
+# size instead of a fixed pixel clamp, so they stay legible in both the
+# desktop and the mobile view of the issue.
+
 on:
   issues:
-    types: [opened]
+    types: [opened, edited]
   issue_comment:
-    types: [created]
+    types: [created, edited]
 
 permissions:
   issues: write
 
 concurrency:
-  group: resize-${{ github.event.issue.number }}
+  group: resize-${{ github.event.issue.number }}-${{ github.event.comment.id || 'issue' }}
   cancel-in-progress: true
 
 jobs:
   resize:
-    if: github.event.sender.type != 'Bot'
+    if: github.event.sender.type != 'Bot' && !github.event.issue.pull_request
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Clamp oversized screenshots
+      - name: Shrink phone screenshots to a percentage size
         env:
-          GH_TOKEN: ${{ secrets.PEREGRINEBOT_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           BODY: ${{ github.event.comment.body || github.event.issue.body }}
           TARGET_KIND: ${{ github.event.comment.id && 'comment' || 'issue' }}
           TARGET_ID: ${{ github.event.comment.id || github.event.issue.number }}
-          MAX_WIDTH: ${{ vars.SCREENSHOT_MAX_WIDTH }}
+          SCALE: ${{ vars.SCREENSHOT_SCALE }}
+          MIN_WIDTH: ${{ vars.SCREENSHOT_MIN_WIDTH }}
+          ASPECT: ${{ vars.SCREENSHOT_MIN_ASPECT }}
         run: |
           python3 - <<'PY'
           import json, os, re, subprocess, sys
@@ -39,35 +46,45 @@ jobs:
               m = re.search(rf'\b{name}="([0-9.]+)"', tag, re.IGNORECASE)
               return float(m.group(1)) if m else None
 
+          def already_relative(tag):
+              # width="40%" is the finished state; leave it alone so an edit
+              # by the reporter is not re-scaled on every save.
+              return re.search(r'\b(?:width|height)="\s*[0-9.]+\s*%"', tag, re.IGNORECASE)
+
           body = os.environ.get("BODY") or ""
-          max_width = float(os.environ.get("MAX_WIDTH") or 400)
+          scale = os.environ.get("SCALE") or "40%"
+          min_width = float(os.environ.get("MIN_WIDTH") or 600)
+          aspect = float(os.environ.get("ASPECT") or 1.6)
           changed, notes = False, []
 
           def clamp(match):
               global changed
               tag = match.group(0)
-              width = dimension(tag, "width")
-              height = dimension(tag, "height")
-              if not width or width <= max_width:
+              width, height = dimension(tag, "width"), dimension(tag, "height")
+              if not width or not height or width < min_width:
                   return tag
-              new_height = round(height * max_width / width) if height else None
-              new_tag = re.sub(r'\bwidth="[0-9.]+"', f'width="{int(max_width)}"', tag, flags=re.IGNORECASE)
-              if new_height:
-                  new_tag = re.sub(r'\bheight="[0-9.]+"', f'height="{new_height}"', new_tag, flags=re.IGNORECASE)
+              if height / width < aspect:
+                  return tag
+              if already_relative(tag):
+                  return tag
+              new_tag = re.sub(r'\bwidth="[0-9.]+"', f'width="{scale}"', tag, flags=re.IGNORECASE)
+              new_tag = re.sub(r'\bheight="[0-9.]+"', f'height="{scale}"', new_tag, flags=re.IGNORECASE)
               changed = True
-              notes.append(f"{int(width)}x{int(height) if height else '?'} -> {int(max_width)}x{new_height or '?'}")
+              notes.append(f"{int(width)}x{int(height)} -> {scale}")
               return new_tag
 
           new_body = ATTACHMENT.sub(clamp, body)
 
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as log:
               print(f"Scanned {len(ATTACHMENT.findall(body))} attachment(s).", file=log)
+              for note in notes:
+                  print(f"- {note}", file=log)
 
           if not changed:
-              print("No oversized screenshots; nothing to write.")
+              print("No full-phone screenshots; nothing to write.")
               sys.exit(0)
 
-          print("Resized: " + "; ".join(notes))
+          print("Shrunk: " + "; ".join(notes))
           kind, ident = os.environ["TARGET_KIND"], os.environ["TARGET_ID"]
           endpoint = f"issues/{ident}" if kind == "issue" else f"issues/comments/{ident}"
           payload = json.dumps({"body": new_body})
