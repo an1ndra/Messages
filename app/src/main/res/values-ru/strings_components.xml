@@ -1,66 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Shared action labels -->
-    <string name="common_cancel">Отмена</string>
-    <string name="common_continue">Продолжить</string>
-    <string name="common_ok">ОК</string>
-    <string name="common_delete">Удалить</string>
-    <string name="common_open">Открыть</string>
-    <string name="common_close">Закрыть</string>
-    <string name="common_next">Далее</string>
-
+    <string name="common_cancel">Cancel</string>
+    <string name="common_continue">Continue</string>
+    <string name="common_ok">OK</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_open">Open</string>
+    <string name="common_close">Close</string>
+    <string name="common_next">Next</string>
     <!-- Time formatting -->
-    <string name="time_now">Сейчас</string>
-    <string name="time_today">Сегодня</string>
-    <string name="time_minutes">%s мин</string>
+    <string name="time_now">Now</string>
+    <string name="time_today">Today</string>
+    <string name="time_minutes">%s min</string>
     <string name="time_format_hour">h:mm a</string>
-    <string name="time_format_date">d MMM</string>
-    <string name="time_format_divider">EEE, d MMM</string>
-
+    <string name="time_format_date">MMM d</string>
+    <string name="time_format_divider">EEE, MMM d</string>
     <!-- Contacts -->
-    <string name="contact_work_profile">Рабочий контакт</string>
-
+    <string name="contact_work_profile">Work profile contact</string>
     <!-- Accessibility -->
-    <string name="access_restore">Восстановить</string>
-    <string name="access_delete_forever">Удалить безвозвратно</string>
-    <string name="access_delete">Удалить</string>
-    <string name="access_archive">Архив</string>
-    <string name="access_pinned">Закреплено</string>
-    <string name="access_blocked">Заблокировано</string>
-    <string name="access_start_chat">Начать чат</string>
-    <string name="access_loading_messages">Загрузка сообщений</string>
-    <string name="access_photo">Фото</string>
-    <string name="action_call">Вызов</string>
-    <string name="action_add">Добавить</string>
-    <string name="access_chat_top_bar">Верхняя панель чата</string>
-    <string name="access_swipe_background">Фон свайпа</string>
-    <string name="access_nav">Навигационная панель</string>
+    <string name="access_restore">Restore</string>
+    <string name="access_delete_forever">Delete forever</string>
+    <string name="access_delete">Delete</string>
+    <string name="access_archive">Archive</string>
+    <string name="access_pinned">Pinned</string>
+    <string name="access_blocked">Blocked</string>
+    <string name="access_start_chat">Start chat</string>
+    <string name="access_loading_messages">Loading messages</string>
+    <string name="access_photo">Photo</string>
+    <string name="action_call">Call</string>
+    <string name="action_add">Add</string>
+    <string name="access_chat_top_bar">Chat top bar</string>
+    <string name="access_swipe_background">Swipe background</string>
+    <string name="access_nav">Navigation drawer</string>
     <!-- Icon content descriptions -->
-    <string name="icon_back">Назад</string>
-    <string name="icon_cancel_selection">Отменить выделение</string>
-    <string name="icon_copy">Копировать</string>
-    <string name="icon_delete">Удалить</string>
-    <string name="icon_more_options">Другие параметры</string>
-    <string name="icon_call">Вызов</string>
-    <string name="icon_attach">Прикрепить</string>
-    <string name="icon_emoji">Эмодзи</string>
-    <string name="icon_send">Отправить</string>
-    <string name="icon_close_search">Закрыть поиск</string>
-    <string name="icon_back_to_inbox">Вернуться в входящие</string>
-    <string name="icon_search">Поиск</string>
-    <string name="icon_cancel">Отмена</string>
+    <string name="icon_back">Back</string>
+    <string name="icon_cancel_selection">Cancel selection</string>
+    <string name="icon_copy">Copy</string>
+    <string name="icon_delete">Delete</string>
+    <string name="icon_more_options">More options</string>
+    <string name="icon_call">Call</string>
+    <string name="icon_attach">Attach</string>
+    <string name="icon_emoji">Emoji</string>
+    <string name="icon_send">Send</string>
+    <string name="icon_close_search">Close search</string>
+    <string name="icon_back_to_inbox">Back to inbox</string>
+    <string name="icon_search">Search</string>
+    <string name="icon_cancel">Cancel</string>
     <!-- Message statuses -->
-    <string name="status_delivered">Доставлено</string>
-    <string name="status_sending">Отправка…</string>
+    <string name="status_delivered">Delivered</string>
+    <string name="status_sending">Sending…</string>
     <string name="status_sms">SMS</string>
     <!-- Sheet actions -->
-    <string name="sheet_unarchive">Восстановить из архива</string>
-    <string name="sheet_unpin">Открепить</string>
-    <string name="sheet_pin">Закрепить</string>
-    <string name="sheet_archive">В архив</string>
-    <string name="sheet_delete">Удалить</string>
-    <string name="sheet_block">Блок</string>
+    <string name="sheet_unarchive">Unarchive</string>
+    <string name="sheet_unpin">Unpin</string>
+    <string name="sheet_pin">Pin</string>
+    <string name="sheet_archive">Archive</string>
+    <string name="sheet_delete">Delete</string>
+    <string name="sheet_block">Block</string>
     <!-- Detail row labels -->
-    <string name="detail_phone_number">Номер телефона</string>
-    <string name="detail_messages">Сообщения</string>
+    <string name="detail_phone_number">Phone number</string>
+    <string name="detail_messages">Messages</string>
 </resources>

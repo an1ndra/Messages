@@ -1,41 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_advanced_reverse_swipe">反轉滑動方向</string>
-    <string name="settings_advanced_reverse_swipe_desc">向左滑動封存，向右滑動刪除</string>
-    <string name="settings_advanced_hide_links">隱藏訊息中的連結</string>
-    <string name="settings_advanced_hide_links_desc">不要將連結轉換為可點擊的文字</string>
-    <string name="settings_advanced_highlight_links">突顯連結</string>
-    <string name="settings_advanced_link_warning">開啟連結警告</string>
-    <string name="settings_advanced_permanent_delete">永久刪除</string>
-    <string name="settings_advanced_permanent_delete_desc">直接刪除訊息，不放入垃圾桶</string>
-    <string name="settings_advanced_turn_off">關閉「</string>
-    <string name="settings_advanced_turn_off_suffix">」</string>
-    <string name="settings_advanced_permanent_delete_on">永久刪除已開啟。此對話及其訊息將立即從您的裝置上移除 — 不會移至垃圾桶 — 且無法復原。</string>
-
-    <string name="settings_font_title">字型</string>
-    <string name="settings_advanced_emoji_button">表情符號按鈕</string>
-    <string name="settings_advanced_emoji_button_desc">在訊息輸入欄顯示表情符號按鈕</string>
-    <string name="settings_choose_font">選擇字型</string>
+    <string name="settings_advanced_reverse_swipe">Reverse swipe actions</string>
+    <string name="settings_advanced_reverse_swipe_desc">Swipe left to archive and right to delete</string>
+    <string name="settings_advanced_hide_links">Hide links from messages</string>
+    <string name="settings_advanced_hide_links_desc">Never turn links in messages into tappable links</string>
+    <string name="settings_advanced_highlight_links">Highlight links</string>
+    <string name="settings_advanced_link_warning">Link open warning</string>
+    <string name="settings_advanced_permanent_delete">Permanent delete</string>
+    <string name="settings_advanced_permanent_delete_desc">Delete messages immediately instead of moving them to trash</string>
+    <string name="settings_advanced_turn_off">Turn off \"</string>
+    <string name="settings_advanced_turn_off_suffix">\" first</string>
+    <string name="settings_advanced_permanent_delete_on">Permanent delete is on. This conversation and its messages will be removed from your device right away — not moved to trash — and cannot be restored.</string>
+    <string name="settings_font_title">Font</string>
+    <string name="settings_advanced_emoji_button">Emoji button</string>
+    <string name="settings_advanced_emoji_button_desc">Show the emoji button in the message field</string>
+    <string name="settings_choose_font">Choose font</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
-    <string name="font_system">系統預設</string>
-
-    <string name="keywords_title">已封鎖的關鍵字</string>
-    <string name="keywords_hint">包含其中任一關鍵字的訊息會移到垃圾桶：不會顯示在收件匣中，也不會播放通知音效。</string>
-    <string name="keywords_add_hint">新增關鍵字</string>
-    <string name="keywords_add">新增</string>
-    <string name="keywords_empty">尚未封鎖任何關鍵字。</string>
-    <string name="keywords_remove">移除關鍵字</string>
-    <string name="keywords_subtitle_none">無</string>
-    <string name="keywords_subtitle_count">已封鎖 %1$d 個</string>
-
-    <string name="diagnostics_title">診斷</string>
-    <string name="diagnostics_subtitle">用於疑難排解的裝置與應用程式診斷資訊</string>
-    <string name="diagnostics_save">儲存</string>
-    <string name="diagnostics_copy">複製</string>
-    <string name="diagnostics_close">關閉</string>
-    <string name="diagnostics_clip_label">Messages 診斷資訊</string>
-    <string name="settings_sim_unknown">未知的 SIM</string>
+    <string name="font_system">System default</string>
+    <string name="keywords_title">Blocked keywords</string>
+    <string name="keywords_hint">Messages containing any of these words are moved to Trash: not shown in the inbox and no notification sound.</string>
+    <string name="keywords_add_hint">Add keyword</string>
+    <string name="keywords_add">Add</string>
+    <string name="keywords_empty">No blocked keywords yet.</string>
+    <string name="keywords_remove">Remove keyword</string>
+    <string name="keywords_subtitle_none">None</string>
+    <string name="keywords_subtitle_count">%1$d blocked</string>
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_subtitle">Device and app diagnostics for troubleshooting</string>
+    <string name="diagnostics_save">Save</string>
+    <string name="diagnostics_copy">Copy</string>
+    <string name="diagnostics_close">Close</string>
+    <string name="diagnostics_clip_label">Messages diagnostics</string>
+    <string name="settings_sim_unknown">Unknown SIM</string>
 </resources>

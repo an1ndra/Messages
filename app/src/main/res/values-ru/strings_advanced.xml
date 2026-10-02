@@ -1,41 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_advanced_reverse_swipe">Изменить направление свайпов</string>
-    <string name="settings_advanced_reverse_swipe_desc">Свайп влево для архивирования, вправо — для удаления</string>
-    <string name="settings_advanced_hide_links">Скрыть ссылки из сообщений</string>
-    <string name="settings_advanced_hide_links_desc">Не превращать ссылки в сообщениях в кликабельные</string>
-    <string name="settings_advanced_highlight_links">Подсвечивать ссылки</string>
-    <string name="settings_advanced_link_warning">Предупреждение при открытии ссылки</string>
-    <string name="settings_advanced_permanent_delete">Удаление безвозвратно</string>
-    <string name="settings_advanced_permanent_delete_desc">Удалять сообщения сразу, не перемещая в корзину</string>
-    <string name="settings_advanced_turn_off">Сначала отключите «</string>
-    <string name="settings_advanced_turn_off_suffix">"»</string>
-    <string name="settings_advanced_permanent_delete_on">Удаление безвозвратно включено. Эта переписка и её сообщения будут немедленно удалены с устройства — без перемещения в корзину — и не могут быть восстановлены.</string>
-
-    <string name="settings_font_title">Шрифт</string>
-    <string name="settings_advanced_emoji_button">Кнопка эмодзи</string>
-    <string name="settings_advanced_emoji_button_desc">Показывать кнопку эмодзи в поле сообщения</string>
-    <string name="settings_choose_font">Выберите шрифт</string>
+    <string name="settings_advanced_reverse_swipe">Reverse swipe actions</string>
+    <string name="settings_advanced_reverse_swipe_desc">Swipe left to archive and right to delete</string>
+    <string name="settings_advanced_hide_links">Hide links from messages</string>
+    <string name="settings_advanced_hide_links_desc">Never turn links in messages into tappable links</string>
+    <string name="settings_advanced_highlight_links">Highlight links</string>
+    <string name="settings_advanced_link_warning">Link open warning</string>
+    <string name="settings_advanced_permanent_delete">Permanent delete</string>
+    <string name="settings_advanced_permanent_delete_desc">Delete messages immediately instead of moving them to trash</string>
+    <string name="settings_advanced_turn_off">Turn off \"</string>
+    <string name="settings_advanced_turn_off_suffix">\" first</string>
+    <string name="settings_advanced_permanent_delete_on">Permanent delete is on. This conversation and its messages will be removed from your device right away — not moved to trash — and cannot be restored.</string>
+    <string name="settings_font_title">Font</string>
+    <string name="settings_advanced_emoji_button">Emoji button</string>
+    <string name="settings_advanced_emoji_button_desc">Show the emoji button in the message field</string>
+    <string name="settings_choose_font">Choose font</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
-    <string name="font_system">Системный шрифт</string>
-
-    <string name="keywords_title">Заблокированные ключевые слова</string>
-    <string name="keywords_hint">Сообщения, содержащие любое из этих слов, перемещаются в корзину: они не отображаются во входящих и не воспроизводят звук уведомления.</string>
-    <string name="keywords_add_hint">Добавить ключевое слово</string>
-    <string name="keywords_add">Добавить</string>
-    <string name="keywords_empty">Заблокированных ключевых слов пока нет.</string>
-    <string name="keywords_remove">Удалить ключевое слово</string>
-    <string name="keywords_subtitle_none">Нет</string>
-    <string name="keywords_subtitle_count">%1$d заблокировано</string>
-
-    <string name="diagnostics_title">Диагностика</string>
-    <string name="diagnostics_subtitle">Диагностика устройства и приложения для устранения неполадок</string>
-    <string name="diagnostics_save">Сохранить</string>
-    <string name="diagnostics_copy">Копировать</string>
-    <string name="diagnostics_close">Закрыть</string>
-    <string name="diagnostics_clip_label">Диагностика Messages</string>
-    <string name="settings_sim_unknown">Неизвестная SIM</string>
+    <string name="font_system">System default</string>
+    <string name="keywords_title">Blocked keywords</string>
+    <string name="keywords_hint">Messages containing any of these words are moved to Trash: not shown in the inbox and no notification sound.</string>
+    <string name="keywords_add_hint">Add keyword</string>
+    <string name="keywords_add">Add</string>
+    <string name="keywords_empty">No blocked keywords yet.</string>
+    <string name="keywords_remove">Remove keyword</string>
+    <string name="keywords_subtitle_none">None</string>
+    <string name="keywords_subtitle_count">%1$d blocked</string>
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_subtitle">Device and app diagnostics for troubleshooting</string>
+    <string name="diagnostics_save">Save</string>
+    <string name="diagnostics_copy">Copy</string>
+    <string name="diagnostics_close">Close</string>
+    <string name="diagnostics_clip_label">Messages diagnostics</string>
+    <string name="settings_sim_unknown">Unknown SIM</string>
 </resources>

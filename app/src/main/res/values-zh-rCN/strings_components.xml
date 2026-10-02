@@ -1,58 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="common_cancel">取消</string>
-    <string name="common_continue">继续</string>
-    <string name="common_ok">确定</string>
-    <string name="common_delete">删除</string>
-    <string name="common_open">打开</string>
-    <string name="common_close">关闭</string>
-    <string name="common_next">下一步</string>
-
-    <string name="time_now">现在</string>
-    <string name="time_today">今天</string>
-    <string name="time_minutes">%s 分钟</string>
+    <!-- Shared action labels -->
+    <string name="common_cancel">Cancel</string>
+    <string name="common_continue">Continue</string>
+    <string name="common_ok">OK</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_open">Open</string>
+    <string name="common_close">Close</string>
+    <string name="common_next">Next</string>
+    <!-- Time formatting -->
+    <string name="time_now">Now</string>
+    <string name="time_today">Today</string>
+    <string name="time_minutes">%s min</string>
     <string name="time_format_hour">h:mm a</string>
     <string name="time_format_date">MMM d</string>
     <string name="time_format_divider">EEE, MMM d</string>
-
-    <string name="contact_work_profile">工作资料联系人</string>
-
-    <string name="access_restore">还原</string>
-    <string name="access_delete_forever">彻底删除</string>
-    <string name="access_delete">删除</string>
-    <string name="access_archive">封存</string>
-    <string name="access_pinned">已置顶</string>
-    <string name="access_blocked">已阻止</string>
-    <string name="access_start_chat">开始对话</string>
-    <string name="access_loading_messages">正在加载消息</string>
-    <string name="access_photo">照片</string>
-    <string name="action_call">拨打电话</string>
-    <string name="action_add">添加</string>
-    <string name="access_chat_top_bar">对话顶部栏</string>
-    <string name="access_swipe_background">滑动背景</string>
-    <string name="access_nav">导航抽屉</string>
-    <string name="icon_back">返回</string>
-    <string name="icon_cancel_selection">取消选择</string>
-    <string name="icon_copy">复制</string>
-    <string name="icon_delete">删除</string>
-    <string name="icon_more_options">更多选项</string>
-    <string name="icon_call">拨打电话</string>
-    <string name="icon_attach">附加</string>
-    <string name="icon_emoji">表情符号</string>
-    <string name="icon_send">发送</string>
-    <string name="icon_close_search">关闭搜索</string>
-    <string name="icon_back_to_inbox">返回收件箱</string>
-    <string name="icon_search">搜索</string>
-    <string name="icon_cancel">取消</string>
-    <string name="status_delivered">已送达</string>
-    <string name="status_sending">发送中…</string>
-    <string name="status_sms">短信</string>
-    <string name="sheet_unarchive">取消归档</string>
-    <string name="sheet_unpin">取消置顶</string>
-    <string name="sheet_pin">置顶</string>
-    <string name="sheet_archive">归档</string>
-    <string name="sheet_delete">删除</string>
-    <string name="sheet_block">阻止</string>
-    <string name="detail_phone_number">电话号码</string>
-    <string name="detail_messages">消息</string>
+    <!-- Contacts -->
+    <string name="contact_work_profile">Work profile contact</string>
+    <!-- Accessibility -->
+    <string name="access_restore">Restore</string>
+    <string name="access_delete_forever">Delete forever</string>
+    <string name="access_delete">Delete</string>
+    <string name="access_archive">Archive</string>
+    <string name="access_pinned">Pinned</string>
+    <string name="access_blocked">Blocked</string>
+    <string name="access_start_chat">Start chat</string>
+    <string name="access_loading_messages">Loading messages</string>
+    <string name="access_photo">Photo</string>
+    <string name="action_call">Call</string>
+    <string name="action_add">Add</string>
+    <string name="access_chat_top_bar">Chat top bar</string>
+    <string name="access_swipe_background">Swipe background</string>
+    <string name="access_nav">Navigation drawer</string>
+    <!-- Icon content descriptions -->
+    <string name="icon_back">Back</string>
+    <string name="icon_cancel_selection">Cancel selection</string>
+    <string name="icon_copy">Copy</string>
+    <string name="icon_delete">Delete</string>
+    <string name="icon_more_options">More options</string>
+    <string name="icon_call">Call</string>
+    <string name="icon_attach">Attach</string>
+    <string name="icon_emoji">Emoji</string>
+    <string name="icon_send">Send</string>
+    <string name="icon_close_search">Close search</string>
+    <string name="icon_back_to_inbox">Back to inbox</string>
+    <string name="icon_search">Search</string>
+    <string name="icon_cancel">Cancel</string>
+    <!-- Message statuses -->
+    <string name="status_delivered">Delivered</string>
+    <string name="status_sending">Sending…</string>
+    <string name="status_sms">SMS</string>
+    <!-- Sheet actions -->
+    <string name="sheet_unarchive">Unarchive</string>
+    <string name="sheet_unpin">Unpin</string>
+    <string name="sheet_pin">Pin</string>
+    <string name="sheet_archive">Archive</string>
+    <string name="sheet_delete">Delete</string>
+    <string name="sheet_block">Block</string>
+    <!-- Detail row labels -->
+    <string name="detail_phone_number">Phone number</string>
+    <string name="detail_messages">Messages</string>
 </resources>

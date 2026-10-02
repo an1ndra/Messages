@@ -1,66 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Shared action labels -->
-    <string name="common_cancel">Cancelar</string>
-    <string name="common_continue">Continuar</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_continue">Continue</string>
     <string name="common_ok">OK</string>
-    <string name="common_delete">Excluir</string>
-    <string name="common_open">Abrir</string>
-    <string name="common_close">Fechar</string>
-    <string name="common_next">Próximo</string>
-
+    <string name="common_delete">Delete</string>
+    <string name="common_open">Open</string>
+    <string name="common_close">Close</string>
+    <string name="common_next">Next</string>
     <!-- Time formatting -->
-    <string name="time_now">Agora</string>
-    <string name="time_today">Hoje</string>
+    <string name="time_now">Now</string>
+    <string name="time_today">Today</string>
     <string name="time_minutes">%s min</string>
     <string name="time_format_hour">h:mm a</string>
-    <string name="time_format_date">d de MMM</string>
-    <string name="time_format_divider">EEE, d de MMM</string>
-
+    <string name="time_format_date">MMM d</string>
+    <string name="time_format_divider">EEE, MMM d</string>
     <!-- Contacts -->
-    <string name="contact_work_profile">Contato do perfil profissional</string>
-
+    <string name="contact_work_profile">Work profile contact</string>
     <!-- Accessibility -->
-    <string name="access_restore">Restaurar</string>
-    <string name="access_delete_forever">Excluir para sempre</string>
-    <string name="access_delete">Excluir</string>
-    <string name="access_archive">Arquivar</string>
-    <string name="access_pinned">Fixada</string>
-    <string name="access_blocked">Bloqueado</string>
-    <string name="access_start_chat">Iniciar conversa</string>
-    <string name="access_loading_messages">Carregando mensagens</string>
-    <string name="access_photo">Foto</string>
-    <string name="action_call">Ligar</string>
-    <string name="action_add">Adicionar</string>
-    <string name="access_chat_top_bar">Barra superior da conversa</string>
-    <string name="access_swipe_background">Fundo ao deslizar</string>
-    <string name="access_nav">Gaveta de navegação</string>
+    <string name="access_restore">Restore</string>
+    <string name="access_delete_forever">Delete forever</string>
+    <string name="access_delete">Delete</string>
+    <string name="access_archive">Archive</string>
+    <string name="access_pinned">Pinned</string>
+    <string name="access_blocked">Blocked</string>
+    <string name="access_start_chat">Start chat</string>
+    <string name="access_loading_messages">Loading messages</string>
+    <string name="access_photo">Photo</string>
+    <string name="action_call">Call</string>
+    <string name="action_add">Add</string>
+    <string name="access_chat_top_bar">Chat top bar</string>
+    <string name="access_swipe_background">Swipe background</string>
+    <string name="access_nav">Navigation drawer</string>
     <!-- Icon content descriptions -->
-    <string name="icon_back">Voltar</string>
-    <string name="icon_cancel_selection">Cancelar seleção</string>
-    <string name="icon_copy">Copiar</string>
-    <string name="icon_delete">Excluir</string>
-    <string name="icon_more_options">Mais opções</string>
-    <string name="icon_call">Ligar</string>
-    <string name="icon_attach">Anexar</string>
+    <string name="icon_back">Back</string>
+    <string name="icon_cancel_selection">Cancel selection</string>
+    <string name="icon_copy">Copy</string>
+    <string name="icon_delete">Delete</string>
+    <string name="icon_more_options">More options</string>
+    <string name="icon_call">Call</string>
+    <string name="icon_attach">Attach</string>
     <string name="icon_emoji">Emoji</string>
-    <string name="icon_send">Enviar</string>
-    <string name="icon_close_search">Fechar pesquisa</string>
-    <string name="icon_back_to_inbox">Voltar à caixa de entrada</string>
-    <string name="icon_search">Pesquisar</string>
-    <string name="icon_cancel">Cancelar</string>
+    <string name="icon_send">Send</string>
+    <string name="icon_close_search">Close search</string>
+    <string name="icon_back_to_inbox">Back to inbox</string>
+    <string name="icon_search">Search</string>
+    <string name="icon_cancel">Cancel</string>
     <!-- Message statuses -->
-    <string name="status_delivered">Entregue</string>
-    <string name="status_sending">Enviando…</string>
+    <string name="status_delivered">Delivered</string>
+    <string name="status_sending">Sending…</string>
     <string name="status_sms">SMS</string>
     <!-- Sheet actions -->
-    <string name="sheet_unarchive">Desarquivar</string>
-    <string name="sheet_unpin">Desafixar</string>
-    <string name="sheet_pin">Fixar</string>
-    <string name="sheet_archive">Arquivar</string>
-    <string name="sheet_delete">Excluir</string>
-    <string name="sheet_block">Bloquear</string>
+    <string name="sheet_unarchive">Unarchive</string>
+    <string name="sheet_unpin">Unpin</string>
+    <string name="sheet_pin">Pin</string>
+    <string name="sheet_archive">Archive</string>
+    <string name="sheet_delete">Delete</string>
+    <string name="sheet_block">Block</string>
     <!-- Detail row labels -->
-    <string name="detail_phone_number">Número de telefone</string>
-    <string name="detail_messages">Mensagens</string>
+    <string name="detail_phone_number">Phone number</string>
+    <string name="detail_messages">Messages</string>
 </resources>

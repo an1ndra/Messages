@@ -1,66 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Shared action labels -->
-    <string name="common_cancel">रद्द करें</string>
-    <string name="common_continue">जारी रखें</string>
-    <string name="common_ok">ठीक है</string>
-    <string name="common_delete">हटाएं</string>
-    <string name="common_open">खोलें</string>
-    <string name="common_close">बंद करें</string>
-    <string name="common_next">अगला</string>
-
+    <string name="common_cancel">Cancel</string>
+    <string name="common_continue">Continue</string>
+    <string name="common_ok">OK</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_open">Open</string>
+    <string name="common_close">Close</string>
+    <string name="common_next">Next</string>
     <!-- Time formatting -->
-    <string name="time_now">अभी</string>
-    <string name="time_today">आज</string>
-    <string name="time_minutes">%s मिनट</string>
+    <string name="time_now">Now</string>
+    <string name="time_today">Today</string>
+    <string name="time_minutes">%s min</string>
     <string name="time_format_hour">h:mm a</string>
     <string name="time_format_date">MMM d</string>
     <string name="time_format_divider">EEE, MMM d</string>
-
     <!-- Contacts -->
-    <string name="contact_work_profile">कार्य प्रोफ़ाइल संपर्क</string>
-
+    <string name="contact_work_profile">Work profile contact</string>
     <!-- Accessibility -->
-    <string name="access_restore">बहाल करें</string>
-    <string name="access_delete_forever">स्थायी रूप से हटाएं</string>
-    <string name="access_delete">हटाएं</string>
-    <string name="access_archive">संग्रहित करें</string>
-    <string name="access_pinned">पिन किया गया</string>
-    <string name="access_blocked">ब्लॉक किया गया</string>
-    <string name="access_start_chat">चैट शुरू करें</string>
-    <string name="access_loading_messages">संदेश लोड हो रहे हैं</string>
-    <string name="access_photo">फ़ोटो</string>
-    <string name="action_call">कॉल करें</string>
-    <string name="action_add">जोड़ें</string>
-    <string name="access_chat_top_bar">चैट टॉप बार</string>
-    <string name="access_swipe_background">स्वाइप बैकग्राउंड</string>
-    <string name="access_nav">नेविगेशन ड्रॉअर</string>
+    <string name="access_restore">Restore</string>
+    <string name="access_delete_forever">Delete forever</string>
+    <string name="access_delete">Delete</string>
+    <string name="access_archive">Archive</string>
+    <string name="access_pinned">Pinned</string>
+    <string name="access_blocked">Blocked</string>
+    <string name="access_start_chat">Start chat</string>
+    <string name="access_loading_messages">Loading messages</string>
+    <string name="access_photo">Photo</string>
+    <string name="action_call">Call</string>
+    <string name="action_add">Add</string>
+    <string name="access_chat_top_bar">Chat top bar</string>
+    <string name="access_swipe_background">Swipe background</string>
+    <string name="access_nav">Navigation drawer</string>
     <!-- Icon content descriptions -->
-    <string name="icon_back">वापस</string>
-    <string name="icon_cancel_selection">चयन रद्द करें</string>
-    <string name="icon_copy">कॉपी</string>
-    <string name="icon_delete">हटाएं</string>
-    <string name="icon_more_options">अधिक विकल्प</string>
-    <string name="icon_call">कॉल</string>
-    <string name="icon_attach">अटैच करें</string>
-    <string name="icon_emoji">इमोजी</string>
-    <string name="icon_send">भेजें</string>
-    <string name="icon_close_search">खोज बंद करें</string>
-    <string name="icon_back_to_inbox">इनबॉक्स पर वापस जाएं</string>
-    <string name="icon_search">खोजें</string>
-    <string name="icon_cancel">रद्द करें</string>
+    <string name="icon_back">Back</string>
+    <string name="icon_cancel_selection">Cancel selection</string>
+    <string name="icon_copy">Copy</string>
+    <string name="icon_delete">Delete</string>
+    <string name="icon_more_options">More options</string>
+    <string name="icon_call">Call</string>
+    <string name="icon_attach">Attach</string>
+    <string name="icon_emoji">Emoji</string>
+    <string name="icon_send">Send</string>
+    <string name="icon_close_search">Close search</string>
+    <string name="icon_back_to_inbox">Back to inbox</string>
+    <string name="icon_search">Search</string>
+    <string name="icon_cancel">Cancel</string>
     <!-- Message statuses -->
-    <string name="status_delivered">वितरित</string>
-    <string name="status_sending">भेजा जा रहा है...</string>
+    <string name="status_delivered">Delivered</string>
+    <string name="status_sending">Sending…</string>
     <string name="status_sms">SMS</string>
     <!-- Sheet actions -->
-    <string name="sheet_unarchive">अंग्रहीत करें</string>
-    <string name="sheet_unpin">अनपिन</string>
-    <string name="sheet_pin">पिन</string>
-    <string name="sheet_archive">संग्रहित करें</string>
-    <string name="sheet_delete">हटाएं</string>
-    <string name="sheet_block">ब्लॉक करें</string>
+    <string name="sheet_unarchive">Unarchive</string>
+    <string name="sheet_unpin">Unpin</string>
+    <string name="sheet_pin">Pin</string>
+    <string name="sheet_archive">Archive</string>
+    <string name="sheet_delete">Delete</string>
+    <string name="sheet_block">Block</string>
     <!-- Detail row labels -->
-    <string name="detail_phone_number">फ़ोन नंबर</string>
-    <string name="detail_messages">संदेश</string>
+    <string name="detail_phone_number">Phone number</string>
+    <string name="detail_messages">Messages</string>
 </resources>

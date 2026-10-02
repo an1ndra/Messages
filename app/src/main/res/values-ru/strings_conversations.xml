@@ -1,34 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="conversations_search">Поиск переписок</string>
-    <string name="conversations_retry_loading">Повторить загрузку</string>
-    <string name="conversations_allow_access">Разрешить доступ</string>
-    <string name="conversations_open_settings">Открыть настройки приложения</string>
-    <string name="conversations_press_back_exit">Нажмите «Назад» ещё раз для выхода</string>
-
+    <string name="conversations_search">Search conversations</string>
+    <string name="conversations_retry_loading">Retry loading</string>
+    <string name="conversations_allow_access">Allow access</string>
+    <string name="conversations_open_settings">Open app settings</string>
+    <string name="conversations_press_back_exit">Press back again to exit</string>
     <!-- New chat -->
-    <string name="new_chat_title">Новая переписка</string>
-    <string name="new_chat_hint">Введите имя или номер телефона</string>
-    <string name="new_chat_only_phone">Сообщения можно отправлять только на номера телефонов</string>
-    <string name="new_chat_send_to">Отправить «%s»</string>
-    <string name="text_placeholder">Текстовое сообщение</string>
-    <string name="conversations_archived">Архив</string>
-    <string name="conversations_spam_blocked">Спам и блокировка</string>
-    <string name="conversations_spam_blocked_empty">Нет переписок со спамом или заблокированных</string>
-    <string name="spam_tab_conversations">Переписки</string>
-    <string name="spam_tab_messages">Сообщения</string>
-    <string name="spam_blocked_messages_empty">Нет заблокированных сообщений</string>
-    <string name="spam_message_deleted">Сообщение удалено</string>
-    <string name="conversations_messages">Сообщения</string>
-    <string name="conversations_me">Я</string>
-    <string name="conversations_allow_sms_access">Разрешить доступ к SMS</string>
-    <string name="conversations_sms_permission">Messages нужен доступ к SMS, чтобы ваши переписки отображались здесь.</string>
-
-    <string name="convo_close_search">Закрыть поиск</string>
-    <string name="convo_back_to_inbox">Вернуться в входящие</string>
-    <string name="spam_empty">Очистить</string>
-    <string name="spam_empty_confirm">Все элементы (%d) на этой вкладке будут удалены. Отменить нельзя.</string>
-    <string name="spam_conversation_deleted">Заблокированный чат удалён</string>
-    <string name="spam_conversations_cleared">Заблокированные чаты очищены</string>
-    <string name="spam_messages_cleared">Заблокированные сообщения очищены</string>
+    <string name="new_chat_title">New conversation</string>
+    <string name="new_chat_hint">Enter name or phone number</string>
+    <string name="new_chat_only_phone">Only phone numbers can be messaged</string>
+    <string name="new_chat_send_to">Send to “%s”</string>
+    <string name="text_placeholder">Message</string>
+    <string name="conversations_archived">Archived</string>
+    <string name="conversations_spam_blocked">Spam &amp; Blocked</string>
+    <string name="conversations_spam_blocked_empty">No spam or blocked conversations</string>
+    <string name="spam_tab_conversations">Conversations</string>
+    <string name="spam_tab_messages">Messages</string>
+    <string name="spam_blocked_messages_empty">No blocked messages</string>
+    <string name="spam_message_deleted">Message deleted</string>
+    <string name="conversations_messages">Messages</string>
+    <string name="conversations_me">Me</string>
+    <string name="conversations_allow_sms_access">Allow SMS access</string>
+    <string name="conversations_sms_permission">Messages needs permission to read your SMS so your conversations appear here.</string>
+    <string name="convo_close_search">Close search</string>
+    <string name="convo_back_to_inbox">Back to inbox</string>
+    <string name="spam_empty">Empty</string>
+    <string name="spam_empty_confirm">This removes all %d items from this tab. This cannot be undone.</string>
+    <string name="spam_conversation_deleted">Blocked conversation deleted</string>
+    <string name="spam_conversations_cleared">Blocked conversations cleared</string>
+    <string name="spam_messages_cleared">Blocked messages cleared</string>
 </resources>

@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="contact_block">阻止</string>
-    <string name="contact_block_confirm">阻止 %s？您将不会收到来自此号码的电话或消息。</string>
-    <string name="contact_block_report">阻止此号码</string>
-    <string name="contact_notifications">通知</string>
-
-    <string name="contact_one_person">1 位其他人</string>
-    <string name="contact_add_people">添加人员</string>
+    <string name="contact_block">Block</string>
+    <string name="contact_block_confirm">%s - you won\'t receive calls or messages from this number.</string>
+    <string name="contact_block_report">Block number</string>
+    <string name="contact_notifications">Notifications</string>
+    <string name="contact_one_person">1 other person</string>
+    <string name="contact_add_people">Add people</string>
 </resources>

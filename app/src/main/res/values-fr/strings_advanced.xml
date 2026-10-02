@@ -1,41 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_advanced_reverse_swipe">Inverser les gestes de balayage</string>
-    <string name="settings_advanced_reverse_swipe_desc">Balayer vers la gauche pour archiver et vers la droite pour supprimer</string>
-    <string name="settings_advanced_hide_links">Masquer les liens des messages</string>
-    <string name="settings_advanced_hide_links_desc">Ne jamais transformer les liens dans les messages en liens cliquables</string>
-    <string name="settings_advanced_highlight_links">Mettre en surbrillance les liens</string>
-    <string name="settings_advanced_link_warning">Avertissement d\'ouverture de lien</string>
-    <string name="settings_advanced_permanent_delete">Suppression permanente</string>
-    <string name="settings_advanced_permanent_delete_desc">Supprimer les messages immédiatement au lieu de les déplacer dans la corbeille</string>
-    <string name="settings_advanced_turn_off">Désactiver « </string>
-    <string name="settings_advanced_turn_off_suffix">" d\'abord</string>
-    <string name="settings_advanced_permanent_delete_on">La suppression permanente est activée. Cette conversation et ses messages seront supprimés de votre appareil immédiatement — non déplacés dans la corbeille — et ne peuvent pas être restaurés.</string>
-
-    <string name="settings_font_title">Police</string>
-    <string name="settings_advanced_emoji_button">Bouton emoji</string>
-    <string name="settings_advanced_emoji_button_desc">Afficher le bouton emoji dans le champ de message</string>
-    <string name="settings_choose_font">Choisir la police</string>
+    <string name="settings_advanced_reverse_swipe">Reverse swipe actions</string>
+    <string name="settings_advanced_reverse_swipe_desc">Swipe left to archive and right to delete</string>
+    <string name="settings_advanced_hide_links">Hide links from messages</string>
+    <string name="settings_advanced_hide_links_desc">Never turn links in messages into tappable links</string>
+    <string name="settings_advanced_highlight_links">Highlight links</string>
+    <string name="settings_advanced_link_warning">Link open warning</string>
+    <string name="settings_advanced_permanent_delete">Permanent delete</string>
+    <string name="settings_advanced_permanent_delete_desc">Delete messages immediately instead of moving them to trash</string>
+    <string name="settings_advanced_turn_off">Turn off \"</string>
+    <string name="settings_advanced_turn_off_suffix">\" first</string>
+    <string name="settings_advanced_permanent_delete_on">Permanent delete is on. This conversation and its messages will be removed from your device right away — not moved to trash — and cannot be restored.</string>
+    <string name="settings_font_title">Font</string>
+    <string name="settings_advanced_emoji_button">Emoji button</string>
+    <string name="settings_advanced_emoji_button_desc">Show the emoji button in the message field</string>
+    <string name="settings_choose_font">Choose font</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
-    <string name="font_system">Police par défaut du système</string>
-
-    <string name="keywords_title">Mots-clés bloqués</string>
-    <string name="keywords_hint">Les messages contenant l\'un de ces mots sont déplacés dans la corbeille : ils ne s\'affichent pas dans la boîte de réception et aucun son de notification ne retentit.</string>
-    <string name="keywords_add_hint">Ajouter un mot-clé</string>
-    <string name="keywords_add">Ajouter</string>
-    <string name="keywords_empty">Aucun mot-clé bloqué pour l\'instant.</string>
-    <string name="keywords_remove">Supprimer le mot-clé</string>
-    <string name="keywords_subtitle_none">Aucun</string>
-    <string name="keywords_subtitle_count">%1$d bloqués</string>
-
-    <string name="diagnostics_title">Diagnostic</string>
-    <string name="diagnostics_subtitle">Diagnostic de l\'appareil et de l\'application pour résoudre les problèmes</string>
-    <string name="diagnostics_save">Enregistrer</string>
-    <string name="diagnostics_copy">Copier</string>
-    <string name="diagnostics_close">Fermer</string>
-    <string name="diagnostics_clip_label">Diagnostic de Messages</string>
-    <string name="settings_sim_unknown">SIM inconnue</string>
+    <string name="font_system">System default</string>
+    <string name="keywords_title">Blocked keywords</string>
+    <string name="keywords_hint">Messages containing any of these words are moved to Trash: not shown in the inbox and no notification sound.</string>
+    <string name="keywords_add_hint">Add keyword</string>
+    <string name="keywords_add">Add</string>
+    <string name="keywords_empty">No blocked keywords yet.</string>
+    <string name="keywords_remove">Remove keyword</string>
+    <string name="keywords_subtitle_none">None</string>
+    <string name="keywords_subtitle_count">%1$d blocked</string>
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_subtitle">Device and app diagnostics for troubleshooting</string>
+    <string name="diagnostics_save">Save</string>
+    <string name="diagnostics_copy">Copy</string>
+    <string name="diagnostics_close">Close</string>
+    <string name="diagnostics_clip_label">Messages diagnostics</string>
+    <string name="settings_sim_unknown">Unknown SIM</string>
 </resources>

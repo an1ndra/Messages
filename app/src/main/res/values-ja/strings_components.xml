@@ -1,66 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Shared action labels -->
-    <string name="common_cancel">キャンセル</string>
-    <string name="common_continue">続行</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_continue">Continue</string>
     <string name="common_ok">OK</string>
-    <string name="common_delete">削除</string>
-    <string name="common_open">開く</string>
-    <string name="common_close">閉じる</string>
-    <string name="common_next">次へ</string>
-
+    <string name="common_delete">Delete</string>
+    <string name="common_open">Open</string>
+    <string name="common_close">Close</string>
+    <string name="common_next">Next</string>
     <!-- Time formatting -->
-    <string name="time_now">今</string>
-    <string name="time_today">今日</string>
-    <string name="time_minutes">%s分</string>
+    <string name="time_now">Now</string>
+    <string name="time_today">Today</string>
+    <string name="time_minutes">%s min</string>
     <string name="time_format_hour">h:mm a</string>
-    <string name="time_format_date">MMM d日</string>
-    <string name="time_format_divider">EEE, MMM d日</string>
-
+    <string name="time_format_date">MMM d</string>
+    <string name="time_format_divider">EEE, MMM d</string>
     <!-- Contacts -->
-    <string name="contact_work_profile">職場プロフィールの連絡先</string>
-
+    <string name="contact_work_profile">Work profile contact</string>
     <!-- Accessibility -->
-    <string name="access_restore">復元</string>
-    <string name="access_delete_forever">永久に削除</string>
-    <string name="access_delete">削除</string>
-    <string name="access_archive">アーカイブ</string>
-    <string name="access_pinned">ピン留め済み</string>
-    <string name="access_blocked">ブロック済み</string>
-    <string name="access_start_chat">チャットを開始</string>
-    <string name="access_loading_messages">メッセージを読み込み中</string>
-    <string name="access_photo">写真</string>
-    <string name="action_call">電話</string>
-    <string name="action_add">追加</string>
-    <string name="access_chat_top_bar">チャット上部バー</string>
-    <string name="access_swipe_background">スワイプ背景</string>
-    <string name="access_nav">ナビゲーションドロワー</string>
+    <string name="access_restore">Restore</string>
+    <string name="access_delete_forever">Delete forever</string>
+    <string name="access_delete">Delete</string>
+    <string name="access_archive">Archive</string>
+    <string name="access_pinned">Pinned</string>
+    <string name="access_blocked">Blocked</string>
+    <string name="access_start_chat">Start chat</string>
+    <string name="access_loading_messages">Loading messages</string>
+    <string name="access_photo">Photo</string>
+    <string name="action_call">Call</string>
+    <string name="action_add">Add</string>
+    <string name="access_chat_top_bar">Chat top bar</string>
+    <string name="access_swipe_background">Swipe background</string>
+    <string name="access_nav">Navigation drawer</string>
     <!-- Icon content descriptions -->
-    <string name="icon_back">戻る</string>
-    <string name="icon_cancel_selection">選択をキャンセル</string>
-    <string name="icon_copy">コピー</string>
-    <string name="icon_delete">削除</string>
-    <string name="icon_more_options">その他のオプション</string>
-    <string name="icon_call">電話</string>
-    <string name="icon_attach">添付</string>
-    <string name="icon_emoji">絵文字</string>
-    <string name="icon_send">送信</string>
-    <string name="icon_close_search">検索を閉じる</string>
-    <string name="icon_back_to_inbox">受信トレイに戻る</string>
-    <string name="icon_search">検索</string>
-    <string name="icon_cancel">キャンセル</string>
+    <string name="icon_back">Back</string>
+    <string name="icon_cancel_selection">Cancel selection</string>
+    <string name="icon_copy">Copy</string>
+    <string name="icon_delete">Delete</string>
+    <string name="icon_more_options">More options</string>
+    <string name="icon_call">Call</string>
+    <string name="icon_attach">Attach</string>
+    <string name="icon_emoji">Emoji</string>
+    <string name="icon_send">Send</string>
+    <string name="icon_close_search">Close search</string>
+    <string name="icon_back_to_inbox">Back to inbox</string>
+    <string name="icon_search">Search</string>
+    <string name="icon_cancel">Cancel</string>
     <!-- Message statuses -->
-    <string name="status_delivered">配信済み</string>
-    <string name="status_sending">送信中…</string>
+    <string name="status_delivered">Delivered</string>
+    <string name="status_sending">Sending…</string>
     <string name="status_sms">SMS</string>
     <!-- Sheet actions -->
-    <string name="sheet_unarchive">アーカイブ解除</string>
-    <string name="sheet_unpin">ピン留め解除</string>
-    <string name="sheet_pin">ピン留め</string>
-    <string name="sheet_archive">アーカイブ</string>
-    <string name="sheet_delete">削除</string>
-    <string name="sheet_block">ブロック</string>
+    <string name="sheet_unarchive">Unarchive</string>
+    <string name="sheet_unpin">Unpin</string>
+    <string name="sheet_pin">Pin</string>
+    <string name="sheet_archive">Archive</string>
+    <string name="sheet_delete">Delete</string>
+    <string name="sheet_block">Block</string>
     <!-- Detail row labels -->
-    <string name="detail_phone_number">電話番号</string>
-    <string name="detail_messages">メッセージ</string>
+    <string name="detail_phone_number">Phone number</string>
+    <string name="detail_messages">Messages</string>
 </resources>

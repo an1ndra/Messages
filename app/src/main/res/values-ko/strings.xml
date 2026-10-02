@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name_placeholder">메시지</string>
-    <string name="translation_help">번역은 커뮤니티가 제공하며 오류가 포함될 수 있습니다. 부정확하거나 누락된 번역을 발견하면 개선을 위해 github.com/an1ndra/Messages에 새 GitHub 이슈를 열어 주세요.</string>
+    <string name="app_name_placeholder">placeholder</string>
+    <string name="translation_help">Translations are community-powered and may contain errors. If you find any inaccurate or missing translations, please open a new GitHub issue at github.com/an1ndra/Messages to help us improve.</string>
+    <!-- App strings split into separate feature files for easier translation:
+         - strings_main.xml: app name, lock, permissions
+         - strings_conversations.xml: conversation list, new chat
+         - strings_chat.xml: chat screen actions and messages
+         - strings_settings.xml: settings screens, PIN, themes
+         - strings_trash.xml: trash screen
+         - strings_contact.xml: contact details, block dialogs
+         - strings_components.xml: shared components, time formats
+         Translators: add new files like values-es/, values-fr/, etc. -->
 </resources>

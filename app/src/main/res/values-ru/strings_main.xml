@@ -1,66 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Messages</string>
-
     <!-- App lock & permissions -->
-    <string name="lock_title">Аутентификация для доступа к сообщениям</string>
-    <string name="lock_unlock_title">Разблокировать Messages</string>
-    <string name="lock_auth_subtitle">Аутентификация для просмотра сообщений</string>
-    <string name="lock_got_it">Понятно</string>
-    <string name="lock_not_now">Не сейчас</string>
-    <string name="lock_off">Блокировка приложения отключена</string>
-    <string name="lock_setup_needed">Сначала настройте блокировку экрана (отпечаток, лицо или PIN) на устройстве</string>
-    <string name="lock_turn_on">Настроить блокировку экрана</string>
-    <string name="lock_turn_on_hint">Настройте одну из них, чтобы снова включить блокировку приложения.</string>
-
+    <string name="lock_title">Authenticate to access your messages</string>
+    <string name="lock_unlock_title">Unlock Messages</string>
+    <string name="lock_auth_subtitle">Authenticate to reveal these messages</string>
+    <string name="lock_got_it">Got it</string>
+    <string name="lock_not_now">Not now</string>
+    <string name="lock_off">App lock is off</string>
+    <string name="lock_setup_needed">Set up a screen lock (fingerprint, face, or PIN) on your device first</string>
+    <string name="lock_turn_on">Set up screen lock</string>
+    <string name="lock_turn_on_hint">Set one up to turn App lock back on.</string>
     <!-- Default SMS app prompt -->
-    <string name="default_sms_title">Сделать приложением SMS по умолчанию?</string>
-    <string name="default_sms_message">Для отправки и получения сообщений Messages должен быть вашим основным приложением для SMS.</string>
-    <string name="default_sms_set">Сделать основным</string>
-    <string name="default_sms_not_now">Не сейчас</string>
-
+    <string name="default_sms_title">Set as default SMS app?</string>
+    <string name="default_sms_message">To send and receive messages, Messages needs to be your default SMS app.</string>
+    <string name="default_sms_set">Set default</string>
+    <string name="default_sms_not_now">Not now</string>
     <!-- Notifications -->
-    <string name="notifications_disabled">Уведомления отключены — вы не будете получать оповещения о новых сообщениях</string>
-
-    <string name="messages_footer">Messages 1.0 — офлайн SMS</string>
-    <string name="settings_light_mode">Светлая</string>
-    <string name="settings_dark_mode">Тёмная</string>
-    <string name="system_default">Системные</string>
-    <string name="settings_backup_restored">Резервная копия восстановлена. Перезапустите приложение для применения.</string>
-    <string name="settings_saving">Сохранение…</string>
-    <string name="settings_backup_saving">Защита PIN, сохранение в Documents/Messages</string>
-    <string name="settings_link_tap_info">Нажмите на ссылки в сообщениях, чтобы открыть веб-сайт</string>
-    <string name="settings_choose_delay">Выберите время ожидания перед отправкой:</string>
-    <string name="settings_backup_apply">Как применить эту резервную копию к текущим сообщениям?</string>
-    <string name="settings_backup_pin_protection">Ваша резервная копия защищена этим PIN-кодом. Он потребуется для восстановления — даже после переустановки приложения или на новом телефоне.</string>
-    <string name="settings_pin_dialog_set">Установить PIN для резервной копии</string>
-    <string name="settings_pin_dialog_enter">Введите PIN резервной копии</string>
-    <string name="settings_pin_error_too_short">PIN-код должен содержать не менее 4 цифр</string>
-    <string name="settings_pin_error_mismatch">PIN-коды не совпадают</string>
-    <string name="settings_sound_arrival">Звук при поступлении сообщения</string>
-    <string name="convo_moved_to_trash">Переписка перемещена в корзину</string>
-    <string name="convo_archived">Переписка отправлена в архив</string>
-    <string name="action_undo">Отменить</string>
-    <string name="lock_error_no_screen_lock">Блокировку приложения нельзя использовать, так как на устройстве не настроена блокировка экрана (отпечаток, лицо или PIN) для проверки личности.</string>
-    <string name="sim_default">Основная</string>
-    <string name="time_yesterday">Вчера</string>
-    <string name="link_warning_confirm">Подтверждать открытие внешних ссылок</string>
+    <string name="notifications_disabled">Notifications disabled — you won\'t be alerted for new messages</string>
+    <string name="messages_footer">Messages 1.0 - offline SMS</string>
+    <string name="settings_light_mode">Light</string>
+    <string name="settings_dark_mode">Dark</string>
+    <string name="system_default">System default</string>
+    <string name="settings_backup_restored">Backup restored. Restart app to apply.</string>
+    <string name="settings_saving">Saving...</string>
+    <string name="settings_backup_saving">PIN-protected save to Documents/Messages</string>
+    <string name="settings_link_tap_info">Tap links in messages to open the website</string>
+    <string name="settings_choose_delay">Choose how long to wait before sending:</string>
+    <string name="settings_backup_apply">How should this backup be applied to your current messages?</string>
+    <string name="settings_backup_pin_protection">Your backup is protected by this PIN. You will need it to restore - even after reinstalling the app or on a new phone.</string>
+    <string name="settings_pin_dialog_set">Set backup PIN</string>
+    <string name="settings_pin_dialog_enter">Enter backup PIN</string>
+    <string name="settings_pin_error_too_short">PIN must be at least 4 digits</string>
+    <string name="settings_pin_error_mismatch">PINs do not match</string>
+    <string name="settings_sound_arrival">Sound played when a message arrives</string>
+    <string name="convo_moved_to_trash">Conversation moved to trash</string>
+    <string name="convo_archived">Conversation archived</string>
+    <string name="action_undo">Undo</string>
+    <string name="lock_error_no_screen_lock">App lock cannot be used because this device has no screen lock (fingerprint, face, or PIN) to verify it is you.</string>
+    <string name="sim_default">Default</string>
+    <string name="time_yesterday">Yesterday</string>
+    <string name="link_warning_confirm">Confirm before opening external links</string>
     <string name="notification_channel_title">Messages</string>
-    <string name="notification_channel_desc">Уведомления о новых сообщениях</string>
-    <string name="notif_title_private">Новое сообщение</string>
-    <string name="notif_body_private">У вас новое сообщение</string>
-    <string name="notif_you">Вы</string>
-    <string name="notif_send_fail_private">Не удалось отправить сообщение. Нажмите для повтора.</string>
-    <string name="notif_send_fail">Не удалось отправить сообщение адресату %s. Нажмите для повтора.</string>
-    <string name="notif_not_delivered">Сообщение не доставлено</string>
-
+    <string name="notification_channel_desc">New message notifications</string>
+    <string name="notif_title_private">New message</string>
+    <string name="notif_body_private">You have a new message</string>
+    <string name="notif_you">You</string>
+    <string name="notif_send_fail_private">Couldn\'t send message. Tap to retry.</string>
+    <string name="notif_send_fail">Couldn\'t send message to %s. Tap to retry.</string>
+    <string name="notif_not_delivered">Message not delivered</string>
     <!-- Crash reports -->
-    <string name="crash_report_title">Отчёт о сбое</string>
-    <string name="crash_report_message">В прошлый раз приложение завершилось со сбоем. Журнал сохранён в Downloads/Messages — приложите его к задаче на GitHub, чтобы помочь с исправлением.</string>
-    <string name="crash_report_message_many">Приложение завершилось со сбоем %1$d раз. Журналы сохранены в Downloads/Messages — приложите их к задаче на GitHub, чтобы помочь с исправлением.</string>
-    <string name="crash_report_export">Сохранить ZIP</string>
-    <string name="crash_report_copy">Копировать</string>
-    <string name="crash_report_delete">Удалить</string>
-    <string name="crash_report_saved">Сохранено в Downloads/Messages</string>
-    <string name="crash_report_clip_label">Отчёт о сбое Messages</string>
+    <string name="crash_report_title">Crash report</string>
+    <string name="crash_report_message">The app crashed last time. The log is saved in Downloads/Messages — attach it to a GitHub issue to help fix it.</string>
+    <string name="crash_report_message_many">The app crashed %1$d times. The logs are saved in Downloads/Messages — attach them to a GitHub issue to help fix it.</string>
+    <string name="crash_report_export">Save ZIP</string>
+    <string name="crash_report_copy">Copy</string>
+    <string name="crash_report_delete">Delete</string>
+    <string name="crash_report_saved">Saved to Downloads/Messages</string>
+    <string name="crash_report_clip_label">Messages crash report</string>
 </resources>

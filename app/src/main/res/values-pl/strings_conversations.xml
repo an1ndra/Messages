@@ -1,34 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="conversations_search">Szukaj rozmów</string>
-    <string name="conversations_retry_loading">Spróbuj ponownie</string>
-    <string name="conversations_allow_access">Zezwól na dostęp</string>
-    <string name="conversations_open_settings">Otwórz ustawienia aplikacji</string>
-    <string name="conversations_press_back_exit">Naciśnij ponownie wstecz, aby wyjść</string>
-
+    <string name="conversations_search">Search conversations</string>
+    <string name="conversations_retry_loading">Retry loading</string>
+    <string name="conversations_allow_access">Allow access</string>
+    <string name="conversations_open_settings">Open app settings</string>
+    <string name="conversations_press_back_exit">Press back again to exit</string>
     <!-- New chat -->
-    <string name="new_chat_title">Nowa rozmowa</string>
-    <string name="new_chat_hint">Wpisz imię lub numer telefonu</string>
-    <string name="new_chat_only_phone">Do numerów telefonów można wysyłać wiadomości</string>
-    <string name="new_chat_send_to">Wyślij do „%s”</string>
-    <string name="text_placeholder">Wiadomość tekstowa</string>
-    <string name="conversations_archived">Zarchiwizowane</string>
-    <string name="conversations_spam_blocked">Spam i zablokowane</string>
-    <string name="conversations_spam_blocked_empty">Brak rozmów ze spamem lub zablokowanych</string>
-    <string name="spam_tab_conversations">Rozmowy</string>
-    <string name="spam_tab_messages">Wiadomości</string>
-    <string name="spam_blocked_messages_empty">Brak zablokowanych wiadomości</string>
-    <string name="spam_message_deleted">Usunięto wiadomość</string>
-    <string name="conversations_messages">Wiadomości</string>
-    <string name="conversations_me">Ja</string>
-    <string name="conversations_allow_sms_access">Zezwól na dostęp do SMS</string>
-    <string name="conversations_sms_permission">Aplikacja Wiadomości wymaga uprawnień do odczytu Twoich wiadomości SMS, aby rozmowy pojawiały się tutaj.</string>
-
-    <string name="convo_close_search">Zamknij wyszukiwanie</string>
-    <string name="convo_back_to_inbox">Wróć do skrzynki odbiorczej</string>
-    <string name="spam_empty">Opróżnij</string>
-    <string name="spam_empty_confirm">Spowoduje to usunięcie wszystkich %d elementów z tej karty. Nie można tego cofnąć.</string>
-    <string name="spam_conversation_deleted">Usunięto zablokowaną rozmowę</string>
-    <string name="spam_conversations_cleared">Usunięto zablokowane rozmowy</string>
-    <string name="spam_messages_cleared">Usunięto zablokowane wiadomości</string>
+    <string name="new_chat_title">New conversation</string>
+    <string name="new_chat_hint">Enter name or phone number</string>
+    <string name="new_chat_only_phone">Only phone numbers can be messaged</string>
+    <string name="new_chat_send_to">Send to “%s”</string>
+    <string name="text_placeholder">Message</string>
+    <string name="conversations_archived">Archived</string>
+    <string name="conversations_spam_blocked">Spam &amp; Blocked</string>
+    <string name="conversations_spam_blocked_empty">No spam or blocked conversations</string>
+    <string name="spam_tab_conversations">Conversations</string>
+    <string name="spam_tab_messages">Messages</string>
+    <string name="spam_blocked_messages_empty">No blocked messages</string>
+    <string name="spam_message_deleted">Message deleted</string>
+    <string name="conversations_messages">Messages</string>
+    <string name="conversations_me">Me</string>
+    <string name="conversations_allow_sms_access">Allow SMS access</string>
+    <string name="conversations_sms_permission">Messages needs permission to read your SMS so your conversations appear here.</string>
+    <string name="convo_close_search">Close search</string>
+    <string name="convo_back_to_inbox">Back to inbox</string>
+    <string name="spam_empty">Empty</string>
+    <string name="spam_empty_confirm">This removes all %d items from this tab. This cannot be undone.</string>
+    <string name="spam_conversation_deleted">Blocked conversation deleted</string>
+    <string name="spam_conversations_cleared">Blocked conversations cleared</string>
+    <string name="spam_messages_cleared">Blocked messages cleared</string>
 </resources>
