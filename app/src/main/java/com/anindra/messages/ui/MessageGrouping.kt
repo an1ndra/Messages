@@ -6,8 +6,6 @@ import com.anindra.messages.data.Message
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /** Consecutive messages form a "run". A run breaks on a day change or a gap
  *  longer than [GROUP_GAP_MS].
@@ -84,11 +82,6 @@ fun BubbleCorners.toShape(): RoundedCornerShape = RoundedCornerShape(
     bottomEnd = bottomEnd.dp
 )
 
-private val groupDayFmt: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault())
-private val groupDayYearFmt: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy", Locale.getDefault())
-
 private fun at(ts: Long): ZonedDateTime =
     Instant.ofEpochMilli(ts).atZone(ZoneId.systemDefault())
 
@@ -102,14 +95,14 @@ private fun isYesterday(ts: Long, now: Long): Boolean =
  *  - same year  -> "Sunday, Aug 2 • 3:15 PM"
  *  - older      -> "Sunday, Aug 2, 2024 • 3:15 PM"
  */
-fun formatGroupLabel(ts: Long, is24Hour: Boolean, now: Long = System.currentTimeMillis()): String {
+fun formatGroupLabel(ts: Long, is24Hour: Boolean, yesterdayLabel: String, now: Long = System.currentTimeMillis()): String {
     val t = at(ts)
     val timeFmt = timeOnlyFormatter(is24Hour)
     val dateAndTime = { date: String -> "$date \u2022 ${timeFmt.format(t)}" }
     return when {
         sameDay(ts, now) -> timeFmt.format(t)
-        isYesterday(ts, now) -> dateAndTime("Yesterday")
-        t.year == at(now).year -> dateAndTime(groupDayFmt.format(t))
-        else -> dateAndTime(groupDayYearFmt.format(t))
+        isYesterday(ts, now) -> dateAndTime(yesterdayLabel)
+        t.year == at(now).year -> dateAndTime(dateFormatter(DateStyle.DayWithFullWeekday).format(t))
+        else -> dateAndTime(dateFormatter(DateStyle.DayWithFullWeekdayAndYear).format(t))
     }
 }
