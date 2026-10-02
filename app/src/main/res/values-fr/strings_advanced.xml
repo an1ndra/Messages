@@ -9,9 +9,8 @@
     <string name="settings_advanced_permanent_delete">Suppression permanente</string>
     <string name="settings_advanced_permanent_delete_desc">Supprimer les messages immédiatement au lieu de les déplacer dans la corbeille</string>
     <string name="settings_advanced_turn_off">Désactiver « </string>
-    <string name="settings_advanced_turn_off_suffix">" d\'abord</string>
+    <string name="settings_advanced_turn_off_suffix">\" d\'abord</string>
     <string name="settings_advanced_permanent_delete_on">La suppression permanente est activée. Cette conversation et ses messages seront supprimés de votre appareil immédiatement — non déplacés dans la corbeille — et ne peuvent pas être restaurés.</string>
-
     <string name="settings_font_title">Police</string>
     <string name="settings_advanced_emoji_button">Bouton emoji</string>
     <string name="settings_advanced_emoji_button_desc">Afficher le bouton emoji dans le champ de message</string>
@@ -21,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Police par défaut du système</string>
-
     <string name="keywords_title">Mots-clés bloqués</string>
     <string name="keywords_hint">Les messages contenant l\'un de ces mots sont déplacés dans la corbeille : ils ne s\'affichent pas dans la boîte de réception et aucun son de notification ne retentit.</string>
     <string name="keywords_add_hint">Ajouter un mot-clé</string>
@@ -30,7 +28,6 @@
     <string name="keywords_remove">Supprimer le mot-clé</string>
     <string name="keywords_subtitle_none">Aucun</string>
     <string name="keywords_subtitle_count">%1$d bloqués</string>
-
     <string name="diagnostics_title">Diagnostic</string>
     <string name="diagnostics_subtitle">Diagnostic de l\'appareil et de l\'application pour résoudre les problèmes</string>
     <string name="diagnostics_save">Enregistrer</string>
