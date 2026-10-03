@@ -236,7 +236,7 @@ class TelephonyMmsStoreTest {
 
         val probes = resolver.operations.count { it == "query content://mms" }
         assertEquals("the probe was repeated", 1, probes)
-        assertEquals(3, resolver.messages().all { it["sub_id"] == 3 })
+        assertTrue(resolver.messages().all { it["sub_id"] == 3 })
 
         val withoutColumn = FakeContentResolver(hasSubIdColumn = false)
         val store = TelephonyMmsStore(withoutColumn, clock = { CLOCK })
