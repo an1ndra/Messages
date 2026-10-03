@@ -22,7 +22,6 @@
     <string name="chat_save_image">छवि सहेजें</string>
     <string name="chat_image_saved">छवि Pictures/Messages में सहेजी गई</string>
     <string name="chat_image_save_failed">छवि सहेजी नहीं जा सकी</string>
-
     <!-- Status messages -->
     <string name="chat_cant_send">संदेश भेजा नहीं जा सकता</string>
     <string name="chat_archived">संवाद संग्रहीत किया गया</string>
@@ -41,7 +40,6 @@
     <string name="chat_search_contacts">संपर्क खोजें</string>
     <string name="chat_add_people">लोगों को जोड़ें</string>
     <string name="chat_locked">लॉक</string>
-
     <!-- Copy & links -->
     <string name="chat_copied">कॉपी किया गया</string>
     <string name="chat_link_copied">लिंक कॉपी किया गया</string>
@@ -51,7 +49,6 @@
     <string name="chat_link_no_dont_show">इस चेतावनी को फिर से न दिखाएं</string>
     <string name="chat_link_label">लिंक</string>
     <string name="chat_messages_label">संदेश</string>
-
     <!-- General -->
     <string name="chat_close">बंद करें</string>
     <string name="chat_open">खोलें</string>
@@ -72,7 +69,6 @@
     <string name="message_status_delivered">वितरित</string>
     <string name="message_status_received">प्राप्त</string>
     <string name="message_status_failed">नहीं भेजा गया</string>
-
     <string name="chat_status_not_sent">भेजा नहीं गया</string>
     <string name="chat_status_retry">पुनः प्रयास करने के लिए टैप करें</string>
     <string name="chat_draft_prefix">ड्राफ्ट: </string>

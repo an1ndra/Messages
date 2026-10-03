@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">訊息</string>
-
+    <!-- App lock & permissions -->
     <string name="lock_title">驗證以存取您的訊息</string>
     <string name="lock_unlock_title">解鎖訊息</string>
     <string name="lock_auth_subtitle">驗證以顯示這些訊息</string>
@@ -11,14 +11,13 @@
     <string name="lock_setup_needed">請先在裝置上設定螢幕鎖定（指紋、人臉或密碼）</string>
     <string name="lock_turn_on">設定螢幕鎖定</string>
     <string name="lock_turn_on_hint">設定後即可重新開啟應用程式鎖定。</string>
-
+    <!-- Default SMS app prompt -->
     <string name="default_sms_title">設為預設訊息應用程式？</string>
     <string name="default_sms_message">若要傳送和接收訊息，「訊息」需要設為您預設的 SMS 應用程式。</string>
     <string name="default_sms_set">設為預設</string>
     <string name="default_sms_not_now">現在不要</string>
-
+    <!-- Notifications -->
     <string name="notifications_disabled">已停用通知 — 您將不會收到新訊息通知</string>
-
     <string name="messages_footer">訊息 1.0 — 離線 SMS</string>
     <string name="settings_light_mode">淺色</string>
     <string name="settings_dark_mode">深色</string>
@@ -50,7 +49,7 @@
     <string name="notif_send_fail_private">無法傳送訊息。輕觸以重試。</string>
     <string name="notif_send_fail">無法傳送至 %s。輕觸以重試。</string>
     <string name="notif_not_delivered">訊息未送達</string>
-
+    <!-- Crash reports -->
     <string name="crash_report_title">當機報告</string>
     <string name="crash_report_message">上次應用程式發生當機。記錄檔已儲存在 Downloads/Messages — 請附到 GitHub issue 以協助修正。</string>
     <string name="crash_report_message_many">應用程式當機 %1$d 次。記錄檔已儲存在 Downloads/Messages — 請附到 GitHub issue 以協助修正。</string>

@@ -22,7 +22,6 @@
     <string name="chat_save_image">Сохранить изображение</string>
     <string name="chat_image_saved">Изображение сохранено в Pictures/Messages</string>
     <string name="chat_image_save_failed">Не удалось сохранить изображение</string>
-
     <!-- Status messages -->
     <string name="chat_cant_send">Не удалось отправить сообщение</string>
     <string name="chat_archived">Переписка отправлена в архив</string>
@@ -41,7 +40,6 @@
     <string name="chat_search_contacts">Поиск контактов</string>
     <string name="chat_add_people">Добавить участников</string>
     <string name="chat_locked">Заблокировано</string>
-
     <!-- Copy & links -->
     <string name="chat_copied">Скопировано</string>
     <string name="chat_link_copied">Ссылка скопирована</string>
@@ -51,7 +49,6 @@
     <string name="chat_link_no_dont_show">Больше не показывать это предупреждение</string>
     <string name="chat_link_label">ссылка</string>
     <string name="chat_messages_label">сообщения</string>
-
     <!-- General -->
     <string name="chat_close">Закрыть</string>
     <string name="chat_open">Открыть</string>
@@ -72,7 +69,6 @@
     <string name="message_status_delivered">Доставлено</string>
     <string name="message_status_received">Получено</string>
     <string name="message_status_failed">Не отправлено</string>
-
     <string name="chat_status_not_sent">Не отправлено</string>
     <string name="chat_status_retry">Нажмите для повтора</string>
     <string name="chat_draft_prefix">Черновик: </string>
