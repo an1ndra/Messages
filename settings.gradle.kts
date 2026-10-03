@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "Messages"
 include(":app")
 include(":android-smsmms")
+include(":mms")

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.anindra.messages.mms.pdu.ContentTypesTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-03T04:12:40.799Z" hostname="lenovo" time="0.036">
+  <properties/>
+  <testcase name="indexLookupIgnoresCaseAndParameters" classname="com.anindra.messages.mms.pdu.ContentTypesTest" time="0.026"/>
+  <testcase name="firstKnownCodeIsTheWildcard" classname="com.anindra.messages.mms.pdu.ContentTypesTest" time="0.0"/>
+  <testcase name="anUnlistedTypeHasNoCodeAndSoIsWrittenAsText" classname="com.anindra.messages.mms.pdu.ContentTypesTest" time="0.0"/>
+  <testcase name="anIndexPastTheTableDecodesToTheWildcardRatherThanFailing" classname="com.anindra.messages.mms.pdu.ContentTypesTest" time="0.0"/>
+  <testcase name="lastKnownCodeIsMikey" classname="com.anindra.messages.mms.pdu.ContentTypesTest" time="0.0"/>
+  <testcase name="familyHelpersClassifyByNormalizedType" classname="com.anindra.messages.mms.pdu.ContentTypesTest" time="0.0"/>
+  <testcase name="aConstrainedCodeIsReadBackWithoutTouchingTheStream" classname="com.anindra.messages.mms.pdu.ContentTypesTest" time="0.001"/>
+  <testcase name="multipartRelatedIsAConstrainedCode" classname="com.anindra.messages.mms.pdu.ContentTypesTest" time="0.0"/>
+  <testcase name="theWriterEmitsAConstrainedCodeOnlyForAListedType" classname="com.anindra.messages.mms.pdu.ContentTypesTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.anindra.messages.mms.pdu.EncodedStringValueTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-03T04:12:40.837Z" hostname="lenovo" time="0.011">
+  <properties/>
+  <testcase name="aDeclaredLengthLongerThanTheDataIsRejected" classname="com.anindra.messages.mms.pdu.EncodedStringValueTest" time="0.004"/>
+  <testcase name="roundTripKeepsTheBytesIdentical" classname="com.anindra.messages.mms.pdu.EncodedStringValueTest" time="0.003"/>
+  <testcase name="equalityComparesCharsetAndBytes" classname="com.anindra.messages.mms.pdu.EncodedStringValueTest" time="0.001"/>
+  <testcase name="utf8IsTheDefault" classname="com.anindra.messages.mms.pdu.EncodedStringValueTest" time="0.001"/>
+  <testcase name="theWireFormIsCharsetThenTextThenTerminator" classname="com.anindra.messages.mms.pdu.EncodedStringValueTest" time="0.0"/>
+  <testcase name="textIsDecodedWithTheDeclaredCharsetNotUtf8" classname="com.anindra.messages.mms.pdu.EncodedStringValueTest" time="0.001"/>
+  <testcase name="aLeadingByteAboveTheQuoteRangeCostsAnExtraOctetAndIsCounted" classname="com.anindra.messages.mms.pdu.EncodedStringValueTest" time="0.0"/>
+  <testcase name="encodedLengthAgreesWithWhatTheWriterEmitted" classname="com.anindra.messages.mms.pdu.EncodedStringValueTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
