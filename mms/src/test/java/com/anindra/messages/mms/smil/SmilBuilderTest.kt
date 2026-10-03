@@ -27,19 +27,23 @@ class SmilBuilderTest {
     private fun bodyOf(vararg parts: PduPart) = PduBody().apply { parts.forEach { add(it) } }
 
     @Test
-    fun anImageAndItsCaptionBecomeTwoParallels() {
+    fun anImageAndItsCaptionShareOneParallel() {
+        // Media and a caption stay in the same par: that is what makes the caption
+        // render alongside the image rather than as a following slide, and it is
+        // the grouping the AOSP helper produces.
         val document = SmilBuilder.build(
             bodyOf(part("image/jpeg", "image000001.jpg"), part("text/plain", "text000002.txt"))
         )!!
-        assertEquals(2, document.pars.size)
-        assertTrue(document.pars[0].items.single() is SmilImage)
-        assertTrue(document.pars[1].items.single() is SmilText)
+        assertEquals(1, document.pars.size)
+        assertEquals(2, document.pars[0].items.size)
+        assertTrue(document.items[0] is SmilImage)
+        assertTrue(document.items[1] is SmilText)
     }
 
     @Test
     fun severalMediaBeforeACaptionShareOneParallel() {
-        // The grouping rule: a par holds media and text together, and only splits
-        // once it has both. Two images then a caption is a single par.
+        // Two images then a caption: the par never holds both kinds until the
+        // caption arrives, so nothing splits.
         val document = SmilBuilder.build(
             bodyOf(
                 part("image/jpeg", "a.jpg"),
@@ -52,7 +56,7 @@ class SmilBuilderTest {
     }
 
     @Test
-    fun aSecondCaptionStartsANewParallel() {
+    fun aParallelSplitsOnlyOnceItAlreadyHoldsBothMediaAndText() {
         val document = SmilBuilder.build(
             bodyOf(
                 part("image/jpeg", "a.jpg"),
@@ -61,8 +65,8 @@ class SmilBuilderTest {
             )
         )!!
         assertEquals(2, document.pars.size)
-        assertEquals(1, document.pars[0].items.size)
-        assertEquals(1, document.pars[1].items.size)
+        assertEquals(listOf("a.jpg", "one.txt"), document.pars[0].items.map { it.src })
+        assertEquals(listOf("two.txt"), document.pars[1].items.map { it.src })
     }
 
     @Test
