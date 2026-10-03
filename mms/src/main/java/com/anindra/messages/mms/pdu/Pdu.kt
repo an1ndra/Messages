@@ -59,7 +59,8 @@ class PduPart {
         const val CHARSET = 0x81
         const val CONTENT_LOCATION = 0x8E
         const val CONTENT_ID = 0xC0
-        const val CONTENT_DISPOSITION = 0xC1
+        const val CONTENT_DISPOSITION = 0xC5
+        const val CONTENT_TRANSFER_ENCODING = 0xC8
         const val NAME = 0x85
         const val TYPE = 0x83
         const val FILENAME = 0x89
