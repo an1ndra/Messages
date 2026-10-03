@@ -104,7 +104,8 @@ class FakeContentResolver(
             }
             uri.toString().startsWith(THREAD_ID) -> threadRow(uri)
             uri.toString().startsWith(PENDING) -> return pendingCursor(selection, selectionArgs)
-            segments.size == 1 -> return FakeCursor(
+            // A box collection - `content://mms/inbox`.
+            segments.size == 1 && segments[0] in BOXES -> return FakeCursor(
                 projection?.toList() ?: listOf(BaseColumns._ID, "msg_box", "m_type"),
                 messages.values.toList(),
             )
@@ -115,7 +116,10 @@ class FakeContentResolver(
                     (it["seq"] as? Number)?.toInt() ?: 0
                 }
             segments.size == 2 && segments[1] == ADDR -> addressesOf(segments[0].toLong())
-            segments.size == 2 -> listOfNotNull(messages[segments[0].toLong()])
+            // content://mms/<box>/<id> and content://mms/<id>, the two shapes a
+            // persisted message is read back through.
+            segments.size == 2 -> messageRow(segments[1])
+            segments.size == 1 -> messageRow(segments[0])
             else -> throw IllegalArgumentException("unsupported query uri $uri")
         }
         return FakeCursor(projection?.toList() ?: row.flatMap { it.keys }.distinct(), row)
@@ -150,24 +154,25 @@ class FakeContentResolver(
         val columns = values?.snapshot() ?: emptyMap()
         val segments = uri.pathSegments
         return when {
+            // content://mms-sms/pending/<id> - the queue rows the retry pass walks.
+            uri.toString().startsWith(PENDING) -> {
+                val id = segments.lastOrNull()?.toLongOrNull()
+                val row = pending.firstOrNull { it[BaseColumns._ID] == id } ?: return 0
+                row.putAll(columns)
+                1
+            }
             segments.size == 2 && segments[1] == PART -> reparentParts(segments[0].toLong(), columns)
             segments.size == 2 && segments[1] == ADDR -> 0
             // content://mms/part/<id> - where a text part's column is written.
             segments.size == 2 && segments[0] == PART -> {
-                val part = parts[segments[1].toLong()] ?: return 0
+                val part = parts[segments[1].toLongOrNull() ?: return 0] ?: return 0
                 part.putAll(columns)
                 1
             }
             // content://mms/<box>/<id> - the uri persist hands back.
             segments.size == 2 && segments[0] in BOXES -> {
-                val message = messages[segments[1].toLong()] ?: return 0
+                val message = messages[segments[1].toLongOrNull() ?: return 0] ?: return 0
                 message.putAll(columns)
-                1
-            }
-            segments.size == 3 && segments[0] == "pending" -> {
-                val row = pending.firstOrNull { it[BaseColumns._ID] == segments[1].toLong() }
-                    ?: return 0
-                row.putAll(columns)
                 1
             }
             else -> throw IllegalArgumentException("unsupported update uri $uri")
@@ -180,15 +185,12 @@ class FakeContentResolver(
         fail(call)
         val segments = uri.pathSegments
         return when {
-            segments.size == 2 -> {
-                val id = segments[0].toLong()
-                val removed = messages.remove(id) != null
-                partsOf(id).forEach { parts.remove(it[BaseColumns._ID] as Long) }
-                addresses.removeAll { it[Addr.MSG_ID] == id }
-                if (removed) 1 else 0
+            uri.toString().startsWith(PENDING) -> {
+                val id = segments.lastOrNull()?.toLongOrNull()
+                if (pending.removeAll { it[BaseColumns._ID] == id }) 1 else 0
             }
-            segments.size == 3 && segments[0] == "pending" ->
-                if (pending.removeAll { it[BaseColumns._ID] == segments[1].toLong() }) 1 else 0
+            segments.size == 2 && segments[0] in BOXES -> deleteMessage(segments[1])
+            segments.size == 1 -> deleteMessage(segments[0])
             else -> throw IllegalArgumentException("unsupported delete uri $uri")
         }
     }
@@ -230,6 +232,19 @@ class FakeContentResolver(
         val id = nextMessageId++
         messages[id] = LinkedHashMap(columns).apply { put(BaseColumns._ID, id) }
         return Uri.parse("$MESSAGES/$box/$id")
+    }
+
+    private fun messageRow(id: String): List<Map<String, Any?>> {
+        val message = id.toLongOrNull()?.let { messages[it] }
+        return if (message == null) emptyList() else listOf(message)
+    }
+
+    private fun deleteMessage(id: String): Int {
+        val messageId = id.toLongOrNull() ?: return 0
+        val removed = messages.remove(messageId) != null
+        partsOf(messageId).forEach { parts.remove(it[BaseColumns._ID] as Long) }
+        addresses.removeAll { it[Addr.MSG_ID] == messageId }
+        return if (removed) 1 else 0
     }
 
     private fun insertPart(messageId: Long, columns: Map<String, Any?>): Uri {
@@ -278,7 +293,7 @@ class FakeContentResolver(
         val matched = pending
             .filter { matches(selection, selectionArgs, it) }
             .sortedBy { (it[PendingMessages.DUE_TIME] as? Number)?.toLong() ?: 0L }
-        return FakeCursor(matched.flatMap { it.keys }.distinct(), matched)
+        return FakeCursor(PENDING_COLUMNS, matched)
     }
 
     /** Understands the `a < ? AND b <= ?` conjunction the pending query uses. */
@@ -310,6 +325,21 @@ class FakeContentResolver(
         const val ADDR = "addr"
         const val SUB_ID = "sub_id"
         const val RECIPIENT = "recipient"
+
+        /**
+         * The `pending` table's columns. A provider returns them all whatever the
+         * rows hold, so reading one a row leaves unset answers null instead of
+         * throwing the way a column the cursor never had would.
+         */
+        val PENDING_COLUMNS = listOf(
+            BaseColumns._ID,
+            PendingMessages.MSG_ID,
+            PendingMessages.DUE_TIME,
+            PendingMessages.ERROR_TYPE,
+            PendingMessages.RETRY_INDEX,
+            TelephonyMmsStore.COLUMN_TRANSACTION_ID,
+            TelephonyMmsStore.COLUMN_MESSAGE_SIZE,
+        )
 
         /** The collections the provider exposes. Failed and all have none. */
         val BOXES = setOf("inbox", "sent", "drafts", "outbox")

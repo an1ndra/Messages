@@ -85,11 +85,11 @@ class MmsStoreContractTest {
         resolver.seedPendingRow(
             mapOf(
                 PendingMessages.MSG_ID to 11L,
-                PendingMessages.DUE_TIME to 1_000L,
+                PendingMessages.DUE_TIME to 5_000L,
                 PendingMessages.ERROR_TYPE to 1,
                 PendingMessages.RETRY_INDEX to 2,
-                "transaction_id" to "T-late",
-                "m_size" to 5L,
+                TelephonyMmsStore.COLUMN_TRANSACTION_ID to "T-late",
+                TelephonyMmsStore.COLUMN_MESSAGE_SIZE to 5L,
             ),
         )
         resolver.seedPendingRow(
@@ -98,8 +98,8 @@ class MmsStoreContractTest {
                 PendingMessages.DUE_TIME to 2_000L,
                 PendingMessages.ERROR_TYPE to 1,
                 PendingMessages.RETRY_INDEX to 0,
-                "transaction_id" to "T-due",
-                "m_size" to 6L,
+                TelephonyMmsStore.COLUMN_TRANSACTION_ID to "T-due",
+                TelephonyMmsStore.COLUMN_MESSAGE_SIZE to 6L,
             ),
         )
         resolver.seedPendingRow(
@@ -108,8 +108,8 @@ class MmsStoreContractTest {
                 PendingMessages.DUE_TIME to 3_000L,
                 PendingMessages.ERROR_TYPE to 128,
                 PendingMessages.RETRY_INDEX to 0,
-                "transaction_id" to "T-permanently-failed",
-                "m_size" to 7L,
+                TelephonyMmsStore.COLUMN_TRANSACTION_ID to "T-permanently-failed",
+                TelephonyMmsStore.COLUMN_MESSAGE_SIZE to 7L,
             ),
         )
 
@@ -126,7 +126,7 @@ class MmsStoreContractTest {
 
         val query = resolver.queries().last()
         assertEquals("content://mms-sms/pending", query.uri)
-        assertEquals("e_type < ? AND due_time <= ?", query.selection)
+        assertEquals("err_type < ? AND due_time <= ?", query.selection)
         assertArrayEquals(arrayOf("128", "2000"), query.selectionArgs)
     }
 
