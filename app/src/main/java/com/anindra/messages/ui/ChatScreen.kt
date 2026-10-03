@@ -899,7 +899,7 @@ fun ChatScreen(
         bottomBar = {
             Column(
                 Modifier
-                    .background(MaterialTheme.colorScheme.chatBar)
+                    .background(MaterialTheme.colorScheme.background)
                     .navigationBarsPadding()
             ) {
                 AnimatedVisibility(
