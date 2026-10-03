@@ -5,7 +5,6 @@
     <string name="conversations_allow_access">Zugang erlauben</string>
     <string name="conversations_open_settings">App-Einstellungen öffnen</string>
     <string name="conversations_press_back_exit">Noch einmal Zurück drücken zum Beenden</string>
-
     <!-- New chat -->
     <string name="new_chat_title">Neue Unterhaltung</string>
     <string name="new_chat_hint">Name oder Telefonnummer eingeben</string>
@@ -23,7 +22,6 @@
     <string name="conversations_me">Ich</string>
     <string name="conversations_allow_sms_access">SMS-Zugang erlauben</string>
     <string name="conversations_sms_permission">Messages benötigt Berechtigung, um Ihre SMS zu lesen, damit Ihre Unterhaltungen hier erscheinen.</string>
-
     <string name="convo_close_search">Suche schließen</string>
     <string name="convo_back_to_inbox">Zurück zum Posteingang</string>
     <string name="spam_empty">Leeren</string>

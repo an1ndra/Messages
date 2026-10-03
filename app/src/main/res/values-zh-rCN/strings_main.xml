@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">消息</string>
-
+    <!-- App lock & permissions -->
     <string name="lock_title">验证以访问您的消息</string>
     <string name="lock_unlock_title">解锁消息</string>
     <string name="lock_auth_subtitle">验证以显示这些消息</string>
@@ -11,14 +11,13 @@
     <string name="lock_setup_needed">请先在设备上设置屏幕锁定（指纹、人脸或密码）</string>
     <string name="lock_turn_on">设置屏幕锁定</string>
     <string name="lock_turn_on_hint">设置后可重新开启应用锁定。</string>
-
+    <!-- Default SMS app prompt -->
     <string name="default_sms_title">设为默认消息应用？</string>
     <string name="default_sms_message">要发送和接收消息，消息需要设为您的默认 SMS 应用。</string>
     <string name="default_sms_set">设为默认</string>
     <string name="default_sms_not_now">现在不</string>
-
+    <!-- Notifications -->
     <string name="notifications_disabled">已禁用通知 — 您将不会收到新消息通知</string>
-
     <string name="messages_footer">消息 1.0 — 离线 SMS</string>
     <string name="settings_light_mode">浅色</string>
     <string name="settings_dark_mode">深色</string>
@@ -50,7 +49,7 @@
     <string name="notif_send_fail_private">无法发送消息。轻触重试。</string>
     <string name="notif_send_fail">无法发送至 %s。轻触重试。</string>
     <string name="notif_not_delivered">消息未送达</string>
-
+    <!-- Crash reports -->
     <string name="crash_report_title">崩溃报告</string>
     <string name="crash_report_message">上次应用崩溃了。日志保存在 Downloads/Messages 中 — 请将其附到 GitHub issue 上以帮助修复。</string>
     <string name="crash_report_message_many">应用崩溃了 %1$d 次。日志保存在 Downloads/Messages 中 — 请将其附到 GitHub issue 上以帮助修复。</string>
