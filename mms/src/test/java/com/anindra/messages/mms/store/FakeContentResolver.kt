@@ -152,8 +152,15 @@ class FakeContentResolver(
         return when {
             segments.size == 2 && segments[1] == PART -> reparentParts(segments[0].toLong(), columns)
             segments.size == 2 && segments[1] == ADDR -> 0
-            segments.size == 2 -> {
-                val message = messages[segments[0].toLong()] ?: return 0
+            // content://mms/part/<id> - where a text part's column is written.
+            segments.size == 2 && segments[0] == PART -> {
+                val part = parts[segments[1].toLong()] ?: return 0
+                part.putAll(columns)
+                1
+            }
+            // content://mms/<box>/<id> - the uri persist hands back.
+            segments.size == 2 && segments[0] in BOXES -> {
+                val message = messages[segments[1].toLong()] ?: return 0
                 message.putAll(columns)
                 1
             }
