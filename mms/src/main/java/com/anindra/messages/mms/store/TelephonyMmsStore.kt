@@ -1,7 +1,6 @@
 package com.anindra.messages.mms.store
 
 import android.content.ContentResolver
-import android.content.ContentUris
 import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteException
@@ -107,6 +106,9 @@ class TelephonyMmsStore(
             messageType,
             headers.octetOr(HeaderField.MMS_VERSION, HeaderField.CURRENT_MMS_VERSION),
         ).also { pdu ->
+            // The pdu is rebuilt with a fresh header block, so the one the row was read
+            // into has to be handed over or only the type and version survive.
+            pdu.headers.copyFrom(headers)
             readAddresses(messageId, pdu.headers)
             if (MessageType.hasBody(messageType)) pdu.body = readBody(messageId)
         }
@@ -118,7 +120,7 @@ class TelephonyMmsStore(
         // FAILED and ALL have no collection of their own, so the row keeps the uri
         // it already had; only a real box gets repointed.
         if (!to.isAddressable) return from
-        return ContentUris.withAppendedId(to.contentUri(), messageId)
+        return uriWithId(to.contentUri(), messageId)
     }
 
     override fun updateMessageBox(uri: Uri, box: MmsBox): Boolean =
@@ -184,7 +186,7 @@ class TelephonyMmsStore(
                 while (cursor.moveToNext()) {
                     val rowId = cursor.getLong(cursor.getColumnIndexOrThrow(BaseColumns._ID))
                     result += PendingMessage(
-                        uri = ContentUris.withAppendedId(PENDING_URI, rowId),
+                        uri = uriWithId(PENDING_URI, rowId),
                         messageId = cursor.long(PendingMessages.MSG_ID),
                         transactionId = cursor.getString(
                             cursor.getColumnIndexOrThrow(COLUMN_TRANSACTION_ID)
@@ -381,7 +383,7 @@ class TelephonyMmsStore(
         val textIndex = cursor.getColumnIndexOrThrow(Part.TEXT)
         if (!cursor.isNull(textIndex)) return cursor.getString(textIndex)!!.fromProviderText()
         val partId = cursor.getLong(cursor.getColumnIndexOrThrow(BaseColumns._ID))
-        return openPartStream(ContentUris.withAppendedId(PART_CONTENT_URI, partId))
+        return openPartStream(uriWithId(PART_CONTENT_URI, partId))
             ?.use { it.readBytes() } ?: EMPTY_BYTES
     }
 
@@ -475,6 +477,8 @@ class TelephonyMmsStore(
         return Uri.withAppendedPath(MESSAGES_URI, segment)
     }
 
+    private fun uriWithId(base: Uri, id: Long): Uri = Uri.withAppendedPath(base, id.toString())
+
     private fun partsUri(messageId: Long): Uri =
         Uri.withAppendedPath(Uri.withAppendedPath(MESSAGES_URI, messageId.toString()), PART_SEGMENT)
 
@@ -535,29 +539,34 @@ class TelephonyMmsStore(
         private const val COLUMN_MESSAGE_BOX = "msg_box"
         private const val COLUMN_THREAD_ID = "thread_id"
         private const val COLUMN_M_TYPE = "m_type"
-        private const val COLUMN_MMS_VERSION = "mms_version"
-        private const val COLUMN_MESSAGE_SIZE = "m_size"
-        private const val COLUMN_TRANSACTION_ID = "transaction_id"
-        private const val COLUMN_CONTENT_TYPE = "ct_t"
-        private const val COLUMN_MESSAGE_CLASS = "m_class"
-        private const val COLUMN_CONTENT_LOCATION = "ctt_s"
-        private const val COLUMN_MESSAGE_ID = "m_id"
-        private const val COLUMN_RESPONSE_TEXT = "resp_text"
-        private const val COLUMN_CONTENT_CLASS = "c_cls"
-        private const val COLUMN_DELIVERY_REPORT = "d_report"
-        private const val COLUMN_PRIORITY = "pri"
-        private const val COLUMN_READ_REPORT = "r_report"
-        private const val COLUMN_READ_STATUS = "read_status"
-        private const val COLUMN_REPORT_ALLOWED = "r_allowed"
-        private const val COLUMN_RETRIEVE_STATUS = "ret_status"
-        private const val COLUMN_STATUS = "status"
-        private const val COLUMN_DATE = "date"
-        private const val COLUMN_DELIVERY_TIME = "d_tm"
-        private const val COLUMN_EXPIRY = "expiry"
-        private const val COLUMN_SUBJECT = "sub"
-        private const val COLUMN_SUBJECT_CHARSET = "sub_cs"
-        private const val COLUMN_RETRIEVE_TEXT = "rt_text"
-        private const val COLUMN_RETRIEVE_TEXT_CHARSET = "rt_tok"
+        // These names come from android.provider.Telephony.Mms.BaseMmsColumns / the
+        // AOSP MmsSmsDatabaseHelper CREATE_PDU_TABLE_STR. Using invented names here
+        // makes the provider reject the whole insert with SQLiteException, so each
+        // constant is the actual column name, not a readable alias.
+        internal const val COLUMN_MMS_VERSION = "v"
+        internal const val COLUMN_MESSAGE_SIZE = "m_size"
+        internal const val COLUMN_TRANSACTION_ID = "tr_id"
+        internal const val COLUMN_CONTENT_TYPE = "ct_t"
+        internal const val COLUMN_MESSAGE_CLASS = "m_cls"
+        internal const val COLUMN_CONTENT_LOCATION = "ct_l"
+        internal const val COLUMN_MESSAGE_ID = "m_id"
+        internal const val COLUMN_RESPONSE_STATUS = "resp_st"
+        internal const val COLUMN_RESPONSE_TEXT = "resp_txt"
+        internal const val COLUMN_CONTENT_CLASS = "ct_cls"
+        internal const val COLUMN_DELIVERY_REPORT = "d_rpt"
+        internal const val COLUMN_PRIORITY = "pri"
+        internal const val COLUMN_READ_REPORT = "rr"
+        internal const val COLUMN_READ_STATUS = "read_status"
+        internal const val COLUMN_REPORT_ALLOWED = "rpt_a"
+        internal const val COLUMN_RETRIEVE_STATUS = "retr_st"
+        internal const val COLUMN_STATUS = "st"
+        internal const val COLUMN_DATE = "date"
+        internal const val COLUMN_DELIVERY_TIME = "d_tm"
+        internal const val COLUMN_EXPIRY = "exp"
+        internal const val COLUMN_SUBJECT = "sub"
+        internal const val COLUMN_SUBJECT_CHARSET = "sub_cs"
+        internal const val COLUMN_RETRIEVE_TEXT = "retr_txt"
+        internal const val COLUMN_RETRIEVE_TEXT_CHARSET = "retr_txt_cs"
         private const val COLUMN_READ = "read"
         private const val COLUMN_SEEN = "seen"
         private const val COLUMN_SUB_ID = "sub_id"
@@ -571,6 +580,7 @@ class TelephonyMmsStore(
             HeaderColumn(HeaderField.CONTENT_TYPE, COLUMN_CONTENT_TYPE),
             HeaderColumn(HeaderField.MESSAGE_CLASS, COLUMN_MESSAGE_CLASS),
             HeaderColumn(HeaderField.MESSAGE_ID, COLUMN_MESSAGE_ID),
+            HeaderColumn(HeaderField.RESPONSE_STATUS, COLUMN_RESPONSE_STATUS),
             HeaderColumn(HeaderField.RESPONSE_TEXT, COLUMN_RESPONSE_TEXT),
             HeaderColumn(HeaderField.TRANSACTION_ID, COLUMN_TRANSACTION_ID),
             HeaderColumn(HeaderField.CONTENT_CLASS, COLUMN_CONTENT_CLASS),

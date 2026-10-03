@@ -9,6 +9,7 @@ import com.anindra.messages.mms.pdu.Pdu
 import com.anindra.messages.mms.pdu.PduBody
 import com.anindra.messages.mms.pdu.PduPart
 import android.net.Uri
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -61,7 +62,7 @@ class TelephonyMmsStoreTest {
         val message = resolver.message(1)!!
         assertEquals(MmsBox.OUTBOX.value, message["msg_box"])
         assertEquals(MessageType.SEND_REQ, message["m_type"])
-        assertEquals("T-transaction", message["transaction_id"])
+        assertEquals("T-transaction", message[TelephonyMmsStore.COLUMN_TRANSACTION_ID])
         assertEquals(2, message["sub_id"])
         assertEquals(2, resolver.partsOf(1).size)
         assertEquals(
@@ -136,9 +137,9 @@ class TelephonyMmsStoreTest {
         assertEquals("<smil/>", smil["text"])
         assertEquals("in a column", text["text"])
         assertNull("an attachment was buffered into the text column", image["text"])
-        assertEquals(listOf(7.toByte(), 8.toByte(), 9.toByte()).toByteArray(), resolver.blobOf(image["_id"] as Long))
+        assertArrayEquals(byteArrayOf(7, 8, 9), resolver.blobOf(image["_id"] as Long))
         assertEquals(
-            "content://mms/part/${image["_id"]}",
+            "openOutputStream content://mms/part/${image["_id"]}",
             resolver.operations.single { it.startsWith("openOutputStream") },
         )
     }
@@ -187,7 +188,7 @@ class TelephonyMmsStoreTest {
         assertEquals(PduPart.APP_SMIL, loadedParts[0].contentType)
         assertEquals("<smil/>", String(loadedParts[0].data!!))
         assertEquals("round trip", String(loadedParts[1].data!!))
-        assertEquals(listOf(1.toByte(), 2.toByte(), 3.toByte()).toByteArray(), loadedParts[2].data)
+        assertArrayEquals(byteArrayOf(1, 2, 3), loadedParts[2].data)
     }
 
     @Test
