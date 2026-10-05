@@ -41,9 +41,6 @@
     <string name="chat_schedule_failed">संदेश शीड्यूल नहीं किया जा सका</string>
     <string name="chat_search_contacts">संपर्क खोजें</string>
     <string name="chat_add_people">लोगों को जोड़ें</string>
-    <string name="chat_reaction_sent">"%2$s" पर %1$s से प्रतिक्रिया दी</string>
-    <string name="chat_reaction_removed">"%2$s" से %1$s हटाया</string>
-    <string name="chat_reaction_item">आपका संदेश</string>
     <string name="chat_reaction_fallback_failed">दूसरे व्यक्ति को प्रतिक्रिया नहीं भेज सके</string>
     <string name="chat_locked">लॉक</string>
 

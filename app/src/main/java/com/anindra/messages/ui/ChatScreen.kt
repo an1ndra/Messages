@@ -735,13 +735,17 @@ fun ChatScreen(
     fun applyReaction(msg: Message, emoji: String) {
         val wasPresent = msg.reactions.containsKey(emoji)
         vm.setReactions(msg.id, MessageReactions.toggle(msg.reactions, emoji))
+        // The fallback is our app-to-app protocol; with no body to quote there is
+        // nothing for the other side to attach the reaction to, so it stays local.
         val snippet = MessageReactions.quote(msg.body)
-            .ifBlank { context.getString(R.string.chat_reaction_item) }
-        val body = context.getString(
-            if (wasPresent) R.string.chat_reaction_removed else R.string.chat_reaction_sent,
-            emoji, snippet
-        )
-        vm.sendReactionFallback(conversationId, body)
+        if (snippet.isNotBlank()) {
+            val body = if (wasPresent) {
+                com.anindra.messages.data.ReactionFallback.remove(emoji, snippet)
+            } else {
+                com.anindra.messages.data.ReactionFallback.add(emoji, snippet)
+            }
+            vm.sendReactionFallback(conversationId, body)
+        }
         clearSelection()
     }
 
