@@ -41,9 +41,6 @@
     <string name="chat_schedule_failed">메시지를 예약할 수 없습니다</string>
     <string name="chat_search_contacts">연락처 검색</string>
     <string name="chat_add_people">사람 추가</string>
-    <string name="chat_reaction_sent">"%2$s"에 %1$s(으)로 반응했습니다</string>
-    <string name="chat_reaction_removed">"%2$s"에서 %1$s을(를) 제거했습니다</string>
-    <string name="chat_reaction_item">내 메시지</string>
     <string name="chat_reaction_fallback_failed">상대방에게 반응을 보낼 수 없습니다</string>
     <string name="chat_locked">잠겨 있음</string>
 

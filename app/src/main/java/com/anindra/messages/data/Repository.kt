@@ -1436,6 +1436,43 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
+    /**
+     * Applies a reaction that arrived as text from another of our devices
+     * (#188). Finds the newest message in the conversation whose body matches
+     * the quoted snippet and toggles the emoji on it. Returns false when nothing
+     * matches, so the caller stores the text as an ordinary message instead.
+     */
+    suspend fun applyIncomingReaction(
+        address: String,
+        emoji: String,
+        snippet: String,
+        added: Boolean
+    ): Boolean = runOnIoAsync {
+        val convoId = conversationIdForAddressBlocking(address) ?: return@runOnIoAsync false
+        val like = snippet.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        var targetId = -1L
+        var current = ""
+        db.readableDatabase.rawQuery(
+            "SELECT id,reactions FROM messages WHERE conversation_id=? AND deleted_at=0 " +
+                "AND body LIKE ? ESCAPE '\\' ORDER BY timestamp DESC, id DESC LIMIT 1",
+            arrayOf(convoId.toString(), like)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                targetId = c.getLong(0)
+                current = c.getString(1)
+            }
+        }
+        if (targetId < 0) return@runOnIoAsync false
+        val map = parseReactions(current).toMutableMap()
+        if (added) map[emoji] = (map[emoji] ?: 0) + 1 else map.remove(emoji)
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET reactions=? WHERE id=?",
+            arrayOf<Any?>(serializeReactions(map), targetId)
+        )
+        notifyChanged()
+        true
+    }
+
     fun markMessageStatusSuspend(messageId: Long, status: String) {
         if (status == "delivered") {
             db.writableDatabase.execSQL(

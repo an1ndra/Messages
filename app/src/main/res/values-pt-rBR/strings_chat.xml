@@ -41,9 +41,6 @@
     <string name="chat_schedule_failed">Não foi possível agendar a mensagem</string>
     <string name="chat_search_contacts">Pesquisar contatos</string>
     <string name="chat_add_people">Adicionar pessoas</string>
-    <string name="chat_reaction_sent">Reagiu com %1$s a "%2$s"</string>
-    <string name="chat_reaction_removed">Removeu %1$s de "%2$s"</string>
-    <string name="chat_reaction_item">sua mensagem</string>
     <string name="chat_reaction_fallback_failed">Não foi possível enviar a reação para a outra pessoa</string>
     <string name="chat_locked">Bloqueado</string>
 
