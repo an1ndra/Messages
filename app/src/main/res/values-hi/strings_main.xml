@@ -51,6 +51,7 @@
     <string name="notification_channel_desc">नए संदेश सूचनाएँ</string>
     <string name="notif_title_private">नया संदेश</string>
     <string name="notif_body_private">आपके पास एक नया संदेश है</string>
+    <string name="notif_action_delete">हटाएं</string>
     <string name="notif_you">आप</string>
     <string name="notif_send_fail_private">संदेश भेजा नहीं जा सका। पुनः प्रयास करने के लिए टैप करें।</string>
     <string name="notif_send_fail">%s को संदेश भेजा नहीं जा सका। पुनः प्रयास करने के लिए टैप करें।</string>

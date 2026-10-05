@@ -61,6 +61,9 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
     var sound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
     var soundDialog by remember { mutableStateOf(false) }
+    var actionReply by remember(revision) { mutableStateOf(vm.settings.notifActionReply) }
+    var actionMarkRead by remember(revision) { mutableStateOf(vm.settings.notifActionMarkRead) }
+    var actionDelete by remember(revision) { mutableStateOf(vm.settings.notifActionDelete) }
 
     val options = listOf(
         SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
@@ -98,6 +101,30 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                     ?: context.getString(R.string.settings_sound_default),
                 enabled = receiveSound,
                 onClick = { soundDialog = true }
+            )
+        }
+
+        SettingsGroup {
+            SettingsRow(
+                position = RowPosition.FIRST,
+                title = stringResource(R.string.settings_notif_action_reply_title),
+                subtitle = stringResource(R.string.settings_notif_action_reply_subtitle),
+                checked = actionReply,
+                onChecked = { actionReply = it; vm.settings.notifActionReply = it }
+            )
+            SettingsRow(
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_notif_action_mark_read_title),
+                subtitle = stringResource(R.string.settings_notif_action_mark_read_subtitle),
+                checked = actionMarkRead,
+                onChecked = { actionMarkRead = it; vm.settings.notifActionMarkRead = it }
+            )
+            SettingsRow(
+                position = RowPosition.LAST,
+                title = stringResource(R.string.settings_notif_action_delete_title),
+                subtitle = stringResource(R.string.settings_notif_action_delete_subtitle),
+                checked = actionDelete,
+                onChecked = { actionDelete = it; vm.settings.notifActionDelete = it }
             )
         }
 

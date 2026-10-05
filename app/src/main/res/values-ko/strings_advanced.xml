@@ -46,4 +46,23 @@
     <string name="mms_check_country">%1$s · %2$s</string>
     <string name="mms_check_footer">각 SIM은 해당 통신사가 공개한 MMS 설정과 대조됩니다. 이는 통신사의 선언이며 검증된 MMS 서비스가 아닙니다. 확인하려면 시스템 APN 설정이 필요하며, 권한 있는 앱만 읽을 수 있습니다.</string>
     <string name="mms_check_no_sims">활성 SIM을 찾을 수 없음</string>
+    <string name="transfer_log_title">가져오기·내보내기 로그</string>
+    <string name="transfer_log_subtitle">최근 가져오기 및 내보내기와 건너뛴 항목</string>
+    <string name="transfer_log_empty">아직 가져오기나 내보내기가 없습니다.</string>
+    <string name="transfer_log_clear">로그 지우기</string>
+    <string name="transfer_log_export">내보내기</string>
+    <string name="transfer_log_import">가져오기</string>
+    <string name="transfer_log_counts">%1$d개 추가, %2$d개 건너뜀</string>
+    <string name="transfer_log_conflict">%1$d개 %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">성공</string>
+    <string name="transfer_log_status_failed">실패</string>
+    <string name="transfer_log_retried">%1$d× 재시도</string>
+    <string name="transfer_conflict_already_present">이미 있음</string>
+    <string name="transfer_conflict_provider_id_taken">제공자 ID가 이미 사용 중</string>
+    <string name="transfer_conflict_provider_id_dropped">다른 기기의 제공자 ID</string>
+    <string name="transfer_conflict_conversation_merged">기존 대화와 통합됨</string>
+    <string name="transfer_conflict_conversation_unresolved">대화를 찾을 수 없음</string>
+    <string name="transfer_conflict_record_unreadable">레코드를 읽을 수 없음</string>
+    <string name="transfer_conflict_part_too_large">첨부 파일이 너무 큼</string>
 </resources>

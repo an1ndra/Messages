@@ -126,8 +126,9 @@ the production change.
 **Every new string needs all 13 translated locales** (`values-<lang>/`, not
 `values-night`/`values-v31`, which are config qualifiers).
 `TranslationParityTest` requires each of them to define every key in `values/`.
-"AMOLED" stays untranslated as a panel-technology proper noun, like `SMS` and
-`PIN` do elsewhere.
+"Amoled" stays untranslated as a panel-technology proper noun, like `SMS` and
+`PIN` do elsewhere. Its casing is mixed-case deliberately, so any script
+grepping the picker row for `text="AMOLED"` has to match case-insensitively.
 
 **Adding a new `when` key in `MainActivity`'s `AnimatedContent` can look like a
 navigation route.** `NavTransitionDepthTest` scans for `"key" ->` branches and

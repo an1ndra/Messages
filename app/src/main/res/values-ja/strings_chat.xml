@@ -41,6 +41,10 @@
     <string name="chat_schedule_failed">メッセージを予約できませんでした</string>
     <string name="chat_search_contacts">連絡先を検索</string>
     <string name="chat_add_people">人を追加</string>
+    <string name="chat_reaction_sent">「%2$s」に%1$sでリアクションしました</string>
+    <string name="chat_reaction_removed">「%2$s」から%1$sを削除しました</string>
+    <string name="chat_reaction_item">あなたのメッセージ</string>
+    <string name="chat_reaction_fallback_failed">相手にリアクションを送信できませんでした</string>
     <string name="chat_locked">ロック済み</string>
 
     <!-- Copy & links -->

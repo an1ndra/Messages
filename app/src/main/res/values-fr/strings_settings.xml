@@ -25,6 +25,12 @@
     <string name="settings_send_sound_subtitle">Jouer un son lors de l\'envoi d\'un message</string>
     <string name="settings_receive_sound_title">Son de réception</string>
     <string name="settings_receive_sound_subtitle">Jouer un son lors de l\'arrivée d\'un message</string>
+    <string name="settings_notif_action_reply_title">Action Répondre</string>
+    <string name="settings_notif_action_reply_subtitle">Afficher un bouton Répondre sur la notification</string>
+    <string name="settings_notif_action_mark_read_title">Action Marquer comme lu</string>
+    <string name="settings_notif_action_mark_read_subtitle">Afficher un bouton Marquer comme lu sur la notification</string>
+    <string name="settings_notif_action_delete_title">Action Supprimer</string>
+    <string name="settings_notif_action_delete_subtitle">Afficher un bouton Supprimer sur la notification</string>
     <string name="settings_delivery_reports_title">Rapports de livraison</string>
     <string name="settings_delivery_reports_subtitle">Savoir quand un message SMS est livré</string>
     <string name="settings_mark_read_title">Tout marquer comme lu</string>
@@ -106,6 +112,14 @@
     <string name="settings_backup_save_to">Enregistrer dans</string>
     <string name="settings_backup_change">Modifier</string>
     <string name="settings_backup_saved_location">Sauvegarde enregistrée avec le code PIN dans %s</string>
+    <string name="settings_periodic_backup_title">Sauvegarde périodique</string>
+    <string name="settings_periodic_backup_interval_title">Fréquence des sauvegardes</string>
+    <string name="settings_periodic_backup_daily">Quotidienne</string>
+    <string name="settings_periodic_backup_weekly">Hebdomadaire</string>
+    <string name="settings_backup_unencrypted_title">Sauvegarder sans code PIN ?</string>
+    <string name="settings_backup_unencrypted_warning">Cette sauvegarde ne sera pas chiffrée. Toute personne obtenant le fichier pourra lire tous vos messages. Utilisez un code PIN si le fichier peut quitter cet appareil ou être partagé.</string>
+    <string name="settings_backup_unencrypted_confirm">Sauvegarder quand même</string>
+    <string name="settings_backup_saved_location_unencrypted">Sauvegarde non chiffrée enregistrée dans %s</string>
     <string name="settings_import_title">Importer des messages</string>
     <string name="settings_import_subtitle">Restaurer une sauvegarde</string>
     <string name="settings_import_source_title">Choisissez la sauvegarde à importer</string>
@@ -125,7 +139,7 @@
     <string name="settings_sound_bubble">Bulle</string>
     <string name="settings_theme_light">Clair</string>
     <string name="settings_theme_dark">Sombre</string>
-    <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">Par défaut système</string>
     <string name="convo_your_prefix">"Vous : "</string>
     <string name="settings_restored_msg">%s messages restaurés. Les conversations existantes conservées.</string>

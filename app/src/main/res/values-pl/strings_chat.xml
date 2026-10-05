@@ -41,6 +41,10 @@
     <string name="chat_schedule_failed">Nie udało się zaplanować wiadomości</string>
     <string name="chat_search_contacts">Szukaj w kontaktach</string>
     <string name="chat_add_people">Dodaj osoby</string>
+    <string name="chat_reaction_sent">Zareagowano %1$s na "%2$s"</string>
+    <string name="chat_reaction_removed">Usunięto %1$s z "%2$s"</string>
+    <string name="chat_reaction_item">Twoja wiadomość</string>
+    <string name="chat_reaction_fallback_failed">Nie udało się wysłać reakcji do drugiej osoby</string>
     <string name="chat_locked">Zablokowane</string>
 
     <!-- Copy & links -->

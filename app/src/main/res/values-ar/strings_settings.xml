@@ -25,6 +25,12 @@
     <string name="settings_send_sound_subtitle">تشغيل الصوت عند إرسال رسالة</string>
     <string name="settings_receive_sound_title">صوت الاستلام</string>
     <string name="settings_receive_sound_subtitle">تشغيل صوت عند وصول رسالة</string>
+    <string name="settings_notif_action_reply_title">إجراء الرد</string>
+    <string name="settings_notif_action_reply_subtitle">إظهار زر الرد في الإشعار</string>
+    <string name="settings_notif_action_mark_read_title">إجراء وضع علامة كمقروء</string>
+    <string name="settings_notif_action_mark_read_subtitle">إظهار زر وضع علامة كمقروء في الإشعار</string>
+    <string name="settings_notif_action_delete_title">إجراء الحذف</string>
+    <string name="settings_notif_action_delete_subtitle">إظهار زر الحذف في الإشعار</string>
     <string name="settings_delivery_reports_title">تقارير التسليم</string>
     <string name="settings_delivery_reports_subtitle">معرفة متى يتم تسليم رسالة SMS</string>
     <string name="settings_mark_read_title">وضع علامة على الكل كمقروء</string>
@@ -106,6 +112,14 @@
     <string name="settings_backup_save_to">الحفظ في</string>
     <string name="settings_backup_change">تغيير</string>
     <string name="settings_backup_saved_location">تم حفظ النسخة الاحتياطية برمز PIN في %s</string>
+    <string name="settings_periodic_backup_title">نسخ احتياطي دوري</string>
+    <string name="settings_periodic_backup_interval_title">تكرار النسخ الاحتياطي</string>
+    <string name="settings_periodic_backup_daily">يوميًا</string>
+    <string name="settings_periodic_backup_weekly">أسبوعيًا</string>
+    <string name="settings_backup_unencrypted_title">هل تريد النسخ الاحتياطي بدون رمز PIN؟</string>
+    <string name="settings_backup_unencrypted_warning">لن يتم تشفير هذا النسخ الاحتياطي. يمكن لأي شخص يحصل على الملف قراءة جميع رسائلك. استخدم رمز PIN إذا كان الملف قد يغادر هذا الجهاز أو تتم مشاركته.</string>
+    <string name="settings_backup_unencrypted_confirm">النسخ الاحتياطي على أي حال</string>
+    <string name="settings_backup_saved_location_unencrypted">تم حفظ نسخة احتياطية غير مشفّرة في %s</string>
     <string name="settings_import_title">استيراد الرسائل</string>
     <string name="settings_import_subtitle">استعادة نسخة احتياطية</string>
     <string name="settings_import_source_title">اختر النسخة الاحتياطية المراد استيرادها</string>
@@ -125,7 +139,7 @@
     <string name="settings_sound_bubble">فقاعة</string>
     <string name="settings_theme_light">فاتح</string>
     <string name="settings_theme_dark">داكن</string>
-    <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">تفضيلات النظام</string>
     <string name="convo_your_prefix">"أنت: "</string>
     <string name="settings_restored_msg">تم استعادة %s رسائل. تم الحفاظ على المحادثات الحالية.</string>

@@ -25,6 +25,12 @@
     <string name="settings_send_sound_subtitle">संदेश भेजने पर ध्वनि बजाएं</string>
     <string name="settings_receive_sound_title">प्राप्त करने की ध्वनि</string>
     <string name="settings_receive_sound_subtitle">संदेश आने पर ध्वनि बजाएं</string>
+    <string name="settings_notif_action_reply_title">उत्तर क्रिया</string>
+    <string name="settings_notif_action_reply_subtitle">सूचना पर उत्तर बटन दिखाएँ</string>
+    <string name="settings_notif_action_mark_read_title">पढ़ा हुआ के रूप में चिह्नित करें क्रिया</string>
+    <string name="settings_notif_action_mark_read_subtitle">सूचना पर पढ़ा हुआ के रूप में चिह्नित करें बटन दिखाएँ</string>
+    <string name="settings_notif_action_delete_title">हटाएँ क्रिया</string>
+    <string name="settings_notif_action_delete_subtitle">सूचना पर हटाएँ बटन दिखाएँ</string>
     <string name="settings_delivery_reports_title">डिलीवरी रिपोर्ट</string>
     <string name="settings_delivery_reports_subtitle">जानें कि SMS संदेश कब वितरित हुआ</string>
     <string name="settings_mark_read_title">सभी को पढ़े के रूप में चिह्नित करें</string>
@@ -106,6 +112,14 @@
     <string name="settings_backup_save_to">सहेजें</string>
     <string name="settings_backup_change">बदलें</string>
     <string name="settings_backup_saved_location">बैकअप PIN के साथ %s में सहेजा गया</string>
+    <string name="settings_periodic_backup_title">आवधिक बैकअप</string>
+    <string name="settings_periodic_backup_interval_title">बैकअप आवृत्ति</string>
+    <string name="settings_periodic_backup_daily">प्रतिदिन</string>
+    <string name="settings_periodic_backup_weekly">साप्ताहिक</string>
+    <string name="settings_backup_unencrypted_title">PIN के बिना बैकअप करें?</string>
+    <string name="settings_backup_unencrypted_warning">यह बैकअप एन्क्रिप्ट नहीं किया जाएगा। फ़ाइल मिलने वाला कोई भी व्यक्ति आपके सभी संदेश पढ़ सकता है। यदि फ़ाइल इस डिवाइस से बाहर जा सकती है या साझा की जा सकती है तो PIN का उपयोग करें।</string>
+    <string name="settings_backup_unencrypted_confirm">फिर भी बैकअप करें</string>
+    <string name="settings_backup_saved_location_unencrypted">अनएन्क्रिप्टेड बैकअप %s में सहेजा गया</string>
     <string name="settings_import_title">संदेश आयात करें</string>
     <string name="settings_import_subtitle">बैकअप पुनर्स्थापित करें</string>
     <string name="settings_import_source_title">आयात करने के लिए बैकअप चुनें</string>
@@ -125,7 +139,7 @@
     <string name="settings_sound_bubble">बबल</string>
     <string name="settings_theme_light">लाइट</string>
     <string name="settings_theme_dark">डार्क</string>
-    <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">सिस्टम डिफ़ॉल्ट</string>
     <string name="convo_your_prefix">"आप: "</string>
     <string name="settings_restored_msg">%s संदेश बहाल हुए। मौजूदा संवाद रखे गए।</string>

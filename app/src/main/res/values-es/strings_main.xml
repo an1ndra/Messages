@@ -51,6 +51,7 @@
     <string name="notification_channel_desc">Notificaciones de mensajes nuevos</string>
     <string name="notif_title_private">Mensaje nuevo</string>
     <string name="notif_body_private">Tienes un mensaje nuevo</string>
+    <string name="notif_action_delete">Eliminar</string>
     <string name="notif_you">Tú</string>
     <string name="notif_send_fail_private">No se pudo enviar el mensaje. Toca para reintentar.</string>
     <string name="notif_send_fail">No se pudo enviar el mensaje a %s. Toca para reintentar.</string>

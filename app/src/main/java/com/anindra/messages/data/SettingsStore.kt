@@ -52,6 +52,9 @@ class SettingsStore(context: Context) {
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
         const val KEY_NOTIFICATION_SOUND = "notification_sound"
+        const val KEY_NOTIF_ACTION_REPLY = "notif_action_reply"
+        const val KEY_NOTIF_ACTION_MARK_READ = "notif_action_mark_read"
+        const val KEY_NOTIF_ACTION_DELETE = "notif_action_delete"
         const val NOTIFY_SOUND_DEFAULT = "default"
         const val NOTIFY_SOUND_APP = "app_sound"
         const val NOTIFY_SOUND_DRAGON = "dragon_studio"
@@ -75,6 +78,11 @@ class SettingsStore(context: Context) {
         const val FONT_POPPINS = "poppins"
         const val KEY_BLOCKED_KEYWORDS = "blocked_keywords"
         const val KEY_BACKUP_TREE_URI = "backup_tree_uri"
+        const val KEY_PERIODIC_BACKUP = "periodic_backup_enabled"
+        const val KEY_PERIODIC_BACKUP_INTERVAL = "periodic_backup_interval"
+        const val KEY_LAST_BACKUP_AT = "last_backup_at"
+        const val KEY_LAST_BACKUP_OK = "last_backup_ok"
+        const val KEY_LAST_BACKUP_DETAIL = "last_backup_detail"
         const val KEY_A11Y_ENABLED = "a11y_enabled"
         const val KEY_A11Y_FONT_SCALE = "a11y_font_scale"
         const val KEY_A11Y_BOLD = "a11y_bold"
@@ -89,7 +97,7 @@ class SettingsStore(context: Context) {
         const val DEFAULTS_DELIVERY = false
         const val DEFAULTS_SIM_SUBSCRIPTION_ID = -1
         const val DEFAULTS_EMOJI_BUTTON = false
-        const val DEFAULTS_UNREAD_AT_TOP = true
+        const val DEFAULTS_UNREAD_AT_TOP = false
     }
 
     var themeMode: String
@@ -258,6 +266,19 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_NOTIFICATION_SOUND, NOTIFY_SOUND_DEFAULT) ?: NOTIFY_SOUND_DEFAULT
         set(v) { prefs.edit().putString(KEY_NOTIFICATION_SOUND, v).apply(); _revision.value++ }
 
+    /** Which actions an incoming-message notification offers. All on by default. */
+    var notifActionReply: Boolean
+        get() = prefs.getBoolean(KEY_NOTIF_ACTION_REPLY, true)
+        set(v) { prefs.edit().putBoolean(KEY_NOTIF_ACTION_REPLY, v).apply(); _revision.value++ }
+
+    var notifActionMarkRead: Boolean
+        get() = prefs.getBoolean(KEY_NOTIF_ACTION_MARK_READ, true)
+        set(v) { prefs.edit().putBoolean(KEY_NOTIF_ACTION_MARK_READ, v).apply(); _revision.value++ }
+
+    var notifActionDelete: Boolean
+        get() = prefs.getBoolean(KEY_NOTIF_ACTION_DELETE, true)
+        set(v) { prefs.edit().putBoolean(KEY_NOTIF_ACTION_DELETE, v).apply(); _revision.value++ }
+
     var showSimIndicator: Boolean
         get() = prefs.getBoolean(KEY_SHOW_SIM_INDICATOR, true)
         set(v) { prefs.edit().putBoolean(KEY_SHOW_SIM_INDICATOR, v).apply(); _revision.value++ }
@@ -351,6 +372,32 @@ class SettingsStore(context: Context) {
     var backupTreeUri: String
         get() = prefs.getString(KEY_BACKUP_TREE_URI, "") ?: ""
         set(v) { prefs.edit().putString(KEY_BACKUP_TREE_URI, v).apply(); _revision.value++ }
+
+    /** Automatic backup on a schedule (issue #290). Off until the user opts in. */
+    var periodicBackupEnabled: Boolean
+        get() = prefs.getBoolean(KEY_PERIODIC_BACKUP, false)
+        set(v) { prefs.edit().putBoolean(KEY_PERIODIC_BACKUP, v).apply(); _revision.value++ }
+
+    /** [PeriodicBackupScheduler.INTERVAL_DAILY] or `weekly`. */
+    var periodicBackupInterval: String
+        get() = prefs.getString(KEY_PERIODIC_BACKUP_INTERVAL, PeriodicBackupScheduler.DEFAULT_INTERVAL)
+            ?: PeriodicBackupScheduler.DEFAULT_INTERVAL
+        set(v) { prefs.edit().putString(KEY_PERIODIC_BACKUP_INTERVAL, v).apply(); _revision.value++ }
+
+    /** Last completed automatic backup attempt, in epoch millis; 0 if none. */
+    var lastBackupAt: Long
+        get() = prefs.getLong(KEY_LAST_BACKUP_AT, 0L)
+        set(v) { prefs.edit().putLong(KEY_LAST_BACKUP_AT, v).apply(); _revision.value++ }
+
+    /** Whether the last automatic backup attempt succeeded. */
+    var lastBackupOk: Boolean
+        get() = prefs.getBoolean(KEY_LAST_BACKUP_OK, true)
+        set(v) { prefs.edit().putBoolean(KEY_LAST_BACKUP_OK, v).apply(); _revision.value++ }
+
+    /** Outcome detail of the last automatic backup, for diagnostics. */
+    var lastBackupDetail: String
+        get() = prefs.getString(KEY_LAST_BACKUP_DETAIL, "") ?: ""
+        set(v) { prefs.edit().putString(KEY_LAST_BACKUP_DETAIL, v).apply(); _revision.value++ }
 
     /** True when [body] contains any blocked keyword (case-insensitive). */
     fun isKeywordBlocked(body: String): Boolean = KeywordFilter.isBlocked(body, blockedKeywords)

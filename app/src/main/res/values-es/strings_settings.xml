@@ -25,6 +25,12 @@
     <string name="settings_send_sound_subtitle">Reproducir sonido al enviar un mensaje</string>
     <string name="settings_receive_sound_title">Sonido de recepción</string>
     <string name="settings_receive_sound_subtitle">Reproducir un sonido al llegar un mensaje</string>
+    <string name="settings_notif_action_reply_title">Acción de responder</string>
+    <string name="settings_notif_action_reply_subtitle">Mostrar un botón de responder en la notificación</string>
+    <string name="settings_notif_action_mark_read_title">Acción de marcar como leído</string>
+    <string name="settings_notif_action_mark_read_subtitle">Mostrar un botón de marcar como leído en la notificación</string>
+    <string name="settings_notif_action_delete_title">Acción de eliminar</string>
+    <string name="settings_notif_action_delete_subtitle">Mostrar un botón de eliminar en la notificación</string>
     <string name="settings_delivery_reports_title">Informes de entrega</string>
     <string name="settings_delivery_reports_subtitle">Conoce cuándo se entrega un mensaje SMS</string>
     <string name="settings_mark_read_title">Marcar todas como leídas</string>
@@ -106,6 +112,14 @@
     <string name="settings_backup_save_to">Guardar en</string>
     <string name="settings_backup_change">Cambiar</string>
     <string name="settings_backup_saved_location">Copia de seguridad guardada con PIN en %s</string>
+    <string name="settings_periodic_backup_title">Copia periódica</string>
+    <string name="settings_periodic_backup_interval_title">Frecuencia de copia</string>
+    <string name="settings_periodic_backup_daily">Diaria</string>
+    <string name="settings_periodic_backup_weekly">Semanal</string>
+    <string name="settings_backup_unencrypted_title">¿Copia de seguridad sin PIN?</string>
+    <string name="settings_backup_unencrypted_warning">Esta copia no estará cifrada. Cualquiera que obtenga el archivo podrá leer todos tus mensajes. Usa un PIN si el archivo puede salir del dispositivo o compartirse.</string>
+    <string name="settings_backup_unencrypted_confirm">Hacer copia igualmente</string>
+    <string name="settings_backup_saved_location_unencrypted">Copia sin cifrar guardada en %s</string>
     <string name="settings_import_title">Importar mensajes</string>
     <string name="settings_import_subtitle">Restaurar copia de seguridad</string>
     <string name="settings_import_source_title">Elige la copia de seguridad que importar</string>
@@ -125,7 +139,7 @@
     <string name="settings_sound_bubble">Burbuja</string>
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Oscuro</string>
-    <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">Predeterminado del sistema</string>
     <string name="convo_your_prefix">"Tú: "</string>
     <string name="settings_restored_msg">Restaurados %s mensajes. Conversaciones existentes conservadas.</string>

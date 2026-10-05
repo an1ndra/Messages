@@ -59,6 +59,7 @@ fun AdvancedSettingsScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
     onOpenAccessibility: () -> Unit = {},
+    onOpenTransferLog: () -> Unit = {},
     searchRow: Int? = null,
     onSearchRowHandled: () -> Unit = {}
 ) {
@@ -80,6 +81,9 @@ fun AdvancedSettingsScreen(
     var emojiButton by remember(revision) { mutableStateOf(vm.settings.emojiButtonEnabled) }
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
+    var actionReply by remember(revision) { mutableStateOf(vm.settings.notifActionReply) }
+    var actionMarkRead by remember(revision) { mutableStateOf(vm.settings.notifActionMarkRead) }
+    var actionDelete by remember(revision) { mutableStateOf(vm.settings.notifActionDelete) }
     var retentionDaysDialog by remember { mutableStateOf(false) }
     var daysTarget by remember { mutableStateOf("") }
     var retentionOn by remember(revision) { mutableStateOf(vm.settings.retentionEnabled) }
@@ -250,6 +254,24 @@ fun AdvancedSettingsScreen(
                         NotificationHelper.ensureChannel(context)
                     }
                 )
+                SettingsRow(
+                    title = stringResource(R.string.settings_notif_action_reply_title),
+                    subtitle = stringResource(R.string.settings_notif_action_reply_subtitle),
+                    checked = actionReply,
+                    onChecked = { actionReply = it; vm.settings.notifActionReply = it }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_notif_action_mark_read_title),
+                    subtitle = stringResource(R.string.settings_notif_action_mark_read_subtitle),
+                    checked = actionMarkRead,
+                    onChecked = { actionMarkRead = it; vm.settings.notifActionMarkRead = it }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_notif_action_delete_title),
+                    subtitle = stringResource(R.string.settings_notif_action_delete_subtitle),
+                    checked = actionDelete,
+                    onChecked = { actionDelete = it; vm.settings.notifActionDelete = it }
+                )
             }
 
             Spacer(Modifier.height(8.dp))
@@ -352,6 +374,14 @@ fun AdvancedSettingsScreen(
                     subtitle = stringResource(R.string.settings_new_ui_subtitle),
                     checked = vm.settings.useNewUi,
                     onChecked = { vm.settings.useNewUi = it }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.transfer_log_title),
+                    subtitle = com.anindra.messages.ui.transferLogSubtitle(vm),
+                    onClick = {
+                        vm.refreshTransferLog()
+                        onOpenTransferLog()
+                    }
                 )
                 SettingsRow(
                     title = stringResource(R.string.diagnostics_title),

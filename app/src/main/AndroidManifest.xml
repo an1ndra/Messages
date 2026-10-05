@@ -111,6 +111,14 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".sms.DeleteMessageReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.anindra.messages.NOTIFICATION_DELETE" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".sms.NoConfirmationSmsSendService"
             android:exported="true"

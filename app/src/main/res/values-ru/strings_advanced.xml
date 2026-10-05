@@ -46,4 +46,23 @@
     <string name="mms_check_country">%1$s · %2$s</string>
     <string name="mms_check_footer">Каждая SIM сравнивается с настройкой MMS, объявленной её оператором. Это сообщает заявление оператора, а не проверенную услугу MMS: для проверки нужны системные настройки APN, доступные только приложениям с привилегиями.</string>
     <string name="mms_check_no_sims">Активные SIM-карты не найдены</string>
+    <string name="transfer_log_title">Журнал импорта и экспорта</string>
+    <string name="transfer_log_subtitle">Последние импорты и экспорты и пропущенные элементы</string>
+    <string name="transfer_log_empty">Импортов и экспортов пока нет.</string>
+    <string name="transfer_log_clear">Очистить журнал</string>
+    <string name="transfer_log_export">Экспорт</string>
+    <string name="transfer_log_import">Импорт</string>
+    <string name="transfer_log_counts">Добавлено %1$d, пропущено %2$d</string>
+    <string name="transfer_log_conflict">%1$d %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">Успешно</string>
+    <string name="transfer_log_status_failed">Ошибка</string>
+    <string name="transfer_log_retried">Повторено %1$d×</string>
+    <string name="transfer_conflict_already_present">уже есть</string>
+    <string name="transfer_conflict_provider_id_taken">ID оператора уже занят</string>
+    <string name="transfer_conflict_provider_id_dropped">ID оператора с другого устройства</string>
+    <string name="transfer_conflict_conversation_merged">переписка объединена с существующей</string>
+    <string name="transfer_conflict_conversation_unresolved">не удалось сопоставить переписку</string>
+    <string name="transfer_conflict_record_unreadable">не удалось прочитать запись</string>
+    <string name="transfer_conflict_part_too_large">вложение слишком большое</string>
 </resources>

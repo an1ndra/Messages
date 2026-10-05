@@ -46,4 +46,23 @@
     <string name="mms_check_country">%1$s · %2$s</string>
     <string name="mms_check_footer">Chaque SIM est comparée au réglage MMS publié par son opérateur. Cela indique ce que déclare l’opérateur, et non un service MMS testé : le vérifier exige les paramètres APN du système, accessibles uniquement aux applications privilégiées.</string>
     <string name="mms_check_no_sims">Aucune carte SIM active trouvée</string>
+    <string name="transfer_log_title">Journal d\'importation et d\'export</string>
+    <string name="transfer_log_subtitle">Importations et exports récents, et ce qui a été ignoré</string>
+    <string name="transfer_log_empty">Aucune importation ni export pour l\'instant.</string>
+    <string name="transfer_log_clear">Effacer le journal</string>
+    <string name="transfer_log_export">Exporter</string>
+    <string name="transfer_log_import">Importer</string>
+    <string name="transfer_log_counts">%1$d ajoutés, %2$d ignorés</string>
+    <string name="transfer_log_conflict">%1$d %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">Réussi</string>
+    <string name="transfer_log_status_failed">Échec</string>
+    <string name="transfer_log_retried">Réessayé %1$d×</string>
+    <string name="transfer_conflict_already_present">déjà présent</string>
+    <string name="transfer_conflict_provider_id_taken">ID fournisseur déjà utilisé</string>
+    <string name="transfer_conflict_provider_id_dropped">ID fournisseur provenant d\'un autre appareil</string>
+    <string name="transfer_conflict_conversation_merged">conversation associée à une conversation existante</string>
+    <string name="transfer_conflict_conversation_unresolved">conversation non associée</string>
+    <string name="transfer_conflict_record_unreadable">enregistrement illisible</string>
+    <string name="transfer_conflict_part_too_large">pièce jointe trop volumineuse</string>
 </resources>

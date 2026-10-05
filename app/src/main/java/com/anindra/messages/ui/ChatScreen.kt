@@ -25,11 +25,14 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -43,6 +46,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -129,6 +133,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -166,7 +171,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableStateListOf
 
 
-private val EMOJIS = listOf("👍", "😂", "❤️", "🔥", "😢", "😮", "🙏", "🎉")
+private val EMOJIS = MessageReactions.EMOJI
 
 private const val INITIAL_CHUNK = 40
 private const val AUTO_CHUNK = 40
@@ -216,7 +221,9 @@ internal fun ChatBubble(
     position: BubblePosition = BubblePosition.SINGLE,
     onEntranceStart: () -> Unit = {},
     onLongPress: () -> Unit = {},
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    onReact: (String) -> Unit = {},
+    showReactionBar: Boolean = false
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -303,6 +310,9 @@ internal fun ChatBubble(
         horizontalArrangement = if (msg.isMe) Arrangement.End else Arrangement.Start
     ) {
         Column(horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start) {
+            val barGapPx = with(LocalDensity.current) { 6.dp.roundToPx() }
+            Layout(
+                content = {
             Box {
                 if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
                     Column(
@@ -351,6 +361,42 @@ internal fun ChatBubble(
                         )
                     }
                 }
+
+            }
+
+                    AnimatedVisibility(
+                        visible = showReactionBar && !isLockedAndHidden,
+                        enter = fadeIn(motionTween(bubbleReduceMotion, Motion.DURATION_SHORT4)) +
+                            scaleIn(
+                                initialScale = 0.85f,
+                                animationSpec = motionTween(bubbleReduceMotion, Motion.DURATION_SHORT4)
+                            ),
+                        exit = fadeOut(motionTween(bubbleReduceMotion, Motion.DURATION_SHORT4)) +
+                            scaleOut(
+                                targetScale = 0.85f,
+                                animationSpec = motionTween(bubbleReduceMotion, Motion.DURATION_SHORT4)
+                            )
+                    ) {
+                        ReactionBar(selected = msg.reactions.keys, onReact = onReact)
+                    }
+                }
+            ) { measurables, constraints ->
+                val bubble = measurables[0].measure(constraints)
+                val bar = if (measurables.size > 1) measurables[1].measure(constraints) else null
+                layout(bubble.width, bubble.height) {
+                    bubble.place(0, 0)
+                    bar?.let {
+                        val x = if (msg.isMe) bubble.width - it.width else 0
+                        it.place(x, -it.height - barGapPx)
+                    }
+                }
+            }
+
+            if (!isLockedAndHidden && msg.reactions.isNotEmpty()) {
+                ReactionChips(
+                    reactions = msg.reactions,
+                    modifier = Modifier.offset(y = (-6).dp)
+                )
             }
 
             if (msg.status == "failed" && msg.isMe) {
@@ -414,6 +460,81 @@ internal fun ChatBubble(
     }
 }
 
+
+/** The tap-to-toggle emoji bar shown on a long-pressed message (issue #188). */
+@Composable
+internal fun ReactionBar(
+    selected: Set<String>,
+    onReact: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val cs = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = cs.surfaceVariant,
+        shadowElevation = 3.dp,
+        modifier = modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+        ) {
+            MessageReactions.EMOJI.forEach { emoji ->
+                val on = emoji in selected
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(if (on) cs.primaryContainer else Color.Transparent)
+                        .clickable { onReact(emoji) }
+                        .padding(horizontal = 6.dp, vertical = 6.dp)
+                ) {
+                    Text(text = emoji, fontSize = 22.sp)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The single aggregate pill that straddles the bubble's bottom edge, the way a
+ * reaction should look. A row of separate surfaces below the bubble read as
+ * another message instead. Display-only — reactions change from the long-press
+ * bar.
+ */
+@Composable
+internal fun ReactionChips(
+    reactions: Map<String, Int>,
+    modifier: Modifier = Modifier
+) {
+    val cs = MaterialTheme.colorScheme
+    val ordered = MessageReactions.ordered(reactions)
+    val total = ordered.sumOf { it.second }
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = cs.surface,
+        border = BorderStroke(1.dp, cs.outlineVariant),
+        shadowElevation = 2.dp,
+        modifier = modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        ) {
+            ordered.take(3).forEach { (emoji, _) ->
+                Text(text = emoji, fontSize = 14.sp)
+            }
+            if (total > 1) {
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = total.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = cs.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -482,6 +603,7 @@ fun ChatScreen(
     val selectedMessageIds = remember { mutableStateListOf<Long>() }
     var textCopyMessage by remember { mutableStateOf<Message?>(null) }
     val selectionActive = selectedMessageIds.isNotEmpty()
+    var reactingMessageId by remember { mutableStateOf<Long?>(null) }
 
     var cameraFileUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -594,7 +716,28 @@ fun ChatScreen(
         if (id in selectedMessageIds) selectedMessageIds.remove(id) else selectedMessageIds.add(id)
     }
 
-    fun clearSelection() = selectedMessageIds.clear()
+    fun clearSelection() {
+        selectedMessageIds.clear()
+        reactingMessageId = null
+    }
+
+    /**
+     * Toggle a local reaction and mirror it to the other side as readable text.
+     * SMS cannot carry a reaction, so the recipient sees `Reacted 👍 to "..."`;
+     * the emoji on this device is what actually changes.
+     */
+    fun applyReaction(msg: Message, emoji: String) {
+        val wasPresent = msg.reactions.containsKey(emoji)
+        vm.setReactions(msg.id, MessageReactions.toggle(msg.reactions, emoji))
+        val snippet = MessageReactions.quote(msg.body)
+            .ifBlank { context.getString(R.string.chat_reaction_item) }
+        val body = context.getString(
+            if (wasPresent) R.string.chat_reaction_removed else R.string.chat_reaction_sent,
+            emoji, snippet
+        )
+        vm.sendReactionFallback(conversationId, body)
+        clearSelection()
+    }
 
     /** Select every unlocked message so bulk actions cannot trash locked ones. */
     fun selectAllMessages() {
@@ -626,7 +769,7 @@ fun ChatScreen(
         return selectedMessageIds
             .mapNotNull { byId[it] }
             .joinToString("\n") { m ->
-                val hidden = m.locked && !unlockedIds.contains(m.id)
+                val hidden = MessageLockState.isHidden(m.locked, m.id, unlockedIds)
                 when {
                     hidden -> "@Lock"
                     vm.settings.hideLinks -> hideUrls(m.body)
@@ -690,6 +833,7 @@ fun ChatScreen(
         if (targets.isEmpty()) return
         if (targets.any { !it.locked }) {
             targets.forEach { vm.setLocked(it.id, true) }
+            unlockedIds = MessageLockState.onLock(unlockedIds, targets.map { it.id })
             Toast.makeText(context, context.getString(R.string.chat_locked), Toast.LENGTH_SHORT).show()
             clearSelection()
         } else if (activity != null) {
@@ -711,7 +855,7 @@ fun ChatScreen(
                             activity.runOnUiThread {
                                 if (authenticated) {
                                     targets.forEach { vm.setLocked(it.id, false) }
-                                    unlockedIds = unlockedIds + targets.map { it.id }
+                                    unlockedIds = MessageLockState.onUnlock(unlockedIds, targets.map { it.id })
                                 }
                             }
                         }
@@ -730,7 +874,7 @@ fun ChatScreen(
                 }
             } else {
                 targets.forEach { vm.setLocked(it.id, false) }
-                unlockedIds = unlockedIds + targets.map { it.id }
+                unlockedIds = MessageLockState.onUnlock(unlockedIds, targets.map { it.id })
             }
             clearSelection()
         }
@@ -1052,7 +1196,12 @@ fun ChatScreen(
                                 reduceMotion = LocalReduceMotion.current
                             ),
                             onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
-                            onLongPress = { toggleSelection(msg.id) },
+                            onLongPress = {
+                                reactingMessageId = msg.id
+                                toggleSelection(msg.id)
+                            },
+                            onReact = { emoji -> applyReaction(msg, emoji) },
+                            showReactionBar = reactingMessageId == msg.id,
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
