@@ -603,7 +603,6 @@ fun ChatScreen(
     val selectedMessageIds = remember { mutableStateListOf<Long>() }
     var textCopyMessage by remember { mutableStateOf<Message?>(null) }
     val selectionActive = selectedMessageIds.isNotEmpty()
-    var reactingMessageId by remember { mutableStateOf<Long?>(null) }
 
     var cameraFileUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -726,7 +725,6 @@ fun ChatScreen(
 
     fun clearSelection() {
         selectedMessageIds.clear()
-        reactingMessageId = null
     }
 
     /**
@@ -1204,14 +1202,11 @@ fun ChatScreen(
                                 reduceMotion = LocalReduceMotion.current
                             ),
                             onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
-                            onLongPress = {
-                                reactingMessageId = msg.id
-                                toggleSelection(msg.id)
-                            },
+                            onLongPress = { toggleSelection(msg.id) },
                             onReact = { emoji -> applyReaction(msg, emoji) },
-                            showReactionBar = reactingMessageId == msg.id &&
-                                canReact &&
-                                selectedMessageIds.size == 1,
+                            showReactionBar = canReact &&
+                                selectedMessageIds.size == 1 &&
+                                msg.id in selectedMessageIds,
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
