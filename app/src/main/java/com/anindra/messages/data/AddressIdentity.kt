@@ -35,4 +35,19 @@ object AddressIdentity {
     /** True for dialable phone/short-code addresses; false for alphanumeric
      *  sender IDs, which cannot receive replies. */
     fun isReplyable(address: String): Boolean = PhoneNumberUtils.isLikelyPhoneNumber(address)
+
+    /** True when [query] is a phone-number fragment that identifies [address],
+     *  however each side was formatted (spaces, dashes, `+`, country code).
+     *  The conversation search needs this because the UI shows/accepts
+     *  `555-000-1234` while the address is stored as `+15550001234`. */
+    fun matchesNumber(address: String, query: String): Boolean {
+        val q = query.filter { it.isDigit() }
+        if (q.length < MIN_SEARCH_DIGITS) return false
+        val a = address.filter { it.isDigit() }
+        return a.isNotEmpty() && (a.endsWith(q) || q.endsWith(a))
+    }
+
+    /** A query with fewer digits than this is treated as text, not a number, so
+     *  a stray "1" does not match every conversation. */
+    private const val MIN_SEARCH_DIGITS = 3
 }

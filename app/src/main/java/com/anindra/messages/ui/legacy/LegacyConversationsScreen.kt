@@ -302,28 +302,16 @@ fun ConversationsScreen(
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
     val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks) {
-        conversations.filter { convo ->
-            if (convo.blocked) false
-            else if (showArchived) convo.archived
-            else !convo.archived
-        }.let { list ->
-            if (query.isBlank()) list
-            else list.filter {
-                val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
-                it.name.contains(query, true) || it.address.contains(query) ||
-                        snippet.contains(query, true)
-            }
-        }.let { list ->
-            // Unread-at-top: stable reorder — pinned stays on top, then unread
-            // conversations above read ones, timestamp order preserved within a tier.
-            if (unreadAtTop && !showArchived) {
-                list.sortedWith(
-                    compareBy({ !it.pinned }, { if (it.unreadCount > 0) 0 else 1 }, { -it.timestamp })
-                )
-            } else {
-                list
-            }
-        }
+        // Shared with the new UI so the two lists cannot drift (this inline copy
+        // was why the legacy search missed the phone-number match).
+        val hide = rowSettings.hideLinks
+        com.anindra.messages.data.ConversationList.sort(
+            com.anindra.messages.data.ConversationList.filter(
+                conversations, showArchived, query,
+                snippetFor = { if (hide) hideUrls(it.snippet) else it.snippet }
+            ),
+            unreadAtTop, showArchived
+        )
     }
 
     // Reveal a new unread only while the user is still at the top.

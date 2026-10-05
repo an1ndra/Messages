@@ -105,6 +105,20 @@ class ConversationListTest {
     }
 
     @Test
+    fun aFormattedPhoneNumberFindsTheConversation() {
+        // The UI lets you type the number as it is dialled; the address is E.164.
+        val list = listOf(
+            convo(1, name = "Zokii", address = "+15550001234"),
+            convo(2, name = "Other", address = "+15550009999")
+        )
+        assertEquals(listOf(1L), filter(list, query = "555-000-1234"))
+        assertEquals(listOf(1L), filter(list, query = "5550001234"))
+        assertEquals(listOf(1L), filter(list, query = "+1 (555) 000-1234"))
+        assertEquals(listOf(1L), filter(list, query = "0001234"))
+        assertEquals(emptyList<Long>(), filter(list, query = "5550000000"))
+    }
+
+    @Test
     fun searchMatchesTheShownSnippetNotTheStoredOne() {
         // "Hide links" swaps the snippet for its redacted form, and the search
         // has to use the swapped one so a hidden link is not still findable.
