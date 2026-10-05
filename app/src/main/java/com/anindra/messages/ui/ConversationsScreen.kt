@@ -130,7 +130,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ConversationsScreen(
     vm: AppViewModel,
-    onOpenConversation: (Long) -> Unit,
+    onOpenConversation: (Long, String) -> Unit,
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -522,7 +522,12 @@ fun ConversationsScreen(
                                 convo = convo,
                                 workProfile = workNums.contains(phoneKey(convo.address)),
                                 showArchived = showArchived,
-                                onClick = { onOpenConversation(convo.id) },
+                                onClick = {
+                                    onOpenConversation(
+                                        convo.id,
+                                        if (searching) query.trim() else ""
+                                    )
+                                },
                                 onDelete = { moveToTrash(convo) },
                                 onArchive = { archiveWithUndo(convo) },
                                 onToggleRead = { markReadWithUndo(convo) },

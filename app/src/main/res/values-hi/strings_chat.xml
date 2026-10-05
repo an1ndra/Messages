@@ -88,4 +88,10 @@
     <string name="chat_messages_deleted">%d संदेश हटाए गए</string>
     <string name="chat_trash">कूड़े में भेजें</string>
     <string name="status_not_sent">भेजा नहीं गया</string>
+    <string name="chat_search_result">खोज परिणाम</string>
+    <string name="chat_search">खोजें</string>
+    <string name="chat_search_hint">चैट में खोजें</string>
+    <string name="chat_search_previous">पिछला मिलान</string>
+    <string name="chat_search_next">अगला मिलान</string>
+    <string name="chat_search_counter">%1$d / %2$d</string>
 </resources>
