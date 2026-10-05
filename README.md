@@ -1,5 +1,9 @@
 # Messages
 
+[![VirusTotal](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/an1ndra/Messages/main/.github/virustotal.json)](https://github.com/an1ndra/Messages/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/an1ndra/Messages/total?label=Downloads&logo=github)](https://github.com/an1ndra/Messages/releases)
+[![License](https://img.shields.io/github/license/an1ndra/Messages?label=License)](LICENSE)
+
 Simple, private SMS messaging. Offline-first, no ads, no tracking.
 
 Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permission — everything is local SMS + local database.
@@ -29,11 +33,11 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 | Conversations | Chat | Contact details | New chat |
 |---|---|---|---|
-| ![Conversations](fastlane/metadata/android/en-US/images/phoneScreenshots/01-conversations.png) | ![Chat](fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat.png) | ![Contact details](fastlane/metadata/android/en-US/images/phoneScreenshots/03-contact-details.png) | ![New chat](fastlane/metadata/android/en-US/images/phoneScreenshots/05-new-chat.png) |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01-conversations.png" alt="Conversations" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat.png" alt="Chat" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03-contact-details.png" alt="Contact details" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05-new-chat.png" alt="New chat" width="160" height="356"> |
 
 | Group chat | Spam &amp; Blocked | Trash | Schedule send |
 |---|---|---|---|
-| ![Group chat](fastlane/metadata/android/en-US/images/phoneScreenshots/04-group-chat.png) | ![Spam & Blocked](fastlane/metadata/android/en-US/images/phoneScreenshots/06-spam-blocked.png) | ![Trash](fastlane/metadata/android/en-US/images/phoneScreenshots/08-trash.png) | ![Schedule send](fastlane/metadata/android/en-US/images/phoneScreenshots/09-schedule-send.png) |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04-group-chat.png" alt="Group chat" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/06-spam-blocked.png" alt="Spam & Blocked" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/08-trash.png" alt="Trash" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/09-schedule-send.png" alt="Schedule send" width="160" height="356"> |
 
 ## Download
 

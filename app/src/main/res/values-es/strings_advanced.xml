@@ -11,7 +11,6 @@
     <string name="settings_advanced_turn_off">Desactivar «</string>
     <string name="settings_advanced_turn_off_suffix">" primero</string>
     <string name="settings_advanced_permanent_delete_on">La eliminación permanente está activada. Esta conversación y sus mensajes se eliminarán de tu dispositivo de inmediato — no se moverán a la papelera — y no podrán ser restaurados.</string>
-
     <string name="settings_font_title">Fuente</string>
     <string name="settings_advanced_emoji_button">Botón de emoji</string>
     <string name="settings_advanced_emoji_button_desc">Mostrar el botón de emoji en el campo de mensaje</string>
@@ -21,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Predeterminada del sistema</string>
-
     <string name="keywords_title">Palabras clave bloqueadas</string>
     <string name="keywords_hint">Los mensajes que contengan alguna de estas palabras se mueven a la papelera: no aparecen en la bandeja de entrada ni suena la notificación.</string>
     <string name="keywords_add_hint">Añadir palabra clave</string>
@@ -30,7 +28,6 @@
     <string name="keywords_remove">Quitar palabra clave</string>
     <string name="keywords_subtitle_none">Ninguna</string>
     <string name="keywords_subtitle_count">%1$d bloqueadas</string>
-
     <string name="diagnostics_title">Diagnóstico</string>
     <string name="diagnostics_subtitle">Diagnóstico del dispositivo y de la app para solucionar problemas</string>
     <string name="diagnostics_save">Guardar</string>
@@ -38,4 +35,34 @@
     <string name="diagnostics_close">Cerrar</string>
     <string name="diagnostics_clip_label">Diagnóstico de Messages</string>
     <string name="settings_sim_unknown">SIM desconocida</string>
+    <string name="mms_check_title">Compatibilidad con MMS</string>
+    <string name="mms_check_subtitle">Comprobar la compatibilidad con MMS de cada SIM</string>
+    <string name="mms_check_summary">MMS está activado por el operador en %1$d de %2$d SIM</string>
+    <string name="mms_check_verdict_supported">Activado por el operador</string>
+    <string name="mms_check_verdict_disabled">Desactivado en este operador</string>
+    <string name="mms_check_verdict_no_carrier">Sin red en esta SIM</string>
+    <string name="mms_check_verdict_unknown">No se ha podido comprobar</string>
+    <string name="mms_check_number_hidden">El operador no comparte el número</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">Cada SIM se comprueba con el ajuste de MMS que publica su operador. Esto indica lo que declara el operador, no un servicio MMS probado: comprobarlo requiere los ajustes APN del sistema, que solo pueden leer las aplicaciones con privilegios.</string>
+    <string name="mms_check_no_sims">No se ha encontrado ninguna SIM activa</string>
+    <string name="transfer_log_title">Registro de importación y exportación</string>
+    <string name="transfer_log_subtitle">Importaciones y exportaciones recientes y lo que se omitió</string>
+    <string name="transfer_log_empty">Aún no hay importaciones ni exportaciones.</string>
+    <string name="transfer_log_clear">Borrar registro</string>
+    <string name="transfer_log_export">Exportar</string>
+    <string name="transfer_log_import">Importar</string>
+    <string name="transfer_log_counts">%1$d añadidos, %2$d omitidos</string>
+    <string name="transfer_log_conflict">%1$d %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">Correcto</string>
+    <string name="transfer_log_status_failed">Fallido</string>
+    <string name="transfer_log_retried">Reintentado %1$d×</string>
+    <string name="transfer_conflict_already_present">ya presente</string>
+    <string name="transfer_conflict_provider_id_taken">ID de proveedor ya en uso</string>
+    <string name="transfer_conflict_provider_id_dropped">ID de proveedor de otro dispositivo</string>
+    <string name="transfer_conflict_conversation_merged">conversación coincidente con otra existente</string>
+    <string name="transfer_conflict_conversation_unresolved">no se pudo relacionar la conversación</string>
+    <string name="transfer_conflict_record_unreadable">no se pudo leer el registro</string>
+    <string name="transfer_conflict_part_too_large">adjunto demasiado grande</string>
 </resources>

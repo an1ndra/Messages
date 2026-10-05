@@ -52,6 +52,8 @@ object PhoneNumberUtils {
             val sm = context.getSystemService(SubscriptionManager::class.java)
             sm?.activeSubscriptionInfoList?.firstOrNull()
                 ?.countryIso?.takeIf { it.isNotBlank() }?.let { return it.uppercase() }
+        } catch (_: SecurityException) {
+            // READ_PHONE_STATE revoked at runtime; falls through to the locale.
         } catch (_: Exception) {
         }
         return Locale.getDefault().country.uppercase()

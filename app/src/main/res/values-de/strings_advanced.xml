@@ -11,7 +11,6 @@
     <string name="settings_advanced_turn_off">"„"</string>
     <string name="settings_advanced_turn_off_suffix">" "aktivieren zuerst</string>
     <string name="settings_advanced_permanent_delete_on">Endgültiges Löschen ist aktiviert. Diese Unterhaltung und ihre Nachrichten werden sofort von Ihrem Gerät entfernt — nicht in den Papierkorb verschoben — und können nicht wiederhergestellt werden.</string>
-
     <string name="settings_font_title">Schriftart</string>
     <string name="settings_advanced_emoji_button">Emoji-Schaltfläche</string>
     <string name="settings_advanced_emoji_button_desc">Emoji-Schaltfläche im Nachrichtenfeld anzeigen</string>
@@ -21,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Systemstandard</string>
-
     <string name="keywords_title">Blockierte Stichwörter</string>
     <string name="keywords_hint">Nachrichten, die eines dieser Wörter enthalten, werden in den Papierkorb verschoben: Sie erscheinen nicht im Posteingang und es ertönt kein Benachrichtigungston.</string>
     <string name="keywords_add_hint">Stichwort hinzufügen</string>
@@ -30,7 +28,6 @@
     <string name="keywords_remove">Stichwort entfernen</string>
     <string name="keywords_subtitle_none">Keine</string>
     <string name="keywords_subtitle_count">%1$d blockiert</string>
-
     <string name="diagnostics_title">Diagnose</string>
     <string name="diagnostics_subtitle">Geräte- und App-Diagnose zur Fehlersuche</string>
     <string name="diagnostics_save">Speichern</string>
@@ -38,4 +35,34 @@
     <string name="diagnostics_close">Schließen</string>
     <string name="diagnostics_clip_label">Messages-Diagnose</string>
     <string name="settings_sim_unknown">Unbekannte SIM</string>
+    <string name="mms_check_title">MMS-Unterstützung</string>
+    <string name="mms_check_subtitle">Jede SIM-Karte auf MMS prüfen</string>
+    <string name="mms_check_summary">MMS ist bei %1$d von %2$d SIMs vom Anbieter aktiviert</string>
+    <string name="mms_check_verdict_supported">Vom Anbieter aktiviert</string>
+    <string name="mms_check_verdict_disabled">Bei diesem Anbieter deaktiviert</string>
+    <string name="mms_check_verdict_no_carrier">Kein Netz auf dieser SIM-Karte</string>
+    <string name="mms_check_verdict_unknown">Konnte nicht geprüft werden</string>
+    <string name="mms_check_number_hidden">Nummer wird vom Anbieter nicht herausgegeben</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">Jede SIM wird mit der MMS-Einstellung ihres Anbieters abgeglichen. Dies meldet die Angabe des Anbieters, keinen getesteten MMS-Dienst: dessen Prüfung erfordert die System-APN-Einstellungen, die nur privilegierte Apps lesen können.</string>
+    <string name="mms_check_no_sims">Keine aktive SIM-Karte gefunden</string>
+    <string name="transfer_log_title">Import- und Exportprotokoll</string>
+    <string name="transfer_log_subtitle">Letzte Importe und Exporte samt übersprungener Nachrichten</string>
+    <string name="transfer_log_empty">Noch keine Importe oder Exporte.</string>
+    <string name="transfer_log_clear">Protokoll löschen</string>
+    <string name="transfer_log_export">Export</string>
+    <string name="transfer_log_import">Import</string>
+    <string name="transfer_log_counts">%1$d hinzugefügt, %2$d übersprungen</string>
+    <string name="transfer_log_conflict">%1$d %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">Erfolgreich</string>
+    <string name="transfer_log_status_failed">Fehlgeschlagen</string>
+    <string name="transfer_log_retried">%1$d× wiederholt</string>
+    <string name="transfer_conflict_already_present">bereits vorhanden</string>
+    <string name="transfer_conflict_provider_id_taken">Anbieterkennung bereits vergeben</string>
+    <string name="transfer_conflict_provider_id_dropped">Anbieterkennung von einem anderen Gerät</string>
+    <string name="transfer_conflict_conversation_merged">Unterhaltung mit einer vorhandenen abgeglichen</string>
+    <string name="transfer_conflict_conversation_unresolved">Unterhaltung konnte nicht abgeglichen werden</string>
+    <string name="transfer_conflict_record_unreadable">Datensatz nicht lesbar</string>
+    <string name="transfer_conflict_part_too_large">Anhang zu groß</string>
 </resources>

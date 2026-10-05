@@ -11,7 +11,6 @@
     <string name="settings_advanced_turn_off">关闭「</string>
     <string name="settings_advanced_turn_off_suffix">」</string>
     <string name="settings_advanced_permanent_delete_on">永久删除已开启。此对话及其消息将立即从您的设备上移除 — 不会移至回收站 — 且无法恢复。</string>
-
     <string name="settings_font_title">字体</string>
     <string name="settings_advanced_emoji_button">表情符号按钮</string>
     <string name="settings_advanced_emoji_button_desc">在消息输入框中显示表情符号按钮</string>
@@ -21,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">系统默认</string>
-
     <string name="keywords_title">已屏蔽的关键词</string>
     <string name="keywords_hint">含有其中任一关键词的消息会移入回收站：不会显示在收件箱中，也不会发出通知提示音。</string>
     <string name="keywords_add_hint">添加关键词</string>
@@ -30,7 +28,6 @@
     <string name="keywords_remove">移除关键词</string>
     <string name="keywords_subtitle_none">无</string>
     <string name="keywords_subtitle_count">已屏蔽 %1$d 个</string>
-
     <string name="diagnostics_title">诊断</string>
     <string name="diagnostics_subtitle">用于排查问题的设备和应用诊断信息</string>
     <string name="diagnostics_save">保存</string>
@@ -38,4 +35,34 @@
     <string name="diagnostics_close">关闭</string>
     <string name="diagnostics_clip_label">Messages 诊断信息</string>
     <string name="settings_sim_unknown">未知 SIM 卡</string>
+    <string name="mms_check_title">MMS 支持</string>
+    <string name="mms_check_subtitle">检查每张 SIM 卡的 MMS 支持情况</string>
+    <string name="mms_check_summary">%2$d 张 SIM 卡中有 %1$d 张已由运营商启用 MMS</string>
+    <string name="mms_check_verdict_supported">运营商已启用</string>
+    <string name="mms_check_verdict_disabled">该运营商已关闭</string>
+    <string name="mms_check_verdict_no_carrier">此 SIM 卡无网络</string>
+    <string name="mms_check_verdict_unknown">无法检查</string>
+    <string name="mms_check_number_hidden">运营商未提供号码</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">每张 SIM 卡都会与其运营商公布的 MMS 设置进行比对。这反映的是运营商的声明，而非经过验证的 MMS 服务：验证需要系统 APN 设置，只有特权应用才能读取。</string>
+    <string name="mms_check_no_sims">未找到可用的 SIM 卡</string>
+    <string name="transfer_log_title">导入导出日志</string>
+    <string name="transfer_log_subtitle">最近的导入、导出及被跳过的内容</string>
+    <string name="transfer_log_empty">尚无导入或导出记录。</string>
+    <string name="transfer_log_clear">清除日志</string>
+    <string name="transfer_log_export">导出</string>
+    <string name="transfer_log_import">导入</string>
+    <string name="transfer_log_counts">已添加 %1$d 条，跳过 %2$d 条</string>
+    <string name="transfer_log_conflict">%1$d 条 %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">成功</string>
+    <string name="transfer_log_status_failed">失败</string>
+    <string name="transfer_log_retried">已重试 %1$d×</string>
+    <string name="transfer_conflict_already_present">已存在</string>
+    <string name="transfer_conflict_provider_id_taken">提供程序 ID 已被占用</string>
+    <string name="transfer_conflict_provider_id_dropped">来自其他设备的提供程序 ID</string>
+    <string name="transfer_conflict_conversation_merged">会话已与现有会话合并</string>
+    <string name="transfer_conflict_conversation_unresolved">无法匹配会话</string>
+    <string name="transfer_conflict_record_unreadable">无法读取记录</string>
+    <string name="transfer_conflict_part_too_large">附件过大</string>
 </resources>

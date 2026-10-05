@@ -15,7 +15,9 @@ data class Conversation(
     val draftDate: Long = 0,
     val deletedAt: Long = 0,
     val display: String = address,
-    val deletedReason: String = TrashReason.MANUAL
+    val deletedReason: String = TrashReason.MANUAL,
+    /** Set once a conversation has more than one recipient; blank otherwise. */
+    val groupTitle: String = ""
 )
 
 data class Message(
@@ -31,7 +33,9 @@ data class Message(
     val locked: Boolean = false,
     val subId: Int = -1,
     val transport: String = "sms",
-    val deliveredAt: Long = 0
+    val deliveredAt: Long = 0,
+    /** Who sent it. Blank means the conversation's own address. */
+    val address: String = ""
 )
 
 data class BlockedNumber(

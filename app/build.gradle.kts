@@ -20,9 +20,13 @@ android {
         versionName = "1.0.27"
     }
 
+    // RELEASE_KEYSTORE lets a throwaway key stand in for a side build without
+    // swapping the real release.keystore out of the way.
+    val releaseKeystore = file(System.getenv("RELEASE_KEYSTORE") ?: "${rootProject.projectDir}/release.keystore")
+
     signingConfigs {
         create("release") {
-            val ksFile = file("${rootProject.projectDir}/release.keystore")
+            val ksFile = releaseKeystore
             if (ksFile.exists()) {
                 val storePass = System.getenv("KEYSTORE_PASSWORD")
                 val keyPass = System.getenv("KEY_PASSWORD")
@@ -40,7 +44,7 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            val ksFile = file("${rootProject.projectDir}/release.keystore")
+            val ksFile = releaseKeystore
             signingConfig = if (ksFile.exists() &&
                 System.getenv("KEYSTORE_PASSWORD") != null &&
                 System.getenv("KEY_PASSWORD") != null
@@ -58,11 +62,19 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // android.util.Log and friends throw in local unit tests, which makes
+        // any code that only logs a problem untestable. Returning defaults keeps
+        // the logging (which is how import problems get diagnosed on a device)
+        // without needing a Robolectric runner for pure-logic tests.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
     implementation(project(":android-smsmms"))
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.work.runtime)
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation(libs.androidx.lifecycle.runtime.ktx)

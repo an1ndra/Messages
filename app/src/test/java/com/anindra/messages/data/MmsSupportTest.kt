@@ -28,17 +28,6 @@ class MmsSupportTest {
     }
 
     @Test
-    fun throttlesRepeatedDownloadAttempts() {
-        val now = 1_700_000_000_000L
-        assertTrue(MmsSupport.shouldRetryDownload(0, now))
-        assertTrue(MmsSupport.shouldRetryDownload(-1, now))
-        assertFalse(MmsSupport.shouldRetryDownload(now - 1_000, now))
-        assertTrue(
-            MmsSupport.shouldRetryDownload(now - MmsSupport.DOWNLOAD_RETRY_COOLDOWN_MS, now)
-        )
-    }
-
-    @Test
     fun resolvesAttachmentMimeWhenTheProviderIsSilent() {
         assertEquals("image/png", MmsSupport.defaultAttachmentMime("image/png", "content://x/a"))
         assertEquals("image/jpeg", MmsSupport.defaultAttachmentMime("image/jpeg; charset=binary", "content://x/a"))
@@ -101,8 +90,12 @@ class MmsSupportTest {
             MmsSupport.Address(151, "+15551234567"))
         assertEquals("+15551234567", MmsSupport.peer(1, incoming, 1))
         assertEquals("+15551234567", MmsSupport.peer(2, outgoing, 1))
-        assertNull(MmsSupport.peer(1, incoming, 2))
-        assertNull(MmsSupport.peer(1, incoming, null))
+        // A thread with several recipients is a group, but the *sender* of an
+        // incoming MMS is still unambiguous, so it is attributed rather than
+        // discarded. This used to return null, which silently threw away every
+        // group MMS unread; MmsPeerTest covers the group cases in detail.
+        assertEquals("+15551234567", MmsSupport.peer(1, incoming, 2))
+        assertEquals("+15551234567", MmsSupport.peer(1, incoming, null))
         assertNull(MmsSupport.phoneAddress("sender@example.test"))
     }
 

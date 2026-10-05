@@ -25,11 +25,14 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -43,6 +46,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -71,6 +75,7 @@ import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Schedule
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
@@ -107,6 +112,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -127,6 +133,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -134,6 +141,7 @@ import androidx.core.content.FileProvider
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
+import com.anindra.messages.data.Conversation
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
@@ -163,7 +171,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableStateListOf
 
 
-private val EMOJIS = listOf("👍", "😂", "❤️", "🔥", "😢", "😮", "🙏", "🎉")
+private val EMOJIS = MessageReactions.EMOJI
 
 private const val INITIAL_CHUNK = 40
 private const val AUTO_CHUNK = 40
@@ -175,7 +183,7 @@ private const val LOAD_EARLIER_STEP = 200
  *  normally, and the chat keeps its own long-press behaviour instead of losing
  *  every contextual option. */
 @Composable
-private fun TextCopyDialog(
+internal fun TextCopyDialog(
     body: String,
     onDismiss: () -> Unit
 ) {
@@ -197,9 +205,10 @@ private fun TextCopyDialog(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ChatBubble(
+internal fun ChatBubble(
     msg: Message,
     showTime: Boolean,
+    senderName: String? = null,
     onTap: () -> Unit,
     deliveryReports: Boolean,
     highlightLinks: Boolean,
@@ -212,7 +221,9 @@ private fun ChatBubble(
     position: BubblePosition = BubblePosition.SINGLE,
     onEntranceStart: () -> Unit = {},
     onLongPress: () -> Unit = {},
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    onReact: (String) -> Unit = {},
+    showReactionBar: Boolean = false
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -239,6 +250,25 @@ private fun ChatBubble(
         onLinkClick = { pendingUrl = it },
         textColor = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface
     )
+
+    if (senderName != null && !msg.isMe) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
+        ) {
+            PersonAvatar(
+                msg.address.ifBlank { senderName ?: "" },
+                size = 18.dp
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                senderName,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+    }
 
     val corners = bubbleCorners(position, msg.isMe)
     LaunchedEffect(msg.id, position) {
@@ -280,6 +310,9 @@ private fun ChatBubble(
         horizontalArrangement = if (msg.isMe) Arrangement.End else Arrangement.Start
     ) {
         Column(horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start) {
+            val barGapPx = with(LocalDensity.current) { 6.dp.roundToPx() }
+            Layout(
+                content = {
             Box {
                 if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
                     Column(
@@ -328,6 +361,42 @@ private fun ChatBubble(
                         )
                     }
                 }
+
+            }
+
+                    AnimatedVisibility(
+                        visible = showReactionBar && !isLockedAndHidden,
+                        enter = fadeIn(motionTween(bubbleReduceMotion, Motion.DURATION_SHORT4)) +
+                            scaleIn(
+                                initialScale = 0.85f,
+                                animationSpec = motionTween(bubbleReduceMotion, Motion.DURATION_SHORT4)
+                            ),
+                        exit = fadeOut(motionTween(bubbleReduceMotion, Motion.DURATION_SHORT4)) +
+                            scaleOut(
+                                targetScale = 0.85f,
+                                animationSpec = motionTween(bubbleReduceMotion, Motion.DURATION_SHORT4)
+                            )
+                    ) {
+                        ReactionBar(selected = msg.reactions.keys, onReact = onReact)
+                    }
+                }
+            ) { measurables, constraints ->
+                val bubble = measurables[0].measure(constraints)
+                val bar = if (measurables.size > 1) measurables[1].measure(constraints) else null
+                layout(bubble.width, bubble.height) {
+                    bubble.place(0, 0)
+                    bar?.let {
+                        val x = if (msg.isMe) bubble.width - it.width else 0
+                        it.place(x, -it.height - barGapPx)
+                    }
+                }
+            }
+
+            if (!isLockedAndHidden && msg.reactions.isNotEmpty()) {
+                ReactionChips(
+                    reactions = msg.reactions,
+                    modifier = Modifier.offset(y = (-6).dp)
+                )
             }
 
             if (msg.status == "failed" && msg.isMe) {
@@ -392,6 +461,81 @@ private fun ChatBubble(
 }
 
 
+/** The tap-to-toggle emoji bar shown on a long-pressed message (issue #188). */
+@Composable
+internal fun ReactionBar(
+    selected: Set<String>,
+    onReact: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val cs = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = cs.surfaceVariant,
+        shadowElevation = 3.dp,
+        modifier = modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+        ) {
+            MessageReactions.EMOJI.forEach { emoji ->
+                val on = emoji in selected
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(if (on) cs.primaryContainer else Color.Transparent)
+                        .clickable { onReact(emoji) }
+                        .padding(horizontal = 6.dp, vertical = 6.dp)
+                ) {
+                    Text(text = emoji, fontSize = 22.sp)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The single aggregate pill that straddles the bubble's bottom edge, the way a
+ * reaction should look. A row of separate surfaces below the bubble read as
+ * another message instead. Display-only — reactions change from the long-press
+ * bar.
+ */
+@Composable
+internal fun ReactionChips(
+    reactions: Map<String, Int>,
+    modifier: Modifier = Modifier
+) {
+    val cs = MaterialTheme.colorScheme
+    val ordered = MessageReactions.ordered(reactions)
+    val total = ordered.sumOf { it.second }
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = cs.surface,
+        border = BorderStroke(1.dp, cs.outlineVariant),
+        shadowElevation = 2.dp,
+        modifier = modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        ) {
+            ordered.take(3).forEach { (emoji, _) ->
+                Text(text = emoji, fontSize = 14.sp)
+            }
+            if (total > 1) {
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = total.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = cs.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -407,6 +551,13 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val convo by remember(conversationId) { vm.conversationById(conversationId) }.collectAsState(initial = null)
+    val membershipRevision by vm.membershipRevision.collectAsState()
+    var isGroupConversation by remember(conversationId, membershipRevision) {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(conversationId, membershipRevision) {
+        isGroupConversation = vm.isGroup(conversationId)
+    }
     val vmContacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
     val workNums = remember(vmContacts) {
         vmContacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
@@ -420,6 +571,17 @@ fun ChatScreen(
         .onEach { messagesLoaded = true }
         .collectAsState(initial = emptyList())
     val totalCount by remember(conversationId) { vm.messageCountFlow(conversationId) }.collectAsState(initial = 0)
+
+    // Scheduled rows live in their own table, so they are merged into the list
+    // by send time rather than read back as messages. A message that has not
+    // fired yet has no row at all, which is why this cannot come from `messages`.
+    val allScheduled by vm.scheduledMessages().collectAsState(initial = emptyList())
+    val chatRows = rememberChatRows(messages, allScheduled, conversationId)
+    // Row indices and message indices stop agreeing once pending rows are
+    // interleaved, so map each row to its position in `messages` (or -1). Without
+    // this a scheduled row above a message shifts every tail below it.
+    val sentIndexAt = rememberSentIndexAt(chatRows)
+    val lastSentRow = remember(chatRows, sentIndexAt) { sentIndexAt.indexOfLast { it >= 0 } }
     // Highest id already on screen when the chat was opened (or first loaded);
     // only newer arrivals play the entrance animation, so scrolling back and
     // forward never replays it.
@@ -449,6 +611,14 @@ fun ChatScreen(
 
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
+    // Reactions carry an SMS fallback, so they are only offered where a message
+    // could actually be sent: a dialable address that is not blocked. Otherwise
+    // an alphanumeric sender ID (or a blocked number) got a reaction whose
+    // fallback could never go out.
+    val canReact = remember(convo, numberIsBlocked) {
+        val addr = convo?.address ?: ""
+        addr.isNotBlank() && isPhoneNumber(addr) && !numberIsBlocked
+    }
     var showPermanentDeleteDialog by remember { mutableStateOf(false) }
 
     var forwardingMessageIds by remember { mutableStateOf<List<Long>>(emptyList()) }
@@ -545,7 +715,7 @@ fun ChatScreen(
     }
 
     fun leaveChat() {
-        vm.saveDraftAndMaybeTrash(conversationId, draft.trim(), vm.settings.draftsEnabled)
+        vm.saveDraftAndMaybeTrash(conversationId, draft.trim())
         onBack()
     }
 
@@ -553,7 +723,31 @@ fun ChatScreen(
         if (id in selectedMessageIds) selectedMessageIds.remove(id) else selectedMessageIds.add(id)
     }
 
-    fun clearSelection() = selectedMessageIds.clear()
+    fun clearSelection() {
+        selectedMessageIds.clear()
+    }
+
+    /**
+     * Toggle a local reaction and mirror it to the other side as readable text.
+     * SMS cannot carry a reaction, so the recipient sees `Reacted 👍 to "..."`;
+     * the emoji on this device is what actually changes.
+     */
+    fun applyReaction(msg: Message, emoji: String) {
+        val wasPresent = msg.reactions.containsKey(emoji)
+        vm.setReactions(msg.id, MessageReactions.toggle(msg.reactions, emoji))
+        // The fallback is our app-to-app protocol; with no body to quote there is
+        // nothing for the other side to attach the reaction to, so it stays local.
+        val snippet = MessageReactions.quote(msg.body)
+        if (snippet.isNotBlank()) {
+            val body = if (wasPresent) {
+                com.anindra.messages.data.ReactionFallback.remove(emoji, snippet)
+            } else {
+                com.anindra.messages.data.ReactionFallback.add(emoji, snippet)
+            }
+            vm.sendReactionFallback(conversationId, body)
+        }
+        clearSelection()
+    }
 
     /** Select every unlocked message so bulk actions cannot trash locked ones. */
     fun selectAllMessages() {
@@ -585,7 +779,7 @@ fun ChatScreen(
         return selectedMessageIds
             .mapNotNull { byId[it] }
             .joinToString("\n") { m ->
-                val hidden = m.locked && !unlockedIds.contains(m.id)
+                val hidden = MessageLockState.isHidden(m.locked, m.id, unlockedIds)
                 when {
                     hidden -> "@Lock"
                     vm.settings.hideLinks -> hideUrls(m.body)
@@ -605,10 +799,16 @@ fun ChatScreen(
 
     fun forwardSelection() {
         val ids = messages.filter { it.id in selectedMessageIds }.map { it.id }
-        if (ids.isNotEmpty() && vm.settings.forwardingEnabled) {
-            forwardingMessageIds = ids
-            showForwardPicker = true
+        if (ids.isEmpty()) return
+        if (!vm.settings.forwardingEnabled) {
+            // The toolbar offers Forward whatever the setting says, so a policy
+            // that turns forwarding off has to say so. Swallowing the tap here is
+            // what made the button look broken.
+            Toast.makeText(context, context.getString(R.string.settings_forwarding_subtitle), Toast.LENGTH_SHORT).show()
+            return
         }
+        forwardingMessageIds = ids
+        showForwardPicker = true
     }
 
     fun shareSelection() {
@@ -643,6 +843,7 @@ fun ChatScreen(
         if (targets.isEmpty()) return
         if (targets.any { !it.locked }) {
             targets.forEach { vm.setLocked(it.id, true) }
+            unlockedIds = MessageLockState.onLock(unlockedIds, targets.map { it.id })
             Toast.makeText(context, context.getString(R.string.chat_locked), Toast.LENGTH_SHORT).show()
             clearSelection()
         } else if (activity != null) {
@@ -664,7 +865,7 @@ fun ChatScreen(
                             activity.runOnUiThread {
                                 if (authenticated) {
                                     targets.forEach { vm.setLocked(it.id, false) }
-                                    unlockedIds = unlockedIds + targets.map { it.id }
+                                    unlockedIds = MessageLockState.onUnlock(unlockedIds, targets.map { it.id })
                                 }
                             }
                         }
@@ -683,7 +884,7 @@ fun ChatScreen(
                 }
             } else {
                 targets.forEach { vm.setLocked(it.id, false) }
-                unlockedIds = unlockedIds + targets.map { it.id }
+                unlockedIds = MessageLockState.onUnlock(unlockedIds, targets.map { it.id })
             }
             clearSelection()
         }
@@ -734,7 +935,7 @@ fun ChatScreen(
     }
     LaunchedEffect(convo) {
         if (convo != null && !draftLoaded) {
-            if (vm.settings.draftsEnabled) {
+            {
                 val savedDraft = convo!!.draft
                 if (savedDraft.isNotBlank()) {
                     draft = savedDraft
@@ -802,7 +1003,6 @@ fun ChatScreen(
                 numberIsBlocked = numberIsBlocked,
                 blockingEnabled = vm.settings.blockingEnabled,
                 sendCountdown = sendCountdown,
-                draftsEnabled = vm.settings.draftsEnabled,
                 onBack = ::leaveChat,
                 onOpenDetails = onOpenDetails,
                 onMenuToggle = { menuOpen = true },
@@ -853,7 +1053,7 @@ fun ChatScreen(
         bottomBar = {
             Column(
                 Modifier
-                    .background(MaterialTheme.colorScheme.chatBar)
+                    .background(MaterialTheme.colorScheme.background)
                     .navigationBarsPadding()
             ) {
                 AnimatedVisibility(
@@ -947,10 +1147,20 @@ fun ChatScreen(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                itemsIndexed(messages, key = { _, m -> m.id }) { idx, msg ->
-                    val prev = messages.getOrNull(idx - 1)
+                itemsIndexed(chatRows, key = { _, row -> row.key }) { idx, row ->
+                    if (row is ChatRow.Pending) {
+                        ScheduledBubble(
+                            scheduled = row.scheduled,
+                            onCancel = { vm.cancelScheduledMessage(row.scheduled.id) },
+                            showSimIndicator = vm.settings.showSimIndicator
+                        )
+                        return@itemsIndexed
+                    }
+                    val msg = (row as ChatRow.Sent).message
+                    val prevRow = chatRows.getOrNull(idx - 1)
+                    val prev = (prevRow as? ChatRow.Sent)?.message
                     val groupStart = prev == null || startsNewGroup(prev, msg)
-                    val isLastMessage = idx == messages.lastIndex
+                    val isLastMessage = idx == lastSentRow
                     val isRevealed = msg.id in revealed
 
                     Column(Modifier.fillMaxWidth()) {
@@ -971,6 +1181,14 @@ fun ChatScreen(
                         ChatBubble(
                             msg = msg,
                             showTime = isLastMessage || isRevealed,
+                            // Only a group needs a sender: in a 1:1 chat there is
+                            // only one other person and the header names them.
+                            senderName = if (isGroupConversation && !msg.isMe) {
+                                val sender = msg.address.ifBlank { convo?.address ?: "" }
+                                vm.contactNameFor(sender) ?: formatPhoneNumber(sender)
+                            } else {
+                                null
+                            },
                             onTap = {
                                 if (selectionActive) toggleSelection(msg.id)
                                 else if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
@@ -982,13 +1200,17 @@ fun ChatScreen(
                             isUnlocked = unlockedIds.contains(msg.id),
                             showSimIndicator = vm.settings.showSimIndicator,
                             isSelected = msg.id in selectedMessageIds,
-                            position = bubblePosition(messages, idx),
+                            position = bubblePosition(messages, sentIndexAt[idx]),
                             animateIn = BubbleEntrance.shouldAnimate(
                                 msg.id, entranceBaseline, msg.id in animatedIds,
                                 reduceMotion = LocalReduceMotion.current
                             ),
                             onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
                             onLongPress = { toggleSelection(msg.id) },
+                            onReact = { emoji -> applyReaction(msg, emoji) },
+                            showReactionBar = canReact &&
+                                selectedMessageIds.size == 1 &&
+                                msg.id in selectedMessageIds,
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
@@ -1100,8 +1322,10 @@ fun ChatScreen(
 
     if (showForwardPicker) {
         val vmContacts by vm.contacts.collectAsState()
+        val vmConversations by vm.conversations.collectAsState(initial = emptyList())
         ForwardPicker(
             contacts = vmContacts,
+            conversations = vmConversations,
             onPick = { address, name ->
                 showForwardPicker = false
                 val targets = forwardingMessageIds
@@ -1139,13 +1363,20 @@ fun ChatScreen(
             onSchedule = { ts ->
                 val text = draft.trim()
                 val addr = convo?.address ?: return@ChatSchedulePicker
-                vm.scheduleMessage(addr, text, ts, conversationId)
-                val timeText = formatDateTime(ts, "MMM d,", is24HourFormat(context))
-                Toast.makeText(context, context.getString(R.string.chat_scheduled_for, timeText), Toast.LENGTH_SHORT).show()
-                vm.saveDraft(conversationId, "")
-                draft = ""
-                showEmoji = false
-                showSchedulePicker = false
+                vm.scheduleMessage(addr, text, ts, conversationId) { ok ->
+                    if (!ok) {
+                        Toast.makeText(
+                            context, context.getString(R.string.chat_schedule_failed), Toast.LENGTH_LONG
+                        ).show()
+                        return@scheduleMessage
+                    }
+                    val timeText = formatDateTime(ts, "MMM d,", is24HourFormat(context))
+                    Toast.makeText(context, context.getString(R.string.chat_scheduled_for, timeText), Toast.LENGTH_SHORT).show()
+                    vm.saveDraft(conversationId, "")
+                    draft = ""
+                    showEmoji = false
+                    showSchedulePicker = false
+                }
             },
             onDismiss = { showSchedulePicker = false }
         )
@@ -1160,7 +1391,7 @@ fun ChatScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MessageSelectionToolbar(
+internal fun MessageSelectionToolbar(
     count: Int,
     allLocked: Boolean,
     onSelectAll: () -> Unit,
@@ -1260,7 +1491,7 @@ private fun MessageSelectionToolbar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChatTopBar(
+internal fun ChatTopBar(
     convo: com.anindra.messages.data.Conversation?,
     workProfile: Boolean,
     sims: List<SimCard>,
@@ -1269,7 +1500,6 @@ private fun ChatTopBar(
     numberIsBlocked: Boolean,
     blockingEnabled: Boolean,
     sendCountdown: Int,
-    draftsEnabled: Boolean,
     onBack: () -> Unit,
     onOpenDetails: () -> Unit,
     onMenuToggle: () -> Unit,
@@ -1296,13 +1526,14 @@ private fun ChatTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable { onOpenDetails() }
             ) {
-                PersonAvatar(convo?.address ?: "?", size = 36.dp)
+                PersonAvatar(convo?.groupTitle?.ifBlank { convo.address } ?: "?", size = 36.dp)
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             convo?.let {
-                                if (it.name != it.address) it.name
+                                if (it.groupTitle.isNotBlank()) it.groupTitle
+                                else if (it.name != it.address) it.name
                                 else BidiText.ltr(it.display)
                             } ?: "",
                             style = MaterialTheme.typography.titleMedium,
@@ -1313,7 +1544,7 @@ private fun ChatTopBar(
                             WorkProfileBadge()
                         }
                     }
-                    if (draftsEnabled && convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
+                    if (convo?.draft?.isNotBlank() == true && sendCountdown == 0) {
                         Text(
                             stringResource(R.string.chat_draft_prefix),
                             style = MaterialTheme.typography.labelSmall,
@@ -1402,7 +1633,7 @@ private fun ChatTopBar(
 }
 
 @Composable
-private fun ChatMessageList(
+internal fun ChatMessageList(
     messages: List<com.anindra.messages.data.Message>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     deliveryReports: Boolean,
@@ -1473,7 +1704,7 @@ private fun ChatMessageList(
 
 /** Shimmer placeholder bubbles shown while earlier messages are still loading. */
 @Composable
-private fun SkeletonMessageRow() {
+internal fun SkeletonMessageRow() {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Box(
@@ -1499,7 +1730,7 @@ private fun SkeletonMessageRow() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChatSchedulePicker(
+internal fun ChatSchedulePicker(
     visible: Boolean,
     step: String,
     conversationId: Long,
@@ -1545,14 +1776,13 @@ private fun ChatSchedulePicker(
             confirmButton = {
                 TextButton(onClick = {
                     onTimeSelected(timePickerState.hour, timePickerState.minute)
-                    val cal = Calendar.getInstance().apply {
-                        timeInMillis = scheduledDateMillis ?: System.currentTimeMillis()
-                        set(Calendar.HOUR_OF_DAY, timePickerState.hour)
-                        set(Calendar.MINUTE, timePickerState.minute)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }
-                    onSchedule(cal.timeInMillis)
+                    onSchedule(
+                        com.anindra.messages.data.ScheduledTime.resolve(
+                            scheduledDateMillis ?: System.currentTimeMillis(),
+                            timePickerState.hour,
+                            timePickerState.minute
+                        )
+                    )
                 }) { Text(stringResource(R.string.chat_schedule)) }
             },
             dismissButton = {
@@ -1659,7 +1889,7 @@ private fun styledBody(
 
 
 @Composable
-private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> Unit) {
+internal fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> Unit) {
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1701,7 +1931,7 @@ private fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () -> 
 }
 
 @Composable
-private fun MessageDetailsDialog(
+internal fun MessageDetailsDialog(
     message: Message,
     address: String,
     onDismiss: () -> Unit
@@ -1741,7 +1971,7 @@ private fun MessageDetailsDialog(
 }
 
 @Composable
-private fun ConversationDetailsDialog(
+internal fun ConversationDetailsDialog(
     address: String,
     name: String?,
     messageCount: Int,
@@ -1780,7 +2010,7 @@ private fun ConversationDetailsDialog(
 }
 
 @Composable
-private fun DetailRow(label: String, value: String) {
+internal fun DetailRow(label: String, value: String) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween
@@ -1966,7 +2196,7 @@ fun MessageRow(
 }
 
 @Composable
-private fun ImageBubble(uri: String, isMe: Boolean) {
+internal fun ImageBubble(uri: String, isMe: Boolean) {
     coil3.compose.AsyncImage(
         model = uri,
         contentDescription = stringResource(R.string.access_photo),
@@ -1980,7 +2210,7 @@ private fun ImageBubble(uri: String, isMe: Boolean) {
 
 /** Google-Messages-like input bar: pill field with emoji toggle + circular send. */
 @Composable
-private fun AlphanumericNotice(address: String) {
+internal fun AlphanumericNotice(address: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2005,7 +2235,7 @@ private fun AlphanumericNotice(address: String) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun InputBar(
+internal fun InputBar(
     draft: String,
     placeholder: String,
     onDraftChange: (String) -> Unit,
@@ -2118,7 +2348,7 @@ private fun InputBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AttachSheet(
+internal fun AttachSheet(
     onGallery: () -> Unit,
     onCamera: () -> Unit,
     onDismiss: () -> Unit
@@ -2155,7 +2385,7 @@ private fun AttachSheet(
 }
 
 @Composable
-private fun SimPickerDialog(
+internal fun SimPickerDialog(
     sims: List<SimCard>,
     currentSimId: Int,
     onSelect: (Int) -> Unit,
@@ -2195,14 +2425,15 @@ private fun SimPickerDialog(
 }
 
 @Composable
-private fun ForwardPicker(
+internal fun ForwardPicker(
     contacts: List<Contact>,
+    conversations: List<Conversation>,
     onPick: (String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    val filtered = contacts.filter {
-        it.name.contains(query, ignoreCase = true) || it.number.contains(query)
+    val targets = remember(contacts, conversations, query) {
+        ForwardTargets.build(contacts, conversations, query)
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -2224,29 +2455,28 @@ private fun ForwardPicker(
                 )
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(Modifier.heightIn(max = 300.dp)) {
-                    items(filtered, key = { it.number }) { contact ->
+                    items(targets, key = { it.number }) { target ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onPick(contact.number, contact.name) }
+                                .clickable { onPick(target.number, target.name.orEmpty()) }
                                 .padding(vertical = 8.dp)
                         ) {
-                            PersonAvatar(contact.number, size = 36.dp)
+                            PersonAvatar(target.number, size = 36.dp)
                             Spacer(Modifier.width(12.dp))
                             Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(contact.name, fontWeight = FontWeight.Medium)
-                                    if (contact.workProfile) {
-                                        Spacer(Modifier.width(6.dp))
-                                        WorkProfileBadge()
-                                    }
-                                }
                                 Text(
-                                    contact.number,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    target.name ?: target.number,
+                                    fontWeight = FontWeight.Medium
                                 )
+                                if (target.name != null) {
+                                    Text(
+                                        target.number,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

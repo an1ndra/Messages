@@ -38,8 +38,10 @@
     <string name="chat_sending_via">جارٍ الإرسال عبر %s</string>
     <string name="chat_switch_sim">تبديل شريحة SIM</string>
     <string name="chat_scheduled_for">مجدولة في %s</string>
+    <string name="chat_schedule_failed">تعذّر جدولة الرسالة</string>
     <string name="chat_search_contacts">البحث في جهات الاتصال</string>
     <string name="chat_add_people">إضافة أشخاص</string>
+    <string name="chat_reaction_fallback_failed">تعذّر إرسال التفاعل إلى الشخص الآخر</string>
     <string name="chat_locked">مقفل</string>
 
     <!-- Copy & links -->
@@ -75,7 +77,8 @@
 
     <string name="chat_status_not_sent">لم تُرسَل</string>
     <string name="chat_status_retry">انقر للمحاولة مرة أخرى</string>
-    <string name="chat_draft_prefix">مسودة: </string>
+    <string name="chat_draft_prefix">"مسودة: "</string>
+    <string name="chat_scheduled_prefix">"مجدولة: "</string>
     <string name="chat_sending_countdown">جارٍ الإرسال خلال %d ثانية...</string>
     <string name="chat_alphanumeric_error">لا يمكنك إرسال رسائل إلى مرسلين بأحرف وأرقام مثل %s. يتم دعم أرقام الهواتف فقط.</string>
     <string name="chat_alphanumeric_notice">لا يمكن لـ %s استقبال الردود. المدعوم هو أرقام الهواتف فقط.</string>

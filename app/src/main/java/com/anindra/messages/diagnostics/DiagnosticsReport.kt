@@ -5,6 +5,8 @@ import android.app.ActivityManager
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.hardware.display.DisplayManager
 import android.os.BatteryManager
 import android.os.Build
@@ -15,10 +17,18 @@ import android.view.Display
 import com.anindra.messages.crash.CrashAppInfo
 import com.anindra.messages.crash.CrashDeviceInfo
 import com.anindra.messages.crash.CrashReporter
+import com.anindra.messages.data.BackupHealth
 import com.anindra.messages.data.DownloadsStore
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
+import com.anindra.messages.data.TransferEntry
+import com.anindra.messages.data.TransferLog
+import com.anindra.messages.data.TransferLogStore
+import com.anindra.messages.data.TransferOperation
+import com.anindra.messages.ui.theme.A11yOptions
+import com.anindra.messages.ui.theme.schemeFor
+import com.anindra.messages.ui.theme.themeIsDark
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,6 +45,15 @@ data class AppDetails(
     val locale: String,
     val timeZone: String,
     val themeMode: String,
+    /**
+     * The page colour the theme mode actually resolves to, as #RRGGBB.
+     *
+     * The stored mode string on its own does not say what is on screen: a
+     * theme that was wired up to fall through to the dark scheme would still
+     * report "amoled" here while painting #131314. Reporting the resolved
+     * colour makes that visible without a screenshot.
+     */
+    val resolvedBackground: String = "",
     val notificationsEnabled: Boolean,
     val fontFamily: String = "",
     val sendSound: Boolean = false,
@@ -102,6 +121,15 @@ data class SystemInfo(
     val pendingCrashReports: Int = 0
 )
 
+data class BackupHealthInfo(
+    val enabled: Boolean = false,
+    val lastAt: Long = 0L,
+    val lastOk: Boolean = true,
+    val detail: String = "",
+    val retryPending: Boolean = false,
+    val interval: String = ""
+)
+
 data class DisplayModeInfo(
     val modeId: Int,
     val width: Int,
@@ -133,7 +161,19 @@ data class DiagnosticsData(
     val phoneCount: Int,
     val sims: List<SimCard>,
     val display: DisplayInfo,
-    val timestamp: Long
+    val timestamp: Long,
+    /** MMS carrier-config values per subscriptionId; see SimMmsProbe.carrierFacts. */
+    val mmsFacts: Map<Int, List<String>> = emptyMap(),
+    /**
+     * Recent import/export runs, newest last.
+     *
+     * Read from [TransferLogStore] rather than recomputed: a report that
+     * re-derived an import's outcome would eventually disagree with the log the
+     * user is looking at.
+     */
+    val transfers: List<TransferEntry> = emptyList(),
+    /** Automatic-backup health, read from the settings the worker writes. */
+    val backupHealth: BackupHealthInfo = BackupHealthInfo()
 )
 
 object DiagnosticsReport {
@@ -155,6 +195,7 @@ object DiagnosticsReport {
             appendLine("Locale: ${data.appDetails.locale}")
             appendLine("Time zone: ${data.appDetails.timeZone}")
             appendLine("Theme mode: ${data.appDetails.themeMode}")
+            appendLine("Resolved page colour: ${data.appDetails.resolvedBackground}")
             appendLine("Font: ${data.appDetails.fontFamily}")
             appendLine("Accessibility mode: ${data.appDetails.accessibilityMode}")
             if (data.appDetails.accessibilityMode) {
@@ -217,6 +258,34 @@ object DiagnosticsReport {
             appendLine("Database size: ${kb(data.system.dbSizeBytes)} KB")
             appendLine("Pending crash reports: ${data.system.pendingCrashReports}")
             appendLine()
+            appendLine("--- Transfers ---")
+            if (data.transfers.isEmpty()) {
+                appendLine("No imports or exports recorded")
+            } else {
+                data.transfers.takeLast(5).forEach { t ->
+                    appendLine(
+                        "${date(t.timestamp)} ${if (t.operation == TransferOperation.EXPORT) "export" else "import"} " +
+                            "(${t.format}, ${t.mode}): ${if (t.succeeded) "ok" else "FAILED"} — ${t.detail}"
+                    )
+                    if (t.added > 0 || t.skipped > 0) {
+                        appendLine("  added=${t.added} seen=${t.seen} skipped=${t.skipped}")
+                    }
+                    t.conflicts.forEach { (reason, count) -> appendLine("  conflict: $reason = $count") }
+                }
+                appendLine("Recorded runs: ${data.transfers.size} of ${TransferLog.MAX_ENTRIES} kept")
+            }
+            appendLine()
+            appendLine("--- Backup ---")
+            appendLine("Periodic backup: ${if (data.backupHealth.enabled) data.backupHealth.interval else "off"}")
+            appendLine(
+                "Last automatic backup: ${date(data.backupHealth.lastAt)} " +
+                    "${if (data.backupHealth.lastOk) "ok" else "FAILED"}"
+            )
+            if (data.backupHealth.detail.isNotBlank()) {
+                appendLine("  detail: ${data.backupHealth.detail}")
+            }
+            appendLine("Retry pending: ${data.backupHealth.retryPending}")
+            appendLine()
             appendLine("--- SIM ---")
             appendLine("READ_PHONE_STATE granted: ${data.phoneStateGranted}")
             appendLine("Multi-SIM: ${data.multiSim}, phoneCount: ${data.phoneCount}")
@@ -232,6 +301,10 @@ object DiagnosticsReport {
                     appendLine("  mccMnc: ${s.mccMnc ?: "null"}")
                     appendLine("  countryIso: ${s.countryIso ?: "null"}")
                     appendLine("  embedded: ${s.embedded}")
+                    appendLine("  MMS carrier config:")
+                    data.mmsFacts[s.subscriptionId].orEmpty().forEach {
+                        appendLine("    $it")
+                    }
                 }
             }
             appendLine()
@@ -381,7 +454,24 @@ object DiagnosticsReport {
                 phoneCount = phoneCount,
                 sims = sims,
                 display = displayInfo,
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                mmsFacts = sims.associate { s ->
+                    s.subscriptionId to
+                        com.anindra.messages.sms.SimMmsProbe.carrierFacts(context, s.subscriptionId)
+                },
+                transfers = TransferLogStore.read(context),
+                backupHealth = BackupHealthInfo(
+                    enabled = settings.periodicBackupEnabled,
+                    lastAt = settings.lastBackupAt,
+                    lastOk = settings.lastBackupOk,
+                    detail = settings.lastBackupDetail,
+                    retryPending = BackupHealth.isRetryDue(
+                        settings.periodicBackupEnabled,
+                        settings.lastBackupAt,
+                        settings.lastBackupOk
+                    ),
+                    interval = settings.periodicBackupInterval
+                )
             )
         )
     }
@@ -413,13 +503,14 @@ object DiagnosticsReport {
             locale = Locale.getDefault().toString(),
             timeZone = TimeZone.getDefault().id,
             themeMode = settings.themeMode,
+            resolvedBackground = resolvedBackgroundHex(settings.themeMode, systemIsDark()),
             notificationsEnabled = settings.notificationsEnabled,
             fontFamily = settings.fontFamily,
             sendSound = settings.sendSoundEnabled,
             receiveSound = settings.receiveSoundEnabled,
             privacyMode = settings.privacyModeEnabled,
             appLock = settings.appLockEnabled,
-            drafts = settings.draftsEnabled,
+            drafts = true,
             blockedKeywords = settings.blockedKeywords.size,
             accessibilityMode = settings.a11yEnabled,
             a11yFontScale = settings.a11yFontScalePercent,
@@ -433,3 +524,32 @@ object DiagnosticsReport {
 
 internal fun phoneCountForSdk(sdkInt: Int, activeModemCount: Int?, maxSubscriptions: Int?): Int =
     if (sdkInt >= 30) activeModemCount ?: 0 else maxSubscriptions ?: 0
+
+/**
+ * The page colour a theme mode resolves to, as #RRGGBB, mirroring the branch
+ * MessagesTheme uses. [systemIsDark] stands in for `isSystemInDarkTheme()`,
+ * which is composable-only and cannot be called from here.
+ *
+ * Kept in step with Theme.kt deliberately: a theme wired up to fall through to
+ * the dark scheme would still store "amoled", and this is what would show it.
+ */
+/**
+ * The page colour a theme mode resolves to, as #RRGGBB.
+ *
+ * Deliberately built on the same [schemeFor] the app renders through, rather
+ * than repeating the branch: a second copy here would keep reporting black
+ * after the theme itself stopped selecting it, which is exactly the failure
+ * the regression script exists to catch.
+ */
+internal fun resolvedBackgroundHex(mode: String, systemIsDark: Boolean): String {
+    val color = schemeFor(mode, A11yOptions.DISABLED, themeIsDark(mode, systemIsDark)).background
+    // Compose's Color channels are Floats in 0..1, not the packed ARGB Int, so
+    // each has to be scaled and rounded before it can be formatted as hex.
+    fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
+    return "#%02X%02X%02X".format(channel(color.red), channel(color.green), channel(color.blue))
+}
+
+/** The device's night setting, read without a Context. */
+private fun systemIsDark(): Boolean =
+    Resources.getSystem().configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+        Configuration.UI_MODE_NIGHT_YES

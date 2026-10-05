@@ -17,6 +17,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -42,6 +44,8 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.MarkEmailRead
+import androidx.compose.material.icons.rounded.MarkEmailUnread
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -87,7 +91,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -116,6 +122,7 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.data.SwipeAction
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -129,6 +136,12 @@ fun ConversationsScreen(
 ) {
     val reduceMotion = LocalReduceMotion.current
     val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
+    val scheduledAll by vm.scheduledMessages().collectAsState(initial = emptyList())
+    val scheduledPreview = remember(scheduledAll) {
+        scheduledAll
+            .sortedBy { it.timestamp }
+            .associate { it.conversationId to it.body }
+    }
     val contacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
     val workNums = remember(contacts) {
         contacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
@@ -198,14 +211,16 @@ fun ConversationsScreen(
     // Recompute row-level settings whenever any setting changes (SettingsStore is a
     // singleton, so keying on the object would freeze these at first composition).
     val settingsRevision by vm.settings.revision.collectAsState()
+    val leftSwipe = vm.settings.swipeLeftAction != SwipeAction.OFF
+    val rightSwipe = vm.settings.swipeRightAction != SwipeAction.OFF
     val rowSettings = remember(settingsRevision) {
         RowSettings(
             pinnedEnabled = vm.settings.pinnedEnabled,
-            draftsEnabled = vm.settings.draftsEnabled,
             archivingEnabled = vm.settings.archivingEnabled,
             blockingEnabled = vm.settings.blockingEnabled,
-            swipeEnabled = vm.settings.swipeActionsEnabled,
-            reverseSwipe = vm.settings.reverseSwipeEnabled,
+            swipeEnabled = leftSwipe || rightSwipe,
+            swipeLeftAction = vm.settings.swipeLeftAction,
+            swipeRightAction = vm.settings.swipeRightAction,
             hideLinks = vm.settings.hideLinks
         )
     }
@@ -280,32 +295,51 @@ fun ConversationsScreen(
         }
     }
 
+    /** Snackbar helper so every swipe action is recoverable, like archive/delete. */
+    fun withUndo(messageRes: Int, undo: suspend () -> Unit) {
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(messageRes),
+                actionLabel = context.getString(R.string.action_undo),
+                duration = SnackbarDuration.Long
+            )
+            if (result == SnackbarResult.ActionPerformed) undo()
+        }
+    }
+
+    fun markReadWithUndo(convo: Conversation) {
+        val wasUnread = convo.unreadCount > 0
+        if (wasUnread) vm.markRead(convo.id) else vm.markUnread(convo.id)
+        withUndo(
+            if (wasUnread) R.string.convo_marked_read else R.string.convo_marked_unread
+        ) { vm.setRead(convo.id, !wasUnread) }
+    }
+
+    fun pinWithUndo(convo: Conversation) {
+        val wasPinned = convo.pinned
+        if (wasPinned) vm.unpin(convo.id) else vm.togglePin(convo.id)
+        withUndo(
+            if (wasPinned) R.string.convo_unpinned else R.string.convo_pinned
+        ) { vm.setPinned(convo.id, !wasPinned) }
+    }
+
+    fun blockWithUndo(convo: Conversation) {
+        vm.blockNumber(convo.address)
+        withUndo(R.string.convo_blocked) { vm.unblockNumber(convo.address) }
+    }
+
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
     val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks) {
-        conversations.filter { convo ->
-            if (convo.blocked) false
-            else if (showArchived) convo.archived
-            else !convo.archived
-        }.let { list ->
-            if (query.isBlank()) list
-            else list.filter {
-                val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
-                it.name.contains(query, true) || it.address.contains(query) ||
-                        snippet.contains(query, true)
-            }
-        }.let { list ->
-            // Unread-at-top: stable reorder — pinned stays on top, then unread
-            // conversations above read ones, timestamp order preserved within a tier.
-            if (unreadAtTop && !showArchived) {
-                list.sortedWith(
-                    compareBy({ !it.pinned }, { if (it.unreadCount > 0) 0 else 1 }, { -it.timestamp })
-                )
-            } else {
-                list
-            }
-        }
+        val hide = rowSettings.hideLinks
+        com.anindra.messages.data.ConversationList.sort(
+            com.anindra.messages.data.ConversationList.filter(
+                conversations, showArchived, query,
+                snippetFor = { if (hide) hideUrls(it.snippet) else it.snippet }
+            ),
+            unreadAtTop, showArchived
+        )
     }
 
     // Reveal a new unread only while the user is still at the top.
@@ -464,7 +498,10 @@ fun ConversationsScreen(
                     }
                 }
             } else {
-                CompositionLocalProvider(LocalNowTick provides nowTick) {
+                CompositionLocalProvider(
+                    LocalNowTick provides nowTick,
+                    LocalScheduledPreview provides scheduledPreview
+                ) {
                     LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
                         items(displayed, key = { it.id }) { convo ->
                             SwipeableConversationItem(
@@ -488,6 +525,9 @@ fun ConversationsScreen(
                                 onClick = { onOpenConversation(convo.id) },
                                 onDelete = { moveToTrash(convo) },
                                 onArchive = { archiveWithUndo(convo) },
+                                onToggleRead = { markReadWithUndo(convo) },
+                                onTogglePin = { pinWithUndo(convo) },
+                                onBlock = { blockWithUndo(convo) },
                                 onLongClick = { sheetConvoId = convo.id }
                             )
                         }
@@ -566,7 +606,7 @@ fun ConversationsScreen(
 }
 
 @Composable
-private fun SwipeableConversationItem(
+internal fun SwipeableConversationItem(
     context: android.content.Context,
     settings: RowSettings,
     swipeEnabled: Boolean,
@@ -576,11 +616,14 @@ private fun SwipeableConversationItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onArchive: () -> Unit = {},
+    onToggleRead: () -> Unit = {},
+    onTogglePin: () -> Unit = {},
+    onBlock: () -> Unit = {},
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (swipeEnabled) {
-        SwipeConversationItem(context, settings, convo, workProfile, onClick, onDelete, onArchive, onLongClick, modifier)
+        SwipeConversationItem(context, settings, convo, workProfile, onClick, onDelete, onArchive, onToggleRead, onTogglePin, onBlock, onLongClick, modifier)
     } else {
         ConversationRow(
             modifier = modifier,
@@ -599,7 +642,7 @@ private fun SwipeableConversationItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeConversationItem(
+internal fun SwipeConversationItem(
     context: android.content.Context,
     settings: RowSettings,
     convo: Conversation,
@@ -607,6 +650,9 @@ private fun SwipeConversationItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onArchive: () -> Unit,
+    onToggleRead: () -> Unit,
+    onTogglePin: () -> Unit,
+    onBlock: () -> Unit,
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -625,18 +671,10 @@ private fun SwipeConversationItem(
         modifier = modifier,
         backgroundContent = {
             val direction = dismissState.dismissDirection
-            val endIsDelete = !settings.reverseSwipe
+            val action = direction.action(settings)
 
             val bgColor by animateColorAsState(
-                targetValue = when (direction) {
-                    SwipeToDismissBoxValue.EndToStart ->
-                        if (endIsDelete) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.secondaryContainer
-                    SwipeToDismissBoxValue.StartToEnd ->
-                        if (endIsDelete) MaterialTheme.colorScheme.secondaryContainer
-                        else MaterialTheme.colorScheme.error
-                    else -> Color.Transparent
-                },
+                targetValue = action.background(),
                 animationSpec = motionTween(
                     reduceMotion = LocalReduceMotion.current,
                     durationMs = Motion.DURATION_SHORT4
@@ -648,49 +686,28 @@ private fun SwipeConversationItem(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(bgColor)
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = SettingsLayout.SWIPE_ICON_INSET),
                 contentAlignment = when (direction) {
                     SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
                     else -> Alignment.CenterStart
                 }
             ) {
-                when (direction) {
-                    SwipeToDismissBoxValue.EndToStart -> {
-                        if (endIsDelete) {
-                            Icon(
-                                Icons.Rounded.Delete,
-                                contentDescription = stringResource(R.string.access_delete),
-                                tint = MaterialTheme.colorScheme.onError
-                            )
-                        } else {
-                            Icon(
-                                Icons.Rounded.Archive,
-                                contentDescription = stringResource(R.string.access_archive),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                    SwipeToDismissBoxValue.StartToEnd -> {
-                        if (endIsDelete) {
-                            Icon(
-                                Icons.Rounded.Archive,
-                                contentDescription = stringResource(R.string.access_archive),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        } else {
-                            Icon(
-                                Icons.Rounded.Delete,
-                                contentDescription = stringResource(R.string.access_delete),
-                                tint = MaterialTheme.colorScheme.onError
-                            )
-                        }
-                    }
-                    else -> {}
+                if (action != SwipeAction.OFF) {
+                    Icon(
+                        imageVector = action.icon(unread = convo.unreadCount > 0),
+                        contentDescription = stringResource(action.a11yLabelRes(convo.unreadCount > 0)),
+                        tint = action.iconTint()
+                    )
                 }
             }
         },
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = true
+        // A direction set to OFF must not be swipeable at all, not just inert.
+        enableDismissFromStartToEnd = swipeActionFor(
+            travelsRight = true, settings.swipeLeftAction, settings.swipeRightAction
+        ) != SwipeAction.OFF,
+        enableDismissFromEndToStart = swipeActionFor(
+            travelsRight = false, settings.swipeLeftAction, settings.swipeRightAction
+        ) != SwipeAction.OFF
     ) {
         ConversationRow(
             context = context,
@@ -706,34 +723,190 @@ private fun SwipeConversationItem(
     }
 
     LaunchedEffect(dismissState.currentValue) {
-        val endIsDelete = !settings.reverseSwipe
-        when (dismissState.currentValue) {
-            SwipeToDismissBoxValue.StartToEnd -> {
-                if (endIsDelete) onArchive() else onDelete()
-                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-            }
-            SwipeToDismissBoxValue.EndToStart -> {
-                if (endIsDelete) onDelete() else onArchive()
-                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-            }
-            else -> {}
+        when (dismissState.currentValue.action(settings)) {
+            SwipeAction.ARCHIVE -> onArchive()
+            SwipeAction.DELETE -> onDelete()
+            SwipeAction.MARK_READ_UNREAD -> onToggleRead()
+            SwipeAction.PIN -> onTogglePin()
+            SwipeAction.BLOCK -> onBlock()
+            SwipeAction.OFF -> {}
+        }
+        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
         }
     }
 }
 
-private data class RowSettings(
+/** The action a swipe in [this] direction performs, per the user's configuration. */
+private fun SwipeToDismissBoxValue.action(settings: RowSettings): SwipeAction = when (this) {
+    SwipeToDismissBoxValue.StartToEnd -> swipeActionFor(
+        travelsRight = true, settings.swipeLeftAction, settings.swipeRightAction
+    )
+    SwipeToDismissBoxValue.EndToStart -> swipeActionFor(
+        travelsRight = false, settings.swipeLeftAction, settings.swipeRightAction
+    )
+    else -> SwipeAction.OFF
+}
+
+@Composable
+private fun SwipeAction.background() = when (this) {
+    SwipeAction.ARCHIVE -> MaterialTheme.colorScheme.secondaryContainer
+    SwipeAction.DELETE -> MaterialTheme.colorScheme.error
+    SwipeAction.MARK_READ_UNREAD -> MaterialTheme.colorScheme.primary
+    SwipeAction.PIN -> MaterialTheme.colorScheme.tertiaryContainer
+    SwipeAction.BLOCK -> MaterialTheme.colorScheme.errorContainer
+    SwipeAction.OFF -> Color.Transparent
+}
+
+@Composable
+private fun SwipeAction.iconTint() = when (this) {
+    SwipeAction.ARCHIVE -> MaterialTheme.colorScheme.onSecondaryContainer
+    SwipeAction.DELETE -> MaterialTheme.colorScheme.onError
+    SwipeAction.MARK_READ_UNREAD -> MaterialTheme.colorScheme.onPrimary
+    SwipeAction.PIN -> MaterialTheme.colorScheme.onTertiaryContainer
+    SwipeAction.BLOCK -> MaterialTheme.colorScheme.onErrorContainer
+    SwipeAction.OFF -> Color.Transparent
+}
+
+private fun SwipeAction.icon(unread: Boolean): ImageVector = when (this) {
+    SwipeAction.ARCHIVE -> Icons.Rounded.Archive
+    SwipeAction.DELETE -> Icons.Rounded.Delete
+    // Flips with the row so the icon always says what will happen.
+    SwipeAction.MARK_READ_UNREAD ->
+        if (unread) Icons.Rounded.MarkEmailUnread else Icons.Rounded.MarkEmailRead
+    SwipeAction.PIN -> Icons.Rounded.PushPin
+    SwipeAction.BLOCK -> Icons.Rounded.Block
+    SwipeAction.OFF -> Icons.Rounded.Archive
+}
+
+/**
+ * A mock conversation row showing what a swipe in [direction] will look like.
+ * Shares [background], [icon] and [iconTint] with the real gesture, so the
+ * preview cannot drift from the behaviour it advertises.
+ */
+@Composable
+fun SwipeActionPreview(direction: SwipeDirection, action: SwipeAction) {
+    val blockAtEnd = direction.revealsTrailingEdge
+    val shape = RoundedCornerShape(SettingsLayout.PREVIEW_RADIUS)
+    // The action colour is drawn on whichever edge the row slides in from.
+    val blockShape = if (blockAtEnd) {
+        RoundedCornerShape(topEnd = SettingsLayout.PREVIEW_RADIUS, bottomEnd = SettingsLayout.PREVIEW_RADIUS)
+    } else {
+        RoundedCornerShape(topStart = SettingsLayout.PREVIEW_RADIUS, bottomStart = SettingsLayout.PREVIEW_RADIUS)
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(SettingsLayout.PREVIEW_HEIGHT)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f))
+    ) {
+        if (!blockAtEnd) IconBlock(action, blockShape, atEnd = false)
+        // The mock row takes the slack so the colour block always sits flush
+        // against the edge the swipe uncovers.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = SettingsLayout.PREVIEW_GAP)
+        ) {
+            Box(
+                Modifier
+                    .size(SettingsLayout.PREVIEW_AVATAR)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f))
+            )
+            Spacer(Modifier.width(SettingsLayout.PREVIEW_GAP))
+            Column {
+                Box(
+                    Modifier
+                        .width(128.dp)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant)
+                )
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    Modifier
+                        .width(96.dp)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+            }
+        }
+        if (blockAtEnd) IconBlock(action, blockShape, atEnd = true)
+    }
+}
+
+/**
+ * The revealed colour block with the action's icon. Hidden when there is no
+ * action. The icon hugs the row's outer edge, matching the real gesture.
+ */
+@Composable
+private fun RowScope.IconBlock(action: SwipeAction, shape: Shape, atEnd: Boolean) {
+    if (action == SwipeAction.OFF) {
+        Spacer(Modifier.width(SettingsLayout.PREVIEW_BLOCK_WIDTH))
+        return
+    }
+    Box(
+        modifier = Modifier
+            .width(SettingsLayout.PREVIEW_BLOCK_WIDTH)
+            .fillMaxHeight()
+            .clip(shape)
+            .background(action.background()),
+        contentAlignment = if (atEnd) Alignment.CenterEnd else Alignment.CenterStart
+    ) {
+        Icon(
+            imageVector = action.icon(unread = false),
+            contentDescription = null,
+            tint = action.iconTint(),
+            modifier = Modifier
+                .padding(horizontal = SettingsLayout.SWIPE_ICON_INSET)
+                .size(SettingsLayout.SWIPE_ICON_SIZE)
+        )
+    }
+}
+
+/** Spoken label for the action; [unread] picks the read/unread wording. */
+fun SwipeAction.labelRes(unread: Boolean = false): Int = when (this) {
+    SwipeAction.ARCHIVE -> R.string.access_archive
+    // Matches the long-press sheet: this app has no separate trash feature, so
+    // the delete action is always labelled "Delete".
+    SwipeAction.DELETE -> R.string.sheet_delete
+    // Settings name the action, not its current effect on the row, so the
+    // summary stays neutral. The swipe background uses a11yLabelRes() instead.
+    SwipeAction.MARK_READ_UNREAD -> R.string.swipe_action_mark_read
+    SwipeAction.PIN -> R.string.swipe_action_pin
+    SwipeAction.BLOCK -> R.string.swipe_action_block
+    SwipeAction.OFF -> R.string.swipe_action_off
+}
+
+/** Spoken label for a swipe background, which flips with the row's read state. */
+fun SwipeAction.a11yLabelRes(unread: Boolean): Int = when (this) {
+    SwipeAction.MARK_READ_UNREAD ->
+        if (unread) R.string.access_mark_read else R.string.access_mark_unread
+    else -> labelRes()
+}
+
+internal data class RowSettings(
     val pinnedEnabled: Boolean,
-    val draftsEnabled: Boolean,
+    /** Legacy rows gate on these; the redesigned list treats them as always on. */
+    val draftsEnabled: Boolean = true,
+    val reverseSwipe: Boolean = false,
     val archivingEnabled: Boolean,
     val blockingEnabled: Boolean,
     val swipeEnabled: Boolean,
-    val reverseSwipe: Boolean = false,
+    val swipeLeftAction: SwipeAction = SwipeAction.ARCHIVE,
+    val swipeRightAction: SwipeAction = SwipeAction.DELETE,
     val hideLinks: Boolean = false
 )
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ConversationRow(
+internal fun ConversationRow(
     modifier: Modifier = Modifier,
     context: android.content.Context,
     settings: RowSettings,
@@ -747,12 +920,15 @@ private fun ConversationRow(
 ) {
     val now = LocalNowTick.current
     val senderLabel = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name
-    val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
+    val hasDraft = convo.draft.isNotBlank()
     val draftLabel = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
     val snippetLabel = if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
+    val scheduledLabel = LocalScheduledPreview.current[convo.id]
     val previewLabel = BidiText.isolateNumberRuns(
         if (hasDraft) {
             context.getString(R.string.chat_draft_prefix) + draftLabel
+        } else if (!scheduledLabel.isNullOrBlank()) {
+            context.getString(R.string.chat_scheduled_prefix) + scheduledLabel
         } else if (convo.isMe && snippetLabel.isNotEmpty()) {
             context.getString(R.string.convo_your_prefix) + snippetLabel
         } else {
@@ -797,12 +973,14 @@ private fun ConversationRow(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PersonAvatar(convo.address)
+            PersonAvatar(convo.groupTitle.ifBlank { convo.address })
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name,
+                        text = if (convo.groupTitle.isNotBlank()) convo.groupTitle
+                        else if (convo.name == convo.address) BidiText.ltr(convo.display)
+                        else convo.name,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,
@@ -863,7 +1041,7 @@ private enum class ConversationAction {
 }
 
 @Composable
-private fun SheetActionRow(
+internal fun SheetActionRow(
     icon: ImageVector,
     label: String,
     tint: Color,
@@ -889,7 +1067,7 @@ private fun SheetActionRow(
  * disappears first and "Start" last.
  */
 @Composable
-private fun StartChatFab(
+internal fun StartChatFab(
     expanded: Boolean,
     onClick: () -> Unit
 ) {

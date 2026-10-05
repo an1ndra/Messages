@@ -31,7 +31,6 @@
     <string name="access_loading_messages">Загрузка сообщений</string>
     <string name="access_photo">Фото</string>
     <string name="action_call">Вызов</string>
-    <string name="action_add">Добавить</string>
     <string name="access_chat_top_bar">Верхняя панель чата</string>
     <string name="access_swipe_background">Фон свайпа</string>
     <string name="access_nav">Навигационная панель</string>
@@ -63,4 +62,19 @@
     <!-- Detail row labels -->
     <string name="detail_phone_number">Номер телефона</string>
     <string name="detail_messages">Сообщения</string>
+    <string name="common_unblock">Разблокировать</string>
+    <string name="swipe_action_pin">Закрепить</string>
+    <string name="access_mark_read">Отметить прочитанным</string>
+    <string name="access_mark_unread">Отметить непрочитанным</string>
+    <string name="action_contact">Контакт</string>
+    <string name="action_info">Информация</string>
+    <string name="common_add">Добавить</string>
+    <string name="contact_people_selected">выбрано: %1$d</string>
+    <string name="contact_people_count">%1$d чел.</string>
+    <string name="contact_selected">Выбрано</string>
+    <string name="contact_remove_people">Удалить из группы</string>
+    <string name="contact_group_name">Название группы</string>
+    <string name="contact_create_group">Создать группу</string>
+    <string name="contact_group_name_optional">Необязательно - мы назовём её сами</string>
+    <string name="action_add">Добавить</string>
 </resources>

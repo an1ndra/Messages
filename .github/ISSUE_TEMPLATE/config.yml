@@ -1,4 +1,5 @@
-blank_issues_enabled: false
+# Blank issues are on now, so a template is never in the way.
+blank_issues_enabled: true
 contact_links:
   - name: Question or discussion
     url: https://github.com/an1ndra/Messages/discussions
