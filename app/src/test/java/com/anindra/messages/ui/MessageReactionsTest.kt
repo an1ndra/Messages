@@ -77,11 +77,15 @@ class MessageReactionsTest {
             ?.readText() ?: error("ChatScreen.kt not found")
         assertTrue(
             "the reaction bar must be gated on canReact",
-            src.contains("showReactionBar = reactingMessageId == msg.id && canReact")
+            src.contains("showReactionBar = reactingMessageId == msg.id") && src.contains("canReact")
         )
         assertTrue(
             "canReact must require a dialable, unblocked address",
             src.contains("isPhoneNumber(addr) && !numberIsBlocked")
+        )
+        assertTrue(
+            "the picker is for a single message only",
+            src.contains("selectedMessageIds.size == 1")
         )
     }
 }
