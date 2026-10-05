@@ -64,4 +64,24 @@ class MessageReactionsTest {
             src.contains("showReactionBar && !isLockedAndHidden")
         )
     }
+
+    @Test
+    fun theBarIsHiddenWhereAMessageCannotBeSent() {
+        // A reaction sends an SMS fallback, so it must be offered on the same
+        // terms as the composer: a dialable, unblocked address. Otherwise an
+        // alphanumeric sender ID (which cannot receive replies) got a reaction
+        // whose fallback could never go out.
+        val src = generateSequence(File("").absoluteFile) { it.parentFile }
+            .map { File(it, "app/src/main/java/com/anindra/messages/ui/ChatScreen.kt") }
+            .firstOrNull { it.isFile }
+            ?.readText() ?: error("ChatScreen.kt not found")
+        assertTrue(
+            "the reaction bar must be gated on canReact",
+            src.contains("showReactionBar = reactingMessageId == msg.id && canReact")
+        )
+        assertTrue(
+            "canReact must require a dialable, unblocked address",
+            src.contains("isPhoneNumber(addr) && !numberIsBlocked")
+        )
+    }
 }

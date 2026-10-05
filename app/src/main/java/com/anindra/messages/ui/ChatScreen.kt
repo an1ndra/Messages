@@ -612,6 +612,14 @@ fun ChatScreen(
 
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
+    // Reactions carry an SMS fallback, so they are only offered where a message
+    // could actually be sent: a dialable address that is not blocked. Otherwise
+    // an alphanumeric sender ID (or a blocked number) got a reaction whose
+    // fallback could never go out.
+    val canReact = remember(convo, numberIsBlocked) {
+        val addr = convo?.address ?: ""
+        addr.isNotBlank() && isPhoneNumber(addr) && !numberIsBlocked
+    }
     var showPermanentDeleteDialog by remember { mutableStateOf(false) }
 
     var forwardingMessageIds by remember { mutableStateOf<List<Long>>(emptyList()) }
@@ -1201,7 +1209,7 @@ fun ChatScreen(
                                 toggleSelection(msg.id)
                             },
                             onReact = { emoji -> applyReaction(msg, emoji) },
-                            showReactionBar = reactingMessageId == msg.id,
+                            showReactionBar = reactingMessageId == msg.id && canReact,
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
