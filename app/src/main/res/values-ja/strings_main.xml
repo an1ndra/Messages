@@ -6,6 +6,8 @@
     <string name="lock_title">認証してメッセージにアクセス</string>
     <string name="lock_unlock_title">メッセージのロック解除</string>
     <string name="lock_auth_subtitle">認証してメッセージを表示</string>
+    <string name="lock_change_app_lock_title">アプリロックの変更を確認</string>
+    <string name="lock_change_app_lock_subtitle">指紋・顔・PIN で本人確認を行います</string>
     <string name="lock_got_it">了解</string>
     <string name="lock_not_now">後で</string>
     <string name="lock_off">アプリロックはオフです</string>
@@ -49,6 +51,7 @@
     <string name="notification_channel_desc">新しいメッセージの通知</string>
     <string name="notif_title_private">新しいメッセージ</string>
     <string name="notif_body_private">新しいメッセージがあります</string>
+    <string name="notif_action_delete">削除</string>
     <string name="notif_you">自分</string>
     <string name="notif_send_fail_private">メッセージを送信できませんでした。タップして再試行。</string>
     <string name="notif_send_fail">%s にメッセージを送信できませんでした。タップして再試行。</string>

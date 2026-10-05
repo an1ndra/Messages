@@ -1,6 +1,7 @@
 package com.anindra.messages.data
 
 import android.content.Context
+import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 
 /** A single active SIM/subscription, decoupled from [android.telephony.SubscriptionInfo]
@@ -12,7 +13,11 @@ data class SimCard(
     val displayName: String?,
     val mccMnc: String?,
     val countryIso: String?,
-    val embedded: Boolean
+    val embedded: Boolean,
+    /** The SIM's own phone number, when the carrier chooses to expose it. Most
+     *  do not, and reading it needs a permission this app does not request, so
+     *  null is the normal case rather than an error. */
+    val number: String? = null
 )
 
 object SimCards {
@@ -44,12 +49,25 @@ object SimCards {
                         displayName = it.displayName?.toString()?.ifBlank { null },
                         mccMnc = "${it.mccString ?: ""}${it.mncString ?: ""}".ifBlank { null },
                         countryIso = it.countryIso?.ifBlank { null },
-                        embedded = it.isEmbedded
+                        embedded = it.isEmbedded,
+                        number = ownNumber(it)
                     )
                 } ?: emptyList()
+        } catch (_: SecurityException) {
+            // READ_PHONE_STATE denied; show no SIMs rather than crashing.
+            emptyList()
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    /** A SIM's own number needs READ_PHONE_NUMBERS (API 30+), which this app
+     *  deliberately does not request, so a denial here is the normal case
+     *  rather than an error. */
+    private fun ownNumber(info: SubscriptionInfo): String? = try {
+        info.number?.takeIf { it.isNotBlank() }
+    } catch (_: SecurityException) {
+        null
     }
 
     /**

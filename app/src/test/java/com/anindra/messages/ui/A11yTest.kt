@@ -2,6 +2,7 @@ package com.anindra.messages.ui
 
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class A11yTest {
@@ -27,5 +28,27 @@ class A11yTest {
     fun describeDropsNullAndBlankParts() {
         assertEquals("Ann. Hello", A11y.describe("Ann", "  ", null, "", "Hello"))
         assertEquals("", A11y.describe(null, " ", ""))
+    }
+
+    @Test
+    fun everyOptionIsListedExactlyOnce() {
+        assertEquals(A11yOption.entries.toSet(), A11Y_OPTION_ROWS.map { it.option }.toSet())
+        assertEquals(A11yOption.entries.size, A11Y_OPTION_ROWS.size)
+    }
+
+    @Test
+    fun theOptionsFormOneGroupWithRoundedEnds() {
+        // A single group means the run starts and ends there: the first row
+        // softens its top corners, the last its bottom ones, and nothing in
+        // between is treated as the end of a section.
+        assertEquals(RowPosition.FIRST, A11Y_OPTION_ROWS.first().position)
+        assertEquals(RowPosition.LAST, A11Y_OPTION_ROWS.last().position)
+        assertTrue(A11Y_OPTION_ROWS.drop(1).dropLast(1).all { it.position == RowPosition.MIDDLE })
+    }
+
+    @Test
+    fun fontSizeStaysAtTheTopAndReduceMotionAtTheBottom() {
+        assertEquals(A11yOption.FONT_SIZE, A11Y_OPTION_ROWS.first().option)
+        assertEquals(A11yOption.REDUCE_MOTION, A11Y_OPTION_ROWS.last().option)
     }
 }

@@ -260,6 +260,20 @@ object NotificationHelper {
             0, "Mark as read", markReadIntent
         ).build()
 
+        val deleteData = Intent(context, DeleteMessageReceiver::class.java)
+        deleteData.action = DeleteMessageReceiver.ACTION_DELETE
+        deleteData.setPackage(context.packageName)
+        deleteData.putExtra(DeleteMessageReceiver.EXTRA_ADDRESS, from)
+        deleteData.putExtra(DeleteMessageReceiver.EXTRA_NOTIF_ID, notifId)
+        val deleteIntent = PendingIntent.getBroadcast(
+            context, reqCode + 2000,
+            deleteData,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val deleteAction = NotificationCompat.Action.Builder(
+            0, context.getString(R.string.notif_action_delete), deleteIntent
+        ).build()
+
         val senderName = app.repository.contactNameFor(from) ?: from
         val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
@@ -284,8 +298,10 @@ object NotificationHelper {
             .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
             .setStyle(groupedStyle(context, app, convoId, senderName, text))
-        if (replyAction != null) builder.addAction(replyAction)
-        builder.addAction(markReadAction)
+        val actionSettings = app.repository.settings
+        if (actionSettings.notifActionReply && replyAction != null) builder.addAction(replyAction)
+        if (actionSettings.notifActionMarkRead) builder.addAction(markReadAction)
+        if (actionSettings.notifActionDelete) builder.addAction(deleteAction)
         try {
             NotificationManagerCompat.from(context).notify(notifId, builder.build())
         } catch (_: SecurityException) {
@@ -430,6 +446,30 @@ object SmsSender {
         false
     }
 
+    /**
+     * A one-off SMS with no stored row and no status callback, for the reaction
+     * fallback (issue #188): the recipient should see a plain text, but the
+     * sending side must not show it as a message in its own chat.
+     */
+    fun sendRaw(
+        context: Context,
+        address: String,
+        body: String,
+        subscriptionId: Int = -1
+    ): Boolean = try {
+        val sm = manager(context, subscriptionId)
+        val dest = normalizeAddress(address)
+        val parts = sm.divideMessage(body)
+        if (parts.size <= 1) {
+            sm.sendTextMessage(dest, null, body, null, null)
+        } else {
+            sm.sendMultipartTextMessage(dest, null, parts, null, null)
+        }
+        true
+    } catch (_: Exception) {
+        false
+    }
+
     /** Strips formatting from a stored phone address; keeps digits and a
      *  leading '+'. Non-numeric (alphanumeric sender ID) addresses are returned
      *  trimmed rather than reduced to their digits (issue #207). */
@@ -448,7 +488,7 @@ object SmsSender {
     fun sendMms(
         context: Context,
         messageId: Long,
-        address: String,
+        addresses: List<String>,
         media: Uri,
         subscriptionId: Int = -1,
         caption: String = ""
@@ -456,9 +496,16 @@ object SmsSender {
         val mime = com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
             context.contentResolver.getType(media), media.toString()
         )
-        val prepared = MmsComposer.prepare(
-            context, address, media, mime, caption, subscriptionId
-        ) ?: return false
+        val config = MmsCarrierConfig.of(context, subscriptionId)
+        val prepared = when (val outcome = MmsComposer.prepare(
+            context, addresses, media, mime, caption, subscriptionId, config
+        )) {
+            is MmsComposer.Outcome.Ready -> outcome.prepared
+            is MmsComposer.Outcome.Rejected -> {
+                android.util.Log.w("MmsComposer", "MMS not sent: ${outcome.reason}")
+                return false
+            }
+        }
         return try {
             val sent = PendingIntent.getBroadcast(
                 context, (messageId % Int.MAX_VALUE).toInt(),
@@ -472,6 +519,30 @@ object SmsSender {
             )
             val overrides = Bundle().apply {
                 putBoolean(android.telephony.SmsManager.MMS_CONFIG_GROUP_MMS_ENABLED, false)
+                putInt(
+                    android.telephony.SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE,
+                    config.maxMessageSize
+                )
+                putInt(
+                    android.telephony.SmsManager.MMS_CONFIG_MAX_IMAGE_WIDTH,
+                    config.maxImageWidth
+                )
+                putInt(
+                    android.telephony.SmsManager.MMS_CONFIG_MAX_IMAGE_HEIGHT,
+                    config.maxImageHeight
+                )
+                putBoolean(
+                    android.telephony.SmsManager.MMS_CONFIG_MMS_DELIVERY_REPORT_ENABLED,
+                    config.deliveryReport
+                )
+                putBoolean(
+                    android.telephony.SmsManager.MMS_CONFIG_MMS_READ_REPORT_ENABLED,
+                    config.readReport
+                )
+                putBoolean(
+                    android.telephony.SmsManager.MMS_CONFIG_NOTIFY_WAP_MMSC_ENABLED,
+                    config.notifyWapMmsc
+                )
             }
             manager(context, subscriptionId).sendMultimediaMessage(
                 context, prepared.pduUri, null, overrides, sent

@@ -23,6 +23,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -70,20 +71,33 @@ import com.anindra.messages.data.TrashedMessage
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.Repository
 import com.anindra.messages.sms.NotificationHelper
+import com.anindra.messages.data.ForwardPlan
 import com.anindra.messages.sms.SmsSender
 import com.anindra.messages.ui.ChatScreen
 import com.anindra.messages.ui.ConversationsScreen
+import com.anindra.messages.ui.AddPeopleScreen
 import com.anindra.messages.ui.ContactDetailsScreen
+import com.anindra.messages.ui.NotificationSettingsScreen
+import com.anindra.messages.ui.AutoDeleteSettingsScreen
+import com.anindra.messages.ui.LinkSettingsScreen
+import com.anindra.messages.ui.InboxSettingsScreen
+import com.anindra.messages.ui.ScheduledMessagesScreen
 import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.SettingsScreen
 import com.anindra.messages.ui.AdvancedSettingsScreen
 import com.anindra.messages.ui.AccessibilityScreen
+import com.anindra.messages.ui.MmsSupportScreen
 import com.anindra.messages.ui.SpamBlockedScreen
 import com.anindra.messages.ui.TrashScreen
+import com.anindra.messages.ui.TransferLogScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.A11yOptions
 import com.anindra.messages.ui.theme.MessagesTheme
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineExceptionHandler
+import com.anindra.messages.crash.CrashReportFormatter
+import com.anindra.messages.crash.CrashReporter
+import com.anindra.messages.crash.CrashReportStore
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -94,7 +108,27 @@ import kotlinx.coroutines.launch
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val repo: Repository = (app as MessagesApplication).repository
     val settings = repo.settings
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    // A throw escaping a fire-and-forget launch on a bare SupervisorJob reaches
+    // the default uncaught handler and kills the process. Record it as a crash
+    // report instead, so a failed background write never closes the app. (#281)
+    private val scope = CoroutineScope(
+        SupervisorJob() +
+            CoroutineExceptionHandler { _, throwable ->
+                runCatching {
+                    CrashReportStore.save(
+                        getApplication(),
+                        CrashReportFormatter.format(
+                            throwable,
+                            CrashReporter.deviceInfo(),
+                            CrashReporter.appInfo(getApplication()),
+                            System.currentTimeMillis()
+                        ),
+                        System.currentTimeMillis()
+                    )
+                }
+            } +
+            Dispatchers.Main
+    )
 
     override fun onCleared() {
         super.onCleared()
@@ -111,6 +145,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ctx = app.applicationContext
             val out = mutableListOf<com.anindra.messages.ui.Contact>()
             val enterpriseBase = android.provider.ContactsContract.Directory.ENTERPRISE_DEFAULT
+            // Shared across both sources: the same number can be saved in the
+            // personal and the work profile and must be listed once.
+            val seen = mutableSetOf<String>()
 
             fun load(uri: android.net.Uri, withContactId: Boolean) {
                 val projection = if (withContactId) arrayOf(
@@ -127,7 +164,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     null, null,
                     android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
                 )?.use { c ->
-                    val seen = mutableSetOf<String>()
                     while (c.moveToNext()) {
                         val name = c.getString(0) ?: continue
                         val num = c.getString(1) ?: continue
@@ -140,20 +176,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
 
             try {
-                // ENTERPRISE_CONTENT_URI is API 34+; referencing it on older
-                // devices throws NoSuchFieldError (an Error), so guard by SDK
-                // and fall back to the plain personal-profile URI. (#209)
+                load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
+            } catch (_: Throwable) {
+            }
+
+            try {
+                // The enterprise URI returns only work-profile contacts, so it is
+                // loaded *in addition to* the personal profile. Loading it alone
+                // — as this did — dropped every personal contact on API 34+,
+                // leaving the picker showing work contacts, or nothing at all.
+                // Referencing it below API 34 throws NoSuchFieldError (an Error,
+                // not an Exception), hence the SDK guard. (#209)
                 if (com.anindra.messages.data.EnterpriseContacts.isSupported(Build.VERSION.SDK_INT)) {
                     load(com.anindra.messages.data.EnterpriseContacts.phoneUri(), true)
-                } else {
-                    load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
                 }
             } catch (_: Throwable) {
-                out.clear()
-                try {
-                    load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
-                } catch (_: Throwable) {
-                }
             }
             contacts.value = out
         }
@@ -255,6 +292,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun markRead(id: Long) = scope.launch { repo.markReadSuspend(id) }
 
+    fun markUnread(id: Long) = scope.launch { repo.setReadSuspend(id, read = false) }
+
+    /** Restores a read state exactly, which is what an undo needs. */
+    fun setRead(id: Long, read: Boolean) = scope.launch { repo.setReadSuspend(id, read) }
+
     /** Clears unread state, returning how many messages were unread. */
     suspend fun consumeUnread(id: Long): Int = withContext(Dispatchers.IO) {
         val n = repo.conversationByIdSuspend(id)?.unreadCount ?: 0
@@ -332,21 +374,118 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setReactions(messageId: Long, reactions: Map<String, Int>) =
         scope.launch { repo.setReactionsSuspend(messageId, reactions) }
 
-    fun send(conversationId: Long, body: String, subId: Int = settings.simSubscriptionId) {
+    /**
+     * The SMS fallback for a local reaction (issue #188). SMS has no reaction
+     * field, so the other side only ever sees readable text; it is sent with no
+     * stored row so it never shows up as a bubble in this chat.
+     */
+    fun sendReactionFallback(conversationId: Long, body: String) {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
-            val stored = repo.sendText(conversationId, body, subId) ?: return@launch
-            if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
-            val handedOff = SmsSender.send(
-                getApplication(), stored.id, convo.address, body,
+            // The fallback is a real SMS: never send it to a blocked number or
+            // an address that cannot receive replies.
+            val recipients = repo.conversationRecipients(conversationId)
+                .filter { isPhoneNumber(it) && !isNumberBlocked(it) }
+                .ifEmpty {
+                    convo.address.takeIf { isPhoneNumber(it) && !isNumberBlocked(it) }
+                        ?.let { listOf(it) }
+                        ?: emptyList()
+                }
+            if (recipients.isEmpty()) return@launch
+            val subId = settings.simSubscriptionId
+            val sent = withContext(Dispatchers.IO) {
+                recipients.any { address ->
+                    SmsSender.sendRaw(getApplication(), address, body, subId)
+                }
+            }
+            if (!sent) {
+                Toast.makeText(
+                    getApplication(),
+                    getApplication<Application>().getString(R.string.chat_reaction_fallback_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    /** Everyone a conversation goes to, primary recipient first. */
+    suspend fun conversationRecipients(conversationId: Long): List<String> =
+        repo.conversationRecipients(conversationId)
+
+    suspend fun isGroup(conversationId: Long): Boolean = repo.isGroup(conversationId)
+
+    /**
+     * Bumped whenever a conversation's membership changes, so screens showing
+     * the participant list reload instead of keeping a stale count.
+     */
+    val membershipRevision = kotlinx.coroutines.flow.MutableStateFlow(0)
+
+    /**
+     * Adds people to a conversation, turning it into a group. [onDone] runs once
+     * the write has landed, so the caller can navigate to the new group.
+     */
+    fun addParticipants(
+        conversationId: Long,
+        addresses: List<String>,
+        onDone: () -> Unit = {}
+    ) = scope.launch {
+        repo.addParticipants(conversationId, addresses)
+        membershipRevision.value++
+        onDone()
+    }
+
+    /** Removes one person. The last remaining recipient cannot be removed. */
+    fun removeParticipant(conversationId: Long, address: String) =
+        scope.launch {
+            repo.removeParticipant(conversationId, address)
+            membershipRevision.value++
+        }
+
+    /** Contacts name for an address, or null when it is not in Contacts. */
+    fun contactNameFor(address: String): String? = repo.contactNameFor(address)
+
+    /** A group's own name, or blank for a 1:1 conversation. */
+    fun conversationGroupTitle(conversationId: Long): String =
+        repo.groupTitleBlocking(conversationId)
+
+    /** Renames a group. Blank restores the default name. */
+    fun setGroupTitle(conversationId: Long, title: String) =
+        scope.launch {
+            repo.setGroupTitle(conversationId, title)
+            membershipRevision.value++
+        }
+
+    fun send(conversationId: Long, body: String, subId: Int = settings.simSubscriptionId) {
+        scope.launch { dispatchText(conversationId, body, subId) }
+    }
+
+    /**
+     * Store a message and hand it to the radio. Everything that puts a row on the
+     * wire goes through here: a forwarded message that only got stored stayed
+     * "Sending…" forever, because nothing was ever sent.
+     */
+    private suspend fun dispatchText(conversationId: Long, body: String, subId: Int) {
+        val convo = repo.conversationByIdSuspend(conversationId) ?: return
+        if (!isPhoneNumber(convo.address)) return
+        val stored = repo.sendText(conversationId, body, subId) ?: return
+        if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
+        val recipients = repo.conversationRecipients(conversationId)
+            .filter { isPhoneNumber(it) }
+            .ifEmpty { listOf(convo.address) }
+        // A group is one stored message sent once per recipient. The row is
+        // marked failed only when every hand-off failed, since a partial
+        // send is still a send.
+        val results = recipients.map { address ->
+            SmsSender.send(
+                getApplication(), stored.id, address, body,
                 subId, settings.deliveryReportsEnabled
             )
-            // accepted by framework; SmsStatusReceiver confirms sent/failed.
-            if (!handedOff) {
-                repo.markMessageStatusSuspend(stored.id, "failed")
-                NotificationHelper.showSendFailed(getApplication(), convo.address)
-            }
+        }
+        // accepted by framework; SmsStatusReceiver confirms sent/failed.
+        if (results.isNotEmpty() && results.none { it }) {
+            repo.markMessageStatusSuspend(stored.id, "failed")
+            NotificationHelper.showSendFailed(getApplication(), convo.address)
         }
     }
 
@@ -355,8 +494,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
             val stored = repo.sendMedia(conversationId, "image", uri.toString()) ?: return@launch
+            // A group MMS addresses every member in one PDU, unlike SMS which
+            // is sent once per person.
+            val recipients = repo.conversationRecipients(conversationId)
+                .filter { isPhoneNumber(it) }
+                .ifEmpty { listOf(convo.address) }
             val handedOff = SmsSender.sendMms(
-                getApplication(), stored.id, convo.address, uri, settings.simSubscriptionId,
+                getApplication(), stored.id, recipients, uri, settings.simSubscriptionId,
                 stored.body
             )
             if (!handedOff) {
@@ -405,13 +549,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val convo = repo.conversationByIdSuspend(msg.conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
             repo.markMessageStatusSuspend(messageId, "sending")
+            val recipients = repo.conversationRecipients(msg.conversationId)
+                .filter { isPhoneNumber(it) }
+                .ifEmpty { listOf(convo.address) }
             val handedOff = if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
-                SmsSender.sendMms(getApplication(), messageId, convo.address, Uri.parse(msg.mediaUri), simId)
+                SmsSender.sendMms(getApplication(), messageId, recipients, Uri.parse(msg.mediaUri), simId)
             } else {
-                SmsSender.send(
-                    getApplication(), messageId, convo.address, msg.body,
-                    simId, settings.deliveryReportsEnabled
-                )
+                val results = recipients.map { address ->
+                    SmsSender.send(
+                        getApplication(), messageId, address, msg.body,
+                        simId, settings.deliveryReportsEnabled
+                    )
+                }
+                results.isNotEmpty() && results.any { it }
             }
             if (!handedOff) repo.markMessageStatusSuspend(messageId, "failed")
         }
@@ -425,13 +575,84 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun backupDatabase(pin: String, onResult: (Boolean) -> Unit) {
+    fun backupDatabase(pin: String, onResult: (com.anindra.messages.data.Repository.ExportResult) -> Unit) {
         scope.launch {
-            val ok = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 repo.backupDatabase(getApplication(), pin)
             }
-            onResult(ok)
+            refreshTransferLog()
+            onResult(result)
         }
+    }
+
+    fun backupDatabaseUnencrypted(onResult: (com.anindra.messages.data.Repository.ExportResult) -> Unit) {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                repo.backupDatabaseUnencrypted(getApplication())
+            }
+            refreshTransferLog()
+            onResult(result)
+        }
+    }
+
+    private val _transferLog = androidx.compose.runtime.mutableStateOf(
+        emptyList<com.anindra.messages.data.TransferEntry>()
+    )
+
+    /** Newest last. Reloaded from disk on demand so it survives a restart. */
+    val transferLog: androidx.compose.runtime.MutableState<List<com.anindra.messages.data.TransferEntry>>
+        get() = _transferLog
+
+    fun refreshTransferLog() {
+        scope.launch {
+            val entries = withContext(Dispatchers.IO) {
+                com.anindra.messages.data.TransferLogStore.read(getApplication())
+            }
+            _transferLog.value = entries
+        }
+    }
+
+    /** Same read path as [refreshTransferLog], surfaced to logcat for scripts. */
+    fun dumpTransferLog(onReady: (List<com.anindra.messages.data.TransferEntry>) -> Unit) {
+        scope.launch {
+            val entries = withContext(Dispatchers.IO) {
+                com.anindra.messages.data.TransferLogStore.read(getApplication())
+            }
+            _transferLog.value = entries
+            onReady(entries)
+        }
+    }
+
+    fun clearTransferLog() {
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                com.anindra.messages.data.TransferLogStore.clear(getApplication())
+            }
+            _transferLog.value = emptyList()
+        }
+    }
+
+    /**
+     * Mirrors the log to logcat under one tag per line.
+     *
+     * The log screen proves the UI renders it; this proves the *same* runs
+     * reached storage, without a screenshot. Reads what the screen reads.
+     */
+    fun logTransferEntries(entries: List<com.anindra.messages.data.TransferEntry>) {
+        if (entries.isEmpty()) {
+            android.util.Log.i(TRANSFER_LOG_TAG, "entries=0")
+            return
+        }
+        entries.forEach { entry ->
+            android.util.Log.i(
+                TRANSFER_LOG_TAG,
+                "entry op=${entry.operation} format=${entry.format} mode=${entry.mode} " +
+                    "ok=${entry.succeeded} added=${entry.added} seen=${entry.seen} " +
+                    "skipped=${entry.skipped} detail=\"${entry.detail}\" " +
+                    "conflicts=${entry.conflicts.entries.joinToString(";") { "${it.key}=${it.value}" }}"
+            )
+        }
+        android.util.Log.i(TRANSFER_LOG_TAG, "entries=${entries.size}")
     }
 
     /** Non-null while an import is running; value = messages processed/target.
@@ -458,30 +679,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 com.anindra.messages.data.Repository.ImportResult.Error("Import error: ${e.message}")
             }
             importLoading.value = null
+            refreshTransferLog()
             onResult(result)
         }
     }
 
     /** Imports an SMS Import / Export (sms-ie) backup file. [mode] REPLACE wipes
-     *  the current history first, matching the Restore option. */
+     *  the current history first, matching the Restore option.
+     *
+     *  The full [Repository.ImportResult] is passed through rather than a
+     *  count: collapsing it to an Int is what made "wrong PIN" and "unreadable
+     *  file" both surface as one generic toast. */
     fun importSmsIe(
         uri: Uri,
         mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
-        onResult: (Int) -> Unit
+        onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit
     ) {
         importLoading.value = 0
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     repo.importSmsIeFrom(getApplication(), uri, mode)
-                }.getOrNull()
+                }.getOrElse { e ->
+                    com.anindra.messages.data.Repository.ImportResult.Error(
+                        "Import error: ${e.message ?: e.javaClass.simpleName}"
+                    )
+                }
             }
             importLoading.value = null
-            when (result) {
-                is com.anindra.messages.data.Repository.ImportResult.Success -> onResult(result.merged ?: 0)
-                is com.anindra.messages.data.Repository.ImportResult.Error -> onResult(-1)
-                null -> onResult(-1)
-            }
+            refreshTransferLog()
+            onResult(result)
         }
     }
 
@@ -500,6 +727,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun unpinAll() = scope.launch { repo.unpinAll() }
 
+    fun unpin(id: Long) = scope.launch { repo.setPinnedSuspend(id, false) }
+
+    fun setPinned(id: Long, pinned: Boolean) = scope.launch { repo.setPinnedSuspend(id, pinned) }
+
     fun archiveConversation(id: Long) = scope.launch { repo.setArchivedSuspend(id, true) }
 
     fun unarchiveConversation(id: Long) = scope.launch { repo.setArchivedSuspend(id, false) }
@@ -511,9 +742,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Leaving a chat: persist the draft first, then trash the conversation if it
      *  ended up with nothing to show. Sequential so the emptiness check sees the
      *  draft we just wrote (and keeps a chat that still has one). */
-    fun saveDraftAndMaybeTrash(conversationId: Long, draft: String, draftsEnabled: Boolean) {
+    fun saveDraftAndMaybeTrash(conversationId: Long, draft: String) {
         scope.launch(Dispatchers.IO) {
-            if (draftsEnabled) repo.saveDraft(conversationId, draft)
+            repo.saveDraft(conversationId, draft)
             repo.trashConversationIfEmptySuspend(conversationId)
         }
     }
@@ -528,6 +759,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isNumberBlocked(number: String): Boolean = repo.isNumberBlocked(number)
 
+    fun blockedNumbers() = repo.blockedNumbers()
+
     fun conversationNotificationsEnabledFlow(conversationId: Long): Flow<Boolean> =
         repo.conversationNotificationsEnabledFlow(conversationId)
 
@@ -537,23 +770,74 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun conversationIdForAddress(address: String): Long? = repo.conversationIdForAddress(address)
 
+    /** Stores the forwarded row in the target conversation *and* hands it to
+     *  the framework, so SmsStatusReceiver can flip it to sent/failed. Storing
+     *  alone would leave it on "Sending…" forever. */
     fun forwardMessage(messageId: Long, targetConversationId: Long) {
         scope.launch {
             val msg = repo.messageByIdSuspend(messageId) ?: return@launch
+            val target = repo.conversationByIdSuspend(targetConversationId) ?: return@launch
+            if (!isPhoneNumber(target.address)) return@launch
+            val subId = settings.simSubscriptionId
             val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
-            repo.sendText(targetConversationId, text, settings.simSubscriptionId)
+when (val plan = ForwardPlan.of(msg, text)) {
+                is ForwardPlan.Sms -> {
+                    // An attachment with no caption has no text to forward, but
+                    // it now travels as MMS below. Anything else blank would put
+                    // an empty SMS on the wire, so drop it.
+                    if (plan.body.isBlank()) return@launch
+                    val stored = repo.sendText(targetConversationId, plan.body, subId) ?: return@launch
+                    handOff(stored.id, target.address) {
+                        SmsSender.send(
+                            getApplication(), stored.id, target.address, plan.body,
+                            subId, settings.deliveryReportsEnabled
+                        )
+                    }
+                }
+                is ForwardPlan.Mms -> {
+                    val uri = Uri.parse(plan.mediaUri)
+                    val stored = repo.sendMedia(
+                        targetConversationId, "image", plan.mediaUri, plan.caption
+                    ) ?: return@launch
+                    handOff(stored.id, target.address) {
+                        SmsSender.sendMms(
+                            getApplication(), stored.id, listOf(target.address), uri, subId, plan.caption
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    /** Marks the row failed and notifies when the framework declines the
+     *  handoff; on success SmsStatusReceiver confirms sent/failed. */
+    private suspend fun handOff(rowId: Long, address: String, send: () -> Boolean) {
+        if (send()) return
+        repo.markMessageStatusSuspend(rowId, "failed")
+        NotificationHelper.showSendFailed(getApplication(), address)
     }
 
     fun scheduledMessages() = repo.scheduledMessages()
 
-    fun scheduleMessage(address: String, body: String, timestamp: Long, conversationId: Long) {
+    fun scheduleMessage(
+        address: String,
+        body: String,
+        timestamp: Long,
+        conversationId: Long,
+        onResult: (Boolean) -> Unit = {}
+    ) {
         scope.launch(Dispatchers.IO) {
-            val subId = settings.simSubscriptionId
-            val id = repo.addScheduledMessage(address, body, timestamp, conversationId, subId)
-            com.anindra.messages.sms.ScheduledMessageSender.schedule(
-                getApplication(), id, address, body, subId, timestamp
-            )
+            // The repository rejects a blank body or a non-future time by throwing;
+            // an uncaught throw here would take the process down, so the caller is
+            // told instead. (#281)
+            val ok = runCatching {
+                val subId = settings.simSubscriptionId
+                val id = repo.addScheduledMessage(address, body, timestamp, conversationId, subId)
+                com.anindra.messages.sms.ScheduledMessageSender.schedule(
+                    getApplication(), id, address, body, subId, timestamp
+                )
+            }.isSuccess
+            withContext(Dispatchers.Main) { onResult(ok) }
         }
     }
 
@@ -561,6 +845,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch(Dispatchers.IO) {
             com.anindra.messages.sms.ScheduledMessageSender.cancel(getApplication(), id)
             repo.deleteScheduledMessage(id)
+        }
+    }
+
+    fun rescheduleMessage(id: Long, timestamp: Long, onResult: (Boolean) -> Unit = {}) {
+        scope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                val row = repo.scheduledMessageById(id) ?: error("no scheduled message $id")
+                repo.updateScheduledMessage(id, timestamp)
+                // the old alarm is keyed by id, so re-arming replaces it
+                com.anindra.messages.sms.ScheduledMessageSender.cancel(getApplication(), id)
+                com.anindra.messages.sms.ScheduledMessageSender.schedule(
+                    getApplication(), id, row.address, row.body, row.subId, timestamp
+                )
+            }.isSuccess
+            withContext(Dispatchers.Main) { onResult(ok) }
         }
     }
 
@@ -610,6 +909,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 }
 
+/** logcat tag the transfer-log dump is written under; see applyTransferLogProbe. */
+private const val TRANSFER_LOG_TAG = "TransferLog"
+
 class MainActivity : FragmentActivity() {
 
     private val permissionLauncher =
@@ -638,6 +940,9 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         applyFakeDualSim(intent)
         applySmsIeProbe(intent)
+        applyBackupProbe(intent)
+        applyBackupExportProbe(intent)
+        applyTransferLogProbe(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
 
@@ -665,9 +970,9 @@ class MainActivity : FragmentActivity() {
 
         val appLockEnabled = bootVm.settings.appLockEnabled
 
-        // Script hooks: --es set_theme dark|light|system, --ez open_settings true
+        // Script hooks: --es set_theme dark|light|system|amoled, --ez open_settings true
         when (intent.getStringExtra("set_theme")) {
-            "dark", "light", "system" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
+            "dark", "light", "system", "amoled" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
@@ -783,9 +1088,34 @@ class MainActivity : FragmentActivity() {
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
                 var defaultSmsChecked by remember { mutableStateOf(false) }
-                // Hoisted so the Settings list keeps its scroll position when
-                // navigating into Advanced and back.
+                // Hoisted above the AnimatedContent so every settings screen keeps
+                // its scroll position when navigating into a nested screen and
+                // back; inline remember* state would be rebuilt at 0 on re-entry.
                 val settingsScroll = rememberScrollState()
+                // Row a search result asked a sub-screen to scroll to and flash.
+                var settingsJumpTarget by remember { mutableStateOf<Int?>(null) }
+                val advancedScroll = rememberScrollState()
+                val accessibilityScroll = rememberScrollState()
+                val contactDetailsScroll = rememberScrollState()
+                val inboxScroll = rememberScrollState()
+                val settingsRevision by vm.settings.revision.collectAsState()
+                val useNewUi = settingsRevision.let { vm.settings.useNewUi }
+                val trashConversationList = rememberLazyListState()
+                val trashMessageList = rememberLazyListState()
+                val spamConversationList = rememberLazyListState()
+                val spamMessageList = rememberLazyListState()
+
+                // Entering Settings from the list starts at the top; returning from
+                // a sub-screen keeps the position, so #265 stays fixed.
+                var lastRoute by androidx.compose.runtime.remember {
+                    androidx.compose.runtime.mutableStateOf("list")
+                }
+                androidx.compose.runtime.LaunchedEffect(navRoute) {
+                    if (com.anindra.messages.ui.ScrollReset.shouldResetToTop(lastRoute, navRoute)) {
+                        settingsScroll.scrollTo(0)
+                    }
+                    lastRoute = navRoute
+                }
 
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     if (navRoute != "settings") {
@@ -822,6 +1152,18 @@ class MainActivity : FragmentActivity() {
                                 val roleManager = getSystemService(RoleManager::class.java)
                                 if (roleManager.isRoleAvailable(RoleManager.ROLE_SMS)) {
                                     defaultSmsLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS))
+                                } else {
+                                    // Roles are absent on some OEM builds. The legacy
+                                    // picker still works there; without this the
+                                    // button did nothing at all.
+                                    defaultSmsLauncher.launch(
+                                        android.content.Intent(
+                                            android.provider.Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT
+                                        ).putExtra(
+                                            android.provider.Telephony.Sms.Intents.EXTRA_PACKAGE_NAME,
+                                            packageName
+                                        )
+                                    )
                                 }
                             }) { androidx.compose.material3.Text(stringResource(R.string.default_sms_set)) }
                         },
@@ -854,7 +1196,13 @@ class MainActivity : FragmentActivity() {
                 androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
                     when (navRoute) {
                         "details" -> navRoute = "chat"
+                        "add-people" -> navRoute = "details"
+                        "transfer-log" -> navRoute = "advanced"
                         "trash" -> navRoute = "settings"
+                        "inbox" -> navRoute = "settings"
+                        "notif-settings" -> navRoute = "advanced"
+                        "auto-delete" -> navRoute = "advanced"
+                        "links" -> navRoute = "advanced"
                         "advanced" -> navRoute = "settings"
                         "accessibility" -> navRoute = "advanced"
                         "spam" -> navRoute = "settings"
@@ -862,13 +1210,26 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "advanced" to 2, "accessibility" to 3)
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "inbox" to 2, "advanced" to 2, "accessibility" to 3,
+                        "notif-settings" to 3, "auto-delete" to 3, "links" to 3,
+                        "transfer-log" to 3,
+                        "add-people" to 3, "mms-check" to 3, "scheduled" to 2)
                 val reduceMotion = vm.a11y.reduceMotionEnabled
                 val navSlide = motionTween<IntOffset>(reduceMotion, Motion.DURATION_MEDIUM2)
                 val navFade = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
 
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-                    ConversationsScreen(
+                    if (useNewUi) ConversationsScreen(
+                        vm = vm,
+                        onOpenConversation = { id ->
+                            com.anindra.messages.sms.NotificationHelper
+                                .clearConversationNotification(this@MainActivity, id)
+                            chatId = id
+                            navRoute = "chat"
+                        },
+                        onNewChat = { navRoute = "new" },
+                        onOpenSettings = { navRoute = "settings" }
+                    ) else com.anindra.messages.ui.legacy.ConversationsScreen(
                         vm = vm,
                         onOpenConversation = { id ->
                             com.anindra.messages.sms.NotificationHelper
@@ -919,33 +1280,130 @@ class MainActivity : FragmentActivity() {
                                             }
                                         }
                                     )
-                                    "settings" -> SettingsScreen(
+                                    "settings" -> if (useNewUi) SettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "list" },
                                         onOpenTrash = { navRoute = "trash" },
                                         onOpenAdvanced = { navRoute = "advanced" },
                                         onOpenSpamBlocked = { navRoute = "spam" },
+                                        onOpenInbox = { navRoute = "inbox" },
+                                        onOpenScheduled = { navRoute = "scheduled" },
+                                        scrollState = settingsScroll
+                                    ) else com.anindra.messages.ui.legacy.SettingsScreen(
+                                        onOpenRoute = { route -> navRoute = route },
+                                        onOpenJumpTarget = { row -> settingsJumpTarget = row },
+                                        vm = vm,
+                                        onBack = { navRoute = "list" },
+                                        onOpenTrash = { navRoute = "trash" },
+                                        onOpenAdvanced = { navRoute = "advanced" },
+                                        onOpenSpamBlocked = { navRoute = "spam" },
+                                        onOpenScheduled = { navRoute = "scheduled" },
                                         scrollState = settingsScroll
                                     )
-                                    "advanced" -> AdvancedSettingsScreen(
+                                    "inbox" -> InboxSettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
-                                        onOpenAccessibility = { navRoute = "accessibility" }
+                                        scrollState = inboxScroll
                                     )
-                                    "accessibility" -> AccessibilityScreen(
+                                    "advanced" -> if (useNewUi) AdvancedSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" },
+onOpenAccessibility = { navRoute = "accessibility" },
+                                        onOpenNotifications = { navRoute = "notif-settings" },
+                                        onOpenAutoDelete = { navRoute = "auto-delete" },
+                                        onOpenLinks = { navRoute = "links" },
+                                        onOpenMmsCheck = { navRoute = "mms-check" },
+                                        onOpenTransferLog = { navRoute = "transfer-log" },
+                                        scrollState = advancedScroll
+                                    ) else com.anindra.messages.ui.legacy.AdvancedSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" },
+                                        onOpenAccessibility = { navRoute = "accessibility" },
+                                        onOpenTransferLog = { navRoute = "transfer-log" },
+                                        searchRow = settingsJumpTarget,
+                                        onSearchRowHandled = { settingsJumpTarget = null },
+                                    )
+                                    "transfer-log" -> TransferLogScreen(
+                                        entries = vm.transferLog.value,
+                                        onBack = { navRoute = "advanced" },
+                                        onClear = { vm.clearTransferLog() }
+                                    )
+                                    "scheduled" -> ScheduledMessagesScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" },
+                                        onOpenChat = { id ->
+                                            chatId = id
+                                            navRoute = "chat"
+                                        }
+                                    )
+                                    "mms-check" -> MmsSupportScreen(
+                                        onBack = { navRoute = "advanced" }
+                                    )
+                                    "notif-settings" -> NotificationSettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "advanced" }
                                     )
-                                    "trash" -> TrashScreen(vm = vm, onBack = { navRoute = "settings" })
+                                    "auto-delete" -> AutoDeleteSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" }
+                                    )
+                                    "links" -> LinkSettingsScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" }
+                                    )
+                                    "accessibility" -> if (useNewUi) AccessibilityScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" },
+                                        scrollState = accessibilityScroll
+                                    ) else com.anindra.messages.ui.legacy.AccessibilityScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "advanced" },
+                                        searchRow = settingsJumpTarget,
+                                        onSearchRowHandled = { settingsJumpTarget = null },
+                                    )
+                                    "trash" -> TrashScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "settings" },
+                                        conversationListState = trashConversationList,
+                                        messageListState = trashMessageList
+                                    )
                                     "spam" -> SpamBlockedScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
-                                        onOpenConversation = { navRoute = "chat"; chatId = it }
+                                        onOpenConversation = { navRoute = "chat"; chatId = it },
+                                        conversationListState = spamConversationList,
+                                        messageListState = spamMessageList
                                     )
-                                    "details" -> ContactDetailsScreen(
+                                    "details" -> if (useNewUi) ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
-                                        onBack = { navRoute = "chat" }
+onBack = { navRoute = "chat" },
+                                        onAddPeople = { navRoute = "add-people" },
+                                        scrollState = contactDetailsScroll
+                                    ) else com.anindra.messages.ui.legacy.ContactDetailsScreen(
+                                        vm = vm,
+                                        conversationId = detailsId,
+                                        onBack = { navRoute = "chat" },
+                                    )
+                                    "add-people" -> AddPeopleScreen(
+                                        vm = vm,
+                                        conversationId = detailsId,
+                                        onBack = { navRoute = "details" },
+                                        onDone = { picked, groupName ->
+                                            // Add them, name the group, then take
+                                            // the user into the new group chat so
+                                            // they can carry on writing.
+                                            vm.addParticipants(
+                                                detailsId, picked,
+                                                onDone = {
+                                                    if (groupName.isNotEmpty()) {
+                                                        vm.setGroupTitle(detailsId, groupName)
+                                                    }
+                                                    chatId = detailsId
+                                                    navRoute = "chat"
+                                                }
+                                            )
+                                        }
                                     )
                                     else -> ChatScreen(
                                         vm = vm,
@@ -990,8 +1448,15 @@ class MainActivity : FragmentActivity() {
         if (now - lastResumeTime > 5 * 60_000L) {
             repo.syncFromSystem()
             repo.refreshContactNames()
+            // Started here too, because on a fresh install the observer is
+            // registered in Application.onCreate only if SMS access was already
+            // granted; this covers access granted from the permission dialog.
+            repo.observeProviderChanges()
             lastResumeTime = now
         }
+        // A SIM swap or carrier change alters the MMS size and image limits, so the
+        // cached carrier config is dropped rather than pinned to the old SIM.
+        com.anindra.messages.sms.MmsCarrierConfig.invalidate()
         // Catch MMS whose WAP push was missed (e.g. the app was not the default
         // handler at the time); they stay announced in the provider until fetched.
         com.anindra.messages.sms.MmsDownloader.requestPending(this)
@@ -1029,6 +1494,52 @@ class MainActivity : FragmentActivity() {
     /** Debug builds only: `--es sms_ie_probe <uri>` runs the sms-ie import so
      *  the end-to-end path can be asserted on an emulator (the SAF picker is
      *  not scriptable). */
+    /** Debug builds only: `--es backup_probe <uri> [--es backup_probe_pin <pin>]`
+     *  runs the backup restore so the end-to-end path can be asserted on an
+     *  emulator, where the SAF picker is not scriptable. */
+    private fun applyBackupProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val uri = intent.getStringExtra("backup_probe") ?: return
+        val pin = intent.getStringExtra("backup_probe_pin")
+        val mode = if (intent.getStringExtra("backup_probe_mode") == "merge") {
+            com.anindra.messages.data.ImportMode.MERGE
+        } else {
+            com.anindra.messages.data.ImportMode.REPLACE
+        }
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
+        vm.importDatabase(Uri.parse(uri), pin, mode) { result ->
+            when (result) {
+                is com.anindra.messages.data.Repository.ImportResult.Success ->
+                    android.util.Log.i("BackupProbe", "restore ok merged=${result.merged}")
+                is com.anindra.messages.data.Repository.ImportResult.Error ->
+                    android.util.Log.e("BackupProbe", "restore failed: ${result.message}")
+            }
+        }
+    }
+
+    /** Debug builds only: `--ez backup_export_probe true [--ei backup_fail_first N]`
+     *  runs an unencrypted backup so a regression script can observe the retry and
+     *  backoff path; N forces the first N destination writes to fail. */
+    private fun applyBackupExportProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        if (!intent.getBooleanExtra("backup_export_probe", false)) return
+        val failFirst = intent.getIntExtra("backup_fail_first", 0)
+        if (failFirst > 0) com.anindra.messages.data.TransferRetry.injectFailures(failFirst)
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
+        vm.backupDatabaseUnencrypted { result ->
+            val ok = result is com.anindra.messages.data.Repository.ExportResult.Success
+            val attempts = when (result) {
+                is com.anindra.messages.data.Repository.ExportResult.Success -> result.attempts
+                is com.anindra.messages.data.Repository.ExportResult.Error -> result.attempts
+            }
+            android.util.Log.i("BackupProbe", "export ok=$ok attempts=$attempts")
+        }
+    }
+
     private fun applySmsIeProbe(intent: Intent) {
         val debuggable =
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -1040,9 +1551,25 @@ class MainActivity : FragmentActivity() {
             com.anindra.messages.data.ImportMode.MERGE
         }
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
-        vm.importSmsIe(Uri.parse(uri), mode) { count ->
-            android.util.Log.i("SmsIeImport", "probe imported count=$count")
+        vm.importSmsIe(Uri.parse(uri), mode) { result ->
+            when (result) {
+                is com.anindra.messages.data.Repository.ImportResult.Success ->
+                    android.util.Log.i("SmsIeImport", "probe imported count=${result.merged}")
+                is com.anindra.messages.data.Repository.ImportResult.Error ->
+                    android.util.Log.e("SmsIeImport", "probe failed: ${result.message}")
+            }
         }
+    }
+
+    /** Debug builds only: `--es transfer_log_probe` logs the stored runs, so a
+     *  regression script can assert on a transfer that the UI drove itself. */
+    private fun applyTransferLogProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        if (!intent.getBooleanExtra("transfer_log_probe", false)) return
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
+        vm.dumpTransferLog { entries -> vm.logTransferEntries(entries) }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
@@ -1051,9 +1578,12 @@ class MainActivity : FragmentActivity() {
         applyFakeDualSim(intent)
         applyMmsProbe(intent)
         applySmsIeProbe(intent)
+        applyBackupProbe(intent)
+        applyBackupExportProbe(intent)
+        applyTransferLogProbe(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
-            "dark", "light", "system" -> vm.themeMode = intent.getStringExtra("set_theme")!!
+            "dark", "light", "system", "amoled" -> vm.themeMode = intent.getStringExtra("set_theme")!!
         }
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {

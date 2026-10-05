@@ -36,8 +36,10 @@
     <string name="chat_sending_via">通过 %s 发送</string>
     <string name="chat_switch_sim">切换 SIM 卡</string>
     <string name="chat_scheduled_for">已计划于 %s 发送</string>
+    <string name="chat_schedule_failed">无法计划发送此消息</string>
     <string name="chat_search_contacts">搜索联系人</string>
     <string name="chat_add_people">添加人员</string>
+    <string name="chat_reaction_fallback_failed">无法将回应发送给对方</string>
     <string name="chat_locked">已锁定</string>
 
     <string name="chat_copied">已复制</string>
@@ -72,6 +74,7 @@
     <string name="chat_status_not_sent">未发送</string>
     <string name="chat_status_retry">轻触重试</string>
     <string name="chat_draft_prefix">草稿：</string>
+    <string name="chat_scheduled_prefix">定时：</string>
     <string name="chat_sending_countdown">正在发送 %d 秒后…</string>
     <string name="chat_alphanumeric_error">您无法向 %s 这类字母数字发送者发送消息。仅支持电话号码。</string>
     <string name="chat_alphanumeric_notice">%s 无法接收回复。仅支持电话号码。</string>

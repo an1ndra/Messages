@@ -31,4 +31,9 @@
     <string name="spam_conversation_deleted">ブロックした会話を削除しました</string>
     <string name="spam_conversations_cleared">ブロックした会話を空にしました</string>
     <string name="spam_messages_cleared">ブロックしたメッセージを空にしました</string>
+    <string name="convo_marked_read">既読にしました</string>
+    <string name="convo_marked_unread">未読にしました</string>
+    <string name="convo_pinned">ピン留めしました</string>
+    <string name="convo_unpinned">ピンを外しました</string>
+    <string name="convo_blocked">番号をブロックしました</string>
 </resources>

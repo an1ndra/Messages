@@ -31,4 +31,9 @@
     <string name="spam_conversation_deleted">تم حذف المحادثة المحظورة</string>
     <string name="spam_conversations_cleared">تم مسح المحادثات المحظورة</string>
     <string name="spam_messages_cleared">تم مسح الرسائل المحظورة</string>
+    <string name="convo_marked_read">تم التعليم كمقروء</string>
+    <string name="convo_marked_unread">تم التعليم كغير مقروء</string>
+    <string name="convo_pinned">تم التثبيت</string>
+    <string name="convo_unpinned">تم إلغاء التثبيت</string>
+    <string name="convo_blocked">تم حظر الرقم</string>
 </resources>

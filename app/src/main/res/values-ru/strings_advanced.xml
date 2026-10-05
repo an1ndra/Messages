@@ -11,7 +11,6 @@
     <string name="settings_advanced_turn_off">Сначала отключите «</string>
     <string name="settings_advanced_turn_off_suffix">"»</string>
     <string name="settings_advanced_permanent_delete_on">Удаление безвозвратно включено. Эта переписка и её сообщения будут немедленно удалены с устройства — без перемещения в корзину — и не могут быть восстановлены.</string>
-
     <string name="settings_font_title">Шрифт</string>
     <string name="settings_advanced_emoji_button">Кнопка эмодзи</string>
     <string name="settings_advanced_emoji_button_desc">Показывать кнопку эмодзи в поле сообщения</string>
@@ -21,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">Системный шрифт</string>
-
     <string name="keywords_title">Заблокированные ключевые слова</string>
     <string name="keywords_hint">Сообщения, содержащие любое из этих слов, перемещаются в корзину: они не отображаются во входящих и не воспроизводят звук уведомления.</string>
     <string name="keywords_add_hint">Добавить ключевое слово</string>
@@ -30,7 +28,6 @@
     <string name="keywords_remove">Удалить ключевое слово</string>
     <string name="keywords_subtitle_none">Нет</string>
     <string name="keywords_subtitle_count">%1$d заблокировано</string>
-
     <string name="diagnostics_title">Диагностика</string>
     <string name="diagnostics_subtitle">Диагностика устройства и приложения для устранения неполадок</string>
     <string name="diagnostics_save">Сохранить</string>
@@ -38,4 +35,34 @@
     <string name="diagnostics_close">Закрыть</string>
     <string name="diagnostics_clip_label">Диагностика Messages</string>
     <string name="settings_sim_unknown">Неизвестная SIM</string>
+    <string name="mms_check_title">Поддержка MMS</string>
+    <string name="mms_check_subtitle">Проверить поддержку MMS на каждой SIM-карте</string>
+    <string name="mms_check_summary">MMS включена оператором на %1$d из %2$d SIM-карт</string>
+    <string name="mms_check_verdict_supported">Включено оператором</string>
+    <string name="mms_check_verdict_disabled">Отключено у этого оператора</string>
+    <string name="mms_check_verdict_no_carrier">Нет сети на этой SIM-карте</string>
+    <string name="mms_check_verdict_unknown">Не удалось проверить</string>
+    <string name="mms_check_number_hidden">Оператор не сообщает номер</string>
+    <string name="mms_check_country">%1$s · %2$s</string>
+    <string name="mms_check_footer">Каждая SIM сравнивается с настройкой MMS, объявленной её оператором. Это сообщает заявление оператора, а не проверенную услугу MMS: для проверки нужны системные настройки APN, доступные только приложениям с привилегиями.</string>
+    <string name="mms_check_no_sims">Активные SIM-карты не найдены</string>
+    <string name="transfer_log_title">Журнал импорта и экспорта</string>
+    <string name="transfer_log_subtitle">Последние импорты и экспорты и пропущенные элементы</string>
+    <string name="transfer_log_empty">Импортов и экспортов пока нет.</string>
+    <string name="transfer_log_clear">Очистить журнал</string>
+    <string name="transfer_log_export">Экспорт</string>
+    <string name="transfer_log_import">Импорт</string>
+    <string name="transfer_log_counts">Добавлено %1$d, пропущено %2$d</string>
+    <string name="transfer_log_conflict">%1$d %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">Успешно</string>
+    <string name="transfer_log_status_failed">Ошибка</string>
+    <string name="transfer_log_retried">Повторено %1$d×</string>
+    <string name="transfer_conflict_already_present">уже есть</string>
+    <string name="transfer_conflict_provider_id_taken">ID оператора уже занят</string>
+    <string name="transfer_conflict_provider_id_dropped">ID оператора с другого устройства</string>
+    <string name="transfer_conflict_conversation_merged">переписка объединена с существующей</string>
+    <string name="transfer_conflict_conversation_unresolved">не удалось сопоставить переписку</string>
+    <string name="transfer_conflict_record_unreadable">не удалось прочитать запись</string>
+    <string name="transfer_conflict_part_too_large">вложение слишком большое</string>
 </resources>

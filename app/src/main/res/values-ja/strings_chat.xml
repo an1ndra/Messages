@@ -38,8 +38,10 @@
     <string name="chat_sending_via">%s 経由で送信中</string>
     <string name="chat_switch_sim">SIM を切り替え</string>
     <string name="chat_scheduled_for">%s にスケジュールされました</string>
+    <string name="chat_schedule_failed">メッセージを予約できませんでした</string>
     <string name="chat_search_contacts">連絡先を検索</string>
     <string name="chat_add_people">人を追加</string>
+    <string name="chat_reaction_fallback_failed">相手にリアクションを送信できませんでした</string>
     <string name="chat_locked">ロック済み</string>
 
     <!-- Copy & links -->
@@ -75,7 +77,8 @@
 
     <string name="chat_status_not_sent">未送信</string>
     <string name="chat_status_retry">タップして再試行</string>
-    <string name="chat_draft_prefix">下書き: </string>
+    <string name="chat_draft_prefix">"下書き: "</string>
+    <string name="chat_scheduled_prefix">"予約済み: "</string>
     <string name="chat_sending_countdown">%d秒後に送信...</string>
     <string name="chat_alphanumeric_error">%s のような英数字送信者にはメッセージを送信できません。電話番号のみがサポートされています。</string>
     <string name="chat_alphanumeric_notice">%s は返信を受け取れません。電話番号のみ対応しています。</string>
