@@ -1,0 +1,131 @@
+name: Issue TODO
+
+# On a newly opened issue, turn the report into a maintainer TODO and post it
+# back as a single comment. The model is pointed at the current tree of the
+# default branch so the steps name real files and packages instead of guessing.
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: issue-todo-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  todo:
+    if: github.event.sender.type != 'Bot' && !github.event.issue.pull_request
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Describe the current project structure
+        id: tree
+        run: |
+          {
+            echo 'packages<<EOF'
+            find app/src/main/java -name '*.kt' -printf '%h\n' \
+              | sort -u \
+              | sed 's#^app/src/main/java/##'
+            echo 'EOF'
+            echo 'components<<EOF'
+            grep -rhoE '(^|fun |internal fun |private fun )[A-Z][A-Za-z0-9]*Screen' \
+              app/src/main/java --include='*.kt' \
+              | grep -oE '[A-Z][A-Za-z0-9]*Screen' \
+              | sort -u
+            echo 'EOF'
+            echo 'tests<<EOF'
+            find app/src/test/java -name '*Test.kt' -printf '%f\n' | sort -u
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Draft the TODO
+        id: draft
+        env:
+          BASE_URL: ${{ vars.OPENCODE_BASE_URL }}
+          MODEL: ${{ vars.OPENCODE_MODEL }}
+          API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          PACKAGES: ${{ steps.tree.outputs.packages }}
+          COMPONENTS: ${{ steps.tree.outputs.components }}
+          TESTS: ${{ steps.tree.outputs.tests }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys, urllib.request
+
+          base = (os.environ.get("BASE_URL") or "").rstrip("/")
+          model = os.environ.get("MODEL") or ""
+          if not base or not model:
+              sys.exit("OPENCODE_BASE_URL and OPENCODE_MODEL must be set as repository variables.")
+
+          body = os.environ.get("ISSUE_BODY") or ""
+          if not body.strip():
+              sys.exit("Issue body is empty; nothing to plan.")
+
+          sections = [
+              "Turn this issue into a maintainer TODO. Name only files and",
+              "composables from the lists below. If the lists do not cover the",
+              "change, say so plainly instead of inventing a path. This is an",
+              "offline SMS app, so a report may be a carrier or OEM limitation",
+              "rather than a defect; if the body does not establish which, make",
+              "finding that out the first step.",
+              "",
+              "Issue title: " + os.environ["ISSUE_TITLE"],
+              "",
+              "Issue body:",
+              body,
+              "",
+              "Packages under app/src/main/java:",
+              os.environ["PACKAGES"],
+              "",
+              "Screen composables found:",
+              os.environ["COMPONENTS"],
+              "",
+              "Existing unit tests:",
+              os.environ["TESTS"],
+          ]
+          prompt = "\n".join(sections)
+
+          request = urllib.request.Request(
+              f"{base}/chat/completions",
+              data=json.dumps({
+                  "model": model,
+                  "messages": [
+                      {"role": "system", "content": "You write terse maintainer TODOs."},
+                      {"role": "user", "content": prompt},
+                  ],
+                  "temperature": 0.2,
+              }).encode(),
+              headers={
+                  "Content-Type": "application/json",
+                  "Authorization": f"Bearer {os.environ.get('API_KEY', '')}",
+              },
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=300) as response:
+                  result = json.load(response)
+          except Exception as error:
+              print(f"Model call failed: {error}", file=sys.stderr)
+              sys.exit(1)
+
+          text = result["choices"][0]["message"]["content"].strip()
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"todo<<TODOEOF\n{text}\nTODOEOF\n")
+          print(text)
+          PY
+
+      - name: Post the TODO
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TODO: ${{ steps.draft.outputs.todo }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$NUMBER" --body "$TODO"
