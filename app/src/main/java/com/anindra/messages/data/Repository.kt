@@ -544,6 +544,25 @@ class Repository(private val context: Context) {
         out.reversed()
     }
 
+    /**
+     * Conversations with at least one non-deleted message whose body contains
+     * [query], case-insensitively — the home list's global message search, so a
+     * word buried in an old message still surfaces its thread. Returns an empty
+     * set for a blank query.
+     */
+    fun conversationIdsMatchingMessage(query: String): Flow<Set<Long>> = observe {
+        val out = mutableSetOf<Long>()
+        if (query.isNotBlank()) {
+            val like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            db.readableDatabase.rawQuery(
+                "SELECT DISTINCT conversation_id FROM messages WHERE deleted_at=0 " +
+                    "AND body LIKE ? ESCAPE '\\'",
+                arrayOf(like)
+            ).use { c -> while (c.moveToNext()) out += c.getLong(0) }
+        }
+        out
+    }
+
     fun messageCount(conversationId: Long): Int = runOnIo {
         var count = 0
         db.readableDatabase.rawQuery(
