@@ -1209,7 +1209,9 @@ fun ChatScreen(
                                 toggleSelection(msg.id)
                             },
                             onReact = { emoji -> applyReaction(msg, emoji) },
-                            showReactionBar = reactingMessageId == msg.id && canReact,
+                            showReactionBar = reactingMessageId == msg.id &&
+                                canReact &&
+                                selectedMessageIds.size == 1,
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
