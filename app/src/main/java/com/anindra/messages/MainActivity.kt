@@ -89,6 +89,7 @@ import com.anindra.messages.ui.AccessibilityScreen
 import com.anindra.messages.ui.MmsSupportScreen
 import com.anindra.messages.ui.SpamBlockedScreen
 import com.anindra.messages.ui.TrashScreen
+import com.anindra.messages.ui.TransferLogScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.A11yOptions
 import com.anindra.messages.ui.theme.MessagesTheme
@@ -373,6 +374,34 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setReactions(messageId: Long, reactions: Map<String, Int>) =
         scope.launch { repo.setReactionsSuspend(messageId, reactions) }
 
+    /**
+     * The SMS fallback for a local reaction (issue #188). SMS has no reaction
+     * field, so the other side only ever sees readable text; it is sent with no
+     * stored row so it never shows up as a bubble in this chat.
+     */
+    fun sendReactionFallback(conversationId: Long, body: String) {
+        scope.launch {
+            val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
+            if (!isPhoneNumber(convo.address)) return@launch
+            val recipients = repo.conversationRecipients(conversationId)
+                .filter { isPhoneNumber(it) }
+                .ifEmpty { listOf(convo.address) }
+            val subId = settings.simSubscriptionId
+            val sent = withContext(Dispatchers.IO) {
+                recipients.any { address ->
+                    SmsSender.sendRaw(getApplication(), address, body, subId)
+                }
+            }
+            if (!sent) {
+                Toast.makeText(
+                    getApplication(),
+                    getApplication<Application>().getString(R.string.chat_reaction_fallback_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
     /** Everyone a conversation goes to, primary recipient first. */
     suspend fun conversationRecipients(conversationId: Long): List<String> =
         repo.conversationRecipients(conversationId)
@@ -539,13 +568,84 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun backupDatabase(pin: String, onResult: (Boolean) -> Unit) {
+    fun backupDatabase(pin: String, onResult: (com.anindra.messages.data.Repository.ExportResult) -> Unit) {
         scope.launch {
-            val ok = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 repo.backupDatabase(getApplication(), pin)
             }
-            onResult(ok)
+            refreshTransferLog()
+            onResult(result)
         }
+    }
+
+    fun backupDatabaseUnencrypted(onResult: (com.anindra.messages.data.Repository.ExportResult) -> Unit) {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                repo.backupDatabaseUnencrypted(getApplication())
+            }
+            refreshTransferLog()
+            onResult(result)
+        }
+    }
+
+    private val _transferLog = androidx.compose.runtime.mutableStateOf(
+        emptyList<com.anindra.messages.data.TransferEntry>()
+    )
+
+    /** Newest last. Reloaded from disk on demand so it survives a restart. */
+    val transferLog: androidx.compose.runtime.MutableState<List<com.anindra.messages.data.TransferEntry>>
+        get() = _transferLog
+
+    fun refreshTransferLog() {
+        scope.launch {
+            val entries = withContext(Dispatchers.IO) {
+                com.anindra.messages.data.TransferLogStore.read(getApplication())
+            }
+            _transferLog.value = entries
+        }
+    }
+
+    /** Same read path as [refreshTransferLog], surfaced to logcat for scripts. */
+    fun dumpTransferLog(onReady: (List<com.anindra.messages.data.TransferEntry>) -> Unit) {
+        scope.launch {
+            val entries = withContext(Dispatchers.IO) {
+                com.anindra.messages.data.TransferLogStore.read(getApplication())
+            }
+            _transferLog.value = entries
+            onReady(entries)
+        }
+    }
+
+    fun clearTransferLog() {
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                com.anindra.messages.data.TransferLogStore.clear(getApplication())
+            }
+            _transferLog.value = emptyList()
+        }
+    }
+
+    /**
+     * Mirrors the log to logcat under one tag per line.
+     *
+     * The log screen proves the UI renders it; this proves the *same* runs
+     * reached storage, without a screenshot. Reads what the screen reads.
+     */
+    fun logTransferEntries(entries: List<com.anindra.messages.data.TransferEntry>) {
+        if (entries.isEmpty()) {
+            android.util.Log.i(TRANSFER_LOG_TAG, "entries=0")
+            return
+        }
+        entries.forEach { entry ->
+            android.util.Log.i(
+                TRANSFER_LOG_TAG,
+                "entry op=${entry.operation} format=${entry.format} mode=${entry.mode} " +
+                    "ok=${entry.succeeded} added=${entry.added} seen=${entry.seen} " +
+                    "skipped=${entry.skipped} detail=\"${entry.detail}\" " +
+                    "conflicts=${entry.conflicts.entries.joinToString(";") { "${it.key}=${it.value}" }}"
+            )
+        }
+        android.util.Log.i(TRANSFER_LOG_TAG, "entries=${entries.size}")
     }
 
     /** Non-null while an import is running; value = messages processed/target.
@@ -572,30 +672,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 com.anindra.messages.data.Repository.ImportResult.Error("Import error: ${e.message}")
             }
             importLoading.value = null
+            refreshTransferLog()
             onResult(result)
         }
     }
 
     /** Imports an SMS Import / Export (sms-ie) backup file. [mode] REPLACE wipes
-     *  the current history first, matching the Restore option. */
+     *  the current history first, matching the Restore option.
+     *
+     *  The full [Repository.ImportResult] is passed through rather than a
+     *  count: collapsing it to an Int is what made "wrong PIN" and "unreadable
+     *  file" both surface as one generic toast. */
     fun importSmsIe(
         uri: Uri,
         mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
-        onResult: (Int) -> Unit
+        onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit
     ) {
         importLoading.value = 0
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     repo.importSmsIeFrom(getApplication(), uri, mode)
-                }.getOrNull()
+                }.getOrElse { e ->
+                    com.anindra.messages.data.Repository.ImportResult.Error(
+                        "Import error: ${e.message ?: e.javaClass.simpleName}"
+                    )
+                }
             }
             importLoading.value = null
-            when (result) {
-                is com.anindra.messages.data.Repository.ImportResult.Success -> onResult(result.merged ?: 0)
-                is com.anindra.messages.data.Repository.ImportResult.Error -> onResult(-1)
-                null -> onResult(-1)
-            }
+            refreshTransferLog()
+            onResult(result)
         }
     }
 
@@ -796,6 +902,9 @@ when (val plan = ForwardPlan.of(msg, text)) {
     }
 }
 
+/** logcat tag the transfer-log dump is written under; see applyTransferLogProbe. */
+private const val TRANSFER_LOG_TAG = "TransferLog"
+
 class MainActivity : FragmentActivity() {
 
     private val permissionLauncher =
@@ -825,6 +934,8 @@ class MainActivity : FragmentActivity() {
         applyFakeDualSim(intent)
         applySmsIeProbe(intent)
         applyBackupProbe(intent)
+        applyBackupExportProbe(intent)
+        applyTransferLogProbe(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
 
@@ -1079,6 +1190,7 @@ class MainActivity : FragmentActivity() {
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "add-people" -> navRoute = "details"
+                        "transfer-log" -> navRoute = "advanced"
                         "trash" -> navRoute = "settings"
                         "inbox" -> navRoute = "settings"
                         "notif-settings" -> navRoute = "advanced"
@@ -1093,6 +1205,7 @@ class MainActivity : FragmentActivity() {
 
                 val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "inbox" to 2, "advanced" to 2, "accessibility" to 3,
                         "notif-settings" to 3, "auto-delete" to 3, "links" to 3,
+                        "transfer-log" to 3,
                         "add-people" to 3, "mms-check" to 3, "scheduled" to 2)
                 val reduceMotion = vm.a11y.reduceMotionEnabled
                 val navSlide = motionTween<IntOffset>(reduceMotion, Motion.DURATION_MEDIUM2)
@@ -1193,13 +1306,20 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         onOpenAutoDelete = { navRoute = "auto-delete" },
                                         onOpenLinks = { navRoute = "links" },
                                         onOpenMmsCheck = { navRoute = "mms-check" },
+                                        onOpenTransferLog = { navRoute = "transfer-log" },
                                         scrollState = advancedScroll
                                     ) else com.anindra.messages.ui.legacy.AdvancedSettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
                                         onOpenAccessibility = { navRoute = "accessibility" },
+                                        onOpenTransferLog = { navRoute = "transfer-log" },
                                         searchRow = settingsJumpTarget,
                                         onSearchRowHandled = { settingsJumpTarget = null },
+                                    )
+                                    "transfer-log" -> TransferLogScreen(
+                                        entries = vm.transferLog.value,
+                                        onBack = { navRoute = "advanced" },
+                                        onClear = { vm.clearTransferLog() }
                                     )
                                     "scheduled" -> ScheduledMessagesScreen(
                                         vm = vm,
@@ -1392,6 +1512,27 @@ onBack = { navRoute = "chat" },
         }
     }
 
+    /** Debug builds only: `--ez backup_export_probe true [--ei backup_fail_first N]`
+     *  runs an unencrypted backup so a regression script can observe the retry and
+     *  backoff path; N forces the first N destination writes to fail. */
+    private fun applyBackupExportProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        if (!intent.getBooleanExtra("backup_export_probe", false)) return
+        val failFirst = intent.getIntExtra("backup_fail_first", 0)
+        if (failFirst > 0) com.anindra.messages.data.TransferRetry.injectFailures(failFirst)
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
+        vm.backupDatabaseUnencrypted { result ->
+            val ok = result is com.anindra.messages.data.Repository.ExportResult.Success
+            val attempts = when (result) {
+                is com.anindra.messages.data.Repository.ExportResult.Success -> result.attempts
+                is com.anindra.messages.data.Repository.ExportResult.Error -> result.attempts
+            }
+            android.util.Log.i("BackupProbe", "export ok=$ok attempts=$attempts")
+        }
+    }
+
     private fun applySmsIeProbe(intent: Intent) {
         val debuggable =
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -1403,9 +1544,25 @@ onBack = { navRoute = "chat" },
             com.anindra.messages.data.ImportMode.MERGE
         }
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
-        vm.importSmsIe(Uri.parse(uri), mode) { count ->
-            android.util.Log.i("SmsIeImport", "probe imported count=$count")
+        vm.importSmsIe(Uri.parse(uri), mode) { result ->
+            when (result) {
+                is com.anindra.messages.data.Repository.ImportResult.Success ->
+                    android.util.Log.i("SmsIeImport", "probe imported count=${result.merged}")
+                is com.anindra.messages.data.Repository.ImportResult.Error ->
+                    android.util.Log.e("SmsIeImport", "probe failed: ${result.message}")
+            }
         }
+    }
+
+    /** Debug builds only: `--es transfer_log_probe` logs the stored runs, so a
+     *  regression script can assert on a transfer that the UI drove itself. */
+    private fun applyTransferLogProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        if (!intent.getBooleanExtra("transfer_log_probe", false)) return
+        val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class]
+        vm.dumpTransferLog { entries -> vm.logTransferEntries(entries) }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
@@ -1415,6 +1572,8 @@ onBack = { navRoute = "chat" },
         applyMmsProbe(intent)
         applySmsIeProbe(intent)
         applyBackupProbe(intent)
+        applyBackupExportProbe(intent)
+        applyTransferLogProbe(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system", "amoled" -> vm.themeMode = intent.getStringExtra("set_theme")!!

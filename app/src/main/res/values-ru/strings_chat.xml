@@ -41,6 +41,10 @@
     <string name="chat_schedule_failed">Не удалось запланировать сообщение</string>
     <string name="chat_search_contacts">Поиск контактов</string>
     <string name="chat_add_people">Добавить участников</string>
+    <string name="chat_reaction_sent">Реакция %1$s на «%2$s»</string>
+    <string name="chat_reaction_removed">Удалена %1$s с «%2$s»</string>
+    <string name="chat_reaction_item">ваше сообщение</string>
+    <string name="chat_reaction_fallback_failed">Не удалось отправить реакцию собеседнику</string>
     <string name="chat_locked">Заблокировано</string>
 
     <!-- Copy & links -->

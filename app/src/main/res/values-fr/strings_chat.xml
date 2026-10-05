@@ -41,6 +41,10 @@
     <string name="chat_schedule_failed">Impossible de programmer le message</string>
     <string name="chat_search_contacts">Rechercher des contacts</string>
     <string name="chat_add_people">Ajouter des personnes</string>
+    <string name="chat_reaction_sent">A réagi avec %1$s à « %2$s »</string>
+    <string name="chat_reaction_removed">A retiré %1$s de « %2$s »</string>
+    <string name="chat_reaction_item">votre message</string>
+    <string name="chat_reaction_fallback_failed">Impossible d\'envoyer la réaction à l\'autre personne</string>
     <string name="chat_locked">Verrouillé</string>
 
     <!-- Copy & links -->

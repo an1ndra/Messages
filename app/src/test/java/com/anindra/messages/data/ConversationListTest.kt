@@ -38,11 +38,12 @@ class ConversationListTest {
     // --- default ---------------------------------------------------------
 
     @Test
-    fun unreadAtTopDefaultsToOn() {
-        // Unread conversations have to be visible without scrolling to the top,
-        // so this is the default rather than something to opt into.
+    fun unreadAtTopDefaultsToOff() {
+        // Matching QUIK, the inbox is newest-first by default. Unread-at-top is
+        // still available, but opted into: with it on, an older unread thread can
+        // sit above a newer read one, which hides the actual latest message.
         assertEquals("unread_at_top_enabled", SettingsStore.KEY_UNREAD_AT_TOP_ENABLED)
-        assertEquals(true, SettingsStore.DEFAULTS_UNREAD_AT_TOP)
+        assertEquals(false, SettingsStore.DEFAULTS_UNREAD_AT_TOP)
     }
 
     @Test

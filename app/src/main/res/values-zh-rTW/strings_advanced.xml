@@ -46,4 +46,23 @@
     <string name="mms_check_country">%1$s · %2$s</string>
     <string name="mms_check_footer">每張 SIM 卡都會與其電信商公布的 MMS 設定進行比對。這反映的是電信商的宣告，而非經過驗證的 MMS 服務：驗證需要系統 APN 設定，只有具特權的應用才能讀取。</string>
     <string name="mms_check_no_sims">找不到可用的 SIM 卡</string>
+    <string name="transfer_log_title">匯入匯出記錄</string>
+    <string name="transfer_log_subtitle">最近的匯入、匯出及被略過的內容</string>
+    <string name="transfer_log_empty">尚無匯入或匯出記錄。</string>
+    <string name="transfer_log_clear">清除記錄</string>
+    <string name="transfer_log_export">匯出</string>
+    <string name="transfer_log_import">匯入</string>
+    <string name="transfer_log_counts">已新增 %1$d 筆，略過 %2$d 筆</string>
+    <string name="transfer_log_conflict">%1$d 筆 %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">成功</string>
+    <string name="transfer_log_status_failed">失敗</string>
+    <string name="transfer_log_retried">已重試 %1$d×</string>
+    <string name="transfer_conflict_already_present">已存在</string>
+    <string name="transfer_conflict_provider_id_taken">提供者 ID 已被佔用</string>
+    <string name="transfer_conflict_provider_id_dropped">來自其他裝置的提供者 ID</string>
+    <string name="transfer_conflict_conversation_merged">對話已與現有對話合併</string>
+    <string name="transfer_conflict_conversation_unresolved">無法匹配對話</string>
+    <string name="transfer_conflict_record_unreadable">無法讀取記錄</string>
+    <string name="transfer_conflict_part_too_large">附件過大</string>
 </resources>

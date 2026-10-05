@@ -25,6 +25,12 @@
     <string name="settings_send_sound_subtitle">Play sound when sending a message</string>
     <string name="settings_receive_sound_title">Receive sound</string>
     <string name="settings_receive_sound_subtitle">Play a sound when a message arrives</string>
+    <string name="settings_notif_action_reply_title">Reply action</string>
+    <string name="settings_notif_action_reply_subtitle">Show a reply button on the notification</string>
+    <string name="settings_notif_action_mark_read_title">Mark as read action</string>
+    <string name="settings_notif_action_mark_read_subtitle">Show a mark-as-read button on the notification</string>
+    <string name="settings_notif_action_delete_title">Delete action</string>
+    <string name="settings_notif_action_delete_subtitle">Show a delete button on the notification</string>
     <string name="settings_delivery_reports_title">Delivery reports</string>
     <string name="settings_delivery_reports_subtitle">Find out when an SMS message is delivered</string>
     <string name="settings_mark_read_title">Mark all as read</string>
@@ -107,6 +113,14 @@
     <string name="settings_backup_save_to">Save to</string>
     <string name="settings_backup_change">Change</string>
     <string name="settings_backup_saved_location">Backup saved with PIN to %s</string>
+    <string name="settings_periodic_backup_title">Periodic backup</string>
+    <string name="settings_periodic_backup_interval_title">Backup frequency</string>
+    <string name="settings_periodic_backup_daily">Daily</string>
+    <string name="settings_periodic_backup_weekly">Weekly</string>
+    <string name="settings_backup_unencrypted_title">Back up without a PIN?</string>
+    <string name="settings_backup_unencrypted_warning">This backup will not be encrypted. Anyone who gets the file can read all your messages. Use a PIN if the file may leave this device or be shared.</string>
+    <string name="settings_backup_unencrypted_confirm">Back up anyway</string>
+    <string name="settings_backup_saved_location_unencrypted">Unencrypted backup saved to %s</string>
     <string name="settings_import_title">Import messages</string>
     <string name="settings_import_subtitle">Restore a backup</string>
     <string name="settings_import_source_title">Choose backup to import</string>
@@ -126,7 +140,7 @@
     <string name="settings_sound_bubble">Bubble</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
-    <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">System default</string>
     <string name="convo_your_prefix">"You: "</string>
     <string name="settings_restored_msg">Restored %s messages. Existing conversations kept.</string>

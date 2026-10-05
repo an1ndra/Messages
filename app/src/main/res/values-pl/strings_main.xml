@@ -51,6 +51,7 @@
     <string name="notification_channel_desc">Powiadomienia o nowych wiadomościach</string>
     <string name="notif_title_private">Nowa wiadomość</string>
     <string name="notif_body_private">Masz nową wiadomość</string>
+    <string name="notif_action_delete">Usuń</string>
     <string name="notif_you">Ty</string>
     <string name="notif_send_fail_private">Nie udało się wysłać wiadomości. Stuknij, aby ponowić.</string>
     <string name="notif_send_fail">Nie udało się wysłać wiadomości do %s. Stuknij, aby ponowić.</string>

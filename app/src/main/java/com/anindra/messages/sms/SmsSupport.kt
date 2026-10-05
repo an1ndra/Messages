@@ -260,6 +260,20 @@ object NotificationHelper {
             0, "Mark as read", markReadIntent
         ).build()
 
+        val deleteData = Intent(context, DeleteMessageReceiver::class.java)
+        deleteData.action = DeleteMessageReceiver.ACTION_DELETE
+        deleteData.setPackage(context.packageName)
+        deleteData.putExtra(DeleteMessageReceiver.EXTRA_ADDRESS, from)
+        deleteData.putExtra(DeleteMessageReceiver.EXTRA_NOTIF_ID, notifId)
+        val deleteIntent = PendingIntent.getBroadcast(
+            context, reqCode + 2000,
+            deleteData,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val deleteAction = NotificationCompat.Action.Builder(
+            0, context.getString(R.string.notif_action_delete), deleteIntent
+        ).build()
+
         val senderName = app.repository.contactNameFor(from) ?: from
         val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
@@ -284,8 +298,10 @@ object NotificationHelper {
             .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
             .setStyle(groupedStyle(context, app, convoId, senderName, text))
-        if (replyAction != null) builder.addAction(replyAction)
-        builder.addAction(markReadAction)
+        val actionSettings = app.repository.settings
+        if (actionSettings.notifActionReply && replyAction != null) builder.addAction(replyAction)
+        if (actionSettings.notifActionMarkRead) builder.addAction(markReadAction)
+        if (actionSettings.notifActionDelete) builder.addAction(deleteAction)
         try {
             NotificationManagerCompat.from(context).notify(notifId, builder.build())
         } catch (_: SecurityException) {
@@ -424,6 +440,30 @@ object SmsSender {
                 ArrayList(listOf(sent)),
                 delivered?.let { ArrayList(listOf(it)) }
             )
+        }
+        true
+    } catch (_: Exception) {
+        false
+    }
+
+    /**
+     * A one-off SMS with no stored row and no status callback, for the reaction
+     * fallback (issue #188): the recipient should see a plain text, but the
+     * sending side must not show it as a message in its own chat.
+     */
+    fun sendRaw(
+        context: Context,
+        address: String,
+        body: String,
+        subscriptionId: Int = -1
+    ): Boolean = try {
+        val sm = manager(context, subscriptionId)
+        val dest = normalizeAddress(address)
+        val parts = sm.divideMessage(body)
+        if (parts.size <= 1) {
+            sm.sendTextMessage(dest, null, body, null, null)
+        } else {
+            sm.sendMultipartTextMessage(dest, null, parts, null, null)
         }
         true
     } catch (_: Exception) {

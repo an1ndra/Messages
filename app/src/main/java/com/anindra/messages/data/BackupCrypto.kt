@@ -40,21 +40,29 @@ object BackupCrypto {
     fun isPinMagic(magic: ByteArray): Boolean =
         magic.size == PIN_MAGIC_LENGTH && magic.contentEquals(PIN_MAGIC)
 
-    fun encryptWithPin(input: InputStream, output: OutputStream, pin: String) {
+    /** Bytes written, so a truncated export can be reported rather than saved. */
+    fun encryptWithPin(input: InputStream, output: OutputStream, pin: String): Long {
         val salt = ByteArray(PIN_SALT_LENGTH).also { secureRandom.nextBytes(it) }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, deriveKey(pin, salt))
-        output.write(PIN_MAGIC)
-        output.write(salt)
-        output.write(cipher.iv)
+        var written = 0L
+        fun emit(bytes: ByteArray?) {
+            if (bytes == null) return
+            output.write(bytes)
+            written += bytes.size
+        }
+        emit(PIN_MAGIC)
+        emit(salt)
+        emit(cipher.iv)
         val buf = ByteArray(8192)
         var read: Int
         while (input.read(buf).also { read = it } != -1) {
-            cipher.update(buf, 0, read)?.let { output.write(it) }
+            emit(cipher.update(buf, 0, read))
         }
         // GCM emits nothing on doFinal() when input was fully flushed by
         // update() (provider returns null instead of an empty array).
-        cipher.doFinal()?.let { output.write(it) }
+        emit(cipher.doFinal())
+        return written
     }
 
     /** False when the stream is not PIN-encrypted, is truncated, or the PIN is

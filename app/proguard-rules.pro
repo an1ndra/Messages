@@ -17,3 +17,9 @@
 -dontwarn com.android.mms.**
 -dontwarn com.klinker.android.send_message.**
 -dontwarn org.apache.http.**
+
+# Required for minify: WorkManager opens its Room database reflectively (loads
+# WorkDatabase_Impl by name and calls its no-arg constructor). Without this R8
+# strips it and the release build crashes at startup.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
+-keep class androidx.work.impl.WorkDatabase_Impl { *; }

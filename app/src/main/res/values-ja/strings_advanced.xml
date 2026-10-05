@@ -46,4 +46,23 @@
     <string name="mms_check_country">%1$s · %2$s</string>
     <string name="mms_check_footer">各 SIM はそのキャリアが公開する MMS 設定と照合されます。これはキャリアの宣言であり、検証済みの MMS サービスではありません。検証にはシステム APN 設定が必要で、特権アプリのみが読み取れます。</string>
     <string name="mms_check_no_sims">有効な SIM が見つかりません</string>
+    <string name="transfer_log_title">インポートとエクスポートのログ</string>
+    <string name="transfer_log_subtitle">最近のインポート、エクスポートとスキップされた項目</string>
+    <string name="transfer_log_empty">インポートもエクスポートもまだありません。</string>
+    <string name="transfer_log_clear">ログを消去</string>
+    <string name="transfer_log_export">エクスポート</string>
+    <string name="transfer_log_import">インポート</string>
+    <string name="transfer_log_counts">%1$d 件を追加、%2$d 件をスキップ</string>
+    <string name="transfer_log_conflict">%1$d 件 %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">成功</string>
+    <string name="transfer_log_status_failed">失敗</string>
+    <string name="transfer_log_retried">%1$d× 再試行</string>
+    <string name="transfer_conflict_already_present">既に存在</string>
+    <string name="transfer_conflict_provider_id_taken">プロバイダー ID が使用済み</string>
+    <string name="transfer_conflict_provider_id_dropped">別端末のプロバイダー ID</string>
+    <string name="transfer_conflict_conversation_merged">既存の会話に統合されました</string>
+    <string name="transfer_conflict_conversation_unresolved">会話を特定できませんでした</string>
+    <string name="transfer_conflict_record_unreadable">レコードを読み取れませんでした</string>
+    <string name="transfer_conflict_part_too_large">添付ファイルが大きすぎます</string>
 </resources>

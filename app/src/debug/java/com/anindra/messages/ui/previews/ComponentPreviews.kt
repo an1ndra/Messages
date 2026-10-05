@@ -23,6 +23,8 @@ import com.anindra.messages.data.SwipeAction
 import com.anindra.messages.ui.AttachSheet
 import com.anindra.messages.ui.BubblePosition
 import com.anindra.messages.ui.ChatBubble
+import com.anindra.messages.ui.ReactionBar
+import com.anindra.messages.ui.ReactionChips
 import com.anindra.messages.ui.InputBar
 import com.anindra.messages.ui.MessageDetailsDialog
 import com.anindra.messages.ui.PersonAvatar
@@ -492,6 +494,27 @@ private fun BubbleGroupingPreview() {
             linkWarningEnabled = false,
             hideLinks = false,
             isUnlocked = false,
+            showSimIndicator = false
+        )
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Reaction bar and chips", showBackground = true, widthDp = 380)
+@Composable
+private fun ReactionsPreview() {
+    BubbleStage {
+        ReactionBar(selected = setOf("👍"), onReact = {})
+        ReactionChips(reactions = mapOf("👍" to 2, "❤️" to 1))
+        ChatBubble(
+            msg = bubble("Reacted to this", isMe = false, reactions = mapOf("👍" to 2, "❤️" to 1), id = 400L),
+            showTime = true,
+            onTap = {},
+            deliveryReports = true,
+            highlightLinks = false,
+            linkWarningEnabled = false,
+            hideLinks = false,
+            isUnlocked = true,
             showSimIndicator = false
         )
     }

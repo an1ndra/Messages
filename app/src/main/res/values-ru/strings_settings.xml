@@ -25,6 +25,12 @@
     <string name="settings_send_sound_subtitle">Звук при отправке сообщения</string>
     <string name="settings_receive_sound_title">Звук получения</string>
     <string name="settings_receive_sound_subtitle">Звук при получении сообщения</string>
+    <string name="settings_notif_action_reply_title">Действие «Ответить»</string>
+    <string name="settings_notif_action_reply_subtitle">Показывать кнопку «Ответить» в уведомлении</string>
+    <string name="settings_notif_action_mark_read_title">Действие «Отметить как прочитанное»</string>
+    <string name="settings_notif_action_mark_read_subtitle">Показывать кнопку «Отметить как прочитанное» в уведомлении</string>
+    <string name="settings_notif_action_delete_title">Действие «Удалить»</string>
+    <string name="settings_notif_action_delete_subtitle">Показывать кнопку «Удалить» в уведомлении</string>
     <string name="settings_delivery_reports_title">Отчёты о доставке</string>
     <string name="settings_delivery_reports_subtitle">Узнавать, когда SMS-сообщение доставлено</string>
     <string name="settings_mark_read_title">Отметить все как прочитанные</string>
@@ -106,6 +112,14 @@
     <string name="settings_backup_save_to">Сохранить в</string>
     <string name="settings_backup_change">Изменить</string>
     <string name="settings_backup_saved_location">Резервная копия сохранена с PIN в %s</string>
+    <string name="settings_periodic_backup_title">Периодическая резервная копия</string>
+    <string name="settings_periodic_backup_interval_title">Частота резервного копирования</string>
+    <string name="settings_periodic_backup_daily">Ежедневно</string>
+    <string name="settings_periodic_backup_weekly">Еженедельно</string>
+    <string name="settings_backup_unencrypted_title">Создать копию без PIN?</string>
+    <string name="settings_backup_unencrypted_warning">Эта копия не будет зашифрована. Любой, кто получит файл, сможет прочитать все ваши сообщения. Используйте PIN, если файл может покинуть это устройство или быть передан.</string>
+    <string name="settings_backup_unencrypted_confirm">Всё равно создать</string>
+    <string name="settings_backup_saved_location_unencrypted">Незашифрованная копия сохранена в %s</string>
     <string name="settings_import_title">Импорт сообщений</string>
     <string name="settings_import_subtitle">Восстановить резервную копию</string>
     <string name="settings_import_source_title">Выберите резервную копию для импорта</string>
@@ -125,7 +139,7 @@
     <string name="settings_sound_bubble">Пузырёк</string>
     <string name="settings_theme_light">Светлая</string>
     <string name="settings_theme_dark">Тёмная</string>
-    <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">Системные</string>
     <string name="convo_your_prefix">"Вы: "</string>
     <string name="settings_restored_msg">Восстановлено %s сообщений. Существующие переписки сохранены.</string>

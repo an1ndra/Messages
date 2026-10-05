@@ -17,10 +17,15 @@ import android.view.Display
 import com.anindra.messages.crash.CrashAppInfo
 import com.anindra.messages.crash.CrashDeviceInfo
 import com.anindra.messages.crash.CrashReporter
+import com.anindra.messages.data.BackupHealth
 import com.anindra.messages.data.DownloadsStore
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
+import com.anindra.messages.data.TransferEntry
+import com.anindra.messages.data.TransferLog
+import com.anindra.messages.data.TransferLogStore
+import com.anindra.messages.data.TransferOperation
 import com.anindra.messages.ui.theme.A11yOptions
 import com.anindra.messages.ui.theme.schemeFor
 import com.anindra.messages.ui.theme.themeIsDark
@@ -116,6 +121,15 @@ data class SystemInfo(
     val pendingCrashReports: Int = 0
 )
 
+data class BackupHealthInfo(
+    val enabled: Boolean = false,
+    val lastAt: Long = 0L,
+    val lastOk: Boolean = true,
+    val detail: String = "",
+    val retryPending: Boolean = false,
+    val interval: String = ""
+)
+
 data class DisplayModeInfo(
     val modeId: Int,
     val width: Int,
@@ -149,7 +163,17 @@ data class DiagnosticsData(
     val display: DisplayInfo,
     val timestamp: Long,
     /** MMS carrier-config values per subscriptionId; see SimMmsProbe.carrierFacts. */
-    val mmsFacts: Map<Int, List<String>> = emptyMap()
+    val mmsFacts: Map<Int, List<String>> = emptyMap(),
+    /**
+     * Recent import/export runs, newest last.
+     *
+     * Read from [TransferLogStore] rather than recomputed: a report that
+     * re-derived an import's outcome would eventually disagree with the log the
+     * user is looking at.
+     */
+    val transfers: List<TransferEntry> = emptyList(),
+    /** Automatic-backup health, read from the settings the worker writes. */
+    val backupHealth: BackupHealthInfo = BackupHealthInfo()
 )
 
 object DiagnosticsReport {
@@ -233,6 +257,34 @@ object DiagnosticsReport {
             appendLine("Messages: ${data.system.messageCount}")
             appendLine("Database size: ${kb(data.system.dbSizeBytes)} KB")
             appendLine("Pending crash reports: ${data.system.pendingCrashReports}")
+            appendLine()
+            appendLine("--- Transfers ---")
+            if (data.transfers.isEmpty()) {
+                appendLine("No imports or exports recorded")
+            } else {
+                data.transfers.takeLast(5).forEach { t ->
+                    appendLine(
+                        "${date(t.timestamp)} ${if (t.operation == TransferOperation.EXPORT) "export" else "import"} " +
+                            "(${t.format}, ${t.mode}): ${if (t.succeeded) "ok" else "FAILED"} — ${t.detail}"
+                    )
+                    if (t.added > 0 || t.skipped > 0) {
+                        appendLine("  added=${t.added} seen=${t.seen} skipped=${t.skipped}")
+                    }
+                    t.conflicts.forEach { (reason, count) -> appendLine("  conflict: $reason = $count") }
+                }
+                appendLine("Recorded runs: ${data.transfers.size} of ${TransferLog.MAX_ENTRIES} kept")
+            }
+            appendLine()
+            appendLine("--- Backup ---")
+            appendLine("Periodic backup: ${if (data.backupHealth.enabled) data.backupHealth.interval else "off"}")
+            appendLine(
+                "Last automatic backup: ${date(data.backupHealth.lastAt)} " +
+                    "${if (data.backupHealth.lastOk) "ok" else "FAILED"}"
+            )
+            if (data.backupHealth.detail.isNotBlank()) {
+                appendLine("  detail: ${data.backupHealth.detail}")
+            }
+            appendLine("Retry pending: ${data.backupHealth.retryPending}")
             appendLine()
             appendLine("--- SIM ---")
             appendLine("READ_PHONE_STATE granted: ${data.phoneStateGranted}")
@@ -406,7 +458,20 @@ object DiagnosticsReport {
                 mmsFacts = sims.associate { s ->
                     s.subscriptionId to
                         com.anindra.messages.sms.SimMmsProbe.carrierFacts(context, s.subscriptionId)
-                }
+                },
+                transfers = TransferLogStore.read(context),
+                backupHealth = BackupHealthInfo(
+                    enabled = settings.periodicBackupEnabled,
+                    lastAt = settings.lastBackupAt,
+                    lastOk = settings.lastBackupOk,
+                    detail = settings.lastBackupDetail,
+                    retryPending = BackupHealth.isRetryDue(
+                        settings.periodicBackupEnabled,
+                        settings.lastBackupAt,
+                        settings.lastBackupOk
+                    ),
+                    interval = settings.periodicBackupInterval
+                )
             )
         )
     }

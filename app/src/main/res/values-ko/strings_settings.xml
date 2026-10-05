@@ -25,6 +25,12 @@
     <string name="settings_send_sound_subtitle">메시지 전송 시 소리 재생</string>
     <string name="settings_receive_sound_title">수신 소리</string>
     <string name="settings_receive_sound_subtitle">메시지 수신 시 소리 재생</string>
+    <string name="settings_notif_action_reply_title">답장 작업</string>
+    <string name="settings_notif_action_reply_subtitle">알림에 답장 버튼 표시</string>
+    <string name="settings_notif_action_mark_read_title">읽음으로 표시 작업</string>
+    <string name="settings_notif_action_mark_read_subtitle">알림에 읽음으로 표시 버튼 표시</string>
+    <string name="settings_notif_action_delete_title">삭제 작업</string>
+    <string name="settings_notif_action_delete_subtitle">알림에 삭제 버튼 표시</string>
     <string name="settings_delivery_reports_title">전달 보고서</string>
     <string name="settings_delivery_reports_subtitle">SMS 메시지가 전달된 시기를 확인하세요</string>
     <string name="settings_mark_read_title">모두 읽음으로 표시</string>
@@ -106,6 +112,14 @@
     <string name="settings_backup_save_to">저장 위치</string>
     <string name="settings_backup_change">변경</string>
     <string name="settings_backup_saved_location">백업을 PIN으로 보호하여 %s에 저장했습니다</string>
+    <string name="settings_periodic_backup_title">주기적 백업</string>
+    <string name="settings_periodic_backup_interval_title">백업 빈도</string>
+    <string name="settings_periodic_backup_daily">매일</string>
+    <string name="settings_periodic_backup_weekly">매주</string>
+    <string name="settings_backup_unencrypted_title">PIN 없이 백업할까요?</string>
+    <string name="settings_backup_unencrypted_warning">이 백업은 암호화되지 않습니다. 파일을 얻은 사람은 누구나 모든 메시지를 읽을 수 있습니다. 파일이 이 기기를 떠나거나 공유될 수 있다면 PIN을 사용하세요.</string>
+    <string name="settings_backup_unencrypted_confirm">그래도 백업</string>
+    <string name="settings_backup_saved_location_unencrypted">암호화되지 않은 백업을 %s에 저장했습니다</string>
     <string name="settings_import_title">메시지 가져오기</string>
     <string name="settings_import_subtitle">백업 복원</string>
     <string name="settings_import_source_title">가져올 백업 선택</string>
@@ -125,7 +139,7 @@
     <string name="settings_sound_bubble">버블</string>
     <string name="settings_theme_light">밝게</string>
     <string name="settings_theme_dark">어둡게</string>
-    <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">시스템 기본값</string>
     <string name="convo_your_prefix">"나: "</string>
     <string name="settings_restored_msg">%s개의 메시지가 복원되었습니다. 기존 대화가 유지됩니다.</string>

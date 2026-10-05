@@ -59,6 +59,7 @@ onOpenAccessibility: () -> Unit = {},
     onOpenAutoDelete: () -> Unit = {},
     onOpenLinks: () -> Unit = {},
     onOpenMmsCheck: () -> Unit = {},
+    onOpenTransferLog: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
@@ -166,6 +167,15 @@ onOpenAccessibility: () -> Unit = {},
                 subtitle = stringResource(R.string.settings_new_ui_subtitle),
                 checked = vm.settings.useNewUi,
                 onChecked = { vm.settings.useNewUi = it }
+                )
+                SettingsRow(
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.transfer_log_title),
+                subtitle = transferLogSubtitle(vm),
+                onClick = {
+                    vm.refreshTransferLog()
+                    onOpenTransferLog()
+                }
                 )
                 SettingsRow(
                 position = RowPosition.LAST,
@@ -301,6 +311,14 @@ private fun fontLabel(key: String): String = when (key) {
     SettingsStore.FONT_FIGTREE -> stringResource(R.string.font_figtree)
     SettingsStore.FONT_POPPINS -> stringResource(R.string.font_poppins)
     else -> stringResource(R.string.font_system)
+}
+
+/** The last run's outcome, so the row says something before it is opened. */
+@Composable
+fun transferLogSubtitle(vm: AppViewModel): String {
+    val last = vm.transferLog.value.lastOrNull()
+        ?: return stringResource(R.string.transfer_log_subtitle)
+    return last.detail
 }
 
 @Composable

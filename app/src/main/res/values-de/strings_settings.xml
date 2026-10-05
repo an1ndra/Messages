@@ -25,6 +25,12 @@
     <string name="settings_send_sound_subtitle">Ton abspielen beim Senden einer Nachricht</string>
     <string name="settings_receive_sound_title">Eingangston</string>
     <string name="settings_receive_sound_subtitle">Ton abspielen bei eingegangenen Nachrichten</string>
+    <string name="settings_notif_action_reply_title">Antworten-Aktion</string>
+    <string name="settings_notif_action_reply_subtitle">Antworten-Schaltfläche in der Benachrichtigung anzeigen</string>
+    <string name="settings_notif_action_mark_read_title">Als gelesen markieren-Aktion</string>
+    <string name="settings_notif_action_mark_read_subtitle">Als-gelesen-markieren-Schaltfläche in der Benachrichtigung anzeigen</string>
+    <string name="settings_notif_action_delete_title">Löschen-Aktion</string>
+    <string name="settings_notif_action_delete_subtitle">Löschen-Schaltfläche in der Benachrichtigung anzeigen</string>
     <string name="settings_delivery_reports_title">Zustellungsberichte</string>
     <string name="settings_delivery_reports_subtitle">Erfahren, wann eine SMS-Nachricht zugestellt wurde</string>
     <string name="settings_mark_read_title">Alle als gelesen markieren</string>
@@ -106,6 +112,14 @@
     <string name="settings_backup_save_to">Sichern unter</string>
     <string name="settings_backup_change">Ändern</string>
     <string name="settings_backup_saved_location">Sicherung mit PIN in %s gespeichert</string>
+    <string name="settings_periodic_backup_title">Regelmäßiges Backup</string>
+    <string name="settings_periodic_backup_interval_title">Backup-Häufigkeit</string>
+    <string name="settings_periodic_backup_daily">Täglich</string>
+    <string name="settings_periodic_backup_weekly">Wöchentlich</string>
+    <string name="settings_backup_unencrypted_title">Ohne PIN sichern?</string>
+    <string name="settings_backup_unencrypted_warning">Dieses Backup wird nicht verschlüsselt. Wer die Datei erhält, kann alle deine Nachrichten lesen. Verwende einen PIN, wenn die Datei das Gerät verlassen oder geteilt werden könnte.</string>
+    <string name="settings_backup_unencrypted_confirm">Trotzdem sichern</string>
+    <string name="settings_backup_saved_location_unencrypted">Unverschlüsseltes Backup gespeichert unter %s</string>
     <string name="settings_import_title">Nachrichten importieren</string>
     <string name="settings_import_subtitle">Backup wiederherstellen</string>
     <string name="settings_import_source_title">Zu importierende Sicherung auswählen</string>
@@ -125,7 +139,7 @@
     <string name="settings_sound_bubble">Blase</string>
     <string name="settings_theme_light">Hell</string>
     <string name="settings_theme_dark">Dunkel</string>
-    <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">Systemstandard</string>
     <string name="convo_your_prefix">"Sie: "</string>
     <string name="settings_restored_msg">%s Nachrichten wiederhergestellt. Bestehende Unterhaltungen beibehalten.</string>

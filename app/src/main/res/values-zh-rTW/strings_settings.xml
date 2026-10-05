@@ -25,6 +25,12 @@
     <string name="settings_send_sound_subtitle">傳送訊息時播放聲音</string>
     <string name="settings_receive_sound_title">接收聲音</string>
     <string name="settings_receive_sound_subtitle">收到訊息時播放聲音</string>
+    <string name="settings_notif_action_reply_title">回覆操作</string>
+    <string name="settings_notif_action_reply_subtitle">在通知上顯示回覆按鈕</string>
+    <string name="settings_notif_action_mark_read_title">標示為已讀操作</string>
+    <string name="settings_notif_action_mark_read_subtitle">在通知上顯示標示為已讀按鈕</string>
+    <string name="settings_notif_action_delete_title">刪除操作</string>
+    <string name="settings_notif_action_delete_subtitle">在通知上顯示刪除按鈕</string>
     <string name="settings_delivery_reports_title">送達報告</string>
     <string name="settings_delivery_reports_subtitle">追蹤 SMS 訊息是否已成功送達</string>
     <string name="settings_mark_read_title">全部標記為已讀</string>
@@ -106,6 +112,14 @@
     <string name="settings_backup_save_to">儲存至</string>
     <string name="settings_backup_change">變更</string>
     <string name="settings_backup_saved_location">備份已使用 PIN 儲存至 %s</string>
+    <string name="settings_periodic_backup_title">定期備份</string>
+    <string name="settings_periodic_backup_interval_title">備份頻率</string>
+    <string name="settings_periodic_backup_daily">每天</string>
+    <string name="settings_periodic_backup_weekly">每週</string>
+    <string name="settings_backup_unencrypted_title">不使用 PIN 備份？</string>
+    <string name="settings_backup_unencrypted_warning">此備份不會被加密。任何取得該檔案的人都能讀取你的所有訊息。如果檔案可能會離開此裝置或被分享，請使用 PIN。</string>
+    <string name="settings_backup_unencrypted_confirm">仍然備份</string>
+    <string name="settings_backup_saved_location_unencrypted">未加密的備份已儲存至 %s</string>
     <string name="settings_import_title">匯入訊息</string>
     <string name="settings_import_subtitle">還原備份</string>
     <string name="settings_import_source_title">選擇要匯入的備份</string>
@@ -125,7 +139,7 @@
     <string name="settings_sound_bubble">泡泡</string>
     <string name="settings_theme_light">淺色</string>
     <string name="settings_theme_dark">深色</string>
-    <string name="settings_theme_amoled">AMOLED</string>
+    <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">系統預設</string>
     <string name="convo_your_prefix">"我："</string>
     <string name="settings_restored_msg">已還原 %s 則訊息。現有對話已保留。</string>

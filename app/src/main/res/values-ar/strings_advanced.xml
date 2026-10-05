@@ -46,4 +46,23 @@
     <string name="mms_check_country">%1$s · %2$s</string>
     <string name="mms_check_footer">تتم مطابقة كل بطاقة SIM مع إعداد MMS الذي ينشره مشغّلها. هذا يعرض ما يعلنه المشغّل وليس خدمة MMS مختبَرة: للتحقق يلزم الوصول إلى إعدادات APN في النظام، ولا يتاح ذلك إلا لتطبيقات ذات امتيازات. رمز الدولة يأتي من رقم SIM عندما يشاركه المشغّل، ومن شبكة SIM خلاف ذلك.</string>
     <string name="mms_check_no_sims">لم يُعثر على بطاقة SIM نشطة</string>
+    <string name="transfer_log_title">سجل الاستيراد والتصدير</string>
+    <string name="transfer_log_subtitle">عمليات الاستيراد والتصدير الأخيرة وما تم تخطيه</string>
+    <string name="transfer_log_empty">لا توجد عمليات استيراد أو تصدير بعد.</string>
+    <string name="transfer_log_clear">مسح السجل</string>
+    <string name="transfer_log_export">تصدير</string>
+    <string name="transfer_log_import">استيراد</string>
+    <string name="transfer_log_counts">تمت إضافة %1$d، تم تخطي %2$d</string>
+    <string name="transfer_log_conflict">%1$d %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">نجح</string>
+    <string name="transfer_log_status_failed">فشل</string>
+    <string name="transfer_log_retried">أُعيد المحاولة %1$d×</string>
+    <string name="transfer_conflict_already_present">موجود مسبقًا</string>
+    <string name="transfer_conflict_provider_id_taken">معرّف المزوّد مستخدم بالفعل</string>
+    <string name="transfer_conflict_provider_id_dropped">معرّف المزوّد من جهاز آخر</string>
+    <string name="transfer_conflict_conversation_merged">تم مطابقة المحادثة مع محادثة موجودة</string>
+    <string name="transfer_conflict_conversation_unresolved">تعذّرت مطابقة المحادثة</string>
+    <string name="transfer_conflict_record_unreadable">تعذّرت قراءة السجل</string>
+    <string name="transfer_conflict_part_too_large">المرفق كبير جدًا</string>
 </resources>

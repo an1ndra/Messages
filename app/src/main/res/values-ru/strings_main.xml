@@ -51,6 +51,7 @@
     <string name="notification_channel_desc">Уведомления о новых сообщениях</string>
     <string name="notif_title_private">Новое сообщение</string>
     <string name="notif_body_private">У вас новое сообщение</string>
+    <string name="notif_action_delete">Удалить</string>
     <string name="notif_you">Вы</string>
     <string name="notif_send_fail_private">Не удалось отправить сообщение. Нажмите для повтора.</string>
     <string name="notif_send_fail">Не удалось отправить сообщение адресату %s. Нажмите для повтора.</string>

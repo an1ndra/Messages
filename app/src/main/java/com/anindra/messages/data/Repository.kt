@@ -21,8 +21,21 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 
 private const val DB_NAME = "messages.db"
+private const val PRE_IMPORT_BACKUP_NAME = "pre_import_backup.db"
+private const val IMPORT_TEMP_NAME = "import_temp.db"
+
+/** How long a backup snapshot may sit in the cache before it is swept. */
+private const val SNAPSHOT_TTL_MS = 60L * 60L * 1000L
+
+/** Format label for an export, which always writes the PIN container. */
+private const val PIN_FORMAT = "PIN"
+private const val EXPORT_MODE = "none"
+
+/** Format label for an SMS Import / Export archive, which has no BackupFormat. */
+private const val SMS_IE_FORMAT = "sms-ie"
 /**
  * How a backup file is encoded.
  *
@@ -1718,49 +1731,214 @@ class Repository(private val context: Context) {
         }
     }
 
-    fun backupDatabase(context: Context, pin: String): Boolean {
-        return try {
-            if (!BackupPolicy.isBackupAllowed(settings.privacyModeEnabled)) return false
-            if (!BackupCrypto.isValidPin(pin)) return false
-            val dbFile = context.getDatabasePath(DB_NAME)
-            if (!dbFile.exists()) return false
-            val resolver = context.contentResolver
-            val name = "messages_backup_${System.currentTimeMillis()}.enc"
-            val custom = settings.backupTreeUri.takeIf { it.isNotEmpty() }
-            // A user-chosen location must never silently fall back to internal
-            // storage: fail instead, so they know the backup did not go where
-            // they asked (e.g. revoked SD-card access).
-            val target = if (custom != null) {
-                val treeUri = android.net.Uri.parse(custom)
-                android.provider.DocumentsContract.createDocument(
-                    resolver,
-                    android.provider.DocumentsContract.buildDocumentUriUsingTree(
-                        treeUri, android.provider.DocumentsContract.getTreeDocumentId(treeUri)
-                    ),
-                    "application/octet-stream",
-                    name
-                ) ?: return false
-            } else {
-                resolver.insert(
-                    MediaStore.Files.getContentUri("external"),
-                    ContentValues().apply {
-                        put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-                        put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
-                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/Messages")
-                    }
-                ) ?: return false
-            }
-            resolver.openOutputStream(target)?.use { out ->
-                dbFile.inputStream().use { inp -> BackupCrypto.encryptWithPin(inp, out, pin) }
-            } ?: return false
-            true
-        } catch (_: Exception) { false }
+    /**
+     * Writes an encrypted copy of the database to the configured location.
+     *
+     * Every `return false` used to be the same `false`, so a revoked SD-card
+     * permission and a rejected PIN both reached the user as one generic
+     * failure. Each early exit now carries the reason it took.
+     */
+    sealed interface ExportResult {
+        data class Success(
+            val fileName: String,
+            val bytes: Long,
+            /** Attempts made; >1 means a retry produced this file. */
+            val attempts: Int = 1
+        ) : ExportResult
+
+        data class Error(
+            val message: String,
+            val attempts: Int = 1,
+            /** Whether another attempt could plausibly have helped. */
+            val transient: Boolean = false
+        ) : ExportResult
     }
+
+    fun backupDatabase(context: Context, pin: String): ExportResult {
+        if (!BackupPolicy.isBackupAllowed(settings.privacyModeEnabled)) {
+            return exportFailed("Backups are turned off while privacy mode is on", PIN_FORMAT)
+        }
+        if (!BackupCrypto.isValidPin(pin)) return exportFailed("PIN must be 4 digits or more", PIN_FORMAT)
+        return writeBackup(context, PIN_FORMAT, ".enc") { snapshot, out ->
+            snapshot.inputStream().use { inp -> BackupCrypto.encryptWithPin(inp, out, pin) }
+        }
+    }
+
+    /**
+     * Plaintext SQLite copy, readable outside the app (issue #292). The caller
+     * must have warned the user first: this file is not encrypted.
+     */
+    fun backupDatabaseUnencrypted(context: Context): ExportResult {
+        if (!BackupPolicy.isBackupAllowed(settings.privacyModeEnabled)) {
+            return exportFailed("Backups are turned off while privacy mode is on", BackupFormat.RAW.name)
+        }
+        return writeBackup(context, BackupFormat.RAW.name, ".db") { snapshot, out ->
+            snapshot.inputStream().use { inp -> inp.copyTo(out) }
+        }
+    }
+
+    /**
+     * Writes a verified snapshot to the configured location, retrying the
+     * destination write with backoff.
+     *
+     * The live database is snapshotted once and the retries re-stream that
+     * stable file, so a transient failure re-reads neither the moving database
+     * nor (for an encrypted export) the cipher. Only a complete, non-empty write
+     * is recorded as success; a partial destination file is deleted.
+     */
+    private fun writeBackup(
+        context: Context,
+        format: String,
+        extension: String,
+        writeBody: (java.io.File, java.io.OutputStream) -> Long
+    ): ExportResult {
+        val dbFile = context.getDatabasePath(DB_NAME)
+        if (!dbFile.exists()) return exportFailed("No message database to back up yet", format)
+        val snapshot = createSnapshot(dbFile)
+            ?: return exportFailed("Could not snapshot the message database", format)
+        try {
+            if (!isValidSqliteFile(snapshot)) {
+                return exportFailed("Backup snapshot is not a valid database", format)
+            }
+            val name = "messages_backup_${System.currentTimeMillis()}$extension"
+            val target = createBackupTarget(context, name) ?: return exportFailed(
+                if (settings.backupTreeUri.isNotEmpty()) "Cannot write to the chosen backup folder"
+                else "Cannot write to Documents/Messages",
+                format
+            )
+            val outcome = TransferRetry.run {
+                // Debug-only: the regression script forces the first N attempts
+                // to fail so the backoff path can be observed on a device.
+                if (TransferRetry.consumeInjectedFailure()) {
+                    throw IOException("injected backup failure on attempt $it")
+                }
+                context.contentResolver.openOutputStream(target)?.use { out ->
+                    writeBody(snapshot, out)
+                } ?: throw IOException("cannot open the backup file for writing")
+            }
+            return when (outcome) {
+                is TransferRetry.Result.Success -> {
+                    val written = outcome.value
+                    if (written <= 0L) {
+                        context.contentResolver.delete(target, null, null)
+                        exportFailed("Backup file was written empty", format, outcome.attempts)
+                    } else {
+                        recordTransfer(
+                            TransferOperation.EXPORT, format, EXPORT_MODE, true,
+                            "Saved $name", attempts = outcome.attempts
+                        )
+                        ExportResult.Success(name, written, outcome.attempts)
+                    }
+                }
+                is TransferRetry.Result.Failure -> {
+                    // A half-written file must not masquerade as a backup.
+                    context.contentResolver.delete(target, null, null)
+                    exportFailed(
+                        outcome.error.message ?: outcome.error.javaClass.simpleName,
+                        format, outcome.attempts, outcome.transient
+                    )
+                }
+            }
+        } finally {
+            snapshot.delete()
+        }
+    }
+
+    /**
+     * A stable copy of the live database to stream from, or null if it cannot be
+     * made. Folds the journal into the main file first, matching the pre-prune
+     * snapshot, so the copy is one coherent database rather than a file caught
+     * mid-write.
+     */
+    private fun createSnapshot(dbFile: File): File? {
+        val dir = File(context.cacheDir, "backup-snapshots")
+        return try {
+            dir.mkdirs()
+            // Unique per run: a manual backup can overlap the periodic worker,
+            // and two runs must never delete or stream each other's snapshot.
+            val target = File.createTempFile("snapshot-", ".db", dir)
+            // Sweep only snapshots old enough to be a previous crash's leftovers.
+            val staleBefore = System.currentTimeMillis() - SNAPSHOT_TTL_MS
+            dir.listFiles()?.forEach { if (it != target && it.lastModified() < staleBefore) it.delete() }
+            runCatching { db.writableDatabase.rawQuery("PRAGMA wal_checkpoint(FULL)", null).close() }
+            dbFile.copyTo(target, overwrite = true)
+            target
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Opens the destination document in the configured location. */
+    private fun createBackupTarget(context: Context, name: String): android.net.Uri? {
+        val resolver = context.contentResolver
+        val custom = settings.backupTreeUri.takeIf { it.isNotEmpty() }
+        // A user-chosen location must never silently fall back to internal
+        // storage: fail instead, so they know the backup did not go where
+        // they asked (e.g. revoked SD-card access).
+        return if (custom != null) {
+            val treeUri = android.net.Uri.parse(custom)
+            android.provider.DocumentsContract.createDocument(
+                resolver,
+                android.provider.DocumentsContract.buildDocumentUriUsingTree(
+                    treeUri, android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+                ),
+                "application/octet-stream",
+                name
+            )
+        } else {
+            resolver.insert(
+                MediaStore.Files.getContentUri("external"),
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/Messages")
+                }
+            )
+        }
+    }
+
+    private fun exportFailed(
+        reason: String,
+        format: String = PIN_FORMAT,
+        attempts: Int = 1,
+        transient: Boolean = false
+    ): ExportResult.Error {
+        recordTransfer(
+            TransferOperation.EXPORT, format, EXPORT_MODE, false, reason, attempts = attempts
+        )
+        return ExportResult.Error(reason, attempts, transient)
+    }
+
 
     sealed interface ImportResult {
         /** [merged] is the number of messages added, non-null only for a merge import. */
-        data class Success(val merged: Int? = null) : ImportResult
-        data class Error(val message: String) : ImportResult
+        data class Success(
+            val merged: Int? = null,
+            val attempts: Int = 1
+        ) : ImportResult
+
+        data class Error(
+            val message: String,
+            val attempts: Int = 1,
+            /** Whether another attempt could plausibly have helped. */
+            val transient: Boolean = false
+        ) : ImportResult
+    }
+
+    /**
+     * Why a message in an incoming backup was not written.
+     *
+     * The counts are the only record that a merge left rows behind. Without
+     * them "merged 4,000" reads as a clean run when 600 were already there.
+     */
+    object Conflict {
+        const val ALREADY_PRESENT = "already present"
+        const val PROVIDER_ID_TAKEN = "provider id already used"
+        const val PROVIDER_ID_DROPPED = "provider id from another device"
+        const val CONVERSATION_MERGED = "conversation matched an existing one"
+        const val CONVERSATION_UNRESOLVED = "conversation could not be matched"
+        const val RECORD_UNREADABLE = "record could not be read"
+        const val PART_TOO_LARGE = "attachment too large"
     }
 
     /**
@@ -1774,8 +1952,56 @@ class Repository(private val context: Context) {
         val added: Int,
         val seen: Int,
         val skipped: Int,
-        val truncated: Boolean = false
+        val truncated: Boolean = false,
+        /** Reason -> count; see [Conflict]. Empty for a run with nothing lost. */
+        val conflicts: Map<String, Int> = emptyMap()
     )
+
+    /** Bumps [reason] in a running tally, so each site reports its own loss. */
+    private fun MutableMap<String, Int>.count(reason: String, by: Int = 1) {
+        if (by <= 0) return
+        this[reason] = (this[reason] ?: 0) + by
+    }
+
+    /**
+     * Writes one run to the transfer log.
+     *
+     * Recorded here rather than in the ViewModel so every path that reaches the
+     * database is logged, including the debug probes the regression scripts
+     * drive — a script asserting on a conflict count depends on the same call
+     * the UI makes.
+     */
+    private fun recordTransfer(
+        operation: TransferOperation,
+        format: String,
+        mode: String,
+        succeeded: Boolean,
+        detail: String,
+        added: Int = 0,
+        seen: Int = 0,
+        skipped: Int = 0,
+        attempts: Int = 1,
+        recovered: Boolean = false,
+        conflicts: Map<String, Int> = emptyMap()
+    ) {
+        TransferLogStore.append(
+            context,
+            TransferEntry(
+                timestamp = System.currentTimeMillis(),
+                operation = operation,
+                format = format,
+                mode = mode,
+                succeeded = succeeded,
+                detail = if (attempts > 1) "$detail (after $attempts attempts)" else detail,
+                added = added,
+                seen = seen,
+                skipped = skipped,
+                attempts = attempts,
+                recovered = recovered,
+                conflicts = conflicts.filterValues { it > 0 }
+            )
+        )
+    }
 
     /** Copies an imported MMS attachment into app storage and returns its URI. */
     private fun storeImportedImage(bytes: ByteArray, msg: SmsIeBackup.Message): String {
@@ -1798,12 +2024,23 @@ class Repository(private val context: Context) {
         onProgress: ((done: Int, total: Int) -> Unit)? = null
     ): ImportResult {
         val staged = SmsIeReader.stage(context, uri, context.cacheDir)
-            ?: return ImportResult.Error("Cannot read that backup file")
+            ?: run {
+                recordTransfer(
+                    TransferOperation.IMPORT, SMS_IE_FORMAT, mode.name, false,
+                    "Cannot read that backup file"
+                )
+                return ImportResult.Error("Cannot read that backup file")
+            }
         return staged.use {
             val report = importStaged(staged, mode, onProgress)
             when {
-                report.seen == 0 ->
+                report.seen == 0 -> {
+                    recordTransfer(
+                        TransferOperation.IMPORT, SMS_IE_FORMAT, mode.name, false,
+                        "No messages found in that backup"
+                    )
                     ImportResult.Error("No messages found in that backup")
+                }
                 // Partial success is still success: a backup with one unreadable
                 // record should not read as a total failure to the user.
                 else -> {
@@ -1812,6 +2049,14 @@ class Repository(private val context: Context) {
                     // an sms-ie import lives only here, and the user finds their
                     // backup missing from the app they actually use day to day.
                     pushLocalMessagesToProvider()
+                    recordTransfer(
+                        TransferOperation.IMPORT, SMS_IE_FORMAT, mode.name, true,
+                        "Imported ${report.added} of ${report.seen} message(s)",
+                        added = report.added,
+                        seen = report.seen,
+                        skipped = report.skipped,
+                        conflicts = report.conflicts
+                    )
                     ImportResult.Success(report.added)
                 }
             }
@@ -1856,60 +2101,100 @@ class Repository(private val context: Context) {
         var seen = 0
         var skipped = 0
         var truncated = staged.skippedParts.isNotEmpty()
+        val conflicts = LinkedHashMap<String, Int>()
+        conflicts.count(Conflict.PART_TOO_LARGE, staged.skippedParts.size)
+        // Only meaningful when merging. After a Replace the table is empty, so
+        // seeding from it would cost a full scan to find nothing.
+        val known = if (SmsIeBackupPolicy.clearsExisting(mode)) HashSet()
+        else existingMessageKeys()
 
         fun flush() {
             if (batch.isEmpty()) return
             val rows = batch.sortedBy { it.timestamp }
             batch.clear()
-            database.beginTransaction()
-            try {
-                for (msg in rows) {
-                    val address = canonical(msg.address).ifEmpty { msg.address }
-                    var cid = byAddress[address] ?: byAddress[msg.address]
-                    if (cid == null) {
-                        cid = database.insert("conversations", null, ContentValues().apply {
-                            put("address", address)
-                            put("name", contactNameFor(address) ?: address)
-                        })
-                        if (cid <= 0) {
+            // Snapshot the shared tally so a retried batch starts from the state
+            // before its rolled-back attempt rather than double-counting it.
+            val baseAdded = added
+            val baseSkipped = skipped
+            val baseConflicts = LinkedHashMap(conflicts)
+            val baseKnown = HashSet(known)
+            val baseByAddress = HashMap(byAddress)
+            val outcome = TransferRetry.run {
+                added = baseAdded
+                skipped = baseSkipped
+                conflicts.clear()
+                conflicts.putAll(baseConflicts)
+                known.clear()
+                known.addAll(baseKnown)
+                byAddress.clear()
+                byAddress.putAll(baseByAddress)
+                database.beginTransaction()
+                try {
+                    for (msg in rows) {
+                        val address = canonical(msg.address).ifEmpty { msg.address }
+                        var cid = byAddress[address] ?: byAddress[msg.address]
+                        if (cid == null) {
+                            cid = database.insert("conversations", null, ContentValues().apply {
+                                put("address", address)
+                                put("name", contactNameFor(address) ?: address)
+                            })
+                            if (cid <= 0) {
+                                skipped++
+                                conflicts.count(Conflict.CONVERSATION_UNRESOLVED)
+                                continue
+                            }
+                            byAddress[address] = cid
+                        }
+                        val transport = if (msg.isMms) MmsSupport.TRANSPORT_MMS else MmsSupport.TRANSPORT_SMS
+                        val key = messageKey(address, msg.timestamp, msg.isMe, msg.body, transport)
+                        if (!known.add(key)) {
                             skipped++
+                            conflicts.count(Conflict.ALREADY_PRESENT)
                             continue
                         }
-                        byAddress[address] = cid
+                        val image = msg.imageBytes
+                        val row = database.insert("messages", null, ContentValues().apply {
+                            put("conversation_id", cid)
+                            put("body", msg.body)
+                            put("timestamp", msg.timestamp)
+                            put("is_me", if (msg.isMe) 1 else 0)
+                            put("status", msg.status)
+                            put("transport", transport)
+                            put("media_type", if (image != null) "image" else "text")
+                            put("media_uri", if (image != null) storeImportedImage(image, msg) else "")
+                        })
+                        if (row <= 0) {
+                            skipped++
+                            conflicts.count(Conflict.RECORD_UNREADABLE)
+                            continue
+                        }
+                        if (!msg.isMe && !msg.read) {
+                            database.execSQL(
+                                "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?",
+                                arrayOf(cid)
+                            )
+                        }
+                        upsertParticipant(database, address)
+                        added++
                     }
-                    val image = msg.imageBytes
-                    val row = database.insert("messages", null, ContentValues().apply {
-                        put("conversation_id", cid)
-                        put("body", msg.body)
-                        put("timestamp", msg.timestamp)
-                        put("is_me", if (msg.isMe) 1 else 0)
-                        put("status", msg.status)
-                        put("transport", if (msg.isMms) MmsSupport.TRANSPORT_MMS else MmsSupport.TRANSPORT_SMS)
-                        put("media_type", if (image != null) "image" else "text")
-                        put("media_uri", if (image != null) storeImportedImage(image, msg) else "")
-                    })
-                    if (row <= 0) {
-                        skipped++
-                        continue
-                    }
-                    if (!msg.isMe && !msg.read) {
-                        database.execSQL(
-                            "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?",
-                            arrayOf(cid)
-                        )
-                    }
-                    upsertParticipant(database, address)
-                    added++
+                    database.setTransactionSuccessful()
+                } finally {
+                    database.endTransaction()
                 }
-                database.setTransactionSuccessful()
-            } catch (e: Exception) {
-                // A batch that blows up must not take the rest of the import
-                // with it; the rows already written in it are lost, and that is
-                // reported rather than hidden.
-                skipped += rows.size
-                Log.w("SmsIeImport", "batch failed: ${e.message}")
-            } finally {
-                database.endTransaction()
+            }
+            if (outcome is TransferRetry.Result.Failure) {
+                // A batch that keeps failing must not take the rest of the
+                // import with it; the rows already written in it are lost, and
+                // that is reported rather than hidden.
+                added = baseAdded
+                skipped = baseSkipped + rows.size
+                conflicts.clear()
+                conflicts.putAll(baseConflicts)
+                conflicts.count(Conflict.RECORD_UNREADABLE, rows.size)
+                Log.w(
+                    "SmsIeImport",
+                    "batch failed after ${outcome.attempts} attempt(s): ${outcome.error.message}"
+                )
             }
         }
 
@@ -1920,6 +2205,7 @@ class Repository(private val context: Context) {
             seen++
             if (msg == null) {
                 skipped++
+                conflicts.count(Conflict.RECORD_UNREADABLE)
             } else {
                 batch.add(msg)
                 if (batch.size >= IMPORT_BATCH) flush()
@@ -1932,7 +2218,38 @@ class Repository(private val context: Context) {
         reMigrateParticipants()
         notifyChanged()
         onProgress?.invoke(seen, seen)
-        return ImportReport(added, seen, skipped, truncated)
+        return ImportReport(added, seen, skipped, truncated, conflicts)
+    }
+
+    /**
+     * Identity of a message for duplicate detection: the same conversation, the
+     * same instant, the same direction, transport and text. Deliberately not the
+     * provider id — that belongs to whichever device issued it.
+     */
+    private fun messageKey(
+        address: String,
+        timestamp: Long,
+        isMe: Boolean,
+        body: String,
+        transport: String
+    ): String = "$address|$timestamp|${if (isMe) 1 else 0}|$transport|$body"
+
+    /** Keys for every message already stored, so a merge can skip repeats. */
+    private fun existingMessageKeys(): HashSet<String> {
+        val keys = HashSet<String>()
+        val addressByConvo = HashMap<Long, String>()
+        db.readableDatabase.rawQuery("SELECT id, address FROM conversations", null).use { c ->
+            while (c.moveToNext()) addressByConvo[c.getLong(0)] = c.getString(1) ?: ""
+        }
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id, timestamp, is_me, body, transport FROM messages", null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val address = addressByConvo[c.getLong(0)] ?: continue
+                keys += messageKey(address, c.getLong(1), c.getInt(2) == 1, c.getString(3) ?: "", c.getString(4) ?: "")
+            }
+        }
+        return keys
     }
 
     /** Drops every stored message and conversation, leaving settings intact. */
@@ -1958,8 +2275,8 @@ class Repository(private val context: Context) {
         onProgress: (Int) -> Unit = {}
     ): ImportResult {
         val dbFile = context.getDatabasePath(DB_NAME)
-        val backupFile = File(dbFile.parent, "pre_import_backup.db")
-        val tempFile = File(dbFile.parent, "import_temp.db")
+        val backupFile = File(dbFile.parent, PRE_IMPORT_BACKUP_NAME)
+        val tempFile = File(dbFile.parent, IMPORT_TEMP_NAME)
         try {
             val isPin = peekBackupFormat(context, sourceUri) == BackupFormat.PIN
             if (isPin && pin == null) {
@@ -1975,28 +2292,37 @@ class Repository(private val context: Context) {
                 return ImportResult.Error("Backup is PIN-protected. Enter the PIN to import.")
             }
 
-            val staged = context.contentResolver.openInputStream(sourceUri)?.use { inp ->
-                FileOutputStream(tempFile).use { out ->
-                    when (format) {
-                        BackupFormat.PIN -> BackupCrypto.decryptWithPin(inp, out, pin!!)
-                        BackupFormat.RAW -> {
-                            inp.copyTo(out)
-                            true
-                        }
-                        // Legacy keystore-bound. A wrong or absent key fails the
-                        // GCM tag, which is the correct outcome rather than
-                        // silently importing an empty database.
-                        BackupFormat.LEGACY -> BackupCrypto.decrypt(inp, out)
-                    }
+            // A transient read failure is retried with backoff; a rejected PIN
+            // is not, because no number of retries can change it.
+            val staging = stageBackup(context, sourceUri, format, pin, tempFile)
+            val staged: Boolean
+            val attempts: Int
+            when (staging) {
+                is TransferRetry.Result.Success -> {
+                    staged = staging.value
+                    attempts = staging.attempts
                 }
-            } ?: return ImportResult.Error("Cannot open backup file")
+                is TransferRetry.Result.Failure -> {
+                    tempFile.delete()
+                    val reason = "Cannot open backup file"
+                    recordTransfer(
+                        TransferOperation.IMPORT, format.name, mode.name, false, reason,
+                        attempts = staging.attempts
+                    )
+                    return ImportResult.Error(reason, staging.attempts, staging.transient)
+                }
+            }
 
             if (!staged) {
                 tempFile.delete()
-                return ImportResult.Error(
+                val reason =
                     if (format == BackupFormat.PIN) "Wrong PIN or corrupted file"
                     else "Cannot decrypt this backup on this device"
+                recordTransfer(
+                    TransferOperation.IMPORT, format.name, mode.name, false, reason,
+                    attempts = attempts
                 )
+                return ImportResult.Error(reason, attempts)
             }
             Log.i(
                 TAG_IMPORT,
@@ -2015,16 +2341,39 @@ class Repository(private val context: Context) {
                         }.getOrNull()}"
                 )
                 tempFile.delete()
-                return ImportResult.Error("Invalid or corrupted backup file")
+                recordTransfer(
+                    TransferOperation.IMPORT, format.name, mode.name, false,
+                    "Invalid or corrupted backup file", attempts = attempts
+                )
+                return ImportResult.Error("Invalid or corrupted backup file", attempts)
             }
 
             if (mode == ImportMode.MERGE) {
-                val merged = mergeDatabase(tempFile, onProgress)
-                tempFile.delete()
-                pushLocalMessagesToProvider()
-                reMigrateParticipants()
-                notifyChanged()
-                return ImportResult.Success(merged)
+                when (val merge = TransferRetry.run { mergeDatabase(tempFile, onProgress) }) {
+                    is TransferRetry.Result.Failure -> {
+                        tempFile.delete()
+                        val reason =
+                            "Merge failed: ${merge.error.message ?: merge.error.javaClass.simpleName}"
+                        recordTransfer(
+                            TransferOperation.IMPORT, format.name, mode.name, false, reason,
+                            attempts = merge.attempts
+                        )
+                        return ImportResult.Error(reason, merge.attempts, merge.transient)
+                    }
+                    is TransferRetry.Result.Success -> {
+                        val merged = merge.value
+                        tempFile.delete()
+                        pushLocalMessagesToProvider()
+                        reMigrateParticipants()
+                        notifyChanged()
+                        recordTransfer(
+                            TransferOperation.IMPORT, format.name, mode.name, true,
+                            "Merged ${merged.added} message(s)", added = merged.added,
+                            attempts = attempts, conflicts = merged.conflicts
+                        )
+                        return ImportResult.Success(merged.added, attempts)
+                    }
+                }
             }
 
             // Backup current DB in case swap fails
@@ -2039,7 +2388,11 @@ class Repository(private val context: Context) {
                     // Restore from backup
                     backupFile.renameTo(dbFile)
                     db = Db(context)
-                    return ImportResult.Error("Failed to replace database file")
+                    recordTransfer(
+                        TransferOperation.IMPORT, format.name, mode.name, false,
+                        "Failed to replace database file", attempts = attempts
+                    )
+                    return ImportResult.Error("Failed to replace database file", attempts)
                 }
                 db = Db(context)
                 // A restored backup should be fully visible: lift any
@@ -2052,19 +2405,121 @@ class Repository(private val context: Context) {
                 // Clean up
                 tempFile.delete()
                 backupFile.delete()
-                return ImportResult.Success()
+                recordTransfer(
+                    TransferOperation.IMPORT, format.name, mode.name, true,
+                    "Restored backup", attempts = attempts
+                )
+                return ImportResult.Success(null, attempts)
             } catch (e: Exception) {
                 // Restore backup on failure
                 if (!dbFile.exists()) backupFile.renameTo(dbFile)
                 db = Db(context)
                 tempFile.delete()
-                return ImportResult.Error("Database swap failed: ${e.message ?: e.javaClass.simpleName}")
+                val reason = "Database swap failed: ${e.message ?: e.javaClass.simpleName}"
+                recordTransfer(
+                    TransferOperation.IMPORT, format.name, mode.name, false, reason,
+                    attempts = attempts
+                )
+                return ImportResult.Error(reason, attempts, TransferRetry.isTransient(e))
             }
         } catch (e: Exception) {
             tempFile.delete()
-            return ImportResult.Error("Import failed: ${e.message ?: e.javaClass.simpleName}")
+            val reason = "Import failed: ${e.message ?: e.javaClass.simpleName}"
+            recordTransfer(TransferOperation.IMPORT, BackupFormat.RAW.name, mode.name, false, reason)
+            return ImportResult.Error(reason, transient = TransferRetry.isTransient(e))
         }
     }
+
+    /**
+     * Reads the source into [tempFile], retrying a transient read failure.
+     *
+     * Returns false rather than throwing when the stream opened but the
+     * container did not decode — a wrong PIN or a corrupt file — because that is
+     * permanent and a retry would only re-reject it.
+     */
+    private fun stageBackup(
+        context: Context,
+        sourceUri: android.net.Uri,
+        format: BackupFormat,
+        pin: String?,
+        tempFile: File
+    ): TransferRetry.Result<Boolean> = TransferRetry.run {
+        var decrypted = false
+        val opened = context.contentResolver.openInputStream(sourceUri)?.use { inp ->
+            FileOutputStream(tempFile).use { out ->
+                when (format) {
+                    BackupFormat.PIN -> decrypted = BackupCrypto.decryptWithPin(inp, out, pin!!)
+                    BackupFormat.RAW -> {
+                        inp.copyTo(out)
+                        decrypted = true
+                    }
+                    // Legacy keystore-bound. A wrong or absent key fails the
+                    // GCM tag, which is the correct outcome rather than
+                    // silently importing an empty database.
+                    BackupFormat.LEGACY -> decrypted = BackupCrypto.decrypt(inp, out)
+                }
+            }
+            true
+        }
+        if (opened == null) throw IOException("cannot open backup file")
+        decrypted
+    }
+
+    /**
+     * Repairs the database if a REPLACE import died mid-swap.
+     *
+     * Called once at startup before anything opens the database. The importer
+     * keeps the pre-import copy and the verified temp file beside the live
+     * database until the swap is complete; if the live file is gone, one of
+     * those is the whole history and is promoted back. If the live file is
+     * healthy, the leftovers are just scratch and are removed.
+     */
+    fun recoverInterruptedImport() {
+        val dbFile = context.getDatabasePath(DB_NAME)
+        val preImport = File(dbFile.parent, PRE_IMPORT_BACKUP_NAME)
+        val temp = File(dbFile.parent, IMPORT_TEMP_NAME)
+        val liveExists = dbFile.isFile && dbFile.length() > 0L
+        val action = ImportRecovery.decide(
+            liveDatabaseExists = liveExists,
+            preImportExists = preImport.isFile,
+            tempIsValid = temp.isFile && isValidSqliteFile(temp)
+        )
+        when (action) {
+            ImportRecovery.Action.RESTORE_PRE_IMPORT -> {
+                val restored = runCatching { preImport.copyTo(dbFile, overwrite = true) }.isSuccess &&
+                    dbFile.isFile && dbFile.length() > 0L
+                if (restored) {
+                    Log.w(TAG_IMPORT, "recovered an interrupted restore from $PRE_IMPORT_BACKUP_NAME")
+                    recordTransfer(
+                        TransferOperation.IMPORT, BackupFormat.RAW.name, "replace", true,
+                        "Recovered an interrupted restore", recovered = true
+                    )
+                }
+            }
+            ImportRecovery.Action.PROMOTE_TEMP -> {
+                val promoted = runCatching { temp.copyTo(dbFile, overwrite = true) }.isSuccess &&
+                    dbFile.isFile && dbFile.length() > 0L
+                if (promoted) {
+                    Log.w(TAG_IMPORT, "completed an interrupted restore from $IMPORT_TEMP_NAME")
+                    recordTransfer(
+                        TransferOperation.IMPORT, BackupFormat.RAW.name, "replace", true,
+                        "Completed an interrupted restore", recovered = true
+                    )
+                }
+            }
+            ImportRecovery.Action.NONE -> Unit
+        }
+        // Keep the pre-import copy if the live database is still broken, so the
+        // next launch can try again rather than deleting the only history.
+        val healthy = dbFile.isFile && dbFile.length() > 0L
+        if (healthy) {
+            temp.delete()
+            preImport.delete()
+        } else if (temp.isFile && !isValidSqliteFile(temp)) {
+            temp.delete()
+        }
+    }
+
 
     /** Total message rows in a decrypted backup—shown as the target count for a replace import. */
     private fun countMessages(file: File): Int = try {
@@ -2080,9 +2535,10 @@ class Repository(private val context: Context) {
     /** Merges the backup DB's conversations and messages into the live DB, keeping
      *  existing rows and adding only backup rows not already present. Returns the
      *  number of messages written. */
-    private fun mergeDatabase(backupFile: File, onProgress: (Int) -> Unit): Int {
+    private fun mergeDatabase(backupFile: File, onProgress: (Int) -> Unit): MergeReport {
         val target = db.writableDatabase
         var added = 0
+        val conflicts = LinkedHashMap<String, Int>()
         SQLiteDatabase.openDatabase(backupFile.path, null, SQLiteDatabase.OPEN_READONLY).use { backup ->
             // Ids this device's provider actually holds. A backup carries ids from
             // wherever it was made, and those mean nothing here.
@@ -2100,11 +2556,13 @@ class Repository(private val context: Context) {
                 ).use { c -> while (c.moveToNext()) carriedIds.add(c.getLong(0)) }
             }
             val adopted = LegacyBackupSchema.adoptProviderIds(carriedIds, liveProviderIds)
-            if (carriedIds.isNotEmpty() && adopted.size < carriedIds.distinct().size) {
+            val droppedIds = carriedIds.distinct().size - adopted.size
+            val conflicts = LinkedHashMap<String, Int>()
+            if (droppedIds > 0) {
+                conflicts[Conflict.PROVIDER_ID_DROPPED] = droppedIds
                 Log.i(
                     TAG_IMPORT,
-                    "dropped ${carriedIds.distinct().size - adopted.size} provider id(s) " +
-                        "from another device; ${adopted.size} kept"
+                    "dropped $droppedIds provider id(s) from another device; ${adopted.size} kept"
                 )
             }
 
@@ -2127,11 +2585,13 @@ class Repository(private val context: Context) {
                         val address = c.getString(1)
                         val tId: Long =
                             if (existing.contains(address)) {
+                                conflicts.count(Conflict.CONVERSATION_MERGED)
                                 target.rawQuery("SELECT id FROM conversations WHERE address=?", arrayOf(address))
                                     .use { q -> if (q.moveToFirst()) q.getLong(0) else -1L }
                             } else {
                                 val mergedId = matchConversationId(target, address)
                                 if (mergedId != null) {
+                                    conflicts.count(Conflict.CONVERSATION_MERGED)
                                     existing.add(address)
                                     mergedId
                                 } else {
@@ -2167,7 +2627,10 @@ class Repository(private val context: Context) {
                 val messageQuery = LegacyBackupSchema.messagesQuery(backupColumns)
                 backup.rawQuery(messageQuery, null).use { m ->
                     while (m.moveToNext()) {
-                        val tId = convoMap[m.getLong(0)] ?: continue
+                        val tId = convoMap[m.getLong(0)] ?: run {
+                            conflicts.count(Conflict.CONVERSATION_UNRESOLVED)
+                            continue
+                        }
                         val body = m.getString(1)
                         val ts = m.getLong(2)
                         val isMe = m.getInt(3)
@@ -2179,7 +2642,10 @@ class Repository(private val context: Context) {
                             arrayOf(tId.toString(), ts.toString(), isMe.toString(), body, transport,
                                 m.getString(5), m.getString(6), transport, m.getLong(8).toString())
                         ).use { q -> q.moveToFirst() }
-                        if (dup) continue
+                        if (dup) {
+                            conflicts.count(Conflict.ALREADY_PRESENT)
+                            continue
+                        }
                         // A provider id only means something on the device that
                         // issued it. Carrying it from a backup made on another
                         // phone leaves rows whose ids match nothing here, and the
@@ -2193,9 +2659,12 @@ class Repository(private val context: Context) {
                                 "SELECT 1 FROM messages WHERE transport=? AND sys_id=?",
                                 arrayOf(transport, sysId.toString())
                             ).use { q -> q.moveToFirst() }
-                            if (dupSys) continue
+                            if (dupSys) {
+                                conflicts.count(Conflict.PROVIDER_ID_TAKEN)
+                                continue
+                            }
                         }
-                        target.insert(
+                        val insertId = target.insert(
                             "messages", null,
                             ContentValues().apply {
                                 put("conversation_id", tId)
@@ -2212,8 +2681,14 @@ class Repository(private val context: Context) {
                                 put("sub_id", m.getInt(10))
                             }
                         )
+                        if (insertId <= 0) continue
                         added++
                         onProgress(added)
+                        // A refused insert (constraint, disk) is a lost message
+                        // and used to look exactly like a successful merge.
+                        if (insertId <= 0) {
+                            conflicts.count(Conflict.RECORD_UNREADABLE)
+                        }
                         if (isMe == 0) {
                             unreadBump[tId] = (unreadBump[tId] ?: 0) + 1
                         }
@@ -2277,8 +2752,11 @@ class Repository(private val context: Context) {
                 target.endTransaction()
             }
         }
-        return added
+        return MergeReport(added, conflicts)
     }
+
+    /** What a merge wrote and what it had to leave alone. */
+    data class MergeReport(val added: Int, val conflicts: Map<String, Int> = emptyMap())
 
     /** True when the incoming backup has the named table; older ones do not. */
     private fun backupHasTable(backup: SQLiteDatabase, name: String): Boolean =
@@ -2320,6 +2798,20 @@ class Repository(private val context: Context) {
                 reactions = parseReactions(c.getString(7))
             )
         }
+        found
+    }
+
+    /**
+     * Newest incoming message in [conversationId], used by the notification
+     * Delete action (#285) to trash the message the notification is showing.
+     */
+    suspend fun latestReceivedMessageIdSuspend(conversationId: Long): Long? = runOnIoAsync {
+        var found: Long? = null
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM messages WHERE conversation_id=? AND deleted_at=0 AND is_me=0 " +
+                "ORDER BY timestamp DESC, id DESC LIMIT 1",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) found = c.getLong(0) }
         found
     }
 

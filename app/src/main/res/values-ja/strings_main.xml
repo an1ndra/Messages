@@ -51,6 +51,7 @@
     <string name="notification_channel_desc">新しいメッセージの通知</string>
     <string name="notif_title_private">新しいメッセージ</string>
     <string name="notif_body_private">新しいメッセージがあります</string>
+    <string name="notif_action_delete">削除</string>
     <string name="notif_you">自分</string>
     <string name="notif_send_fail_private">メッセージを送信できませんでした。タップして再試行。</string>
     <string name="notif_send_fail">%s にメッセージを送信できませんでした。タップして再試行。</string>

@@ -72,6 +72,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.data.SettingsStore
+import com.anindra.messages.data.PeriodicBackupScheduler
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimSelection
@@ -142,6 +143,8 @@ fun SettingsScreen(
     var pinInput by remember { mutableStateOf("") }
     var pinConfirm by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
+    var showRawBackupWarning by remember { mutableStateOf(false) }
+    var periodicBackup by remember(revision) { mutableStateOf(vm.settings.periodicBackupEnabled) }
 
     LaunchedEffect(Unit) {
         sims = SimCards.load(context)
@@ -412,6 +415,10 @@ fun SettingsScreen(
         )
     }
 
+
+
+
+
     if (soundDialog) {
         AlertDialog(
             onDismissRequest = { soundDialog = false },
@@ -559,17 +566,9 @@ fun SettingsScreen(
         fun applyImport() {
             val target = uri ?: return
             if (pendingImportSource == ImportSource.SMS_IE) {
-                vm.importSmsIe(target, mode) { count ->
-                    showImportResult(
-                        if (count < 0) {
-                            com.anindra.messages.data.Repository.ImportResult.Error(
-                                context.getString(R.string.settings_import_sms_ie_failed)
-                            )
-                        } else {
-                            com.anindra.messages.data.Repository.ImportResult.Success(count)
-                        }
-                    )
-                }
+                // The real ImportResult carries the reason; the old Int callback
+                // discarded it and showed one generic failure for every cause.
+                vm.importSmsIe(target, mode, showImportResult)
                 return
             }
             when {
@@ -627,6 +626,24 @@ fun SettingsScreen(
                 }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
+    }
+
+    fun reportExport(result: com.anindra.messages.data.Repository.ExportResult, encrypted: Boolean = true) {
+        val location = if (BackupLocation.isCustom(backupFolder)) BackupLocation.label(backupFolder)
+        else context.getString(R.string.settings_backup_location_default)
+        val message = when (result) {
+            is com.anindra.messages.data.Repository.ExportResult.Success ->
+                String.format(
+                    context.getString(
+                        if (encrypted) R.string.settings_backup_saved_location
+                        else R.string.settings_backup_saved_location_unencrypted
+                    ),
+                    location
+                )
+            is com.anindra.messages.data.Repository.ExportResult.Error ->
+                String.format(context.getString(R.string.settings_import_failed), result.message)
+        }
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
     }
 
     pinMode?.let { mode ->
@@ -719,28 +736,83 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
+                    if (mode == PinDialogMode.SET) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val enabled = !periodicBackup
+                                    periodicBackup = enabled
+                                    vm.settings.periodicBackupEnabled = enabled
+                                    PeriodicBackupScheduler.apply(context, enabled, vm.settings.periodicBackupInterval)
+                                }
+                                .padding(vertical = 6.dp)
+                        ) {
+                            Text(
+                                stringResource(R.string.settings_periodic_backup_title),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = periodicBackup,
+                                onCheckedChange = { enabled ->
+                                    periodicBackup = enabled
+                                    vm.settings.periodicBackupEnabled = enabled
+                                    PeriodicBackupScheduler.apply(context, enabled, vm.settings.periodicBackupInterval)
+                                }
+                            )
+                        }
+                        if (periodicBackup) {
+                            Text(
+                                stringResource(R.string.settings_periodic_backup_interval_title),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            listOf(
+                                PeriodicBackupScheduler.INTERVAL_DAILY to stringResource(R.string.settings_periodic_backup_daily),
+                                PeriodicBackupScheduler.INTERVAL_WEEKLY to stringResource(R.string.settings_periodic_backup_weekly)
+                            ).forEach { (value, label) ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            vm.settings.periodicBackupInterval = value
+                                            PeriodicBackupScheduler.apply(context, true, value)
+                                        }
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    RadioButton(
+                                        selected = vm.settings.periodicBackupInterval == value,
+                                        onClick = {
+                                            vm.settings.periodicBackupInterval = value
+                                            PeriodicBackupScheduler.apply(context, true, value)
+                                        }
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(label)
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
                     val pin = pinInput.trim()
                     when {
+                        mode == PinDialogMode.SET && pin.isEmpty() -> {
+                            pinMode = null
+                            showRawBackupWarning = true
+                        }
                         pin.length < 4 -> pinError = context.getString(R.string.settings_pin_error_too_short)
                         mode == PinDialogMode.SET && pin != pinConfirm ->
                             pinError = context.getString(R.string.settings_pin_error_mismatch)
                         else -> {
                             if (mode == PinDialogMode.SET) {
                                 pinMode = null
-                                vm.backupDatabase(pin) { ok ->
-                                    val location = if (BackupLocation.isCustom(backupFolder)) BackupLocation.label(backupFolder)
-                                    else context.getString(R.string.settings_backup_location_default)
-                                    Toast.makeText(
-                                        context,
-                                        if (ok) String.format(context.getString(R.string.settings_backup_saved_location), location)
-                                        else context.getString(R.string.settings_backup_failed),
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
+                                vm.backupDatabase(pin) { reportExport(it) }
                             } else {
                                 val uri = pendingImportUri
                                 if (uri != null) {
@@ -758,6 +830,25 @@ fun SettingsScreen(
                     pinMode = null
                     pendingImportUri = null
                 }) { Text(stringResource(R.string.common_cancel)) }
+            }
+        )
+    }
+
+    if (showRawBackupWarning) {
+        AlertDialog(
+            onDismissRequest = { showRawBackupWarning = false },
+            title = { Text(stringResource(R.string.settings_backup_unencrypted_title)) },
+            text = { Text(stringResource(R.string.settings_backup_unencrypted_warning)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRawBackupWarning = false
+                    vm.backupDatabaseUnencrypted { reportExport(it, encrypted = false) }
+                }) { Text(stringResource(R.string.settings_backup_unencrypted_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRawBackupWarning = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }

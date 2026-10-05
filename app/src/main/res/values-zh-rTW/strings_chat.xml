@@ -39,6 +39,10 @@
     <string name="chat_schedule_failed">無法排定此訊息</string>
     <string name="chat_search_contacts">搜尋通訊錄</string>
     <string name="chat_add_people">加入人員</string>
+    <string name="chat_reaction_sent">對「%2$s」做出了 %1$s 回應</string>
+    <string name="chat_reaction_removed">取消了對「%2$s」的 %1$s 回應</string>
+    <string name="chat_reaction_item">你的訊息</string>
+    <string name="chat_reaction_fallback_failed">無法將回應傳送給對方</string>
     <string name="chat_locked">已鎖定</string>
 
     <string name="chat_copied">已複製</string>

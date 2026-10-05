@@ -87,7 +87,10 @@ object SettingsSearch {
             R.string.keywords_title)
         card(Route.ADVANCED, 10,
             R.string.settings_send_sound_title,
-            R.string.settings_receive_sound_title)
+            R.string.settings_receive_sound_title,
+            R.string.settings_notif_action_reply_title,
+            R.string.settings_notif_action_mark_read_title,
+            R.string.settings_notif_action_delete_title)
         card(Route.ADVANCED, 11,
             R.string.settings_font_title,
             R.string.settings_advanced_emoji_button)
@@ -103,6 +106,7 @@ object SettingsSearch {
             R.string.settings_retention_keep_spam)
         card(Route.ADVANCED, 14,
             R.string.settings_new_ui_title,
+            R.string.transfer_log_title,
             R.string.diagnostics_title)
 
         card(Route.ACCESSIBILITY, 15,

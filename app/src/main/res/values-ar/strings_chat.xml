@@ -41,6 +41,10 @@
     <string name="chat_schedule_failed">تعذّر جدولة الرسالة</string>
     <string name="chat_search_contacts">البحث في جهات الاتصال</string>
     <string name="chat_add_people">إضافة أشخاص</string>
+    <string name="chat_reaction_sent">تفاعل بـ %1$s مع "%2$s"</string>
+    <string name="chat_reaction_removed">أزال %1$s من "%2$s"</string>
+    <string name="chat_reaction_item">رسالتك</string>
+    <string name="chat_reaction_fallback_failed">تعذّر إرسال التفاعل إلى الشخص الآخر</string>
     <string name="chat_locked">مقفل</string>
 
     <!-- Copy & links -->

@@ -39,6 +39,10 @@
     <string name="chat_schedule_failed">无法计划发送此消息</string>
     <string name="chat_search_contacts">搜索联系人</string>
     <string name="chat_add_people">添加人员</string>
+    <string name="chat_reaction_sent">对“%2$s”做出了 %1$s 回应</string>
+    <string name="chat_reaction_removed">取消了对“%2$s”的 %1$s 回应</string>
+    <string name="chat_reaction_item">你的消息</string>
+    <string name="chat_reaction_fallback_failed">无法将回应发送给对方</string>
     <string name="chat_locked">已锁定</string>
 
     <string name="chat_copied">已复制</string>

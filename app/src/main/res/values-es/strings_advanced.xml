@@ -46,4 +46,23 @@
     <string name="mms_check_country">%1$s · %2$s</string>
     <string name="mms_check_footer">Cada SIM se comprueba con el ajuste de MMS que publica su operador. Esto indica lo que declara el operador, no un servicio MMS probado: comprobarlo requiere los ajustes APN del sistema, que solo pueden leer las aplicaciones con privilegios.</string>
     <string name="mms_check_no_sims">No se ha encontrado ninguna SIM activa</string>
+    <string name="transfer_log_title">Registro de importación y exportación</string>
+    <string name="transfer_log_subtitle">Importaciones y exportaciones recientes y lo que se omitió</string>
+    <string name="transfer_log_empty">Aún no hay importaciones ni exportaciones.</string>
+    <string name="transfer_log_clear">Borrar registro</string>
+    <string name="transfer_log_export">Exportar</string>
+    <string name="transfer_log_import">Importar</string>
+    <string name="transfer_log_counts">%1$d añadidos, %2$d omitidos</string>
+    <string name="transfer_log_conflict">%1$d %2$s</string>
+    <string name="transfer_log_meta">%1$s · %2$s</string>
+    <string name="transfer_log_status_ok">Correcto</string>
+    <string name="transfer_log_status_failed">Fallido</string>
+    <string name="transfer_log_retried">Reintentado %1$d×</string>
+    <string name="transfer_conflict_already_present">ya presente</string>
+    <string name="transfer_conflict_provider_id_taken">ID de proveedor ya en uso</string>
+    <string name="transfer_conflict_provider_id_dropped">ID de proveedor de otro dispositivo</string>
+    <string name="transfer_conflict_conversation_merged">conversación coincidente con otra existente</string>
+    <string name="transfer_conflict_conversation_unresolved">no se pudo relacionar la conversación</string>
+    <string name="transfer_conflict_record_unreadable">no se pudo leer el registro</string>
+    <string name="transfer_conflict_part_too_large">adjunto demasiado grande</string>
 </resources>
