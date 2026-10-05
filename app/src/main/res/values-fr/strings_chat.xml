@@ -88,4 +88,10 @@
     <string name="chat_messages_deleted">%d messages supprimés</string>
     <string name="chat_trash">Déplacer dans la corbeille</string>
     <string name="status_not_sent">Non envoyé</string>
+    <string name="chat_search_result">Résultat de recherche</string>
+    <string name="chat_search">Rechercher</string>
+    <string name="chat_search_hint">Rechercher dans la discussion</string>
+    <string name="chat_search_previous">Correspondance précédente</string>
+    <string name="chat_search_next">Correspondance suivante</string>
+    <string name="chat_search_counter">%1$d sur %2$d</string>
 </resources>
