@@ -383,9 +383,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
+            // The fallback is a real SMS: never send it to a blocked number or
+            // an address that cannot receive replies.
             val recipients = repo.conversationRecipients(conversationId)
-                .filter { isPhoneNumber(it) }
-                .ifEmpty { listOf(convo.address) }
+                .filter { isPhoneNumber(it) && !isNumberBlocked(it) }
+                .ifEmpty {
+                    convo.address.takeIf { isPhoneNumber(it) && !isNumberBlocked(it) }
+                        ?.let { listOf(it) }
+                        ?: emptyList()
+                }
+            if (recipients.isEmpty()) return@launch
             val subId = settings.simSubscriptionId
             val sent = withContext(Dispatchers.IO) {
                 recipients.any { address ->
