@@ -27,8 +27,9 @@ object ConversationList {
         if (query.isBlank()) list
         else list.filter {
             val snippet = snippetFor(it)
-            it.name.contains(query, true) || it.address.contains(query) ||
-                snippet.contains(query, true)
+            it.name.contains(query, true) || it.address.contains(query, true) ||
+                snippet.contains(query, true) ||
+                AddressIdentity.matchesNumber(it.address, query)
         }
     }
 
