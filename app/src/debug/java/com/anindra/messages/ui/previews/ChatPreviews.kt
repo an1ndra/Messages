@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.ui.AlphanumericNotice
+import com.anindra.messages.ui.ChatSearchBar
 import com.anindra.messages.ui.ChatTopBar
 import com.anindra.messages.ui.ConversationDetailsDialog
 import com.anindra.messages.ui.DetailRow
@@ -58,7 +59,7 @@ private fun ChatTopBarPreview() {
             sendCountdown = 0,
             onBack = {}, onOpenDetails = {}, onMenuToggle = {}, onMenuDismiss = {},
             onSimSelect = { _, _ -> }, onArchive = {}, onDelete = {}, onBlock = {},
-            onUnblock = {}, onAddPeople = {}
+            onUnblock = {}, onAddPeople = {}, onSearch = {}
         )
         ChatTopBar(
             convo = sampleConversation(2, "+15551237777", "last message", groupTitle = "Ana, Ben"),
@@ -71,7 +72,33 @@ private fun ChatTopBarPreview() {
             sendCountdown = 12,
             onBack = {}, onOpenDetails = {}, onMenuToggle = {}, onMenuDismiss = {},
             onSimSelect = { _, _ -> }, onArchive = {}, onDelete = {}, onBlock = {},
-            onUnblock = {}, onAddPeople = {}
+            onUnblock = {}, onAddPeople = {}, onSearch = {}
+        )
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Chat search bar", showBackground = true, widthDp = 380)
+@Composable
+private fun ChatSearchBarPreview() {
+    Column {
+        ChatSearchBar(
+            query = "dinner",
+            onQueryChange = {},
+            matchIndex = 1,
+            matchCount = 3,
+            onPrevious = {},
+            onNext = {},
+            onClose = {}
+        )
+        ChatSearchBar(
+            query = "",
+            onQueryChange = {},
+            matchIndex = -1,
+            matchCount = 0,
+            onPrevious = {},
+            onNext = {},
+            onClose = {}
         )
     }
 }

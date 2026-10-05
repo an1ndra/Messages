@@ -18,6 +18,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -74,6 +75,8 @@ import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Schedule
 
@@ -86,6 +89,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
@@ -107,6 +111,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -121,6 +126,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
@@ -135,6 +142,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -143,12 +151,15 @@ import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.data.Message
+import com.anindra.messages.data.MessageSearch
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimSwitcher
 import com.anindra.messages.data.MessageLockCrypto
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.Motion
 import com.anindra.messages.ui.theme.motionSpring
@@ -223,13 +234,17 @@ internal fun ChatBubble(
     onLongPress: () -> Unit = {},
     onRetry: () -> Unit = {},
     onReact: (String) -> Unit = {},
-    showReactionBar: Boolean = false
+    showReactionBar: Boolean = false,
+    searchQuery: String? = null,
+    isSearchFocus: Boolean = false,
+    searchHighlightAlpha: Float = 0f
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
+    val searchResultLabel = stringResource(R.string.chat_search_result)
     val slidePx = with(LocalDensity.current) { BubbleEntrance.SLIDE_DP.dp.toPx() }
     val bubbleReduceMotion = LocalReduceMotion.current
     val entrance = remember(msg.id) { Animatable(if (animateIn) 0f else 1f) }
@@ -248,7 +263,9 @@ internal fun ChatBubble(
         highlightLinks && !isLockedAndHidden,
         hideLinks && !isLockedAndHidden,
         onLinkClick = { pendingUrl = it },
-        textColor = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface
+        textColor = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface,
+        searchQuery = if (isLockedAndHidden) null else searchQuery,
+        searchHighlightAlpha = searchHighlightAlpha
     )
 
     if (senderName != null && !msg.isMe) {
@@ -327,6 +344,7 @@ internal fun ChatBubble(
                             Surface(
                                 color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
                                 shape = RoundedCornerShape(16.dp),
+                                border = if (isSearchFocus) BorderStroke(2.dp, cs.primary.copy(alpha = searchHighlightAlpha)) else null,
                                 modifier = Modifier.widthIn(max = 260.dp).padding(top = 2.dp)
                                     .combinedClickable(
                                         onClick = { onTap() },
@@ -338,7 +356,9 @@ internal fun ChatBubble(
                                     style = MaterialTheme.typography.bodyLarge.merge(
                                         TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
                                     ),
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                    modifier = Modifier
+                                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                                        .semantics { if (isSearchFocus) contentDescription = searchResultLabel }
                                 )
                             }
                         }
@@ -347,6 +367,7 @@ internal fun ChatBubble(
                     Surface(
                         color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
                         shape = corners.toShape(),
+                        border = if (isSearchFocus) BorderStroke(2.dp, cs.primary.copy(alpha = searchHighlightAlpha)) else null,
                         modifier = Modifier.widthIn(max = 300.dp).combinedClickable(
                             onClick = { onTap() },
                             onLongClick = { onLongPress() }
@@ -357,7 +378,9 @@ internal fun ChatBubble(
                             style = MaterialTheme.typography.bodyLarge.merge(
                                 TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
                             ),
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                            modifier = Modifier
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .semantics { if (isSearchFocus) contentDescription = searchResultLabel }
                         )
                     }
                 }
@@ -541,6 +564,7 @@ internal fun ReactionChips(
 fun ChatScreen(
     vm: AppViewModel,
     conversationId: Long,
+    searchQuery: String? = null,
     onBack: () -> Unit,
     onOpenDetails: () -> Unit = {}
 ) {
@@ -582,6 +606,35 @@ fun ChatScreen(
     // this a scheduled row above a message shifts every tail below it.
     val sentIndexAt = rememberSentIndexAt(chatRows)
     val lastSentRow = remember(chatRows, sentIndexAt) { sentIndexAt.indexOfLast { it >= 0 } }
+    // In-chat search (from the overflow menu): matches this conversation only.
+    var searchOpen by remember { mutableStateOf(false) }
+    var chatQuery by remember { mutableStateOf("") }
+    // The query driving the highlight: the in-chat search while it is open,
+    // otherwise the query handed over from the home list. `activeSearch` is
+    // trimmed so a query of only spaces behaves like no search at all.
+    val activeSearch = remember(searchQuery, searchOpen, chatQuery) {
+        (if (searchOpen) chatQuery else searchQuery)?.trim()?.takeIf { it.isNotEmpty() }
+    }
+    val searchMatches = remember(messages, activeSearch) {
+        if (activeSearch == null) emptyList()
+        else messages.filter { MessageSearch.matches(it.body, activeSearch) }.map { it.id }
+    }
+    // Which match is in focus. Reset to the newest whenever the query changes,
+    // then moved by the previous/next buttons.
+    var searchMatchIndex by remember(activeSearch) { mutableIntStateOf(-1) }
+    LaunchedEffect(activeSearch, searchMatches.size) {
+        searchMatchIndex = if (searchMatches.isEmpty()) -1 else searchMatches.lastIndex
+    }
+    val focusedSearchId = searchMatches.getOrNull(searchMatchIndex)
+    val focusedSearchRow = remember(chatRows, focusedSearchId) {
+        focusedSearchId?.let { id ->
+            chatRows.indexOfFirst { it is ChatRow.Sent && it.message.id == id }.takeIf { it >= 0 }
+        }
+    }
+    fun navigateMatch(delta: Int) {
+        if (searchMatches.isEmpty()) return
+        searchMatchIndex = MessageSearch.step(searchMatchIndex, delta, searchMatches.size)
+    }
     // Highest id already on screen when the chat was opened (or first loaded);
     // only newer arrivals play the entrance animation, so scrolling back and
     // forward never replays it.
@@ -892,24 +945,55 @@ fun ChatScreen(
 
     BackHandler(onBack = ::leaveChat)
     BackHandler(enabled = selectionActive) { clearSelection() }
+    BackHandler(enabled = searchOpen) {
+        searchOpen = false
+        chatQuery = ""
+    }
 
     // Bottom on load + new messages. Int.MAX_VALUE clamps to the last row, so the newest
     // message is brought into view even before layout has counted the freshly added row.
+    // A focused search hit wins: the chat opens on it, and next/previous moves it.
     var hasScrolledToBottom by remember(conversationId) { mutableStateOf(false) }
     val newestId = messages.lastOrNull()?.id
+    LaunchedEffect(focusedSearchRow) {
+        val target = focusedSearchRow ?: return@LaunchedEffect
+        listState.scrollToItem(target)
+        hasScrolledToBottom = true
+    }
     LaunchedEffect(newestId) {
-        if (newestId != null) {
+        if (focusedSearchRow == null && newestId != null) {
             listState.scrollToItem(Int.MAX_VALUE)
             hasScrolledToBottom = true
         }
     }
     // Retry once if the first scroll raced the layout pass.
     LaunchedEffect(messages.size) {
-        if (!hasScrolledToBottom && messages.isNotEmpty()) {
+        if (!hasScrolledToBottom && messages.isNotEmpty() && focusedSearchRow == null) {
             delay(80)
             listState.scrollToItem(Int.MAX_VALUE)
             hasScrolledToBottom = true
         }
+    }
+    // The search hit flashes like a settings jump: fade in, hold, fade out, so
+    // it points at the message without painting it permanently.
+    var searchFlashOn by remember(conversationId, activeSearch) { mutableStateOf(false) }
+    val searchFlashAlpha by animateFloatAsState(
+        targetValue = if (searchFlashOn) 1f else 0f,
+        animationSpec = motionTween(
+            reduceMotion,
+            if (searchFlashOn) Motion.DURATION_MEDIUM2 else Motion.DURATION_LONG1
+        ),
+        label = "chat-search-flash"
+    )
+    LaunchedEffect(activeSearch, focusedSearchRow) {
+        if (activeSearch == null || focusedSearchRow == null) {
+            searchFlashOn = false
+            return@LaunchedEffect
+        }
+        delay(if (reduceMotion) 0L else 150L)
+        searchFlashOn = true
+        delay(if (reduceMotion) 3500L else 1900L)
+        searchFlashOn = false
     }
     // Load chunks while pinned near the bottom so inserting rows doesn't jump the view
     LaunchedEffect(pageLimit, totalCount) {
@@ -950,8 +1034,13 @@ fun ChatScreen(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
+            val topBarMode = when {
+                selectionActive -> "select"
+                searchOpen -> "search"
+                else -> "normal"
+            }
             AnimatedContent(
-                targetState = selectionActive,
+                targetState = topBarMode,
                 transitionSpec = {
                     (fadeIn(toolbarFade) +
                         slideInVertically(
@@ -965,8 +1054,9 @@ fun ChatScreen(
                             ))
                 },
                 label = stringResource(R.string.access_chat_top_bar)
-            ) { selecting ->
-            if (selecting) {
+            ) { mode ->
+            when (mode) {
+            "select" -> {
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
@@ -988,7 +1078,19 @@ fun ChatScreen(
                     onDelete = { deleteSelection() },
                     onLockUnlock = { lockUnlockSelection() }
                 )
-            } else {
+            }
+            "search" -> {
+                ChatSearchBar(
+                    query = chatQuery,
+                    onQueryChange = { chatQuery = it },
+                    matchIndex = searchMatchIndex,
+                    matchCount = searchMatches.size,
+                    onPrevious = { navigateMatch(-1) },
+                    onNext = { navigateMatch(1) },
+                    onClose = { searchOpen = false; chatQuery = "" }
+                )
+            }
+            else -> {
     val workProfile = convo?.let { c ->
         val key = phoneKey(c.address)
         key.isNotEmpty() && key in workNums
@@ -1045,8 +1147,10 @@ fun ChatScreen(
                         Toast.makeText(context, context.getString(R.string.chat_number_unblocked), Toast.LENGTH_SHORT).show()
                     }
                 },
-                onAddPeople = { /* no-op: MMS group chat, stub */ }
+                onAddPeople = { /* no-op: MMS group chat, stub */ },
+                onSearch = { searchOpen = true; chatQuery = "" }
             )
+            }
             }
             }
         },
@@ -1204,6 +1308,9 @@ fun ChatScreen(
                             isUnlocked = unlockedIds.contains(msg.id),
                             showSimIndicator = vm.settings.showSimIndicator,
                             isSelected = msg.id in selectedMessageIds,
+                            searchQuery = if (msg.id == focusedSearchId) activeSearch else null,
+                            isSearchFocus = msg.id == focusedSearchId,
+                            searchHighlightAlpha = if (msg.id == focusedSearchId) searchFlashAlpha else 0f,
                             position = bubblePosition(messages, sentIndexAt[idx]),
                             animateIn = BubbleEntrance.shouldAnimate(
                                 msg.id, entranceBaseline, msg.id in animatedIds,
@@ -1495,6 +1602,87 @@ internal fun MessageSelectionToolbar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+internal fun ChatSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    matchIndex: Int,
+    matchCount: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onClose: () -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.chatBar
+        ),
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.ArrowBack,
+                    stringResource(R.string.icon_close_search)
+                )
+            }
+        },
+        title = {
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = { Text(stringResource(R.string.chat_search_hint)) },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+            )
+        },
+        actions = {
+            if (matchCount > 0 && matchIndex >= 0) {
+                Text(
+                    String.format(
+                        stringResource(R.string.chat_search_counter),
+                        matchIndex + 1,
+                        matchCount
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                IconButton(
+                    onClick = onPrevious,
+                    enabled = matchIndex > 0,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowUp,
+                        stringResource(R.string.chat_search_previous),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                IconButton(
+                    onClick = onNext,
+                    enabled = matchIndex in 0 until matchCount - 1,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        stringResource(R.string.chat_search_next),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 internal fun ChatTopBar(
     convo: com.anindra.messages.data.Conversation?,
     workProfile: Boolean,
@@ -1513,7 +1701,8 @@ internal fun ChatTopBar(
     onDelete: () -> Unit,
     onBlock: () -> Unit,
     onUnblock: () -> Unit,
-    onAddPeople: () -> Unit
+    onAddPeople: () -> Unit,
+    onSearch: () -> Unit
 ) {
     val context = LocalContext.current
     TopAppBar(
@@ -1574,6 +1763,10 @@ internal fun ChatTopBar(
                     onDismissRequest = onMenuDismiss,
                     containerColor = MaterialTheme.colorScheme.chatBar
                 ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.chat_search)) },
+                        onClick = { onMenuDismiss(); onSearch() }
+                    )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.chat_add_people)) },
                         onClick = { onMenuDismiss(); onAddPeople() }
@@ -1829,32 +2022,48 @@ private fun rememberLinkedText(
     highlight: Boolean,
     hide: Boolean = false,
     onLinkClick: (String) -> Unit = {},
-    textColor: Color = MaterialTheme.colorScheme.onSurface
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
+    searchQuery: String? = null,
+    searchHighlightAlpha: Float = 1f
 ): AnnotatedString {
     val linkColor = if (highlight) textColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
+    val searchBackground = MaterialTheme.colorScheme.tertiaryContainer.copy(
+        alpha = 0.6f * searchHighlightAlpha.coerceIn(0f, 1f)
+    )
     // produceState remembers its value WITHOUT keys, so an async redaction would
     // keep painting the previous (unredacted) text and only swap it once the
     // coroutine lands — every link bubble flashes its URL when the option is
     // turned on. Hiding removes content, so resolve it before the first paint;
     // hideUrls memoizes, so this is a cache hit on recomposition.
-    if (hide) {
-        return remember(body) {
+    val base = if (hide) {
+        remember(body) {
             styledBody(hideUrls(body), linkColor, emptyMap(), null)
         }
+    } else {
+        produceState(AnnotatedString(body), body, highlight, textColor, linkColor) {
+            value = withContext(Dispatchers.Default) {
+                val urls = if (highlight) {
+                    val spanned = SpannableStringBuilder(body)
+                    Linkify.addLinks(spanned, Linkify.WEB_URLS)
+                    spanned.getSpans(0, spanned.length, URLSpan::class.java)
+                        .associate {
+                            (spanned.getSpanStart(it)..spanned.getSpanEnd(it) - 1) to it.url
+                        }
+                } else emptyMap()
+                styledBody(body, linkColor, urls, onLinkClick)
+            }
+        }.value
     }
-    return produceState(AnnotatedString(body), body, highlight, textColor, linkColor) {
-        value = withContext(Dispatchers.Default) {
-            val urls = if (highlight) {
-                val spanned = SpannableStringBuilder(body)
-                Linkify.addLinks(spanned, Linkify.WEB_URLS)
-                spanned.getSpans(0, spanned.length, URLSpan::class.java)
-                    .associate {
-                        (spanned.getSpanStart(it)..spanned.getSpanEnd(it) - 1) to it.url
-                    }
-            } else emptyMap()
-            styledBody(body, linkColor, urls, onLinkClick)
+    if (searchQuery == null) return base
+    // The search tint is layered on the finished text: it is the only style that
+    // animates, and re-running Linkify every animation frame would be wasteful.
+    return remember(base, searchQuery, searchBackground) {
+        val builder = AnnotatedString.Builder(base)
+        MessageSearch.ranges(base.text, searchQuery).forEach { r ->
+            builder.addStyle(SpanStyle(background = searchBackground), r.first, r.last + 1)
         }
-    }.value
+        builder.toAnnotatedString()
+    }
 }
 
 /** Builds the styled bubble body, isolating number runs so they keep LTR order

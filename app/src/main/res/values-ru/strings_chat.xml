@@ -88,4 +88,10 @@
     <string name="chat_messages_deleted">Удалено сообщений: %d</string>
     <string name="chat_trash">Переместить в корзину</string>
     <string name="status_not_sent">Не отправлено</string>
+    <string name="chat_search_result">Результат поиска</string>
+    <string name="chat_search">Поиск</string>
+    <string name="chat_search_hint">Поиск в чате</string>
+    <string name="chat_search_previous">Предыдущее совпадение</string>
+    <string name="chat_search_next">Следующее совпадение</string>
+    <string name="chat_search_counter">%1$d из %2$d</string>
 </resources>

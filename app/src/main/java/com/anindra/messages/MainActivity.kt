@@ -1085,6 +1085,10 @@ class MainActivity : FragmentActivity() {
 
             MessagesTheme(mode = vm.themeMode, font = vm.fontFamily, a11y = vm.a11y) {
                 var chatId by remember { mutableStateOf(-1L) }
+                // The home-list query that opened the chat, so the chat can
+                // highlight and scroll to the matching message. Null for every
+                // other way into a chat (new, scheduled, spam, intent).
+                var chatSearchQuery by remember { mutableStateOf<String?>(null) }
                 var detailsId by remember { mutableStateOf(-1L) }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
                 var defaultSmsChecked by remember { mutableStateOf(false) }
@@ -1137,6 +1141,7 @@ class MainActivity : FragmentActivity() {
                         repo.conversationIdForAddress(addr) ?: repo.getOrCreateConversationBlocking(addr)
                     }
                     chatId = id
+                    chatSearchQuery = null
                     navRoute = if (id > 0) "chat" else "list"
                     pendingOpenAddress = null
                 }
@@ -1221,10 +1226,11 @@ class MainActivity : FragmentActivity() {
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     if (useNewUi) ConversationsScreen(
                         vm = vm,
-                        onOpenConversation = { id ->
+                        onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
                             chatId = id
+                            chatSearchQuery = query.ifBlank { null }
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
@@ -1235,6 +1241,7 @@ class MainActivity : FragmentActivity() {
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
                             chatId = id
+                            chatSearchQuery = null
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
@@ -1276,6 +1283,7 @@ class MainActivity : FragmentActivity() {
                                         onPick = { address, name ->
                                             vm.openOrCreate(address, name) { id ->
                                                 chatId = id
+                                                chatSearchQuery = null
                                                 navRoute = "chat"
                                             }
                                         }
@@ -1333,6 +1341,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         onBack = { navRoute = "settings" },
                                         onOpenChat = { id ->
                                             chatId = id
+                                            chatSearchQuery = null
                                             navRoute = "chat"
                                         }
                                     )
@@ -1370,7 +1379,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                     "spam" -> SpamBlockedScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
-                                        onOpenConversation = { navRoute = "chat"; chatId = it },
+                                        onOpenConversation = { navRoute = "chat"; chatId = it; chatSearchQuery = null },
                                         conversationListState = spamConversationList,
                                         messageListState = spamMessageList
                                     )
@@ -1400,6 +1409,7 @@ onBack = { navRoute = "chat" },
                                                         vm.setGroupTitle(detailsId, groupName)
                                                     }
                                                     chatId = detailsId
+                                                    chatSearchQuery = null
                                                     navRoute = "chat"
                                                 }
                                             )
@@ -1408,6 +1418,7 @@ onBack = { navRoute = "chat" },
                                     else -> ChatScreen(
                                         vm = vm,
                                         conversationId = chatId,
+                                        searchQuery = chatSearchQuery,
                                         onBack = { navRoute = "list" },
                                         onOpenDetails = { detailsId = chatId; navRoute = "details" }
                                     )
