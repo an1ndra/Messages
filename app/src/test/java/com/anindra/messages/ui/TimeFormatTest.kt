@@ -55,10 +55,28 @@ class TimeFormatTest {
     @Test
     fun groupLabelDropsAmPmIn24HourMode() {
         val ts = 1_700_000_000_000L
-        assertTrue(formatGroupLabel(ts, true, now = ts).matches(Regex("\\d{2}:\\d{2}")))
+        assertTrue(formatGroupLabel(ts, true, "Yesterday", now = ts).matches(Regex("\\d{2}:\\d{2}")))
         assertNotEquals(
-            formatGroupLabel(ts, true, now = ts),
-            formatGroupLabel(ts, false, now = ts)
+            formatGroupLabel(ts, true, "Yesterday", now = ts),
+            formatGroupLabel(ts, false, "Yesterday", now = ts)
         )
+    }
+
+    /** The label used to be a hardcoded English "Yesterday" regardless of locale. */
+    @Test
+    fun groupLabelUsesTheSuppliedLocalizedLabel() {
+        seedDateFormatters()
+        val ts = 1_700_000_000_000L
+        val yesterday = ts - 86_400_000L
+        assertTrue(formatGroupLabel(yesterday, true, "Yesterday", now = ts).startsWith("Yesterday \u2022"))
+        assertTrue(formatGroupLabel(yesterday, true, "Hier", now = ts).startsWith("Hier \u2022"))
+    }
+
+    /** formatGroupLabel resolves date patterns through the platform, which is not
+     *  available off-device; pre-seeding the cache keeps the Android path out. */
+    private fun seedDateFormatters() {
+        clearDateFormatterCache()
+        val locale = Locale.getDefault()
+        DateStyle.entries.forEach { dateFormatter(it, locale, SkeletonResolver { _, s -> s }) }
     }
 }
