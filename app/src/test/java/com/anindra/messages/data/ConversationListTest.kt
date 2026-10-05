@@ -128,4 +128,20 @@ class ConversationListTest {
         assertEquals(listOf(1L), stored)
         assertEquals(emptyList<Long>(), shown)
     }
+
+    @Test
+    fun aHitAnywhereInTheThreadSurfacesTheConversation() {
+        // The snippet is only the newest message. A hit in an older message
+        // arrives as a conversation id from the repository, and that alone must
+        // surface the thread even though no visible text contains the query.
+        val list = listOf(convo(1, snippet = "newest words"), convo(2, snippet = "newest words"))
+        assertEquals(
+            listOf(2L),
+            ids(ConversationList.filter(list, false, "buried", setOf(2L)) { it.snippet })
+        )
+        assertEquals(
+            emptyList<Long>(),
+            ids(ConversationList.filter(list, false, "buried", emptySet()) { it.snippet })
+        )
+    }
 }

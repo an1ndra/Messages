@@ -283,6 +283,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun messageCountFlow(conversationId: Long): Flow<Int> = repo.messageCountFlow(conversationId)
 
+    /** Conversations with a hit anywhere in their history, for the home search. */
+    fun conversationIdsMatchingMessage(query: String): Flow<Set<Long>> =
+        repo.conversationIdsMatchingMessage(query)
+
     fun syncFromSystem() = repo.syncFromSystem()
 
     fun requeryFromSystem() = repo.requeryFromSystem()

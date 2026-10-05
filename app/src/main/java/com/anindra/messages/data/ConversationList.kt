@@ -10,12 +10,15 @@ object ConversationList {
      * Drops blocked conversations, keeps either the inbox or the archive, and
      * filters by [query] against name / address / snippet ([snippetFor] maps a
      * conversation's snippet to the text actually shown, so link hiding applies
-     * to the search too).
+     * to the search too). [messageMatchIds] holds conversations with a hit
+     * anywhere in their history (see `Repository.conversationIdsMatchingMessage`),
+     * so a word buried in an old message still surfaces its thread.
      */
     fun filter(
         conversations: List<Conversation>,
         showArchived: Boolean,
         query: String,
+        messageMatchIds: Set<Long> = emptySet(),
         snippetFor: (Conversation) -> String
     ): List<Conversation> = conversations.filter { convo ->
         when {
@@ -27,7 +30,8 @@ object ConversationList {
         if (query.isBlank()) list
         else list.filter {
             val snippet = snippetFor(it)
-            it.name.contains(query, true) || it.address.contains(query, true) ||
+            it.id in messageMatchIds ||
+                it.name.contains(query, true) || it.address.contains(query, true) ||
                 snippet.contains(query, true) ||
                 AddressIdentity.matchesNumber(it.address, query)
         }
