@@ -658,10 +658,10 @@ internal fun SwipeConversationItem(
 ) {
     var dismissStateRef: SwipeToDismissBoxState? = null
     val dismissState = rememberSwipeToDismissBoxState(
-        positionalThreshold = { total -> total * 0.65f },
+        positionalThreshold = { total -> total * SettingsLayout.SWIPE_COMMIT_FRACTION },
         confirmValueChange = { value ->
             value == SwipeToDismissBoxValue.Settled ||
-                    (dismissStateRef?.progress ?: 0f) >= 0.65f
+                    (dismissStateRef?.progress ?: 0f) >= SettingsLayout.SWIPE_COMMIT_FRACTION
         }
     )
     dismissStateRef = dismissState
