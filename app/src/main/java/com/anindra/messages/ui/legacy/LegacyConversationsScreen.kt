@@ -123,6 +123,7 @@ import com.anindra.messages.ui.PersonAvatar
 import com.anindra.messages.ui.BidiText
 import com.anindra.messages.ui.phoneKey
 import com.anindra.messages.ui.RowSettings
+import com.anindra.messages.ui.SettingsLayout
 import com.anindra.messages.ui.SkeletonConversationRow
 import com.anindra.messages.ui.ProvideShimmer
 import com.anindra.messages.ui.LocalNowTick
@@ -621,10 +622,10 @@ internal fun SwipeConversationItem(
 ) {
     var dismissStateRef: SwipeToDismissBoxState? = null
     val dismissState = rememberSwipeToDismissBoxState(
-        positionalThreshold = { total -> total * 0.65f },
+        positionalThreshold = { total -> total * SettingsLayout.SWIPE_COMMIT_FRACTION },
         confirmValueChange = { value ->
             value == SwipeToDismissBoxValue.Settled ||
-                    (dismissStateRef?.progress ?: 0f) >= 0.65f
+                    (dismissStateRef?.progress ?: 0f) >= SettingsLayout.SWIPE_COMMIT_FRACTION
         }
     )
     dismissStateRef = dismissState

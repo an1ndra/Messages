@@ -108,6 +108,15 @@ object SettingsLayout {
      */
     val SWIPE_ICON_INSET: Dp = 24.dp
 
+    /**
+     * Fraction of the row's width a swipe must travel before its action commits.
+     *
+     * material3's `SwipeToDismissBox` ignores its own `positionalThreshold` here
+     * (issuetracker 471021165: it settles at ~50% + 125dp/s velocity), so the
+     * commit is gated on the drag progress instead. 0.30 matches Google
+     * Messages' shorter swipe; the old 0.65 needed most of the row's width.
+     */
+    const val SWIPE_COMMIT_FRACTION = 0.30f
 
     /**
      * A title-only row is shorter than one with a description, so the list does
