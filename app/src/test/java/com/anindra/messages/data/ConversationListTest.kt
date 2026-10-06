@@ -119,6 +119,26 @@ class ConversationListTest {
     }
 
     @Test
+    fun aContactSavedInNationalFormatIsFoundByItsNumber() {
+        // Issue #284: a thread stores its address in E.164, but the number a
+        // saved contact is dialled and typed as keeps the local trunk zero and
+        // drops the country code, so neither digit run is a suffix of the
+        // other. Searching that contact by number has to find the thread.
+        val list = listOf(
+            convo(1, name = "Zokii", address = "+919876543210"),
+            convo(2, name = "Other", address = "+919876111111")
+        )
+        assertEquals(listOf(1L), filter(list, query = "09876543210"))
+        assertEquals(listOf(1L), filter(list, query = "09876 543 210"))
+        assertEquals(listOf(1L), filter(list, query = "00919876543210"))
+        assertEquals(emptyList<Long>(), filter(list, query = "09876500000"))
+        // The number rule is additive on top of the plain substring tests, so a
+        // short run still finds a thread whose stored address literally spells
+        // it out. `matchesNumber` itself is covered in AddressIdentityTest.
+        assertEquals(listOf(1L), filter(list, query = "6543210"))
+    }
+
+    @Test
     fun searchMatchesTheShownSnippetNotTheStoredOne() {
         // "Hide links" swaps the snippet for its redacted form, and the search
         // has to use the swapped one so a hidden link is not still findable.
