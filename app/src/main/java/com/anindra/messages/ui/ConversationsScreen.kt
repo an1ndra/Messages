@@ -331,20 +331,11 @@ fun ConversationsScreen(
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
-    val messageMatchIds by remember(query) { vm.conversationIdsMatchingMessage(query) }
-        .collectAsState(initial = emptySet())
+    val messageMatchIds = rememberMessageMatchIds(vm, query)
 
-    val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks, messageMatchIds) {
-        val hide = rowSettings.hideLinks
-        com.anindra.messages.data.ConversationList.sort(
-            com.anindra.messages.data.ConversationList.filter(
-                conversations, showArchived, query,
-                snippetFor = { if (hide) hideUrls(it.snippet) else it.snippet },
-                messageMatchIds = messageMatchIds
-            ),
-            unreadAtTop, showArchived
-        )
-    }
+    val displayed = rememberSearchResults(
+        conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks, messageMatchIds
+    )
 
     // Reveal a new unread only while the user is still at the top.
     LaunchedEffect(displayed) {

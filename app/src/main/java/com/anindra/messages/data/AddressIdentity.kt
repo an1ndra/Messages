@@ -39,12 +39,23 @@ object AddressIdentity {
     /** True when [query] is a phone-number fragment that identifies [address],
      *  however each side was formatted (spaces, dashes, `+`, country code).
      *  The conversation search needs this because the UI shows/accepts
-     *  `555-000-1234` while the address is stored as `+15550001234`. */
+     *  `555-000-1234` while the address is stored as `+15550001234`.
+     *
+     *  A suffix test alone is not enough. A thread is stored in E.164
+     *  (`+201001234567`) but the number a *saved contact* is dialled and typed
+     *  as is national, keeping the local trunk zero (`01001234567`) and dropping
+     *  the country code, so neither digit run is a suffix of the other and the
+     *  contact looks unfindable. The trailing subscriber digits still agree, so
+     *  fall through to [ContactLookup.compareDigits] — the same last-seven rule
+     *  contact lookup already uses for exactly this reason, rather than a
+     *  second copy of it here. */
     fun matchesNumber(address: String, query: String): Boolean {
         val q = query.filter { it.isDigit() }
         if (q.length < MIN_SEARCH_DIGITS) return false
         val a = address.filter { it.isDigit() }
-        return a.isNotEmpty() && (a.endsWith(q) || q.endsWith(a))
+        if (a.isEmpty()) return false
+        if (a.endsWith(q) || q.endsWith(a)) return true
+        return ContactLookup.compareDigits(a, q)
     }
 
     /** A query with fewer digits than this is treated as text, not a number, so

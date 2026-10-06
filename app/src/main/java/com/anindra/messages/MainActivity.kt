@@ -1238,18 +1238,18 @@ class MainActivity : FragmentActivity() {
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
-                        onOpenSettings = { navRoute = "settings" }
+                        onOpenSettings = { navRoute = "settings" },
                     ) else com.anindra.messages.ui.legacy.ConversationsScreen(
                         vm = vm,
-                        onOpenConversation = { id ->
+                        onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
                             chatId = id
-                            chatSearchQuery = null
+                            chatSearchQuery = query.ifBlank { null }
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
-                        onOpenSettings = { navRoute = "settings" }
+                        onOpenSettings = { navRoute = "settings" },
                     )
 
                     AnimatedContent(

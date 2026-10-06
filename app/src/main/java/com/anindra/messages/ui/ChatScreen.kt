@@ -619,21 +619,18 @@ fun ChatScreen(
         if (activeSearch == null) emptyList()
         else messages.filter { MessageSearch.matches(it.body, activeSearch) }.map { it.id }
     }
-    // Which match is in focus. Reset to the newest whenever the query changes,
-    // then moved by the previous/next buttons.
-    var searchMatchIndex by remember(activeSearch) { mutableIntStateOf(-1) }
-    LaunchedEffect(activeSearch, searchMatches.size) {
-        searchMatchIndex = if (searchMatches.isEmpty()) -1 else searchMatches.lastIndex
-    }
-    val focusedSearchId = searchMatches.getOrNull(searchMatchIndex)
-    val focusedSearchRow = remember(chatRows, focusedSearchId) {
-        focusedSearchId?.let { id ->
-            chatRows.indexOfFirst { it is ChatRow.Sent && it.message.id == id }.takeIf { it >= 0 }
-        }
-    }
+    // Which match is in focus: the newest one by default, moved by the
+    // previous/next buttons. Stored as an id override rather than an index,
+    // because an index into the loaded window moves every time the pager
+    // prepends another chunk of older messages, and the old index-keyed effect
+    // snapped the view back to the hit on each one (issue #284).
+    var focusedOverrideId by remember(activeSearch) { mutableStateOf<Long?>(null) }
+    val focusedSearchId = focusedOverrideId ?: searchMatches.lastOrNull()
+    val focusedMatchIndex = focusedSearchId?.let { searchMatches.indexOf(it) } ?: -1
     fun navigateMatch(delta: Int) {
         if (searchMatches.isEmpty()) return
-        searchMatchIndex = MessageSearch.step(searchMatchIndex, delta, searchMatches.size)
+        val from = focusedMatchIndex.takeIf { it >= 0 } ?: -1
+        focusedOverrideId = searchMatches[MessageSearch.step(from, delta, searchMatches.size)]
     }
     // Highest id already on screen when the chat was opened (or first loaded);
     // only newer arrivals play the entrance animation, so scrolling back and
@@ -955,20 +952,26 @@ fun ChatScreen(
     // A focused search hit wins: the chat opens on it, and next/previous moves it.
     var hasScrolledToBottom by remember(conversationId) { mutableStateOf(false) }
     val newestId = messages.lastOrNull()?.id
-    LaunchedEffect(focusedSearchRow) {
-        val target = focusedSearchRow ?: return@LaunchedEffect
-        listState.scrollToItem(target)
-        hasScrolledToBottom = true
+    // Keyed on the message id, not its row index: prepended chunks shift the
+    // index but not the id, so this fires once when a hit takes focus and is
+    // never re-triggered by the pager loading more history underneath it.
+    LaunchedEffect(focusedSearchId) {
+        val id = focusedSearchId ?: return@LaunchedEffect
+        val target = chatRows.indexOfFirst { it is ChatRow.Sent && it.message.id == id }
+        if (target >= 0) {
+            listState.scrollToItem(target)
+            hasScrolledToBottom = true
+        }
     }
     LaunchedEffect(newestId) {
-        if (focusedSearchRow == null && newestId != null) {
+        if (focusedSearchId == null && newestId != null) {
             listState.scrollToItem(Int.MAX_VALUE)
             hasScrolledToBottom = true
         }
     }
     // Retry once if the first scroll raced the layout pass.
     LaunchedEffect(messages.size) {
-        if (!hasScrolledToBottom && messages.isNotEmpty() && focusedSearchRow == null) {
+        if (!hasScrolledToBottom && messages.isNotEmpty() && focusedSearchId == null) {
             delay(80)
             listState.scrollToItem(Int.MAX_VALUE)
             hasScrolledToBottom = true
@@ -985,8 +988,8 @@ fun ChatScreen(
         ),
         label = "chat-search-flash"
     )
-    LaunchedEffect(activeSearch, focusedSearchRow) {
-        if (activeSearch == null || focusedSearchRow == null) {
+    LaunchedEffect(activeSearch, focusedSearchId) {
+        if (activeSearch == null || focusedSearchId == null) {
             searchFlashOn = false
             return@LaunchedEffect
         }
@@ -1083,7 +1086,7 @@ fun ChatScreen(
                 ChatSearchBar(
                     query = chatQuery,
                     onQueryChange = { chatQuery = it },
-                    matchIndex = searchMatchIndex,
+                    matchIndex = focusedMatchIndex,
                     matchCount = searchMatches.size,
                     onPrevious = { navigateMatch(-1) },
                     onNext = { navigateMatch(1) },
