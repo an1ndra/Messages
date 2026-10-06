@@ -1908,7 +1908,7 @@ internal fun SkeletonMessageRow() {
                 Modifier
                     .width(210.dp)
                     .height(44.dp)
-                    .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp))
+                    .clip(bubbleCorners(BubblePosition.SINGLE, isMe = true).toShape())
                     .shimmer()
             )
         }
@@ -1918,7 +1918,7 @@ internal fun SkeletonMessageRow() {
                 Modifier
                     .width(160.dp)
                     .height(44.dp)
-                    .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp))
+                    .clip(bubbleCorners(BubblePosition.SINGLE, isMe = false).toShape())
                     .shimmer()
             )
         }
@@ -2340,11 +2340,9 @@ fun MessageRow(
             } else {
                 Surface(
                     color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
-                    shape = RoundedCornerShape(
-                        topStart = 18.dp, topEnd = 18.dp,
-                        bottomStart = if (msg.isMe) 18.dp else 4.dp,
-                        bottomEnd = if (msg.isMe) 4.dp else 18.dp
-                    ),
+                    // Preview-only row; use the same rule the real bubble renders
+                    // so a preview cannot drift from the app.
+                    shape = bubbleCorners(BubblePosition.SINGLE, msg.isMe).toShape(),
                     modifier = Modifier.widthIn(max = 300.dp).combinedClickable(
                         onClick = {},
                         onLongClick = { onLongPress() }
