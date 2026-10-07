@@ -220,11 +220,22 @@ object SendReqBuilder {
             append(nowSeconds).append('@')
             request.addresses.forEach { append(it.trim()).append(',') }
             append('#').append(request.headers.messageClass)
+            // Two sends in the same second to the same recipient are still two
+            // transactions, and the id is the MMSC's only deduplication key.
+            append('+').append(nextNonce())
         }
         return digest.digest(material.toByteArray(Charsets.UTF_8))
             .take(TRANSACTION_ID_BYTES)
             .joinToString("") { "%02x".format(it) }
     }
+
+    /**
+     * Distinguishes two otherwise identical sends. Seeded from the clock so a
+     * restarted process does not repeat the previous run's ids.
+     */
+    private val nonce = java.util.concurrent.atomic.AtomicLong(System.nanoTime())
+
+    private fun nextNonce(): Long = nonce.incrementAndGet()
 
     private fun mediaPart(attachment: FittedAttachment) = PduPart().apply {
         contentType = ContentTypes.normalize(attachment.mimeType)
@@ -557,13 +568,13 @@ class Mms(
                 if (result.responseStatus == HeaderField.RESPONSE_STATUS_OK) {
                     SendOutcome.Sent(store.move(outbox, MmsBox.SENT) ?: outbox, result.responseStatus)
                 } else {
-                    store.setPendingErrorType(outbox, result.resultCodeOf())
+                    store.move(outbox, MmsBox.FAILED)
                     SendOutcome.Failed(outbox, result.resultCodeOf(), result.httpStatus)
                 }
             }
 
             is TransferResult.Failed -> {
-                store.setPendingErrorType(outbox, result.resultCode)
+                store.move(outbox, MmsBox.FAILED)
                 SendOutcome.Failed(outbox, result.resultCode, result.httpStatus)
             }
 
