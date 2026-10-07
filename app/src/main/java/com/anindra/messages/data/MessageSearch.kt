@@ -1,5 +1,7 @@
 package com.anindra.messages.data
 
+import com.anindra.messages.hideUrls
+
 /**
  * Matching rules for handing a home-list search query to the chat screen, so
  * the chat can highlight the hit and scroll to it. Kept pure so the ranges the
@@ -12,6 +14,19 @@ object MessageSearch {
      *  conversation snippet. */
     fun matches(body: String, query: String): Boolean =
         query.isNotBlank() && body.contains(query, ignoreCase = true)
+
+    /** A query may only match what the user can see. A locked message's body
+     *  is masked everywhere and must never surface as a hit, and with Hide
+     *  links on the redacted body is the visible one — the same redaction the
+     *  list and the chat paint, so a search cannot reveal hidden content.
+     *  SQL callers keep a LIKE prefilter only; this is the rule. */
+    fun matchesVisible(
+        body: String,
+        query: String,
+        locked: Boolean,
+        hideLinks: Boolean,
+        redactor: (String) -> String = ::hideUrls
+    ): Boolean = !locked && matches(if (hideLinks) redactor(body) else body, query)
 
     /**
      * The newest message in [messages] whose body matches [query], or null.

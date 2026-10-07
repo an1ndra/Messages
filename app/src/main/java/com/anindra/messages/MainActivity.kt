@@ -284,8 +284,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun messageCountFlow(conversationId: Long): Flow<Int> = repo.messageCountFlow(conversationId)
 
     /** Conversations with a hit anywhere in their history, for the home search. */
-    fun conversationIdsMatchingMessage(query: String): Flow<Set<Long>> =
-        repo.conversationIdsMatchingMessage(query)
+    fun conversationIdsMatchingMessage(query: String, hideLinks: Boolean): Flow<Set<Long>> =
+        repo.conversationIdsMatchingMessage(query, hideLinks)
+
+    /** Ids of this conversation's messages a chat search can reach, oldest first. */
+    fun messageIdsMatching(conversationId: Long, query: String, hideLinks: Boolean): Flow<List<Long>> =
+        repo.messageIdsMatching(conversationId, query, hideLinks)
 
     fun syncFromSystem() = repo.syncFromSystem()
 
