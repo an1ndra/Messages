@@ -59,6 +59,10 @@ class SmsStatusReceiver : BroadcastReceiver() {
         resultCode: Int
     ) {
         val ok = resultCode == Activity.RESULT_OK
+        android.util.Log.i(
+            "MmsSend",
+            "MMS send finished for message $messageId: code $resultCode"
+        )
         val outbox = intent.getStringExtra(EXTRA_MMS_OUTBOX)?.let(Uri::parse)
         if (outbox != null) {
             runCatching {
