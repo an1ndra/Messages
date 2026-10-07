@@ -2985,13 +2985,15 @@ class Repository(private val context: Context) {
     fun pruneMessagesMissingFromProvider(): Boolean {
         val resolver = context.contentResolver
         val live = HashSet<Long>()
-        for ((uri, idColumn) in PROVIDER_MESSAGE_SOURCES) {
+        for ((uri, idColumn, transport) in PROVIDER_MESSAGE_SOURCES) {
             runCatching {
                 resolver.query(
                     uri, arrayOf(idColumn), null, null, null
                 )?.use { c ->
                     val i = c.getColumnIndex(idColumn)
-                    if (i >= 0) while (c.moveToNext()) live.add(c.getLong(i))
+                    if (i >= 0) while (c.moveToNext()) live.add(
+                        ProviderPresence.key(transport, c.getLong(i))
+                    )
                 }
             }.onFailure {
                 // Without permission the provider cannot be read, so nothing can
@@ -3010,7 +3012,7 @@ class Repository(private val context: Context) {
                     val transport = c.getString(1) ?: "sms"
                     // SMS and MMS have independent id spaces, so a row only counts
                     // as present if its own transport's id is still there.
-                    if (live.contains(providerKey(transport, c.getLong(2)))) continue
+                    if (live.contains(ProviderPresence.key(transport, c.getLong(2)))) continue
                     doomed.add(id)
                 }
             }
@@ -3032,10 +3034,6 @@ class Repository(private val context: Context) {
         Log.i("RepoSync", "pruned ${doomed.size} message(s) deleted outside the app")
         return true
     }
-
-    /** SMS and MMS ids overlap, so they are namespaced before comparison. */
-    private fun providerKey(transport: String, sysId: Long): Long =
-        if (transport == MmsSupport.TRANSPORT_MMS) -sysId else sysId
 
     /**
      * Snapshots the database before a prune removes anything.
@@ -3078,8 +3076,16 @@ class Repository(private val context: Context) {
     private val resyncRunnable = Runnable { syncFromSystem() }
 
     private val PROVIDER_MESSAGE_SOURCES = listOf(
-        android.provider.Telephony.Sms.CONTENT_URI to android.provider.Telephony.Sms._ID,
-        android.provider.Telephony.Mms.CONTENT_URI to android.provider.Telephony.Mms._ID
+        Triple(
+            android.provider.Telephony.Sms.CONTENT_URI,
+            android.provider.Telephony.Sms._ID,
+            MmsSupport.TRANSPORT_SMS
+        ),
+        Triple(
+            android.provider.Telephony.Mms.CONTENT_URI,
+            android.provider.Telephony.Mms._ID,
+            MmsSupport.TRANSPORT_MMS
+        )
     )
 
     /** Drops conversations left with no messages, so the list has no empty rows. */
@@ -3114,7 +3120,7 @@ class Repository(private val context: Context) {
             }
         }
         runCatching {
-            for ((uri, _) in PROVIDER_MESSAGE_SOURCES) {
+            for ((uri, _, _) in PROVIDER_MESSAGE_SOURCES) {
                 resolver.registerContentObserver(uri, true, observer)
             }
         }.onFailure {
