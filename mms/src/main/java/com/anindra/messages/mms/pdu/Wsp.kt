@@ -240,11 +240,27 @@ class WspReader(private val data: ByteArray, start: Int = 0, private val end: In
     }
 
     fun readEncodedStringValue(): EncodedStringValue {
+        // Encoded-string-value = Value-length Char-set Text-string | Text-string
+        // (OMA-MMS-ENC). A first octet below 0x20 is a length, anything else is
+        // already the text — both forms are on the wire and the reference
+        // accepts both, defaulting a bare one's charset. A leading 0x00 is the
+        // empty value.
+        val first = peekOctet()
+        if (first == 0x00) {
+            skip(1)
+            return EncodedStringValue(CharacterSets.UTF_8, ByteArray(0))
+        }
+        if (first >= 0x20) {
+            return EncodedStringValue(CharacterSets.UTF_8, readTextStringBytes())
+        }
         val length = readValueLength()
-        val stop = index + length
-        if (length < 0 || stop > end) {
+        // Checked against the bytes that actually remain, before any index
+        // arithmetic: a forged length near Int.MAX_VALUE would otherwise
+        // overflow the stop index negative and slip past a bound check.
+        if (length > remaining) {
             throw MalformedPduException("encoded-string-value length $length overruns $remaining")
         }
+        val stop = index + length
         val charset = readShortInteger()
         val textBytes = readTextStringBytes()
         index = stop
