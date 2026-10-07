@@ -52,13 +52,19 @@ class WspWriter {
 
     fun appendUintvar(value: Long) {
         if (value < 0) throw IllegalArgumentException("uintvar out of range: $value")
-        var remaining = value
-        do {
-            var byte = (remaining and 0x7FL).toInt()
-            remaining = remaining ushr 7
-            if (remaining != 0L) byte = byte or 0x80
+        // WAP-230 §3.1: the first octet carries the most significant 7-bit
+        // group, so a receiver can size the value while it is still arriving.
+        var octets = 1
+        var probe = value ushr 7
+        while (probe > 0L) {
+            probe = probe ushr 7
+            octets++
+        }
+        for (shift in (octets - 1) downTo 0) {
+            var byte = ((value ushr (shift * 7)) and 0x7F).toInt()
+            if (shift > 0) byte = byte or 0x80
             out.write(byte)
-        } while (remaining != 0L)
+        }
     }
 
     fun appendLongInteger(value: Long) {
@@ -190,14 +196,13 @@ class WspReader(private val data: ByteArray, start: Int = 0, private val end: In
 
     fun readUintvar(): Long {
         var result = 0L
-        var shift = 0
         var count = 0
         while (true) {
             if (count == 5) throw MalformedPduException("uintvar longer than 5 octets")
             val byte = readOctet()
-            result = result or ((byte and 0x7F).toLong() shl shift)
+            // WAP-230 §3.1: the most significant group arrives first.
+            result = (result shl 7) or (byte and 0x7F).toLong()
             if (byte and 0x80 == 0) return result
-            shift += 7
             count++
         }
     }

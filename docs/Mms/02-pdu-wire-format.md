@@ -27,7 +27,7 @@ Implemented in `Wsp.kt`. Encoding column is what `WspWriter` emits.
 | Short-integer | `0x80 or value`, low 7 bits | value must be 0..0x7F |
 | Short-length | one byte, 0..30 | 31 (`LENGTH_QUOTE`) is reserved |
 | Value-length | `<31` → one byte; else `0x1F` + uintvar | |
-| Uintvar | 1–5 octets, 7 bits each, `0x80` set on all but the last | >5 octets is rejected |
+| Uintvar | 1–5 octets, 7 bits each, most significant group first, `0x80` set on all but the last | >5 octets is rejected |
 | Long-integer | short-length octet + that many big-endian octets | minimal octets, max 8 |
 | Integer-value | short-integer if it fits, else long-integer | the leading octet is the discriminator |
 | Text-string | optional `0x7F` quote when the first byte is >0x7F, bytes, `0x00` | |
@@ -37,6 +37,11 @@ Implemented in `Wsp.kt`. Encoding column is what `WspWriter` emits.
 
 **Long-integer note.** `0` is one octet of `0x00`, *not* zero octets — a
 zero-length long-integer is not a valid encoding.
+
+**Uintvar note.** The first octet carries the most significant 7-bit group
+(WAP-230 §3.1), so 128 is `0x81 0x00`, not `0x80 0x01`. A pair that disagrees
+with the reference stack in the group order still round-trips in-house and is
+then rejected by a carrier.
 
 ---
 
@@ -60,6 +65,12 @@ Mbox/Forward/Delete/Cancel range above 0x88 parses to null.
 ## 3. Composing types
 
 Only these are built outbound. Anything else composes to `null`.
+
+**Header order.** Every other field may appear anywhere in the header block
+(the composer emits the rest in ascending field-code order), but
+`X-Mms-Content-Type` must be the **last** header: receivers — including the
+production reference parser — stop reading headers at it, so a Content-Type
+emitted first turns every remaining mandatory header into body bytes.
 
 | Type | Required headers |
 |---|---|
