@@ -6,6 +6,7 @@ import android.net.ConnectivityManager.NetworkCallback
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.net.TelephonyNetworkSpecifier
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -31,6 +32,20 @@ interface MmsNetworkGate : Closeable {
 }
 
 /**
+ * What an MMS network has to be, as data rather than a platform object, so the
+ * decision can be asserted in a plain JVM test.
+ *
+ * Cellular and MMS-capable, and — when a subscription is named — pinned to it,
+ * so on a dual-SIM device SIM B's exchange never runs on SIM A's network.
+ * INTERNET is deliberately absent: an MMS APN is frequently MMS-only, and
+ * requiring it would exclude the one network the carrier provisioned for
+ * exactly this transaction.
+ */
+data class MmsNetworkSpec(val subscriptionId: Int) {
+    val pinsSubscription: Boolean get() = subscriptionId > 0
+}
+
+/**
  * Requests and ref-counts a cellular network with the MMS capability.
  *
  * Binding to `NET_CAPABILITY_MMS` generally requires being the default SMS app
@@ -43,22 +58,23 @@ interface MmsNetworkGate : Closeable {
  * Wi-Fi or to a generic cellular network. Sending an MMSC transaction over a
  * network the carrier never provisioned it for produces an opaque HTTP failure
  * from the far side, which is far harder to diagnose than "no network".
+ *
+ * The connectivity manager is a constructor seam rather than a Context lookup:
+ * the platform's `getSystemService(Class)` is final, so a test could not vary
+ * it through a context. Production constructs this with
+ * `context.applicationContext.getSystemService(ConnectivityManager::class.java)`.
  */
-class MmsNetworkBinding(context: Context) : MmsNetworkGate {
-    private val connectivityManager =
-        context.applicationContext.getSystemService(ConnectivityManager::class.java)
+class MmsNetworkBinding(
+    private val connectivityManager: ConnectivityManager?,
+    private val spec: MmsNetworkSpec,
+    private val requestFactory: (MmsNetworkSpec) -> NetworkRequest = ::platformRequest,
+) : MmsNetworkGate {
 
     private val lock = Any()
 
     private var registered: NetworkCallback? = null
     private var bound: Network? = null
     private var references = 0
-
-    private val request: NetworkRequest = NetworkRequest.Builder()
-        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
-        .build()
 
     override fun acquire(timeoutMillis: Long): MmsNetworkLease? {
         synchronized(lock) {
@@ -87,7 +103,7 @@ class MmsNetworkBinding(context: Context) : MmsNetworkGate {
         // requestNetwork is void; a SecurityException is the only refusal it
         // signals, and a caller that holds no MMS permission gets nothing at all.
         val accepted = try {
-            manager.requestNetwork(request, callback, timeoutMillis.toInt())
+            manager.requestNetwork(requestFactory(spec), callback, timeoutMillis.toInt())
             true
         } catch (_: SecurityException) {
             false
@@ -130,5 +146,19 @@ class MmsNetworkBinding(context: Context) : MmsNetworkGate {
 
     private companion object {
         const val SETTLE_GRACE_MS = 500L
+
+        fun platformRequest(spec: MmsNetworkSpec): NetworkRequest {
+            val builder = NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
+            if (spec.pinsSubscription) {
+                builder.setNetworkSpecifier(
+                    TelephonyNetworkSpecifier.Builder()
+                        .setSubscriptionId(spec.subscriptionId)
+                        .build()
+                )
+            }
+            return builder.build()
+        }
     }
 }

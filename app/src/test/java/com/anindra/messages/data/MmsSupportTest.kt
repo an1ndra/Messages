@@ -128,4 +128,30 @@ class MmsSupportTest {
         assertEquals("content://mms", MmsSupport.providerUri(MmsSupport.TRANSPORT_MMS))
         assertNull(MmsSupport.providerUri("unknown"))
     }
+
+    @Test
+    fun recognizesWapPushesByActionAndTypeAlone() {
+        val action = android.provider.Telephony.Sms.Intents.WAP_PUSH_DELIVER_ACTION
+        assertTrue(MmsSupport.isMmsWapPush(action, MmsSupport.WAP_PUSH_MIME))
+        assertFalse(MmsSupport.isMmsWapPush(null, MmsSupport.WAP_PUSH_MIME))
+        assertFalse(MmsSupport.isMmsWapPush(action, null))
+        assertFalse(MmsSupport.isMmsWapPush(action, "text/plain"))
+        assertFalse(
+            MmsSupport.isMmsWapPush(
+                android.provider.Telephony.Sms.Intents.WAP_PUSH_RECEIVED_ACTION,
+                MmsSupport.WAP_PUSH_MIME
+            )
+        )
+    }
+
+    @Test
+    fun resolvesTheLocationAnAnnouncedMmsCanBeFetchedFrom() {
+        assertEquals(
+            "http://mmsc.example/msg/42",
+            MmsSupport.downloadLocation("http://mmsc.example/msg/42")
+        )
+        assertNull(MmsSupport.downloadLocation(null))
+        assertNull(MmsSupport.downloadLocation(""))
+        assertNull(MmsSupport.downloadLocation("   "))
+    }
 }

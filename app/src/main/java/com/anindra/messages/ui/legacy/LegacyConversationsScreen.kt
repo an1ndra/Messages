@@ -136,7 +136,7 @@ import com.anindra.messages.ui.UnreadBadge
 @Composable
 fun ConversationsScreen(
     vm: AppViewModel,
-    onOpenConversation: (Long) -> Unit,
+    onOpenConversation: (Long, String) -> Unit,
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -302,18 +302,11 @@ fun ConversationsScreen(
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
-    val displayed = remember(conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks) {
-        // Shared with the new UI so the two lists cannot drift (this inline copy
-        // was why the legacy search missed the phone-number match).
-        val hide = rowSettings.hideLinks
-        com.anindra.messages.data.ConversationList.sort(
-            com.anindra.messages.data.ConversationList.filter(
-                conversations, showArchived, query,
-                snippetFor = { if (hide) hideUrls(it.snippet) else it.snippet }
-            ),
-            unreadAtTop, showArchived
-        )
-    }
+    val messageMatchIds = com.anindra.messages.ui.rememberMessageMatchIds(vm, query)
+
+    val displayed = com.anindra.messages.ui.rememberSearchResults(
+        conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks, messageMatchIds
+    )
 
     // Reveal a new unread only while the user is still at the top.
     LaunchedEffect(displayed) {
@@ -495,7 +488,12 @@ fun ConversationsScreen(
                                 convo = convo,
                                 workProfile = workNums.contains(phoneKey(convo.address)),
                                 showArchived = showArchived,
-                                onClick = { onOpenConversation(convo.id) },
+                                onClick = {
+                                    onOpenConversation(
+                                        convo.id,
+                                        if (searching) query.trim() else ""
+                                    )
+                                },
                                 onDelete = { moveToTrash(convo) },
                                 onArchive = { archiveWithUndo(convo) },
                                 onLongClick = { sheetConvoId = convo.id }

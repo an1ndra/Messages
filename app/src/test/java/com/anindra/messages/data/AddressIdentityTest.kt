@@ -53,6 +53,39 @@ class AddressIdentityTest {
     }
 
     @Test
+    fun matchesNumberIgnoresCountryCodeAndTrunkZero() {
+        // Issue #284: the thread holds E.164, the saved contact is typed
+        // nationally. Neither digit run is a suffix of the other, so the
+        // subscriber digits are what has to be compared.
+        // A two-digit country code only fails the suffix test when its leading digit
+        // is not the trunk zero's predecessor-by-coincidence, so 91 and 44 are
+        // the real cases: neither digit run is a suffix of the other.
+        assertTrue(AddressIdentity.matchesNumber("+919876543210", "09876543210"))
+        assertTrue(AddressIdentity.matchesNumber("+919876543210", "09876 543 210"))
+        assertTrue(AddressIdentity.matchesNumber("+447911123456", "07911123456"))
+        assertTrue(AddressIdentity.matchesNumber("+919876543210", "00919876543210"))
+        assertFalse(AddressIdentity.matchesNumber("+919876111111", "09876543210"))
+        // Egypt happens to suffix-match already ("2" + "0" + N), so keep it as
+        // a guard that the fall-through did not regress the easy spelling.
+        assertTrue(AddressIdentity.matchesNumber("+201001234567", "01001234567"))
+        assertTrue(AddressIdentity.matchesNumber("+15550001234", "555-000-1234"))
+    }
+
+    @Test
+    fun matchesNumberStillNeedsARealRunOfDigits() {
+        // A stray digit or two must not drag in every conversation, and an
+        // alphanumeric sender ID must not match on the digits inside it.
+        assertFalse(AddressIdentity.matchesNumber("+201001234567", "1"))
+        assertFalse(AddressIdentity.matchesNumber("+201001234567", "01"))
+        assertFalse(AddressIdentity.matchesNumber("", "1234567"))
+        // Not asserted: matchesNumber("ABC123", "123") is true, because the
+        // digits stripped out of an alphanumeric sender ID are "123". That is
+        // pre-existing and harmless for search (the row is findable by its
+        // address text anyway); sender identity is guarded by samePerson and
+        // isReplyable, which keep such IDs verbatim.
+    }
+
+    @Test
     fun replyableOnlyForDialableNumbers() {
         assertFalse(AddressIdentity.isReplyable("A1 SRB"))
         assertFalse(AddressIdentity.isReplyable("DK-AIRCEL"))

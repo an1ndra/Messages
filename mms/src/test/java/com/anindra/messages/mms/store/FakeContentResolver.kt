@@ -189,6 +189,14 @@ class FakeContentResolver(
                 val id = segments.lastOrNull()?.toLongOrNull()
                 if (pending.removeAll { it[BaseColumns._ID] == id }) 1 else 0
             }
+            // content://mms/<id>/part - a message's whole parts collection, the
+            // shape a rollback of a half-persisted message deletes.
+            segments.size == 2 && segments[1] == PART -> {
+                val messageId = segments[0].toLongOrNull()
+                val doomed = parts.filterValues { it[Part.MSG_ID] == messageId }.keys
+                doomed.forEach { parts.remove(it) }
+                doomed.size
+            }
             segments.size == 2 && segments[0] in BOXES -> deleteMessage(segments[1])
             segments.size == 1 -> deleteMessage(segments[0])
             else -> throw IllegalArgumentException("unsupported delete uri $uri")
