@@ -262,14 +262,16 @@ class PduComposerTest {
     fun aOnePartSendReqIsPinnedOctetForOctet() {
         assertArrayEquals(
             hexOf(
-                // 0x84 container: 0xB3 multipart/related, 0x8A start, 0x89 type.
-                "84 1A B3 8A 3C 68 65 6C 6C 6F 2E 74 78 74 3E 00 89 74 65 78 74 2F 70 6C 61 69 6E 00" +
-                    // 0x89 From with an address: 0x80 token, then the encoded value.
-                    "89 10 80 0E EA 2B 31 35 35 35 31 32 33 30 30 30 30 00" +
+                // 0x89 From with an address: 0x80 token, then the encoded value.
+                "89 10 80 0E EA 2B 31 35 35 35 31 32 33 30 30 30 30 00" +
                     "8C 80" +
                     "8D 92" +
                     "97 0E EA 2B 31 35 35 35 39 39 39 38 38 38 38 00" +
                     "98 54 2D 33 00" +
+                    // 0x84 closes the header block: 0xB3 multipart/related,
+                    // 0x8A start, 0x89 type — the last header before the body,
+                    // where receivers stop reading headers.
+                    "84 1A B3 8A 3C 68 65 6C 6C 6F 2E 74 78 74 3E 00 89 74 65 78 74 2F 70 6C 61 69 6E 00" +
                     // One entry: header-length 0x1D, data-length 2, headers, data.
                     "01 1D 02 0E 83 85 68 65 6C 6C 6F 2E 74 78 74 00 81 EA C0 22 3C 68 65 6C 6C 6F 2E 74 78 74 3E 00" +
                     "68 69",
@@ -279,12 +281,14 @@ class PduComposerTest {
     }
 
     @Test
-    fun theContainerContentTypeWritesStartBeforeType() {
+    fun theContainerContentTypeClosesTheHeaderBlock() {
         val bytes = PduComposer.compose(sendReq(textPart("hello.txt", "hi")))!!
-        assertEquals(0x84, bytes[0].toInt() and 0xFF)
-        val start = bytes.indexOfFirst { it.toInt() and 0xFF == 0x8A }
-        val type = bytes.indexOfFirst { it.toInt() and 0xFF == 0x89 }
-        assertTrue("start must precede type", start in 1 until type)
+        // Receivers stop reading headers at X-Mms-Content-Type, so it must be
+        // the last header — after the transaction id, whatever its field code
+        // (0x84) sorts as.
+        val container = indexOfRun(bytes, hexOf("84 1A B3"))
+        val transactionId = indexOfRun(bytes, hexOf("98 54 2D 33 00"))
+        assertTrue("Content-Type must follow every other header", transactionId in 0 until container)
     }
 
     @Test
@@ -400,10 +404,13 @@ class PduComposerTest {
      * lone field code is what keeps the container header's 0x89 type parameter
      * from being mistaken for the From field.
      */
-    private fun containsOctets(bytes: ByteArray, sequence: ByteArray): Boolean {
+    private fun containsOctets(bytes: ByteArray, sequence: ByteArray): Boolean =
+        indexOfRun(bytes, sequence) >= 0
+
+    private fun indexOfRun(bytes: ByteArray, sequence: ByteArray): Int {
         for (start in 0..bytes.size - sequence.size) {
-            if (sequence.contentEquals(bytes.copyOfRange(start, start + sequence.size))) return true
+            if (sequence.contentEquals(bytes.copyOfRange(start, start + sequence.size))) return start
         }
-        return false
+        return -1
     }
 }
