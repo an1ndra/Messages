@@ -73,6 +73,7 @@ android {
 
 dependencies {
     implementation(project(":android-smsmms"))
+    implementation(project(":mms"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.work.runtime)
     implementation("androidx.biometric:biometric:1.1.0")
