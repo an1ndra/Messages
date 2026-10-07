@@ -37,6 +37,32 @@ class MessageSearchTest {
     }
 
     @Test
+    fun visibleMatchesNeverSeeLockedBodiesOrHiddenLinks() {
+        val redactor: (String) -> String = { body -> body.replace(Regex("https?://\\S+"), "") }
+        val body = "pay https://secret.example/now please"
+        assertTrue(
+            MessageSearch.matchesVisible(
+                body, "please", locked = false, hideLinks = true, redactor = redactor
+            )
+        )
+        assertTrue(
+            MessageSearch.matchesVisible(
+                body, "secret.example", locked = false, hideLinks = false, redactor = redactor
+            )
+        )
+        assertFalse(
+            MessageSearch.matchesVisible(
+                body, "secret.example", locked = false, hideLinks = true, redactor = redactor
+            )
+        )
+        assertFalse(
+            MessageSearch.matchesVisible(
+                body, "please", locked = true, hideLinks = false, redactor = redactor
+            )
+        )
+    }
+
+    @Test
     fun focusedIdIsTheNewestMatch() {
         val messages = listOf(
             msg(1, "no hit here"),

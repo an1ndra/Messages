@@ -31,6 +31,13 @@ class A11yTest {
     }
 
     @Test
+    fun searchResultAnnouncementKeepsTheReadableBody() {
+        // The marker used to *replace* the bubble's readable text, so a focused
+        // hit announced nothing but "Search result".
+        assertEquals("see the code. Search result", A11y.describe("see the code", "Search result"))
+    }
+
+    @Test
     fun everyOptionIsListedExactlyOnce() {
         assertEquals(A11yOption.entries.toSet(), A11Y_OPTION_ROWS.map { it.option }.toSet())
         assertEquals(A11yOption.entries.size, A11Y_OPTION_ROWS.size)

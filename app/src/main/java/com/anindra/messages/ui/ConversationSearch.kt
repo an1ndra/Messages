@@ -69,14 +69,17 @@ class HeldMessageMatches {
 fun rememberMessageMatchIds(vm: AppViewModel, query: String): Set<Long> {
     val held = remember { HeldMessageMatches() }
     var ids by remember { mutableStateOf(emptySet<Long>()) }
-    LaunchedEffect(query) {
+    // Keyed on the setting too: a toggle has to re-answer the same query, and
+    // the visibility rule reads it on the repository side.
+    val hideLinks = vm.settings.hideLinks
+    LaunchedEffect(query, hideLinks) {
         held.onQueryStarted(query)
         if (query.isBlank()) {
             ids = held.current()
             return@LaunchedEffect
         }
         delay(SEARCH_DEBOUNCE_MS)
-        vm.conversationIdsMatchingMessage(query).collect {
+        vm.conversationIdsMatchingMessage(query, hideLinks).collect {
             held.onResultArrived(query, it)
             ids = held.current()
         }

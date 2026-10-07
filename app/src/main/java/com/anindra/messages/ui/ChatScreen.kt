@@ -175,6 +175,7 @@ import java.io.File
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -358,7 +359,10 @@ internal fun ChatBubble(
                                     ),
                                     modifier = Modifier
                                         .padding(horizontal = 14.dp, vertical = 8.dp)
-                                        .semantics { if (isSearchFocus) contentDescription = searchResultLabel }
+                                        .semantics {
+                                            if (isSearchFocus) contentDescription =
+                                                A11y.describe(bodyText.text, searchResultLabel)
+                                        }
                                 )
                             }
                         }
@@ -380,7 +384,10 @@ internal fun ChatBubble(
                             ),
                             modifier = Modifier
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .semantics { if (isSearchFocus) contentDescription = searchResultLabel }
+                                .semantics {
+                                    if (isSearchFocus) contentDescription =
+                                        A11y.describe(bodyText.text, searchResultLabel)
+                                }
                         )
                     }
                 }
@@ -615,10 +622,15 @@ fun ChatScreen(
     val activeSearch = remember(searchQuery, searchOpen, chatQuery) {
         (if (searchOpen) chatQuery else searchQuery)?.trim()?.takeIf { it.isNotEmpty() }
     }
-    val searchMatches = remember(messages, activeSearch) {
-        if (activeSearch == null) emptyList()
-        else messages.filter { MessageSearch.matches(it.body, activeSearch) }.map { it.id }
-    }
+    // The matches come from the whole thread, not just the loaded window: the
+    // home list surfaces a thread on a hit buried past the 400-message auto-load
+    // cap, so the chat has to be able to reach it too (the pager grows on
+    // demand while a hit is older than what it holds).
+    val hideLinks = vm.settings.hideLinks
+    val searchMatches by remember(conversationId, activeSearch, hideLinks) {
+        if (activeSearch == null) flowOf(emptyList())
+        else vm.messageIdsMatching(conversationId, activeSearch, hideLinks)
+    }.collectAsState(initial = emptyList())
     // Which match is in focus: the newest one by default, moved by the
     // previous/next buttons. Stored as an id override rather than an index,
     // because an index into the loaded window moves every time the pager
@@ -627,6 +639,10 @@ fun ChatScreen(
     var focusedOverrideId by remember(activeSearch) { mutableStateOf<Long?>(null) }
     val focusedSearchId = focusedOverrideId ?: searchMatches.lastOrNull()
     val focusedMatchIndex = focusedSearchId?.let { searchMatches.indexOf(it) } ?: -1
+    // A hit older than the loaded window is not a row yet; the scroll and flash
+    // effects below re-run when the pager grows it into one.
+    val focusedRowLoaded = focusedSearchId != null &&
+        chatRows.any { it is ChatRow.Sent && it.message.id == focusedSearchId }
     fun navigateMatch(delta: Int) {
         if (searchMatches.isEmpty()) return
         val from = focusedMatchIndex.takeIf { it >= 0 } ?: -1
@@ -643,6 +659,11 @@ fun ChatScreen(
         }
     }
     val pendingEarlier = messagesLoaded && totalCount > pageLimit && pageLimit < AUTO_CAP
+    // A search hit older than everything loaded needs the pager past AUTO_CAP;
+    // without this the home list surfaces a thread the chat can never reach.
+    val oldestLoadedId = messages.minOfOrNull { it.id }
+    val searchWantsOlder = activeSearch != null && searchMatches.isNotEmpty() &&
+        oldestLoadedId != null && searchMatches.first() < oldestLoadedId
     val deliveryReports = remember { vm.deliveryReportsEnabled() }
     var draft by remember { mutableStateOf("") }
     var draftLoaded by remember { mutableStateOf(false) }
@@ -951,16 +972,22 @@ fun ChatScreen(
     // message is brought into view even before layout has counted the freshly added row.
     // A focused search hit wins: the chat opens on it, and next/previous moves it.
     var hasScrolledToBottom by remember(conversationId) { mutableStateOf(false) }
+    var scrolledToFocusedId by remember(conversationId) { mutableStateOf<Long?>(null) }
     val newestId = messages.lastOrNull()?.id
     // Keyed on the message id, not its row index: prepended chunks shift the
     // index but not the id, so this fires once when a hit takes focus and is
-    // never re-triggered by the pager loading more history underneath it.
-    LaunchedEffect(focusedSearchId) {
+    // never re-triggered by the pager loading more history underneath it — the
+    // marker is the id it last scrolled to, so chunk loads cannot snap the view
+    // back. A hit older than the loaded window first has to be paged in, so the
+    // effect also re-runs when that happens, and only then.
+    LaunchedEffect(focusedSearchId, focusedRowLoaded) {
         val id = focusedSearchId ?: return@LaunchedEffect
+        if (scrolledToFocusedId == id) return@LaunchedEffect
         val target = chatRows.indexOfFirst { it is ChatRow.Sent && it.message.id == id }
         if (target >= 0) {
             listState.scrollToItem(target)
             hasScrolledToBottom = true
+            scrolledToFocusedId = id
         }
     }
     LaunchedEffect(newestId) {
@@ -988,7 +1015,7 @@ fun ChatScreen(
         ),
         label = "chat-search-flash"
     )
-    LaunchedEffect(activeSearch, focusedSearchId) {
+    LaunchedEffect(activeSearch, focusedSearchId, focusedRowLoaded) {
         if (activeSearch == null || focusedSearchId == null) {
             searchFlashOn = false
             return@LaunchedEffect
@@ -998,17 +1025,22 @@ fun ChatScreen(
         delay(if (reduceMotion) 3500L else 1900L)
         searchFlashOn = false
     }
-    // Load chunks while pinned near the bottom so inserting rows doesn't jump the view
-    LaunchedEffect(pageLimit, totalCount) {
-        if (!pendingEarlier) return@LaunchedEffect
-        val nearBottom: () -> Boolean = {
-            val info = listState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-            info.totalItemsCount == 0 || last >= info.totalItemsCount - 2
+    // Load chunks while pinned near the bottom so inserting rows doesn't jump the
+    // view; a search hit older than the window loads without waiting, in bigger
+    // steps, so the chat reaches what the home list found.
+    LaunchedEffect(pageLimit, totalCount, searchWantsOlder) {
+        if (!pendingEarlier && !searchWantsOlder) return@LaunchedEffect
+        if (!searchWantsOlder) {
+            val nearBottom: () -> Boolean = {
+                val info = listState.layoutInfo
+                val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                info.totalItemsCount == 0 || last >= info.totalItemsCount - 2
+            }
+            while (!nearBottom()) delay(80)
         }
-        while (!nearBottom()) delay(80)
         delay(240)
-        pageLimit = (pageLimit + AUTO_CHUNK).coerceAtMost(AUTO_CAP)
+        pageLimit = (pageLimit + if (searchWantsOlder) LOAD_EARLIER_STEP else AUTO_CHUNK)
+            .coerceAtMost(if (searchWantsOlder) totalCount else AUTO_CAP)
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)
