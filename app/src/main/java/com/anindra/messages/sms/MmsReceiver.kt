@@ -3,21 +3,18 @@ package com.anindra.messages.sms
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.provider.Telephony
+import com.anindra.messages.data.MmsSupport
 
 /**
- * Receives the MMS notification-indication WAP push. The broadcast only says an
- * MMS exists; the actual transfer is [MmsDownloader]'s job.
+ * Receives the MMS notification-indication WAP push. The broadcast carries the
+ * raw PDU in its "data" extra and no data URI, and the platform has already
+ * filed an announced-but-empty provider row for it — so the pending-row sweep
+ * in [MmsDownloader] covers the push, and every broadcast missed while the app
+ * was not the default handler, without parsing anything.
  */
 class MmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Telephony.Sms.Intents.WAP_PUSH_DELIVER_ACTION) return
-        if (intent.type != MIME) return
-        val uri = intent.data ?: return
-        MmsDownloader.onWapPush(context, uri)
-    }
-
-    companion object {
-        const val MIME = "application/vnd.wap.mms-message"
+        if (!MmsSupport.isMmsWapPush(intent.action, intent.type)) return
+        MmsDownloader.onWapPush(context)
     }
 }

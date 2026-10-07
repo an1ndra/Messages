@@ -23,6 +23,7 @@ object MmsSupport {
     data class Part(val id: Long, val mime: String, val text: String? = null)
     data class Content(val body: String, val imageId: Long?, val omittedParts: Int)
     data class InboundMms(val address: String, val body: String, val timestamp: Long)
+    data class PendingDownload(val id: Long, val contentLocation: String?)
 
     fun isImportable(box: Int, pduType: Int): Boolean =
         (box == 1 && pduType == PDU_RETRIEVE_CONF) || (box == 2 && pduType == PDU_SEND_REQ)
@@ -33,6 +34,22 @@ object MmsSupport {
         box == 1 && pduType == PDU_NOTIFICATION_IND
 
     fun messageContentUri(id: Long): String = "content://mms/$id"
+
+    const val WAP_PUSH_MIME = "application/vnd.wap.mms-message"
+
+    /** A WAP push is recognized by action and MIME type alone: the platform
+     *  has already filed the announced provider row, so nothing else from the
+     *  broadcast is needed to fetch it. The PDU rides in the "data" extra and
+     *  there is no data URI at all. */
+    fun isMmsWapPush(action: String?, type: String?): Boolean =
+        action == android.provider.Telephony.Sms.Intents.WAP_PUSH_DELIVER_ACTION &&
+            type == WAP_PUSH_MIME
+
+    /** The Content-Location an announced MMS can be fetched from, or null when
+     *  it does not have one — there is nowhere to point the platform's
+     *  downloader at, so it cannot be requested at all. */
+    fun downloadLocation(contentLocation: String?): String? =
+        contentLocation?.takeIf { it.isNotBlank() }
 
     /** ContentResolver often reports no type for FileProvider URIs; MMS still
      *  needs a concrete content type on the wire. */

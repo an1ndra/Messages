@@ -4,9 +4,10 @@ package com.anindra.messages.mms.pdu
  * Serialises a [Pdu] into the octets an MMSC expects, per
  * `docs/Mms/02-pdu-wire-format.md`.
  *
- * The format does not mandate a header order. Composing in ascending field-code
- * order makes two identical PDUs produce identical octets, which is what makes
- * the output comparable and the tests possible.
+ * X-Mms-Content-Type closes the header block — receivers, including the
+ * production reference, stop reading headers at it — so it is emitted last
+ * whatever its field code sorts as. The rest go out in ascending field-code
+ * order, which makes two identical PDUs produce identical octets.
  *
  * Composition fails by returning null rather than throwing. Every reason is a
  * property of the PDU being handed over — a missing mandatory header, an
@@ -58,8 +59,14 @@ object PduComposer {
         val out = WspWriter()
         val fields = sortedSetOf(HeaderField.MESSAGE_TYPE, HeaderField.MMS_VERSION)
         fields.addAll(pdu.headers.fieldCodes)
+        // X-Mms-Content-Type closes the header block: receivers stop reading
+        // headers at it, so it is emitted last whatever its field code sorts as.
+        fields.remove(HeaderField.CONTENT_TYPE)
         for (field in fields) {
             out.appendBytes(encodeField(pdu, field) ?: return null)
+        }
+        pdu.headers.contentTypeOrNull()?.let {
+            out.appendBytes(encodeContentType(pdu) ?: return null)
         }
         if (MessageType.hasBody(pdu.messageType)) {
             out.appendBytes(encodeBody(pdu) ?: return null)

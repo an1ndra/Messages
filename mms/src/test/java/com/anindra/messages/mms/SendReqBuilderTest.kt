@@ -185,14 +185,14 @@ class SendReqBuilderTest {
     }
 
     @Test
-    fun twoSendsGetDifferentTransactionIds() {
+    fun twoSendsInTheSameSecondGetDifferentTransactionIds() {
         val first = built().transactionId
         val second = SendReqBuilder.build(
             request(),
             noSender,
-            now + 1,
+            now,
         ).let { (it as SendReqOutcome.Built).pdu.transactionId }
-        assertTrue(first != second)
+        assertTrue("two sends in one second must not share a transaction id", first != second)
     }
 
     @Test

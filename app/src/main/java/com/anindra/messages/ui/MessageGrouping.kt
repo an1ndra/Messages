@@ -59,17 +59,21 @@ fun bubblePosition(messages: List<Message>, index: Int): BubblePosition {
 }
 
 /**
- * Corner radii for a bubble. The flat "tail" corner sits at the bottom on the
- * sender's side for a lone/first bubble and at the top for the last bubble of a
- * run; middle bubbles are fully rounded.
+ * Corner radii for a bubble. A lone bubble and the first of a run carry the
+ * "tail": only the bottom corner on the sender's stack side — start (left)
+ * for received bubbles, end (right) for sent ones — is flat, the other three
+ * stay rounded. Inside a run the flat corner sits wherever a bubble touches
+ * a neighbour — both stack-side corners for a middle bubble, the top one for
+ * the last — so a stack reads as one connected block.
  */
 fun bubbleCorners(position: BubblePosition, isMe: Boolean): BubbleCorners {
     val r = BUBBLE_CORNER_DP
     val tail = BUBBLE_TAIL_DP
     return when (position) {
-        BubblePosition.MIDDLE -> BubbleCorners(r, r, r, r)
         BubblePosition.SINGLE, BubblePosition.FIRST ->
             if (isMe) BubbleCorners(r, r, r, tail) else BubbleCorners(r, r, tail, r)
+        BubblePosition.MIDDLE ->
+            if (isMe) BubbleCorners(r, tail, r, tail) else BubbleCorners(tail, r, tail, r)
         BubblePosition.LAST ->
             if (isMe) BubbleCorners(r, tail, r, r) else BubbleCorners(tail, r, r, r)
     }

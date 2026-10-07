@@ -44,6 +44,28 @@ class NotificationActionSettingsTest {
     }
 
     @Test
+    fun theSoundPickerAndReplyActionShareOneGroup() {
+        // "Notification sound" and "Reply action" are neighbours in the list and
+        // belong to one card; a SettingsGroup boundary between them left a gap
+        // that split two related rows across two blocks. Asserted structurally:
+        // no `}` closing a group may sit between the two keys.
+        val newUi = read("java/com/anindra/messages/ui/AdvancedSubScreens.kt")
+        val sound = newUi.indexOf("R.string.settings_pin_notification_sound")
+        val reply = newUi.indexOf("R.string.settings_notif_action_reply_title")
+        assertTrue("Notification sound row not found in the new UI", sound >= 0)
+        assertTrue("Reply action row not found in the new UI", reply >= 0)
+        assertTrue(
+            "Reply action must come after Notification sound",
+            reply > sound
+        )
+        val between = newUi.substring(sound, reply)
+        assertTrue(
+            "Notification sound and Reply action are split across two groups",
+            !between.contains("SettingsGroup {")
+        )
+    }
+
+    @Test
     fun bothUisExposeTheThreeToggles() {
         val newUi = read("java/com/anindra/messages/ui/AdvancedSubScreens.kt")
         val legacyUi = read("java/com/anindra/messages/ui/legacy/LegacyAdvancedSettingsScreen.kt")

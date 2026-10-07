@@ -139,7 +139,7 @@ class MmsFacadeTest {
     }
 
     @Test
-    fun aRefusedSendMovesTheRowToFailedAndRecordsWhy() {
+    fun aRefusedSendMovesTheRowToFailed() {
         val outcome = runBlocking {
             mms(transport = ScriptedTransport(onSend = { _, listener ->
                 listener.onFailed(MmsResultCode.HTTP_FAILURE.code, 503)
@@ -148,8 +148,9 @@ class MmsFacadeTest {
         val failed = outcome as SendOutcome.Failed
         assertEquals(MmsResultCode.HTTP_FAILURE.code, failed.resultCode)
         assertEquals(503, failed.httpStatus)
-        assertEquals(listOf(MmsResultCode.HTTP_FAILURE.code), store.pendingErrors.map { it.second })
-        assertTrue(store.moves.isEmpty())
+        // The provider row is what the rest of the system reads: an outbox row
+        // left behind looks like a send still in flight.
+        assertEquals(MmsBox.FAILED, store.moves.single().second)
     }
 
     @Test
@@ -176,7 +177,7 @@ class MmsFacadeTest {
             mms(transport = ScriptedTransport(onSend = { _, listener -> listener.onSendCompleted(null, 200) })).send(message())
         }
         assertEquals(MmsResultCode.UNSPECIFIED.code, (outcome as SendOutcome.Failed).resultCode)
-        assertTrue(store.moves.isEmpty())
+        assertEquals(MmsBox.FAILED, store.moves.single().second)
     }
 
     @Test

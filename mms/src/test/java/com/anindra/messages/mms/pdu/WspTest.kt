@@ -46,14 +46,15 @@ class WspTest {
         assertArrayEquals(hex(0x1F, 0x1F), at)
 
         val above = WspWriter().apply { appendValueLength(300) }.toByteArray()
-        assertArrayEquals(hex(0x1F, 0xAC, 0x02), above)
+        assertArrayEquals(hex(0x1F, 0x82, 0x2C), above)
     }
 
     @Test
     fun uintvarUsesTheMinimumNumberOfOctets() {
         assertArrayEquals(hex(0x00), WspWriter().apply { appendUintvar(0) }.toByteArray())
         assertArrayEquals(hex(0x7F), WspWriter().apply { appendUintvar(127) }.toByteArray())
-        assertArrayEquals(hex(0x80, 0x01), WspWriter().apply { appendUintvar(128) }.toByteArray())
+        // WAP-230 §3.1: 128 is 0x81 0x00 — most significant group first.
+        assertArrayEquals(hex(0x81, 0x00), WspWriter().apply { appendUintvar(128) }.toByteArray())
     }
 
     @Test

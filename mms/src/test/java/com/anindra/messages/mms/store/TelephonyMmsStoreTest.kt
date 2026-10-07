@@ -72,6 +72,23 @@ class TelephonyMmsStoreTest {
     }
 
     @Test
+    fun aMessageWhoseAttachmentCouldNotBeWrittenIsNotPersisted() {
+        // The second part's data write fails after the first has landed, so
+        // the store has to roll its own writing back rather than hand out a
+        // message missing its attachment — the inbound path acknowledges
+        // retrieval on any non-null result.
+        resolver.failMatching = { it == "openOutputStream content://mms/part/101" }
+        val body = PduBody().apply {
+            add(PduPart().named("a.txt", "text/plain", "hello".toByteArray()))
+            add(PduPart().named("photo.jpg", "image/jpeg", ByteArray(16)))
+        }
+
+        assertNull(store.persist(sendReq(body = body), MmsBox.INBOX, subscriptionId = 1))
+        assertTrue(resolver.messages().isEmpty())
+        assertTrue(resolver.partsOf(CLOCK).isEmpty())
+    }
+
+    @Test
     fun partsAreWrittenBeforeTheMessageRowAndRepointedAfterwards() {
         val body = PduBody().apply {
             add(PduPart().named("a.txt", "text/plain", "a".toByteArray()))

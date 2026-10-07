@@ -16,8 +16,8 @@ import java.util.concurrent.ConcurrentHashMap
  * downloads MMS on the app's behalf: the default SMS app gets a
  * `WAP_PUSH_DELIVER` broadcast for an announced-but-empty message row and has to
  * call [android.telephony.SmsManager.downloadMultimediaMessage] itself. Until
- * that fetch happens the provider row stays `m_type=130` with no parts, which is
- * why an incoming MMS used to be dropped entirely.
+ * that fetch happens the provider row stays `m_type=130` with no parts, which
+ * is why an incoming MMS used to be dropped entirely.
  *
  * The platform owns the HTTP transaction, including the M-NotifyResp.ind
  * acknowledgement and the RetrieveConf write, so this app deliberately does not
@@ -29,32 +29,44 @@ internal object MmsDownloader {
     private const val TAG = "MmsDownload"
     private const val EXTRA_MMS_URI = "mms_uri"
 
-    private class Attempt(var count: Int = 0, var lastAt: Long = 0L)
+    private class Attempt(
+        var count: Int = 0,
+        var lastAt: Long = 0L,
+        var location: String? = null
+    )
 
     private val attempts = ConcurrentHashMap<String, Attempt>()
 
-    fun onWapPush(context: Context, uri: Uri) {
-        request(context, uri)
+    fun onWapPush(context: Context) {
+        requestPending(context)
     }
 
     /** Re-requests any announced MMS still waiting to be fetched, covering a
      *  WAP broadcast that was missed while the app was not the default handler. */
     fun requestPending(context: Context) {
-        val ids = try {
-            MmsProviderReader(context.contentResolver).pendingDownloadIds()
+        val rows = try {
+            MmsProviderReader(context.contentResolver).pendingDownloads()
         } catch (t: Throwable) {
             Log.w(TAG, "pending MMS query failed: ${t.message}")
             emptyList()
         }
-        for (id in ids) request(context, Uri.parse(MmsSupport.messageContentUri(id)))
+        for (row in rows) request(context, row)
     }
 
     /**
-     * Asks the platform to fetch [uri]. Refused while a previous attempt for the
-     * same message is still inside its backoff window.
+     * Asks the platform to fetch the announced MMS [row] from its
+     * Content-Location. Refused while a previous attempt for the same message
+     * is still inside its backoff window, and impossible at all without a
+     * location.
      */
-    fun request(context: Context, uri: Uri): Boolean {
-        val key = uri.toString()
+    fun request(context: Context, row: MmsSupport.PendingDownload): Boolean {
+        val location = MmsSupport.downloadLocation(row.contentLocation)
+        if (location == null) {
+            Log.w(TAG, "announced MMS ${row.id} has no Content-Location to fetch")
+            return false
+        }
+        val key = MmsSupport.messageContentUri(row.id)
+        val uri = Uri.parse(key)
         val now = System.currentTimeMillis()
         val attempt = attempts.computeIfAbsent(key) { Attempt() }
         if (!MmsRetry.shouldRetryNow(
@@ -66,6 +78,7 @@ internal object MmsDownloader {
         }
         attempt.count++
         attempt.lastAt = now
+        attempt.location = location
         return try {
             val completion = PendingIntent.getBroadcast(
                 context, key.hashCode(),
@@ -76,9 +89,12 @@ internal object MmsDownloader {
                 PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             SmsSender.manager(context, -1).downloadMultimediaMessage(
-                context, context.packageName, uri, null, completion
+                context, location, uri, null, completion
             )
-            Log.i(TAG, "MMS download requested for $key (attempt ${attempt.count})")
+            Log.i(
+                TAG,
+                "MMS download requested for $key from $location (attempt ${attempt.count})"
+            )
             true
         } catch (t: Throwable) {
             Log.w(TAG, "MMS download request failed for $key: ${t.message}")
@@ -108,7 +124,10 @@ internal object MmsDownloader {
         if (outcome == MmsRetry.AUTO_RETRY) {
             val delay = MmsRetry.delayFor(attempt.count)
             Log.i(TAG, "MMS $key failed (code $resultCode), retrying in ${delay}ms")
-            scheduleRetry(context, Uri.parse(key), delay)
+            val id = key.substringAfterLast('/').toLongOrNull() ?: return
+            scheduleRetry(
+                context, MmsSupport.PendingDownload(id, attempt.location), delay
+            )
         } else {
             // Manual retry: the user has to decide, so keep the row eligible but
             // stop the automatic loop.
@@ -117,10 +136,14 @@ internal object MmsDownloader {
         }
     }
 
-    private fun scheduleRetry(context: Context, uri: Uri, delayMs: Long) {
+    private fun scheduleRetry(
+        context: Context,
+        row: MmsSupport.PendingDownload,
+        delayMs: Long
+    ) {
         val app = context.applicationContext
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            runCatching { request(app, uri) }
+            runCatching { request(app, row) }
                 .onFailure { Log.w(TAG, "scheduled retry failed: ${it.message}") }
         }, delayMs)
     }

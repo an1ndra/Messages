@@ -106,7 +106,9 @@ internal object MmsComposer {
             }
             val file = File(context.cacheDir, "mms-send-${UUID.randomUUID()}.dat")
             file.outputStream().use { it.write(bytes) }
-            Outcome.Ready(Prepared(outbox, file, pduContentUri(context, file), bytes.size))
+            val prepared = Prepared(outbox, file, pduContentUri(context, file), bytes.size)
+            Log.i(TAG, "composed ${bytes.size}B PDU at ${prepared.pduUri}")
+            Outcome.Ready(prepared)
         } catch (t: Throwable) {
             Log.w(TAG, "failed to build mms pdu: ${t.message}")
             Outcome.Rejected(Reason.ATTACHMENT_UNREADABLE)
@@ -290,9 +292,8 @@ internal object MmsComposer {
         })
     }
 
-    fun pduContentUri(context: Context, file: File): Uri = Uri.Builder()
-        .scheme("content")
-        .authority(context.packageName + ".fileprovider")
-        .appendPath(file.name)
-        .build()
+    fun pduContentUri(context: Context, file: File): Uri =
+        androidx.core.content.FileProvider.getUriForFile(
+            context, context.packageName + ".fileprovider", file
+        )
 }

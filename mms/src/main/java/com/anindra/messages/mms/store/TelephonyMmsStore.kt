@@ -72,9 +72,18 @@ class TelephonyMmsStore(
             // are re-pointed at the real one once it exists.
             val placeholderId = clock()
             var messageSize = 0L
-            pdu.body?.parts()?.forEach { part ->
+            val partsWritten = pdu.body?.parts()?.all { part ->
                 messageSize += part.data?.size?.toLong() ?: 0L
                 persistPart(part, placeholderId)
+            } ?: true
+            if (!partsWritten) {
+                // A message whose attachment did not land must not come back as
+                // persisted: the inbound path acknowledges retrieval on a
+                // non-null result, so a partial MMS would be acknowledged as
+                // complete. The parts already written are cleaned up; the
+                // message row was never inserted.
+                runCatching { resolver.delete(partsUri(placeholderId), null, null) }
+                return@guarded null
             }
             if (pdu.headers.longOrNull(HeaderField.MESSAGE_SIZE) == null) {
                 values.put(COLUMN_MESSAGE_SIZE, messageSize)

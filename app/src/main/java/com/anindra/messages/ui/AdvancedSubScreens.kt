@@ -95,18 +95,15 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 }
             )
             SettingsRow(
-                position = RowPosition.LAST,
+                position = RowPosition.MIDDLE,
                 title = stringResource(R.string.settings_pin_notification_sound),
                 subtitle = options.firstOrNull { it.first == sound }?.second
                     ?: context.getString(R.string.settings_sound_default),
                 enabled = receiveSound,
                 onClick = { soundDialog = true }
             )
-        }
-
-        SettingsGroup {
             SettingsRow(
-                position = RowPosition.FIRST,
+                position = RowPosition.MIDDLE,
                 title = stringResource(R.string.settings_notif_action_reply_title),
                 subtitle = stringResource(R.string.settings_notif_action_reply_subtitle),
                 checked = actionReply,

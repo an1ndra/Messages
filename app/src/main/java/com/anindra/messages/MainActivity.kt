@@ -284,8 +284,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun messageCountFlow(conversationId: Long): Flow<Int> = repo.messageCountFlow(conversationId)
 
     /** Conversations with a hit anywhere in their history, for the home search. */
-    fun conversationIdsMatchingMessage(query: String): Flow<Set<Long>> =
-        repo.conversationIdsMatchingMessage(query)
+    fun conversationIdsMatchingMessage(query: String, hideLinks: Boolean): Flow<Set<Long>> =
+        repo.conversationIdsMatchingMessage(query, hideLinks)
+
+    /** Ids of this conversation's messages a chat search can reach, oldest first. */
+    fun messageIdsMatching(conversationId: Long, query: String, hideLinks: Boolean): Flow<List<Long>> =
+        repo.messageIdsMatching(conversationId, query, hideLinks)
 
     fun syncFromSystem() = repo.syncFromSystem()
 
@@ -1238,18 +1242,18 @@ class MainActivity : FragmentActivity() {
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
-                        onOpenSettings = { navRoute = "settings" }
+                        onOpenSettings = { navRoute = "settings" },
                     ) else com.anindra.messages.ui.legacy.ConversationsScreen(
                         vm = vm,
-                        onOpenConversation = { id ->
+                        onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
                             chatId = id
-                            chatSearchQuery = null
+                            chatSearchQuery = query.ifBlank { null }
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
-                        onOpenSettings = { navRoute = "settings" }
+                        onOpenSettings = { navRoute = "settings" },
                     )
 
                     AnimatedContent(
