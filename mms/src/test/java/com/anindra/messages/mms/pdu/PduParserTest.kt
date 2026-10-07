@@ -83,11 +83,16 @@ class PduParserTest {
     private fun sendReq(
         extra: ByteArray = ByteArray(0),
         messageContentType: ByteArray = media(ContentTypes.TABLE.indexOf(ContentTypes.MULTIPART_RELATED)!!),
+        bareContentType: Boolean = false,
         bodyBytes: ByteArray,
     ): ByteArray = join(
         wsp {
             appendOctet(HeaderField.CONTENT_TYPE)
-            appendValueLengthPrefixed { appendBytes(messageContentType) }
+            if (bareContentType) {
+                appendBytes(messageContentType)
+            } else {
+                appendValueLengthPrefixed { appendBytes(messageContentType) }
+            }
             appendOctet(HeaderField.MESSAGE_TYPE)
             appendOctet(MessageType.SEND_REQ)
             appendOctet(HeaderField.MMS_VERSION)
@@ -638,5 +643,69 @@ class PduParserTest {
         val parsed = parse(bytes)
         assertNotNull(parsed)
         assertEquals(0, parsed!!.body!!.partAt(0)!!.data!!.size)
+    }
+
+    @Test
+    fun aBareConstrainedMediaContentTypeWithNoValueLengthParses() {
+        // Content-type-value is also a bare Constrained-media octet with no
+        // value-length around it; the reference accepts that form.
+        val bytes = sendReq(
+            messageContentType = media(ContentTypes.TABLE.indexOf(ContentTypes.MULTIPART_RELATED)!!),
+            bareContentType = true,
+            bodyBytes = body(part(textPlain, "a.txt", data = text("a"))),
+        )
+        val parsed = parse(bytes)
+        assertNotNull(parsed)
+        assertEquals(ContentTypes.MULTIPART_RELATED, parsed!!.contentType)
+        assertEquals("a", parsed.body!!.partAt(0)!!.data!!.decodeToString())
+    }
+
+    @Test
+    fun aBareTextStringEncodedValueParses() {
+        // Encoded-string-value is also a plain Text-string with no
+        // value-length or charset ahead of it.
+        val bytes = sendReq(
+            extra = wsp {
+                appendOctet(HeaderField.TO)
+                appendTextString("+15551234567")
+            },
+            bodyBytes = body(part(textPlain, "a.txt", data = text("a"))),
+        )
+        val parsed = parse(bytes)
+        assertNotNull(parsed)
+        assertEquals(listOf("+15551234567"), parsed!!.to.map { it.text })
+    }
+
+    @Test
+    fun anEmptyEncodedStringValueParsesAsEmpty() {
+        // A leading 0x00 is the empty value, not a zero-length charset prefix.
+        val bytes = sendReq(
+            extra = wsp {
+                appendOctet(HeaderField.TO)
+                appendOctet(0x00)
+            },
+            bodyBytes = body(part(textPlain, "a.txt", data = text("a"))),
+        )
+        val parsed = parse(bytes)
+        assertNotNull(parsed)
+        assertEquals(listOf(""), parsed!!.to.map { it.text })
+    }
+
+    @Test
+    fun aForgedEncodedStringLengthIsRejectedRatherThanEscaping() {
+        // A length near Int.MAX_VALUE overflows any stop index computed from
+        // it, so the check has to be against the bytes that actually remain
+        // — and the parse contract is a null, never an escaping exception.
+        val bytes = sendReq(
+            extra = wsp {
+                appendOctet(HeaderField.TO)
+                appendOctet(0x1F)
+                appendUintvar(0x7FFFFFFFL)
+                appendShortInteger(CharacterSets.UTF_8)
+                appendTextString("x")
+            },
+            bodyBytes = body(),
+        )
+        assertNull(parse(bytes))
     }
 }

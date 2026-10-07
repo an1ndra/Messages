@@ -30,6 +30,11 @@ class PduParser(
         parseChecked()
     } catch (_: MalformedPduException) {
         null
+    } catch (_: IndexOutOfBoundsException) {
+        // The contract is a null on hostile input, never a throw. A reader
+        // that somehow reads past the buffer must still not surface as a
+        // crash in the face of whatever a carrier pushed at us.
+        null
     }
 
     private fun parseChecked(): Pdu {
@@ -179,6 +184,14 @@ class PduParser(
     }
 
     private fun readContentType(reader: WspReader): MediaType {
+        // Content-type-value = Constrained-media | Content-general-form, and
+        // Content-general-form = Value-length Media-type. A first octet below
+        // 0x20 is the length; anything else is already the media — a bare
+        // short-integer or text-string with no parameters to read. The
+        // reference accepts both forms.
+        if (reader.peekOctet() >= 0x20) {
+            return MediaType(reader.readConstrainedMedia())
+        }
         val length = reader.readValueLength()
         if (length < 1 || length > reader.remaining) {
             throw MalformedPduException("content-type value-length $length, ${reader.remaining} left")
