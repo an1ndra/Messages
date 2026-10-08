@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.AppViewModel
+import com.anindra.messages.data.AddressIdentity
 import com.anindra.messages.data.ConversationList
 import com.anindra.messages.hideUrls
 import kotlinx.coroutines.delay
@@ -73,6 +74,15 @@ fun rememberMessageMatchIds(vm: AppViewModel, query: String): Set<Long> {
     // the visibility rule reads it on the repository side.
     val hideLinks = vm.settings.hideLinks
     LaunchedEffect(query, hideLinks) {
+        // A number query has no message hits by definition — ConversationList.filter
+        // matches it on address alone — so don't pay for the LIKE scan over every
+        // message body. Clearing the held set too stops a previous text query's ids
+        // surviving, which would over-include if a letter is typed mid-number.
+        if (AddressIdentity.isNumberQuery(query)) {
+            held.onQueryStarted("")
+            ids = emptySet()
+            return@LaunchedEffect
+        }
         held.onQueryStarted(query)
         if (query.isBlank()) {
             ids = held.current()
