@@ -1,7 +1,9 @@
 package com.anindra.messages.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PhoneNumberUtilsTest {
@@ -35,5 +37,24 @@ class PhoneNumberUtilsTest {
     fun alphanumericSenderIsNotANumber() {
         assertNull(PhoneNumberUtils.toE164("DK-AIRCEL", "FR"))
         assertNull(PhoneNumberUtils.toE164("VM-HDFCBK", "IN"))
+    }
+
+    @Test
+    fun shortServiceCodesAreDialableButNotE164Parsed() {
+        assertTrue(PhoneNumberUtils.isDialableAddress("198"))
+        assertTrue(PhoneNumberUtils.isDialableAddress("199"))
+        assertTrue(PhoneNumberUtils.isDialableAddress("112"))
+        // 3-digit numbers stay outside the E.164 parse gate so the address
+        // survives verbatim instead of being rewritten by libphonenumber.
+        assertFalse(PhoneNumberUtils.isLikelyPhoneNumber("198"))
+        assertNull(PhoneNumberUtils.toE164("198", "IN"))
+        assertNull(PhoneNumberUtils.toE164("199", "IN"))
+    }
+
+    @Test
+    fun alphanumericSenderIsNotDialable() {
+        assertFalse(PhoneNumberUtils.isDialableAddress("DK-AIRCEL"))
+        assertFalse(PhoneNumberUtils.isDialableAddress("VM-HDFCBK"))
+        assertFalse(PhoneNumberUtils.isDialableAddress("A1 SRB"))
     }
 }

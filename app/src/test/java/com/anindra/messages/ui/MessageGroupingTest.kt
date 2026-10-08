@@ -116,14 +116,26 @@ class MessageGroupingTest {
     }
 
     @Test
-    fun middleBubblesAreFlatOnTheJoinedSideForBothSenders() {
+    fun middleBubblesAreSoftenedOnTheJoinedSideForBothSenders() {
         assertEquals(
-            BubbleCorners(18f, 4f, 18f, 4f),
+            BubbleCorners(18f, 8f, 18f, 8f),
             bubbleCorners(BubblePosition.MIDDLE, isMe = true)
         )
         assertEquals(
-            BubbleCorners(4f, 18f, 4f, 18f),
+            BubbleCorners(8f, 18f, 8f, 18f),
             bubbleCorners(BubblePosition.MIDDLE, isMe = false)
         )
+    }
+
+    @Test
+    fun theTailCornersOfSinglyAndRunEndsAreUnchanged() {
+        // The join was softened for middle bubbles only; the pointed tail at the
+        // end of a run is a deliberate shape and must not drift with it.
+        assertEquals(4f, bubbleCorners(BubblePosition.SINGLE, isMe = true).bottomEnd, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.FIRST, isMe = true).bottomEnd, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.LAST, isMe = true).topEnd, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.SINGLE, isMe = false).bottomStart, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.FIRST, isMe = false).bottomStart, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.LAST, isMe = false).topStart, 0f)
     }
 }

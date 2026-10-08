@@ -122,6 +122,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -175,6 +176,7 @@ import java.io.File
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -189,6 +191,12 @@ private const val INITIAL_CHUNK = 40
 private const val AUTO_CHUNK = 40
 private const val AUTO_CAP = 400
 private const val LOAD_EARLIER_STEP = 200
+
+/** The first visible chat row at the moment the pager grows, restored once the
+ *  older rows land. LazyColumn re-anchors by key itself, but only within a
+ *  bounded window around the previous index, so a LOAD_EARLIER_STEP prepend
+ *  pushes that key out of the window and the view drifts up the thread. */
+private class PrependAnchor(val key: Any, val offset: Int)
 
 /** Partial-text copy (#231). The message text is shown in a dialog inside a
  *  SelectionContainer: the system handles and the Copy/Share toolbar then work
@@ -659,11 +667,14 @@ fun ChatScreen(
         }
     }
     val pendingEarlier = messagesLoaded && totalCount > pageLimit && pageLimit < AUTO_CAP
-    // A search hit older than everything loaded needs the pager past AUTO_CAP;
+    // The focused hit older than everything loaded needs the pager past AUTO_CAP;
     // without this the home list surfaces a thread the chat can never reach.
+    // Follows the *focused* hit, not the oldest match: keying on the oldest made
+    // one ancient hit anywhere in the thread walk the whole history in 200-row
+    // steps while the view sat on a hit that was already loaded (issue #284).
     val oldestLoadedId = messages.minOfOrNull { it.id }
-    val searchWantsOlder = activeSearch != null && searchMatches.isNotEmpty() &&
-        oldestLoadedId != null && searchMatches.first() < oldestLoadedId
+    val searchWantsOlder = activeSearch != null && focusedSearchId != null &&
+        oldestLoadedId != null && focusedSearchId < oldestLoadedId
     val deliveryReports = remember { vm.deliveryReportsEnabled() }
     var draft by remember { mutableStateOf("") }
     var draftLoaded by remember { mutableStateOf(false) }
@@ -1039,8 +1050,21 @@ fun ChatScreen(
             while (!nearBottom()) delay(80)
         }
         delay(240)
+        // Hold the first visible row across the prepend. LazyColumn re-anchors by
+        // key, but only within a bounded window around the previous index, so a
+        // LOAD_EARLIER_STEP prepend pushes that key out of the window and the
+        // view silently drifts up the thread (issue #284). Without this the
+        // search fix alone leaves an intermittent few-row drift.
+        val first = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+        val anchor = first?.let { PrependAnchor(it.key, it.offset) }
+        val rowsBefore = chatRows.size
         pageLimit = (pageLimit + if (searchWantsOlder) LOAD_EARLIER_STEP else AUTO_CHUNK)
             .coerceAtMost(if (searchWantsOlder) totalCount else AUTO_CAP)
+        if (anchor != null) {
+            snapshotFlow { chatRows.size }.first { it > rowsBefore }
+            val idx = chatRows.indexOfFirst { it.key == anchor.key }
+            if (idx >= 0) listState.scrollToItem(idx, anchor.offset)
+        }
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)

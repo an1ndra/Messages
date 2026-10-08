@@ -14,6 +14,11 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Granted at install up to Android 13. From 14 it is only auto-granted to
+         calling/messaging apps; as the default SMS handler this app qualifies.
+         Without it the platform discards the intent and a locked screen never
+         wakes for an incoming message. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
@@ -77,6 +82,15 @@
                 <data android:scheme="smsto" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".sms.FullScreenSmsActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Messages.FullScreen" />
 
         <receiver
             android:name=".sms.SmsReceiver"
