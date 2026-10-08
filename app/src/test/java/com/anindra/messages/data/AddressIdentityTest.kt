@@ -165,4 +165,14 @@ class AddressIdentityTest {
         assertTrue(AddressIdentity.isReplyable("+15551234567"))
         assertTrue(AddressIdentity.isReplyable("+919876543210"))
     }
+
+    @Test
+    fun shortServiceCodesAreReplyable() {
+        assertTrue(AddressIdentity.isReplyable("198"))
+        assertTrue(AddressIdentity.isReplyable("199"))
+        assertTrue(AddressIdentity.isReplyable("112"))
+        // Identity for a short code is kept verbatim because it is not parsed.
+        assertEquals("198", AddressIdentity.canonical("198", "IN"))
+        assertEquals("199", AddressIdentity.canonical("199", "IN"))
+    }
 }
