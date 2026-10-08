@@ -34,7 +34,7 @@ object AddressIdentity {
 
     /** True for dialable phone/short-code addresses; false for alphanumeric
      *  sender IDs, which cannot receive replies. */
-    fun isReplyable(address: String): Boolean = PhoneNumberUtils.isLikelyPhoneNumber(address)
+    fun isReplyable(address: String): Boolean = PhoneNumberUtils.isDialableAddress(address)
 
     /** True when [query] can only be a phone number: at least one digit, and
      *  nothing but digits and the punctuation people type numbers with. This is
