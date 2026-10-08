@@ -40,7 +40,7 @@ class MmsFacadeWiringTest {
     fun thePlatformTransportIsTheOneWired() {
         assertTrue(source.contains("SystemMmsTransport("))
         assertTrue(source.contains("SmsManagerMmsPlatform("))
-        assertTrue(source.contains("CarrierProfileStore.create(app)"))
+        assertTrue(source.contains("CarrierProfileStore.create(context.applicationContext)"))
     }
 
     @Test

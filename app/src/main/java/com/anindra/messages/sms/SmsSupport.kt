@@ -548,10 +548,9 @@ object SmsSender {
     }
 
     /**
-     * Sends MMS by building the m_SendReq PDU, persisting it to the provider
-     * outbox and handing the composed PDU to the framework (see [MmsComposer]).
-     * SmsStatusReceiver confirms the result; the row is marked failed when the
-     * hand-off itself cannot be started.
+     * Sends MMS through the `:mms` stack (see [MmsSender]). SmsStatusReceiver
+     * confirms the result; the row is marked failed when the hand-off itself
+     * cannot be started.
      */
     fun sendMms(
         context: Context,
@@ -564,62 +563,6 @@ object SmsSender {
         val mime = com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
             context.contentResolver.getType(media), media.toString()
         )
-        val config = MmsCarrierConfig.of(context, subscriptionId)
-        val prepared = when (val outcome = MmsComposer.prepare(
-            context, addresses, media, mime, caption, subscriptionId, config
-        )) {
-            is MmsComposer.Outcome.Ready -> outcome.prepared
-            is MmsComposer.Outcome.Rejected -> {
-                android.util.Log.w("MmsComposer", "MMS not sent: ${outcome.reason}")
-                return false
-            }
-        }
-        return try {
-            val sent = PendingIntent.getBroadcast(
-                context, (messageId % Int.MAX_VALUE).toInt(),
-                Intent(SmsStatusReceiver.ACTION_MMS_SENT)
-                    .setPackage(context.packageName)
-                    .setComponent(android.content.ComponentName(context, SmsStatusReceiver::class.java))
-                    .putExtra(SmsStatusReceiver.EXTRA_MESSAGE_ID, messageId)
-                    .putExtra(SmsStatusReceiver.EXTRA_MMS_OUTBOX, prepared.outboxUri.toString())
-                    .putExtra(SmsStatusReceiver.EXTRA_MMS_PDU_FILE, prepared.pduFile.absolutePath),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val overrides = Bundle().apply {
-                putBoolean(android.telephony.SmsManager.MMS_CONFIG_GROUP_MMS_ENABLED, false)
-                putInt(
-                    android.telephony.SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE,
-                    config.maxMessageSize
-                )
-                putInt(
-                    android.telephony.SmsManager.MMS_CONFIG_MAX_IMAGE_WIDTH,
-                    config.maxImageWidth
-                )
-                putInt(
-                    android.telephony.SmsManager.MMS_CONFIG_MAX_IMAGE_HEIGHT,
-                    config.maxImageHeight
-                )
-                putBoolean(
-                    android.telephony.SmsManager.MMS_CONFIG_MMS_DELIVERY_REPORT_ENABLED,
-                    config.deliveryReport
-                )
-                putBoolean(
-                    android.telephony.SmsManager.MMS_CONFIG_MMS_READ_REPORT_ENABLED,
-                    config.readReport
-                )
-                putBoolean(
-                    android.telephony.SmsManager.MMS_CONFIG_NOTIFY_WAP_MMSC_ENABLED,
-                    config.notifyWapMmsc
-                )
-            }
-            manager(context, subscriptionId).sendMultimediaMessage(
-                context, prepared.pduUri, null, overrides, sent
-            )
-            true
-        } catch (t: Throwable) {
-            android.util.Log.w("MmsComposer", "sendMultimediaMessage failed: ${t.message}")
-            prepared.pduFile.delete()
-            false
-        }
+        return MmsSender.send(context, messageId, addresses, media, mime, caption, subscriptionId)
     }
 }

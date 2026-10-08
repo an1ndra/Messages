@@ -465,7 +465,7 @@ internal fun ChatBubble(
                     when {
                         deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                         msg.status == "sending" -> "Sending…"
-                        else -> "SMS"
+                        else -> com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
                     }
                 } else ""
                 val simLabel = if (showSimIndicator && msg.subId > 0) {
@@ -2447,7 +2447,7 @@ fun MessageRow(
                 when {
                     showStatus && deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                     showStatus && msg.status == "sending" -> "Sending…"
-                    else -> "SMS"
+                    else -> com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
                 }
             } else ""
             val prefix = if (statusText.isNotEmpty()) " • $statusText" else ""

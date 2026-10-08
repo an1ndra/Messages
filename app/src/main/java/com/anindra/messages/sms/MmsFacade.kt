@@ -11,6 +11,7 @@ import com.anindra.messages.mms.SendAddressSource
 import com.anindra.messages.mms.fit.DefaultAttachmentFitter
 import com.anindra.messages.mms.net.CarrierProfileStore
 import com.anindra.messages.mms.pdu.Pdu
+import com.anindra.messages.mms.spi.MmsDiagnostics
 import com.anindra.messages.mms.spi.MmsDownloadTarget
 import com.anindra.messages.mms.store.TelephonyMmsStore
 import com.anindra.messages.mms.transport.SmsManagerMmsPlatform
@@ -32,15 +33,30 @@ internal object MmsFacade {
     /** "whatever SIM carries the default SMS role", the app's convention. */
     private const val DEFAULT_SUBSCRIPTION = -1
 
-    fun of(context: Context): Mms {
+    /**
+     * One per process: [CarrierProfileStore.create] registers a carrier-config
+     * receiver on the application context, so building a store per send would
+     * leak one receiver per message.
+     */
+    @Volatile
+    private var profileStore: CarrierProfileStore? = null
+
+    fun profiles(context: Context): CarrierProfileStore =
+        profileStore ?: synchronized(this) {
+            profileStore ?: CarrierProfileStore.create(context.applicationContext)
+                .also { profileStore = it }
+        }
+
+    fun of(context: Context, diagnostics: MmsDiagnostics = object : MmsDiagnostics {}): Mms {
         val app = context.applicationContext
-        val profiles = CarrierProfileStore.create(app)
+        val profiles = profiles(app)
         val transport = SystemMmsTransport(
             fileProviderAuthority = app.packageName + ".fileprovider",
             cacheDir = app.cacheDir,
             targets = AnnouncementRows(app),
             carrierProfiles = profiles,
             platform = SmsManagerMmsPlatform(app),
+            diagnostics = diagnostics,
         )
         return Mms(
             store = TelephonyMmsStore(
@@ -56,6 +72,7 @@ internal object MmsFacade {
             ),
             sendAddress = SendAddressSource { subscriptionId -> ownNumber(app, subscriptionId) },
             carrierConfig = CarrierProfileStore.platformSource(app),
+            diagnostics = diagnostics,
         )
     }
 

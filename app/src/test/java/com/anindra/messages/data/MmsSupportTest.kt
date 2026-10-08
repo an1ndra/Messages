@@ -154,4 +154,11 @@ class MmsSupportTest {
         assertNull(MmsSupport.downloadLocation(""))
         assertNull(MmsSupport.downloadLocation("   "))
     }
+
+    @Test
+    fun anOwnMessageWithMediaIsShownAsMms() {
+        assertEquals("MMS", MmsSupport.outgoingKind("image", MmsSupport.TRANSPORT_SMS))
+        assertEquals("MMS", MmsSupport.outgoingKind("text", MmsSupport.TRANSPORT_MMS))
+        assertEquals("SMS", MmsSupport.outgoingKind("text", MmsSupport.TRANSPORT_SMS))
+    }
 }

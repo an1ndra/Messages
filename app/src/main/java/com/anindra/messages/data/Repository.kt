@@ -970,6 +970,23 @@ class Repository(private val context: Context) {
         return Message(id, conversationId, clean, now, true, "sending", mediaType, uri)
     }
 
+    /**
+     * Links an app message to the provider row it is being sent as.
+     *
+     * [sendMedia] stores the message with no `sys_id`, and a sent MMS reaches
+     * the provider's sent box, where [importProviderMms] would import it as a
+     * second message (the same picture twice in the chat). Recording the
+     * provider row here makes the next sync recognise it as already present.
+     */
+    fun linkMmsRow(messageId: Long, sysId: Long) {
+        if (messageId <= 0 || sysId <= 0) return
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET sys_id=?, transport=? WHERE id=?",
+            arrayOf<Any?>(sysId, MmsSupport.TRANSPORT_MMS, messageId)
+        )
+        notifyChanged()
+    }
+
     private fun touchConversation(conversationId: Long, snippet: String, ts: Long, isMe: Boolean) {
         db.writableDatabase.execSQL(
             "UPDATE conversations SET snippet=?,timestamp=?,unread_count=0,last_is_me=?,deleted_at=0 WHERE id=?",
