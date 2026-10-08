@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Resources
+import android.app.KeyguardManager
+import android.app.NotificationManager
 import android.hardware.display.DisplayManager
 import android.os.BatteryManager
 import android.os.Build
@@ -17,6 +19,7 @@ import android.view.Display
 import com.anindra.messages.crash.CrashAppInfo
 import com.anindra.messages.crash.CrashDeviceInfo
 import com.anindra.messages.crash.CrashReporter
+import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.data.BackupHealth
 import com.anindra.messages.data.DownloadsStore
 import com.anindra.messages.data.SettingsStore
@@ -67,7 +70,17 @@ data class AppDetails(
     val a11yBold: Boolean = false,
     val a11yHighContrast: Boolean = false,
     val a11yReduceMotion: Boolean = false,
-    val a11yLargeTouch: Boolean = false
+    val a11yLargeTouch: Boolean = false,
+    /**
+     * Live state of the incoming-message wake chain, so a screen that stayed
+     * asleep can be attributed to the app or to the device config without a
+     * screenshot. Reads the same permission and channel the notifier does.
+     */
+    val fullScreenIntentGranted: Boolean = false,
+    val channelImportance: Int = 0,
+    val channelImportanceLabel: String = "",
+    val keyguardLocked: Boolean = false,
+    val wakeEligible: Boolean = false
 )
 
 data class DeviceExtra(
@@ -206,6 +219,16 @@ object DiagnosticsReport {
                 appendLine("  Larger touch targets: ${data.appDetails.a11yLargeTouch}")
             }
             appendLine("Notifications enabled: ${data.appDetails.notificationsEnabled}")
+            appendLine("Full-screen intent: ${if (data.appDetails.fullScreenIntentGranted) "granted" else "denied"}")
+            appendLine("Channel importance: ${data.appDetails.channelImportanceLabel}")
+            appendLine("Keyguard locked: ${if (data.appDetails.keyguardLocked) "yes" else "no"}")
+            appendLine("Wake screen for new messages: ${if (data.appDetails.wakeEligible) "will wake" else "headsup only"}")
+            if (!data.appDetails.fullScreenIntentGranted) {
+                appendLine("  A denied full-screen intent means no app can wake this screen for a message.")
+                appendLine("  Check Settings > Notifications for a full-screen/full app access toggle.")
+            } else if (!data.appDetails.wakeEligible) {
+                appendLine("  Waking is also gated by the channel importance and Do Not Disturb above.")
+            }
             appendLine("Send sound: ${data.appDetails.sendSound}")
             appendLine("Receive sound: ${data.appDetails.receiveSound}")
             appendLine("Privacy mode: ${data.appDetails.privacyMode}")
@@ -476,6 +499,21 @@ object DiagnosticsReport {
         )
     }
 
+    private fun importanceLabel(importance: Int): String =
+        when (importance) {
+            NotificationManager.IMPORTANCE_NONE -> "0 (none)"
+            NotificationManager.IMPORTANCE_MIN -> "1 (min)"
+            NotificationManager.IMPORTANCE_LOW -> "2 (low)"
+            NotificationManager.IMPORTANCE_DEFAULT -> "3 (default)"
+            NotificationManager.IMPORTANCE_HIGH -> "4 (high)"
+            NotificationManager.IMPORTANCE_MAX -> "5 (max)"
+            else -> "$importance (unknown)"
+        }
+
+    private fun fullScreenIntentGranted(context: Context): Boolean =
+        context.checkSelfPermission(Manifest.permission.USE_FULL_SCREEN_INTENT) ==
+            PackageManager.PERMISSION_GRANTED
+
     private fun appDetails(context: Context, settings: SettingsStore): AppDetails {
         val defaultSms = try {
             val rm = context.getSystemService(RoleManager::class.java)
@@ -517,7 +555,16 @@ object DiagnosticsReport {
             a11yBold = settings.a11yBold,
             a11yHighContrast = settings.a11yHighContrast,
             a11yReduceMotion = settings.a11yReduceMotion,
-            a11yLargeTouch = settings.a11yLargeTouch
+            a11yLargeTouch = settings.a11yLargeTouch,
+            fullScreenIntentGranted = fullScreenIntentGranted(context),
+            channelImportance = NotificationHelper.channelImportance(context),
+            channelImportanceLabel = importanceLabel(NotificationHelper.channelImportance(context)),
+            keyguardLocked = context.getSystemService(KeyguardManager::class.java)
+                ?.isKeyguardLocked == true,
+            wakeEligible = NotificationHelper.shouldWake(
+                settings,
+                context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
+            )
         )
     }
 }
