@@ -150,6 +150,7 @@ object NotificationHelper {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val soundOn = app.repository.settings.receiveSoundEnabled
         val id = channelId(context)
+        recoverDemotedChannel(nm, id)
         nm.createNotificationChannel(
             NotificationChannel(
                 id, context.getString(R.string.notification_channel_title), NotificationManager.IMPORTANCE_HIGH
@@ -170,6 +171,26 @@ object NotificationHelper {
         // stays a single "Messages" entry.
         CHANNEL_VARIANTS.filter { it != id }.forEach { nm.deleteNotificationChannel(it) }
     }
+
+    /**
+     * createNotificationChannel() upserts, and an upsert cannot raise importance
+     * once the user has touched the channel — so a demotion is permanent. The
+     * only recovery is delete-then-recreate. IMPORTANCE_DEFAULT is left alone:
+     * a user who deliberately quieted the app keeps their choice, and only a
+     * channel that has fallen below it (the broken state) is rebuilt.
+     */
+    private fun recoverDemotedChannel(nm: NotificationManager, id: String) {
+        val existing = nm.getNotificationChannel(id) ?: return
+        if (existing.importance >= NotificationManager.IMPORTANCE_DEFAULT) return
+        nm.deleteNotificationChannel(id)
+    }
+
+    /** The live importance of the active channel, for Diagnostics and tests. */
+    internal fun channelImportance(context: Context): Int =
+        context.getSystemService(NotificationManager::class.java)
+            ?.getNotificationChannel(channelId(context))
+            ?.importance
+            ?: NotificationManager.IMPORTANCE_NONE
 
     private fun canPost(context: Context): Boolean {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
@@ -298,6 +319,14 @@ object NotificationHelper {
             .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
             .setStyle(groupedStyle(context, app, convoId, senderName, text))
+        // A heads-up popup is a peek: on a locked screen the panel stays asleep.
+        // Only a full-screen intent is treated as a user-initiated wake, so this
+        // is what turns the screen on. Privacy mode suppresses it because the
+        // trampoline would otherwise surface content over the keyguard.
+        if (shouldWake(app.repository.settings, keyguardLocked(context))) {
+            builder.setFullScreenIntent(fullScreenIntent(context, from, reqCode), true)
+        }
+
         val actionSettings = app.repository.settings
         if (actionSettings.notifActionReply && replyAction != null) builder.addAction(replyAction)
         if (actionSettings.notifActionMarkRead) builder.addAction(markReadAction)
@@ -306,6 +335,45 @@ object NotificationHelper {
             NotificationManagerCompat.from(context).notify(notifId, builder.build())
         } catch (_: SecurityException) {
         }
+    }
+
+    /**
+     * Whether an incoming message should carry a full-screen intent and wake
+     * the device. Pure so it can be unit-tested without a device.
+     */
+    internal fun shouldWake(
+        keyguardLocked: Boolean,
+        notificationsEnabled: Boolean,
+        receiveSoundEnabled: Boolean,
+        privacyMode: Boolean
+    ): Boolean =
+        keyguardLocked && notificationsEnabled && receiveSoundEnabled && !privacyMode
+
+    /** Same policy, reading the four inputs off the settings store. */
+    internal fun shouldWake(settings: SettingsStore, keyguardLocked: Boolean): Boolean =
+        shouldWake(
+            keyguardLocked = keyguardLocked,
+            notificationsEnabled = settings.notificationsEnabled,
+            receiveSoundEnabled = settings.receiveSoundEnabled,
+            privacyMode = settings.privacyModeEnabled
+        )
+
+    private fun keyguardLocked(context: Context): Boolean =
+        context.getSystemService(android.app.KeyguardManager::class.java)
+            ?.isKeyguardLocked == true
+
+    /**
+     * Target for the full-screen intent. A dedicated trampoline rather than
+     * MainActivity: the platform FSI policy requires the activity not be the
+     * app's primary launch target, and a real lock screen takeover is not the
+     * same as cold-launching the app.
+     */
+    private fun fullScreenIntent(context: Context, from: String, reqCode: Int): PendingIntent {
+        val data = Intent(context, FullScreenSmsActivity::class.java)
+        data.action = FullScreenSmsActivity.ACTION_SHOW
+        data.setPackage(context.packageName)
+        data.putExtra(FullScreenSmsActivity.EXTRA_ADDRESS, from)
+        return PendingIntent.getActivity(context, reqCode + 3000, data, PendingIntent.FLAG_IMMUTABLE)
     }
 
     /** Posted when an outgoing SMS/MMS fails to hand off to the radio. */
