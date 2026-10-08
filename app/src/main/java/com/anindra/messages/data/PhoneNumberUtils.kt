@@ -26,6 +26,7 @@ object PhoneNumberUtils {
     private const val MISS = "∅"
     private val e164Cache = ConcurrentHashMap<String, String>()
     private val displayCache = ConcurrentHashMap<String, String>()
+    private val nationalCache = ConcurrentHashMap<String, String>()
 
     /** Regions sharing the NANP country code (1): US, CA, PR, … */
     private val nanpRegions: Set<String> by lazy {
@@ -126,6 +127,30 @@ object PhoneNumberUtils {
             e164
         }
         displayCache[key] = out
+        return out
+    }
+
+    /** The digits of [input] with the country code stripped ("+447700900123" →
+     *  "07700900123"). Search needs this because a thread stores its address in
+     *  E.164 while the number a contact is dialled and typed as is national:
+     *  neither digit run is a suffix of the other, so no suffix test can match
+     *  until the query is nearly complete. Null for alphanumeric input or
+     *  anything unparseable. Cached on the canonical E.164 — the national form
+     *  follows the number's own country code, so [region] only affects
+     *  parsing. */
+    fun nationalDigits(input: String, region: String): String? {
+        if (!isLikelyPhoneNumber(input)) return null
+        val e164 = toE164(input, region) ?: return null
+        nationalCache[e164]?.let { return if (it == MISS) null else it }
+        val out = try {
+            val number = util.parse(e164, null)
+            util.format(number, PhoneNumberUtil.PhoneNumberFormat.NATIONAL)
+                .filter { it.isDigit() }
+                .ifEmpty { null }
+        } catch (_: Exception) {
+            null
+        }
+        nationalCache[e164] = out ?: MISS
         return out
     }
 
