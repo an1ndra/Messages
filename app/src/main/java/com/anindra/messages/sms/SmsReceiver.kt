@@ -6,7 +6,7 @@ import android.content.Intent
 import android.provider.Telephony
 import com.anindra.messages.data.KeywordFilter
 import com.anindra.messages.data.MessageBody
-import com.anindra.messages.data.ReactionFallback
+
 import com.anindra.messages.data.Repository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -74,15 +74,6 @@ class SmsReceiver : BroadcastReceiver() {
             if (KeywordFilter.route(body, repo.settings.blockedKeywords) == KeywordFilter.Route.TRASH) {
                 repo.receiveBlockedMessage(address, body, subId = subId)
                 continue
-            }
-
-            // A reaction sent by another of our devices arrives as text (#188):
-            // apply it to the referenced message instead of storing a bubble.
-            ReactionFallback.parse(body)?.let { reaction ->
-                val applied = repo.applyIncomingReaction(
-                    address, reaction.emoji, reaction.snippet, reaction.added
-                )
-                if (applied) continue
             }
 
             var sysId = 0L
