@@ -7,7 +7,7 @@ import org.junit.Test
 /**
  * A lone bubble and the first of a run carry the "tail": only the bottom
  * corner on the sender's stack side — start (left) for received bubbles, end
- * (right) for sent ones — is flat. Inside a run the flat corner sits
+ * (right) for sent ones — is flat. Inside a run the reduced radius sits
  * wherever a bubble touches a neighbour, so a stack reads as one connected
  * block.
  */
@@ -15,6 +15,7 @@ class BubbleCornerShapeTest {
 
     private val round = 18f
     private val flat = 4f
+    private val joined = 8f
 
     @Test
     fun aLoneReceivedBubbleCarriesTheTailOnItsBottomLeftCorner() {
@@ -55,15 +56,28 @@ class BubbleCornerShapeTest {
     }
 
     @Test
-    fun aMiddleBubbleIsFlatOnTheJoinedSide() {
+    fun aMiddleBubbleIsSoftenedOnTheJoinedSide() {
         assertEquals(
-            BubbleCorners(flat, round, flat, round),
+            BubbleCorners(joined, round, joined, round),
             bubbleCorners(BubblePosition.MIDDLE, isMe = false)
         )
         assertEquals(
-            BubbleCorners(round, flat, round, flat),
+            BubbleCorners(round, joined, round, joined),
             bubbleCorners(BubblePosition.MIDDLE, isMe = true)
         )
+    }
+
+    @Test
+    fun theJoinIsRounderThanTheTail() {
+        // These were one constant because both were 4dp. Guard the split: if
+        // they are merged again the middle bubble silently squares off.
+        val middle = bubbleCorners(BubblePosition.MIDDLE, isMe = true)
+        val tail = bubbleCorners(BubblePosition.SINGLE, isMe = true)
+        assertTrue(
+            "join ${middle.topEnd} must be rounder than the tail ${tail.bottomEnd}",
+            middle.topEnd > tail.bottomEnd
+        )
+        assertEquals(middle.topEnd, middle.bottomEnd, 0f)
     }
 
     @Test
