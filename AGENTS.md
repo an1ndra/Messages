@@ -96,7 +96,11 @@ in `src/main` has no preview referencing it.
    Assert from `uiautomator` dumps instead — and if a value can only be seen in
    a pixel, **make the app report it as text** (see Diagnostics) rather than
    screenshotting.
-7. Never create GitHub issues unless explicitly asked.
+7. **No `Co-Authored-By` trailer in commit messages.** The harness appends one
+   automatically when the message is passed to `git commit` inline; pipe it
+   through a file instead so the message stays exactly as written:
+   `git commit -F - <<'EOF' … EOF`.
+8. Never create GitHub issues unless explicitly asked.
 
 ## Traps that have cost real time
 
