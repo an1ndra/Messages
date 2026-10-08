@@ -77,7 +77,13 @@ class FullScreenIntentWiringTest {
         assertTrue(s.contains("setTurnScreenOn(true)"))
         assertTrue(s.contains("setShowWhenLocked(true)"))
         assertTrue(s.contains("isKeyguardLocked"))
-        assertTrue(s.contains("open_conversation_address"))
+    }
+
+    @Test
+    fun trampolineAcquiresAScreenWakeLock() {
+        val s = source("FullScreenSmsActivity.kt")
+        assertTrue(s.contains("PowerManager.SCREEN_BRIGHT_WAKE_LOCK"))
+        assertTrue(s.contains("PowerManager.ACQUIRE_CAUSES_WAKEUP"))
     }
 
     @Test

@@ -979,10 +979,11 @@ class MainActivity : FragmentActivity() {
 
         val appLockEnabled = bootVm.settings.appLockEnabled
 
-        // Script hooks: --es set_theme dark|light|system|amoled, --ez open_settings true
+        // Script hooks: --es set_theme dark|light|system|amoled, --ez open_settings true, --ez privacy_mode true|false
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system", "amoled" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
+        applyPrivacyModeProbe(intent, bootVm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
@@ -1600,6 +1601,13 @@ onBack = { navRoute = "chat" },
         vm.dumpTransferLog { entries -> vm.logTransferEntries(entries) }
     }
 
+    private fun applyPrivacyModeProbe(intent: Intent, vm: AppViewModel) {
+        if (intent.hasExtra("privacy_mode")) {
+            (application as com.anindra.messages.MessagesApplication).repository.settings.privacyModeEnabled =
+                intent.getBooleanExtra("privacy_mode", false)
+        }
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -1613,6 +1621,7 @@ onBack = { navRoute = "chat" },
         when (intent.getStringExtra("set_theme")) {
             "dark", "light", "system", "amoled" -> vm.themeMode = intent.getStringExtra("set_theme")!!
         }
+        applyPrivacyModeProbe(intent, vm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
