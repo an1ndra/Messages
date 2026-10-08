@@ -150,6 +150,53 @@ class ConversationListTest {
     }
 
     @Test
+    fun aNumberQueryMatchesAddressesAndNothingElse() {
+        // Issue #284: a number is a contact and nothing else. These three
+        // conversations all "mention" 555-000-1234 — by name, by snippet, and by
+        // a hit buried in their history — and none of them is that number.
+        val list = listOf(
+            convo(1, address = "+15550001234"),
+            convo(2, name = "555-000-1234 fan", address = "+15550009999"),
+            convo(3, snippet = "call 555-000-1234", address = "+15550008888"),
+            convo(4, address = "+15550007777")
+        )
+        assertEquals(listOf(1L), filter(list, query = "555-000-1234"))
+        // Even when the repository says 4 has a hit somewhere in its history.
+        assertEquals(
+            listOf(1L),
+            ids(ConversationList.filter(list, false, "555-000-1234", setOf(4L)) { it.snippet })
+        )
+    }
+
+    @Test
+    fun oneOrTwoDigitsLeaveTheListAlone() {
+        // Filtering to nothing while the user is still typing reads as a bug,
+        // so the list holds until the query is a real number.
+        val list = listOf(convo(1), convo(2), convo(3))
+        assertEquals(listOf(1L, 2L, 3L), filter(list, query = "1"))
+        assertEquals(listOf(1L, 2L, 3L), filter(list, query = "10"))
+    }
+
+    @Test
+    fun aTextQueryStillMatchesMessageBodiesAndSnippets() {
+        val list = listOf(
+            convo(1, name = "X1 INFO", address = "+15550001111"),
+            convo(2, snippet = "code 482913", address = "+15550002222")
+        )
+        // A sender name containing digits is still findable by name: only a
+        // query that is *purely* a number is treated as one.
+        assertEquals(listOf(1L), filter(list, query = "X1"))
+        assertEquals(listOf(2L), filter(list, query = "code"))
+        // The code inside the snippet needs the surrounding word, because a bare
+        // "482913" is a number query and finds no address (issue #284).
+        assertEquals(listOf(2L), filter(list, query = "code 482913"))
+        assertEquals(
+            listOf(2L),
+            ids(ConversationList.filter(list, false, "buried", setOf(2L)) { it.snippet })
+        )
+    }
+
+    @Test
     fun aHitAnywhereInTheThreadSurfacesTheConversation() {
         // The snippet is only the newest message. A hit in an older message
         // arrives as a conversation id from the repository, and that alone must

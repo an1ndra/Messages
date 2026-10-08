@@ -36,6 +36,15 @@ private const val BUBBLE_CORNER_DP = 18f
 private const val BUBBLE_TAIL_DP = 4f
 
 /**
+ * Radius on the side where a middle bubble meets its neighbours. Kept separate
+ * from [BUBBLE_TAIL_DP] because the two are different jobs that merely happened
+ * to share a value: the tail is the pointed corner at the end of a message,
+ * this is the join inside a stack. Sharing one constant made them impossible to
+ * tune independently.
+ */
+private const val BUBBLE_JOINED_DP = 8f
+
+/**
  * Position of [index] within its sender run. A run is a maximal stretch of
  * same-sender messages that [startsNewGroup] would not split (same day, gap
  * <= [GROUP_GAP_MS]). Alternating senders are always separate runs.
@@ -62,18 +71,21 @@ fun bubblePosition(messages: List<Message>, index: Int): BubblePosition {
  * Corner radii for a bubble. A lone bubble and the first of a run carry the
  * "tail": only the bottom corner on the sender's stack side — start (left)
  * for received bubbles, end (right) for sent ones — is flat, the other three
- * stay rounded. Inside a run the flat corner sits wherever a bubble touches
+ * stay rounded. Inside a run the reduced corner sits wherever a bubble touches
  * a neighbour — both stack-side corners for a middle bubble, the top one for
- * the last — so a stack reads as one connected block.
+ * the last — so a stack reads as one connected block. The join is softened
+ * rather than square: it still reads as joined because bubbles in a run sit
+ * 3dp apart, but it no longer looks cut off.
  */
 fun bubbleCorners(position: BubblePosition, isMe: Boolean): BubbleCorners {
     val r = BUBBLE_CORNER_DP
     val tail = BUBBLE_TAIL_DP
+    val joined = BUBBLE_JOINED_DP
     return when (position) {
         BubblePosition.SINGLE, BubblePosition.FIRST ->
             if (isMe) BubbleCorners(r, r, r, tail) else BubbleCorners(r, r, tail, r)
         BubblePosition.MIDDLE ->
-            if (isMe) BubbleCorners(r, tail, r, tail) else BubbleCorners(tail, r, tail, r)
+            if (isMe) BubbleCorners(r, joined, r, joined) else BubbleCorners(joined, r, joined, r)
         BubblePosition.LAST ->
             if (isMe) BubbleCorners(r, tail, r, r) else BubbleCorners(tail, r, r, r)
     }

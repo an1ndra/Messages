@@ -59,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.anindra.messages.data.AddressIdentity
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.ui.theme.Motion
 import com.anindra.messages.ui.theme.motionTween
@@ -1238,7 +1239,7 @@ class MainActivity : FragmentActivity() {
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
                             chatId = id
-                            chatSearchQuery = query.ifBlank { null }
+                            chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
@@ -1249,7 +1250,7 @@ class MainActivity : FragmentActivity() {
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
                             chatId = id
-                            chatSearchQuery = query.ifBlank { null }
+                            chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
@@ -1437,6 +1438,14 @@ onBack = { navRoute = "chat" },
                 }
             }
         }
+    }
+
+    /** The query to carry from the conversation list into the chat. A number
+     *  query identifies the conversation but has no message hit to scroll to or
+     *  highlight, so the chat opens on its newest message instead (issue #284). */
+    private fun handoffSearchQuery(query: String): String? {
+        val q = query.trim()
+        return q.takeUnless { it.isBlank() || AddressIdentity.isNumberQuery(it) }
     }
 
     private fun requestSmsPermissions() {
