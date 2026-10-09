@@ -222,9 +222,11 @@ fun ContactDetailsScreen(
                             }
                     )
                 } else {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
+                    // Pencil below the name, not beside it: the group name can
+                    // be long, and an icon sitting next to it reads as part of
+                    // the name rather than as an action on it.
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                     ) {
                         Text(
@@ -268,11 +270,14 @@ fun ContactDetailsScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // A group has no single person to call, view or block: the thread is the
+                // unit, not any one member. Those actions belong to a 1:1.
+                if (!isGroup) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                     DetailActionButton(
                         icon = Icons.Rounded.Call,
                         label = stringResource(R.string.action_call),
@@ -312,6 +317,7 @@ fun ContactDetailsScreen(
                             }
                         )
                     }
+                    }
                 }
             }
 
@@ -348,13 +354,16 @@ fun ContactDetailsScreen(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
-                    DetailCardRow(
-                        icon = Icons.Rounded.Block,
-                        title = stringResource(R.string.contact_block_report),
-                        titleColor = MaterialTheme.colorScheme.error,
-                        iconColor = MaterialTheme.colorScheme.error,
-                        onClick = { showBlockDialog = true }
-                    )
+                    // Blocking is per-number, so it has no meaning for a group.
+                    if (!isGroup) {
+                        DetailCardRow(
+                            icon = Icons.Rounded.Block,
+                            title = stringResource(R.string.contact_block_report),
+                            titleColor = MaterialTheme.colorScheme.error,
+                            iconColor = MaterialTheme.colorScheme.error,
+                            onClick = { showBlockDialog = true }
+                        )
+                    }
                 }
             }
 
