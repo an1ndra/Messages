@@ -1413,18 +1413,15 @@ onBack = { navRoute = "chat" },
                                         conversationId = detailsId,
                                         onBack = { navRoute = "details" },
                                         onDone = { picked ->
-                                            // Add them, then take the user into the
-                                            // new group chat so they can carry on
-                                            // writing. The name is derived from the
+                                            // Add them, then stay here: this is a
+                                            // setup screen, not somewhere to read
+                                            // or write. The name is derived from the
                                             // members by the repository and is edited
-                                            // later from the contact details screen.
+                                            // here, which is why coming back to this
+                                            // screen is the right place to stay.
                                             vm.addParticipants(
                                                 detailsId, picked,
-                                                onDone = {
-                                                    chatId = detailsId
-                                                    chatSearchQuery = null
-                                                    navRoute = "chat"
-                                                }
+                                                onDone = { navRoute = "details" }
                                             )
                                         }
                                     )
