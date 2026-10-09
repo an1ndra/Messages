@@ -295,57 +295,55 @@ onBack: () -> Unit,
                         )
                     }
                 }
-                    // Commented out at the user's request: the member rows just
-                    // repeated the name and number already shown above, so the
-                    // "N people" count and Add people are enough.
-                    //
-                    // NOTE: this was also the only UI for removeParticipant, so
-                    // with it commented out a group member can no longer be
-                    // removed from this screen. Re-enable this block to restore
-                    // that.
-                    // recipients.forEachIndexed { index, member ->
-                    //     val memberName = vm.contactNameFor(member)
-                    //     Row(
-                    //         Modifier
-                    //             .fillMaxWidth()
-                    //             .padding(
-                    //                 horizontal = SettingsLayout.ROW_CONTENT_PADDING,
-                    //                 vertical = 12.dp
-                    //             ),
-                    //         verticalAlignment = Alignment.CenterVertically
-                    //     ) {
-                    //         PersonAvatar(member, size = 40.dp)
-                    //         Spacer(Modifier.width(16.dp))
-                    //         Column(Modifier.weight(1f)) {
-                    //             Text(
-                    //                 memberName ?: formatPhoneNumber(member),
-                    //                 style = MaterialTheme.typography.bodyLarge,
-                    //                 maxLines = 1,
-                    //                 overflow = TextOverflow.Ellipsis
-                    //             )
-                    //             if (memberName != null) {
-                    //                 Text(
-                    //                     formatPhoneNumber(member),
-                    //                     style = MaterialTheme.typography.bodyMedium,
-                    //                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    //                     maxLines = 1,
-                    //                     overflow = TextOverflow.Ellipsis
-                    //                 )
-                    //             }
-                    //         }
-                    //         // The last recipient is the conversation itself, so
-                    //         // it cannot be removed.
-                    //         if (isGroup && index > 0) {
-                    //             IconButton(onClick = { vm.removeParticipant(conversationId, member) }) {
-                    //                 Icon(
-                    //                     Icons.Rounded.Close,
-                    //                     stringResource(R.string.contact_remove_people),
-                    //                     modifier = Modifier.size(20.dp)
-                    //                 )
-                    //             }
-                    //         }
-                    //     }
-                    // }
+                    // A group lists who is in it. A 1:1 does not: the single member
+                    // is already named and numbered above, so listing them again
+                    // was pure duplication. This also carries the only UI for
+                    // removeParticipant.
+                    if (isGroup) {
+                        recipients.forEachIndexed { index, member ->
+                            val memberName = vm.contactNameFor(member)
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal = SettingsLayout.ROW_CONTENT_PADDING,
+                                        vertical = 12.dp
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                PersonAvatar(member, size = 40.dp)
+                                Spacer(Modifier.width(16.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        memberName ?: formatPhoneNumber(member),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (memberName != null) {
+                                        Text(
+                                            formatPhoneNumber(member),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+        }
+        // The last recipient is the conversation itself, so
+        // it cannot be removed.
+        if (index > 0) {
+            IconButton(onClick = { vm.removeParticipant(conversationId, member) }) {
+                Icon(
+                    Icons.Rounded.Close,
+                    stringResource(R.string.contact_remove_people),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+                    }
                 }
 
             Spacer(Modifier.height(32.dp))

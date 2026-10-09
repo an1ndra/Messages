@@ -61,28 +61,41 @@ class LegacyContactDetailsWiringTest {
     }
 
     @Test
-    fun theRedundantParticipantRowIsCommentedOutOnBothScreens() {
-        // Commented rather than deleted, so the participant rows — and with them
-        // the only UI for removeParticipant — stay one uncomment away. What must
-        // not survive is a *live* copy of that row.
-        assertFalse(
-            "the legacy screen must not render a live participant row",
-            legacy.lineSequence().any {
-                it.isNotBlank() && !it.trimStart().startsWith("//") &&
-                    it.contains("PersonAvatar(address, size = 40.dp)")
-            },
-        )
-        assertFalse(
-            "the modern screen must not render live recipient rows",
-            Regex("^\\s*recipients\\.forEachIndexed", RegexOption.MULTILINE).containsMatchIn(modern),
+    fun memberRowsAreListedForGroupsOnly() {
+        // A 1:1's single member is already named and numbered in the header, so
+        // listing them again is pure duplication. A group must list everyone —
+        // that list is also the only UI for removeParticipant.
+        assertTrue(
+            "the legacy member rows must be gated on isGroup",
+            Regex("""if \(isGroup\) \{[\s\S]{0,300}?recipients\.forEachIndexed""").containsMatchIn(legacy),
         )
         assertTrue(
-            "the legacy participant row should still be present, commented",
-            legacy.contains("//     PersonAvatar(address, size = 40.dp)"),
+            "the modern member rows must be gated on isGroup too",
+            Regex("""if \(isGroup\) \{\s*\n\s*recipients\.forEachIndexed""").containsMatchIn(modern),
+        )
+    }
+
+    @Test
+    fun theGroupNameIsEditedInPlaceNotInADialog() {
+        // An outlined box over the header reads as a separate window; the field
+        // replaces the title itself.
+        assertTrue(
+            "the legacy screen must edit the name inline",
+            legacy.contains("if (renaming) {"),
+        )
+        assertFalse(
+            "no rename dialog should remain on the legacy screen",
+            legacy.contains("title = { Text(stringResource(R.string.contact_group_name)) }"),
         )
         assertTrue(
-            "the modern recipient rows should still be present, commented",
-            modern.contains("// recipients.forEachIndexed"),
+            "the inline field must not draw an underline",
+            Regex("""TextFieldDefaults\.colors\([\s\S]{0,800}?focusedIndicatorColor = Color\.Transparent""")
+                .containsMatchIn(legacy),
+        )
+        assertTrue(
+            "the pencil must sit beside the name, not below it",
+            Regex("""text = groupTitle[\s\S]{0,900}?if \(isGroup\) \{\s*\n\s*IconButton""")
+                .containsMatchIn(legacy),
         )
     }
 

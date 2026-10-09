@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +26,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
@@ -40,6 +44,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,8 +61,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
@@ -104,6 +117,23 @@ fun ContactDetailsScreen(
     var numberIsBlocked by remember { mutableStateOf(false) }
     LaunchedEffect(address) { numberIsBlocked = vm.isNumberBlocked(address) }
 
+    // A group is named from its members, and that default is editable here.
+// Keyed on membershipRevision too, so adding someone re-derives the title.
+    val membershipRevision by vm.membershipRevision.collectAsState()
+    var recipients by remember(address) { mutableStateOf(listOf(address)) }
+    LaunchedEffect(conversationId, membershipRevision) {
+        recipients = vm.conversationRecipients(conversationId).ifEmpty { listOf(address) }
+    }
+    val isGroup = recipients.size > 1
+    val groupTitle = if (isGroup) {
+        vm.conversationGroupTitle(conversationId)
+            .ifBlank { ContactDetails.title(name, address, display) }
+    } else {
+        ContactDetails.title(name, address, display)
+    }
+    var renaming by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf("") }
+
     // Already in Contacts? Then the action opens that person instead of
     // offering to add them a second time. The modern screen has had this since
     // it was written; the legacy one did not, so it always offered "Add".
@@ -144,15 +174,83 @@ fun ContactDetailsScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                Text(
-                    text = ContactDetails.title(name, address, display),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight(Alignment.CenterVertically)
-                )
+                // Inline editing: the name turns into a field in place rather than opening a
+                // dialog over the screen. The pencil sits to the right of the name
+                // so the affordance is attached to the thing it edits.
+                if (renaming) {
+                    val focusRequester = remember { FocusRequester() }
+                    // onFocusChanged emits an initial isFocused=false the moment
+                    // the field composes, before requestFocus() has run. Committing
+                    // on that would close the field the instant it opened, so only
+                    // a blur after it has genuinely held focus counts.
+                    var hadFocus by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+                    fun commit() {
+                        if (!renaming) return
+                        renaming = false
+                        // Blank clears the override, restoring the derived name.
+                        vm.setGroupTitle(conversationId, draft)
+                    }
+                    // Borderless and centred: an outlined box in the middle of the header reads
+                    // as a separate dialog-ish thing, and a left-aligned name would
+                    // jump when the field takes over.
+                    TextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.headlineSmall.copy(
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { commit() }),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .focusRequester(focusRequester)
+                            .onFocusChanged {
+                                if (it.isFocused) hadFocus = true else if (hadFocus) commit()
+                            }
+                    )
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    ) {
+                        Text(
+                            text = groupTitle,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            textDecoration = if (isGroup) TextDecoration.Underline else null
+                        )
+                        // Only a group has an editable name; a 1:1's title is the
+                        // contact's own name and is not ours to change.
+                        if (isGroup) {
+                            IconButton(onClick = {
+                                draft = groupTitle
+                                renaming = true
+                            }) {
+                                Icon(
+                                    Icons.Rounded.Edit,
+                                    stringResource(R.string.contact_group_name),
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
                 ContactDetails.subtitle(name, address, display)?.let { number ->
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -280,7 +378,11 @@ fun ContactDetailsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            stringResource(R.string.contact_one_person),
+                            if (isGroup) {
+                                context.getString(R.string.contact_people_count, recipients.size)
+                            } else {
+                                stringResource(R.string.contact_one_person)
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -306,41 +408,57 @@ fun ContactDetailsScreen(
                             )
                         }
                     }
-                    // Commented out at the user's request, matching
-                    // ContactDetailsScreen: the row just repeated the name and
-                    // number already shown above.
-                    // HorizontalDivider(
-                    //     modifier = Modifier.padding(horizontal = 16.dp),
-                    //     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    // )
-                    // Row(
-                    //     Modifier
-                    //         .fillMaxWidth()
-                    //         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    //     verticalAlignment = Alignment.CenterVertically
-                    // ) {
-                    //     PersonAvatar(address, size = 40.dp)
-                    //     Spacer(Modifier.width(16.dp))
-                    //     Column(Modifier.weight(1f)) {
-                    //         Row(verticalAlignment = Alignment.CenterVertically) {
-                    //             Text(
-                    //                 ContactDetails.title(name, address, display),
-                    //                 style = MaterialTheme.typography.bodyLarge
-                    //             )
-                    //             if (workProfile) {
-                    //                 Spacer(Modifier.width(6.dp))
-                    //                 WorkProfileBadge()
-                    //             }
-                    //         }
-                    //         ContactDetails.subtitle(name, address, display)?.let { number ->
-                    //             Text(
-                    //                 number,
-                    //                 style = MaterialTheme.typography.bodyMedium,
-                    //                 color = MaterialTheme.colorScheme.onSurfaceVariant
-                    //             )
-                    //         }
-                    //     }
-                    // }
+                    // A group lists who is in it. A 1:1 does not: the single member is already
+                    // named and numbered above, so listing them again was pure
+                    // duplication.
+                    if (isGroup) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+                        recipients.forEachIndexed { index, member ->
+                            val memberName = vm.contactNameFor(member)
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                PersonAvatar(member, size = 40.dp)
+                                Spacer(Modifier.width(16.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        memberName ?: formatPhoneNumber(member),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (memberName != null) {
+                                        Text(
+                                            formatPhoneNumber(member),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                                // The last recipient is the conversation itself,
+                                // so it cannot be removed.
+                                if (index > 0) {
+                                    IconButton(
+                                        onClick = { vm.removeParticipant(conversationId, member) }
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Close,
+                                            stringResource(R.string.contact_remove_people),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
