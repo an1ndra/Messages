@@ -580,8 +580,10 @@ fun ChatScreen(
     vm: AppViewModel,
     conversationId: Long,
     searchQuery: String? = null,
+    initialDraft: String = "",
     onBack: () -> Unit,
-    onOpenDetails: () -> Unit = {}
+    onOpenDetails: () -> Unit = {},
+    onInitialDraftConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -1072,6 +1074,12 @@ fun ChatScreen(
             context, conversationId
         )
         draftLoaded = false
+    }
+    LaunchedEffect(conversationId, initialDraft) {
+        if (initialDraft.isNotBlank()) {
+            draft = initialDraft
+            onInitialDraftConsumed()
+        }
     }
     LaunchedEffect(convo?.address) {
         com.anindra.messages.sms.ForegroundTracker.setOpenConversation(convo?.address)
