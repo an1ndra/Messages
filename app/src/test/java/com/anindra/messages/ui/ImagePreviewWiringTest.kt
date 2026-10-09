@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -58,6 +59,38 @@ class ImagePreviewWiringTest {
         assertTrue(
             "the preview must use ContentScale.Fit — Crop would hide what it cannot show",
             preview.contains("contentScale = ContentScale.Fit"),
+        )
+    }
+
+    /**
+     * The close button has to clear the status bar.
+     *
+     * `align(TopEnd)` put it at y=21..147 on this AVD, and the status-bar inset
+     * covers everything above y=137 (52dp at 420dpi). The button rendered, was
+     * present in the accessibility tree with a clickable node, and did nothing
+     * when tapped — only back and a tap below the inset worked.
+     */
+    @Test
+    fun closeButtonAndBackdropClearTheStatusBarInset() {
+        val preview = bodyOf("ImagePreview")
+        assertTrue(
+            "the close button must be padded clear of the status bar",
+            preview.contains(".windowInsetsPadding(WindowInsets.statusBars)"),
+        )
+        assertEquals(
+            "both the backdrop and the button need the inset padding",
+            2,
+            Regex("\\.windowInsetsPadding\\(WindowInsets\\.statusBars\\)").findAll(preview).count(),
+        )
+    }
+
+    @Test
+    fun closeButtonDismissesThePreview() {
+        val preview = bodyOf("ImagePreview")
+        val button = preview.substringAfter("contentAlignment = Alignment.Center")
+        assertTrue(
+            "the close button must call onDismiss",
+            button.contains("onClick = onDismiss"),
         )
     }
 
