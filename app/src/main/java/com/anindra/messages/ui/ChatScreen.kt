@@ -581,9 +581,11 @@ fun ChatScreen(
     conversationId: Long,
     searchQuery: String? = null,
     initialDraft: String = "",
+    initialMedia: List<android.net.Uri> = emptyList(),
     onBack: () -> Unit,
     onOpenDetails: () -> Unit = {},
-    onInitialDraftConsumed: () -> Unit = {}
+    onInitialDraftConsumed: () -> Unit = {},
+    onInitialMediaConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -1075,8 +1077,17 @@ fun ChatScreen(
         )
         draftLoaded = false
     }
-    LaunchedEffect(conversationId, initialDraft) {
-        if (initialDraft.isNotBlank()) {
+    // Content handed over by an external share, handled in one effect so the text
+    // and the media are read from the same composition. Sharing text with an
+    // image makes the text that image's caption, not a second message, so it is
+    // never also left in the composer. Both are cleared through the consume
+    // callbacks, which re-runs this effect with nothing to do.
+    LaunchedEffect(conversationId, initialDraft, initialMedia) {
+        if (initialMedia.isNotEmpty()) {
+            initialMedia.forEach { vm.sendMediaMessage(conversationId, it, initialDraft) }
+            onInitialMediaConsumed()
+            onInitialDraftConsumed()
+        } else if (initialDraft.isNotBlank()) {
             draft = initialDraft
             onInitialDraftConsumed()
         }
