@@ -1439,7 +1439,18 @@ onBack = { navRoute = "chat" },
                                             pendingShareMedia = emptyList()
                                             navRoute = "list"
                                         },
-                                        onOpenDetails = { detailsId = chatId; navRoute = "details" },
+                                        // Leaving for contact details consumes the
+                                        // search handoff. ChatScreen lives inside
+                                        // AnimatedContent and is disposed on the
+                                        // route change, so coming back built a fresh
+                                        // one that re-read this same query and replayed
+                                        // the highlight on the message. Every other
+                                        // route out of a chat already clears it.
+                                        onOpenDetails = {
+                                            detailsId = chatId
+                                            chatSearchQuery = null
+                                            navRoute = "details"
+                                        },
                                         onInitialDraftConsumed = { pendingShareBody = "" },
                                         onInitialMediaConsumed = { pendingShareMedia = emptyList() }
                                     )
