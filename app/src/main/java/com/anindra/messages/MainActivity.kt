@@ -942,6 +942,7 @@ class MainActivity : FragmentActivity() {
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
+    private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
 
     private var lastResumeTime = 0L
 
@@ -992,9 +993,11 @@ class MainActivity : FragmentActivity() {
             )
         }
         recipientFromIntent(intent)?.let { pendingOpenAddress = it }
-        // Opening straight from an external sms:/smsto: launch: hold on a neutral
-        // screen while the conversation resolves, so the list never flashes first.
-        if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
+        shareBodyFromIntent(intent)?.let { pendingShareBody = it }
+        when {
+            pendingOpenAddress != null && navRoute == "list" -> navRoute = "opening"
+            pendingOpenAddress == null && pendingShareBody.isNotBlank() && navRoute == "list" -> navRoute = "new"
+        }
 
         val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -1289,7 +1292,10 @@ class MainActivity : FragmentActivity() {
                                     "opening" -> androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())
                                     "new" -> NewChatScreen(
                                         vm = vm,
-                                        onBack = { navRoute = "list" },
+                                        onBack = {
+                                            pendingShareBody = ""
+                                            navRoute = "list"
+                                        },
                                         onPick = { address, name ->
                                             vm.openOrCreate(address, name) { id ->
                                                 chatId = id
@@ -1429,8 +1435,13 @@ onBack = { navRoute = "chat" },
                                         vm = vm,
                                         conversationId = chatId,
                                         searchQuery = chatSearchQuery,
-                                        onBack = { navRoute = "list" },
-                                        onOpenDetails = { detailsId = chatId; navRoute = "details" }
+                                        initialDraft = pendingShareBody,
+                                        onBack = {
+                                            pendingShareBody = ""
+                                            navRoute = "list"
+                                        },
+                                        onOpenDetails = { detailsId = chatId; navRoute = "details" },
+                                        onInitialDraftConsumed = { pendingShareBody = "" }
                                     )
                                 }
                             }
@@ -1630,9 +1641,11 @@ onBack = { navRoute = "chat" },
             )
         }
         recipientFromIntent(intent)?.let { pendingOpenAddress = it }
-        // Warm external launch: hide whatever is on screen (usually the list)
-        // immediately so it never shows before the resolved chat.
-        if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
+        shareBodyFromIntent(intent)?.let { pendingShareBody = it }
+        when {
+            pendingOpenAddress != null && navRoute == "list" -> navRoute = "opening"
+            pendingOpenAddress == null && pendingShareBody.isNotBlank() && navRoute == "list" -> navRoute = "new"
+        }
     }
 
     /** Recipient of an external `sms:`/`smsto:`/`mms:`/`mmsto:` launch (the
@@ -1647,5 +1660,24 @@ onBack = { navRoute = "chat" },
         val first = raw.substringBefore('?').split(';', ',').firstOrNull()?.trim().orEmpty()
         val decoded = Uri.decode(first)
         return decoded.ifBlank { null }
+    }
+
+    /** Body text supplied by an external share intent, either as the
+     *  `?body=` query on an SMS URI or as `EXTRA_TEXT` from an `ACTION_SEND`. */
+    private fun shareBodyFromIntent(intent: Intent): String? {
+        val text = when (intent.action) {
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
+            Intent.ACTION_SENDTO, Intent.ACTION_VIEW -> {
+                val data = intent.data
+                val query = data?.encodedQuery
+                if (query.isNullOrBlank()) null
+                else query.split('&').map { it.split('=', limit = 2) }
+                    .find { it.getOrNull(0) == "body" }
+                    ?.getOrNull(1)
+                    ?.let(Uri::decode)
+            }
+            else -> null
+        }
+        return text?.trim()?.takeIf { it.isNotBlank() }
     }
 }
