@@ -56,7 +56,7 @@ private const val IMPORT_BATCH = 500
 /** How often the importer reports progress, in records. */
 private const val IMPORT_PROGRESS_EVERY = 250
 
-private const val DB_VERSION = 24
+private const val DB_VERSION = 25
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -142,6 +142,36 @@ class Db(context: Context) :
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
         db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
         createConversationRecipients(db)
+        createMessageProviderIds(db)
+    }
+
+    /**
+     * Which provider rows a local message owns.
+     *
+     * `messages.sys_id` can only hold one, which is true for a 1:1 and false for
+     * a group: sending one message to N members puts N rows in the Sent box,
+     * and sync used to adopt the first onto the local row and then import the
+     * rest as brand-new messages — so every group text appeared N times.
+     *
+     * `messages.sys_id` stays as the *primary* provider row so every existing
+     * path keeps working; this table holds the full set.
+     */
+    private fun createMessageProviderIds(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS message_provider_ids(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                transport TEXT NOT NULL,
+                sys_id INTEGER NOT NULL,
+                UNIQUE(transport, sys_id))"""
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_msg_provider_ids_msg ON message_provider_ids(message_id)"
+        )
+        db.execSQL(
+            """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+               SELECT id, transport, sys_id FROM messages WHERE sys_id>0"""
+        )
     }
 
     /**
@@ -280,6 +310,12 @@ class Db(context: Context) :
             // Who sent each message. Blank means the conversation's own address
             // (1:1 chats, and everything sent by the user).
             db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
+        }
+        if (oldVersion < 25) {
+            // A group message owns one provider row per recipient; messages.
+            // sys_id can only record one of them. Creating the table also
+            // backfills every id already linked.
+            createMessageProviderIds(db)
         }
     }
 
@@ -1357,9 +1393,15 @@ class Repository(private val context: Context) {
             if (conversationIds.isEmpty()) return
             val ph = conversationIds.joinToString(",") { "?" }
             data class Purge(val transport: String, val sysId: Long)
-            val ids = mutableListOf<Purge>()
+            val ids = mutableSetOf<Purge>()
+            // Every provider row the conversation owns, not just the one in
+            // messages.sys_id: a group message writes one per recipient, and
+            // deleting the chat must not leave the rest in the Sent box to be
+            // re-imported as a new 1:1.
             db.readableDatabase.rawQuery(
-                "SELECT transport, sys_id FROM messages WHERE conversation_id IN ($ph) AND sys_id>0",
+                """SELECT p.transport, p.sys_id FROM message_provider_ids p
+                   JOIN messages m ON m.id = p.message_id
+                   WHERE m.conversation_id IN ($ph)""",
                 conversationIds.map { it.toString() }.toTypedArray()
             ).use { c -> while (c.moveToNext()) ids.add(Purge(c.getString(0), c.getLong(1))) }
             ids.groupBy { it.transport }.forEach { (transport, messages) ->
@@ -3000,6 +3042,25 @@ class Repository(private val context: Context) {
     /** True until a sync that actually had SMS access completes. */
     val needsInitialImport: Boolean get() = !settings.firstImportDone
 
+    /**
+     * Records that [sysId] belongs to the row just inserted, which has no
+     * handle until the insert's row id is read back.
+     */
+    private fun linkProviderId(db: Db, sysId: Long, transport: String) {
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM messages WHERE transport=? AND sys_id=?",
+            arrayOf(transport, sysId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) {
+                db.writableDatabase.execSQL(
+                    """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                       VALUES(?,?,?)""",
+                    arrayOf(c.getLong(0).toString(), transport, sysId.toString())
+                )
+            }
+        }
+    }
+
     /** Imports system SMS into the local DB, grouped by address, deduped by sys_id. */
     /**
      * Deletes local message rows whose provider row no longer exists.
@@ -3241,8 +3302,11 @@ class Repository(private val context: Context) {
                 val existing = mutableSetOf<Long>()
                 incomingSysIds.chunked(500).forEach { chunk ->
                     val ph = chunk.joinToString(",") { "?" }
+                    // From the mapping table, not messages.sys_id: a group
+                    // message owns several provider rows and only one of them
+                    // is recorded in that column.
                     db.readableDatabase.rawQuery(
-                        "SELECT sys_id FROM messages WHERE transport=? AND sys_id IN ($ph)",
+                        "SELECT sys_id FROM message_provider_ids WHERE transport=? AND sys_id IN ($ph)",
                         arrayOf(MmsSupport.TRANSPORT_SMS) + chunk.map { it.toString() }
                     ).use { c -> while (c.moveToNext()) existing.add(c.getLong(0)) }
                 }
@@ -3283,28 +3347,57 @@ class Repository(private val context: Context) {
                                     m.date.toString(), m.date.toString())
                             ).use { c -> if (c.moveToFirst()) localId = c.getLong(0) }
 
-                            try {
-                                if (localId != -1L) {
-                                    db.writableDatabase.execSQL(
-                                        "UPDATE messages SET sys_id=? WHERE id=?",
-                                        arrayOf(m.sysId.toString(), localId.toString())
-                                    )
-                                } else {
-                                    db.writableDatabase.execSQL(
-                                        """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
-                                           VALUES(?,?,?,?,?,?,?,?)""",
-                                        arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
-                                            when (m.type) {
-                                                android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
-                                                android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
-                                                else -> "sent"
-                                            },
-                                            m.sysId, MmsSupport.TRANSPORT_SMS, m.subId)
-                                    )
+                            if (localId == -1L) {
+                                    // A group send puts one provider row per
+                                    // recipient on the wire, so by the time the
+                                    // second is reached the first has already
+                                    // claimed the only sys_id=0 row. Without this
+                                    // second lookup every member beyond the first
+                                    // arrived as a brand-new message, and one tap
+                                    // showed N bubbles. The window is tight
+                                    // because these rows are written in the same
+                                    // send loop; 24h would swallow a genuine
+                                    // repeat of the same text.
+                                    db.readableDatabase.rawQuery(
+                                        """SELECT id FROM messages
+                                           WHERE conversation_id=? AND transport=? AND body=? AND is_me=?
+                                             AND ABS(timestamp-?) < 120000
+                                           ORDER BY ABS(timestamp-?) LIMIT 1""",
+                                        arrayOf(cid.toString(), MmsSupport.TRANSPORT_SMS, m.body,
+                                            if (isMe) "1" else "0", m.date.toString(), m.date.toString())
+                                    ).use { c -> if (c.moveToFirst()) localId = c.getLong(0) }
                                 }
-                            } catch (e: android.database.sqlite.SQLiteException) {
-                                android.util.Log.e("RepoSync", "INSERT failed: ${e.message}", e)
-                            }
+
+                                try {
+                                    if (localId != -1L) {
+                                        db.writableDatabase.execSQL(
+                                            """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                                               VALUES(?,?,?)""",
+                                            arrayOf(localId.toString(), MmsSupport.TRANSPORT_SMS, m.sysId.toString())
+                                        )
+                                        // messages.sys_id keeps only the primary
+                                        // row; the mapping table holds the rest.
+                                        db.writableDatabase.execSQL(
+                                            "UPDATE messages SET sys_id=? WHERE id=? AND sys_id=0",
+                                            arrayOf(m.sysId.toString(), localId.toString())
+                                        )
+                                    } else {
+                                        db.writableDatabase.execSQL(
+                                            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
+                                               VALUES(?,?,?,?,?,?,?,?)""",
+                                            arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
+                                                when (m.type) {
+                                                    android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
+                                                    android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
+                                                    else -> "sent"
+                                                },
+                                                m.sysId, MmsSupport.TRANSPORT_SMS, m.subId)
+                                        )
+                                        linkProviderId(db, m.sysId, MmsSupport.TRANSPORT_SMS)
+                                    }
+                                } catch (e: android.database.sqlite.SQLiteException) {
+                                    android.util.Log.e("RepoSync", "INSERT failed: ${e.message}", e)
+                                }
                             existing.add(m.sysId)
                             done++
                             _initialSyncProgress.value = SyncProgress.import(done, pending)
