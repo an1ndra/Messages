@@ -77,7 +77,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.work.runtime)
     implementation("androidx.biometric:biometric:1.1.0")
-    implementation("androidx.fragment:fragment-ktx:1.6.2")
+    implementation("androidx.fragment:fragment-ktx:1.9.1")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -99,5 +99,5 @@ dependencies {
     // before the app is switched over to :mms.
     testImplementation(project(":mms"))
     // Real org.json on the unit-test classpath; the android.jar stubs throw.
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
 }
