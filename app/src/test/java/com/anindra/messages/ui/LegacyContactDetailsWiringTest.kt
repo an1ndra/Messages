@@ -130,6 +130,37 @@ class LegacyContactDetailsWiringTest {
     }
 
     @Test
+    fun aGroupHasNoPerPersonActions() {
+        // A group is a thread, not a person: there is no single number to call,
+        // view in Contacts, or block. Those all belong to a 1:1.
+        val actions = legacy.substringAfter("Spacer(Modifier.height(16.dp))")
+            .substringBefore("Spacer(Modifier.height(12.dp))")
+        assertTrue(
+            "the Call/Contact row must be gated on !isGroup",
+            Regex("""if \(!isGroup\) \{\s*\n\s*Row\(""").containsMatchIn(actions),
+        )
+        val blockRow = legacy.substringAfter("contact_notifications")
+        assertTrue(
+            "Block number must be gated on !isGroup",
+            Regex("""if \(!isGroup\) \{[\s\S]{0,200}?contact_block_report""").containsMatchIn(blockRow),
+        )
+    }
+
+    @Test
+    fun thePencilSitsBelowTheNameNotBesideIt() {
+        // Beside a long group name the icon reads as part of the name.
+        assertTrue(
+            "the title and pencil must share a Column",
+            Regex("""text = groupTitle[\s\S]{0,900}?Icons\.Rounded\.Edit""")
+                .containsMatchIn(legacy),
+        )
+        assertTrue(
+            "the pencil must not share the name's Row",
+            !Regex("""Row\([\s\S]{0,300}?text = groupTitle""").containsMatchIn(legacy),
+        )
+    }
+
+    @Test
     fun theParticipantCountRowSurvives() {
         assertTrue(
             "the 'N other person' count must stay",
