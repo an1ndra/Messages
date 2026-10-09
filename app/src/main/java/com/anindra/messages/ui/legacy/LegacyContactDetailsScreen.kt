@@ -338,6 +338,10 @@ fun ContactDetailsScreen(
 
             Card(
                 shape = RoundedCornerShape(16.dp),
+                // M3's Card carries a tonal-elevation shadow by default. These
+                // are grouped rows on the page background, not a raised surface,
+                // and the drop shadow made them read as floating.
+                elevation = CardDefaults.cardElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 ),
@@ -384,6 +388,10 @@ fun ContactDetailsScreen(
 
             Card(
                 shape = RoundedCornerShape(16.dp),
+                // M3's Card carries a tonal-elevation shadow by default. These
+                // are grouped rows on the page background, not a raised surface,
+                // and the drop shadow made them read as floating.
+                elevation = CardDefaults.cardElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 ),
