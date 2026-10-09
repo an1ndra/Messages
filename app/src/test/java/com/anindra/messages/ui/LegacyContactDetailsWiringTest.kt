@@ -206,10 +206,11 @@ class LegacyContactDetailsWiringTest {
     fun addingPeopleStaysOnTheDetailsScreen() {
         // It is a setup screen, not somewhere to read or write: bouncing the
         // user into the chat made them think the group had been created and
-        // already had something in it.
+        // already had something in it. The screen then shows the new group,
+        // where its name can be edited.
         assertTrue(
-            "completing add-people must not navigate to the chat",
-            Regex("""vm\.addParticipants\([\s\S]{0,300}?onDone = \{ navRoute = "details" \}""")
+            "completing add-people must start a new group and stay on details",
+            Regex("""vm\.createGroup\([\s\S]{0,300}?navRoute = "details"\s*\n""")
                 .containsMatchIn(main),
         )
         assertFalse(

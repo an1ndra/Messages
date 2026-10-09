@@ -584,6 +584,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Starts a new group thread from [conversationId] with [addresses]. The
+     * conversation they were added from is left untouched, so a group started
+     * from a 1:1 does not inherit that history. [onReady] receives the new
+     * conversation id.
+     */
+    fun createGroup(conversationId: Long, addresses: List<String>, onReady: (Long) -> Unit) {
+        scope.launch(Dispatchers.IO) {
+            val id = repo.createGroupFrom(conversationId, addresses)
+            withContext(Dispatchers.Main) { onReady(id) }
+        }
+    }
+
     fun backupDatabase(pin: String, onResult: (com.anindra.messages.data.Repository.ExportResult) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -1413,16 +1426,16 @@ onBack = { navRoute = "chat" },
                                         conversationId = detailsId,
                                         onBack = { navRoute = "details" },
                                         onDone = { picked ->
-                                            // Add them, then stay here: this is a
-                                            // setup screen, not somewhere to read
-                                            // or write. The name is derived from the
-                                            // members by the repository and is edited
-                                            // here, which is why coming back to this
-                                            // screen is the right place to stay.
-                                            vm.addParticipants(
-                                                detailsId, picked,
-                                                onDone = { navRoute = "details" }
-                                            )
+                                            // A group is a new thread, not the
+                                            // conversation it was started from
+                                            // — it must not carry that history.
+                                            // Stay on the details screen, now
+                                            // showing the new group, where its
+                                            // name can be edited.
+                                            vm.createGroup(detailsId, picked) { newId ->
+                                                if (newId > 0) detailsId = newId
+                                                navRoute = "details"
+                                            }
                                         }
                                     )
                                     else -> ChatScreen(

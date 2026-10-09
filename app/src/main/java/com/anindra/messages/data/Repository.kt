@@ -56,7 +56,7 @@ private const val IMPORT_BATCH = 500
 /** How often the importer reports progress, in records. */
 private const val IMPORT_PROGRESS_EVERY = 250
 
-private const val DB_VERSION = 25
+private const val DB_VERSION = 26
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -69,7 +69,7 @@ class Db(context: Context) :
         db.execSQL(
             """CREATE TABLE conversations(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                address TEXT NOT NULL UNIQUE,
+                address TEXT NOT NULL,
                 name TEXT NOT NULL,
                 snippet TEXT NOT NULL DEFAULT '',
                 timestamp INTEGER NOT NULL DEFAULT 0,
@@ -317,6 +317,60 @@ class Db(context: Context) :
             // backfills every id already linked.
             createMessageProviderIds(db)
         }
+        if (oldVersion < 26) {
+            dropConversationAddressUnique(db)
+        }
+    }
+
+    /**
+     * Rebuilds `conversations` without UNIQUE on `address`.
+     *
+     * That constraint was standing in for "a conversation is its own lookup
+     * key", which is true of a 1:1 but not of a group: starting a group from a
+     * chat gives the new thread the same primary contact, and uniqueness made
+     * that impossible. Two rows may now share an address, and the inbound
+     * lookup ([conversationIdForAddressBlocking]) resolves the tie by
+     * preferring the 1:1, which is the thread a bare SMS from that person
+     * almost certainly means.
+     *
+     * SQLite cannot drop a column constraint in place, hence the rebuild.
+     */
+    private fun dropConversationAddressUnique(db: SQLiteDatabase) {
+        db.execSQL("DROP INDEX IF EXISTS idx_conversations_list")
+        db.execSQL("DROP INDEX IF EXISTS idx_conversations_archived")
+        db.execSQL("ALTER TABLE conversations RENAME TO conversations_preunique")
+        db.execSQL(
+            """CREATE TABLE conversations(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                address TEXT NOT NULL,
+                name TEXT NOT NULL,
+                snippet TEXT NOT NULL DEFAULT '',
+                timestamp INTEGER NOT NULL DEFAULT 0,
+                unread_count INTEGER NOT NULL DEFAULT 0,
+                last_is_me INTEGER NOT NULL DEFAULT 0,
+                archived INTEGER NOT NULL DEFAULT 0,
+                blocked INTEGER NOT NULL DEFAULT 0,
+                blocked_at INTEGER NOT NULL DEFAULT 0,
+                pinned INTEGER NOT NULL DEFAULT 0,
+                draft TEXT NOT NULL DEFAULT '',
+                draft_date INTEGER NOT NULL DEFAULT 0,
+                deleted_at INTEGER NOT NULL DEFAULT 0,
+                deleted_reason TEXT NOT NULL DEFAULT 'manual',
+                group_title TEXT NOT NULL DEFAULT '')"""
+        )
+        db.execSQL(
+            """INSERT INTO conversations(
+                   id, address, name, snippet, timestamp, unread_count, last_is_me,
+                   archived, blocked, blocked_at, pinned, draft, draft_date,
+                   deleted_at, deleted_reason, group_title)
+               SELECT id, address, name, snippet, timestamp, unread_count, last_is_me,
+                   archived, blocked, blocked_at, pinned, draft, draft_date,
+                   deleted_at, deleted_reason, group_title
+               FROM conversations_preunique"""
+        )
+        db.execSQL("DROP TABLE conversations_preunique")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
     }
 
     /** Collapses rows that share a system-provider id (legacy double-imports,
@@ -727,8 +781,15 @@ class Repository(private val context: Context) {
         // (E.164, national, formatted) maps to the same conversation row.
         val target = canonical(address).ifEmpty { address }
         var convoId = -1L
+        // Prefer the 1:1: a group started from this chat carries the same
+        // address, and starting a new chat with someone means their private
+        // thread, not the group that also contains them.
         db.writableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE address=?",
+            """SELECT c.id FROM conversations c
+               WHERE c.address=? AND c.deleted_at=0
+               ORDER BY (SELECT count(*) FROM conversation_recipients r
+                          WHERE r.conversation_id=c.id)=1 DESC, c.id ASC
+               LIMIT 1""",
             arrayOf(target)
         ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
         if (convoId == -1L) convoId = findConversationForAddress(target) ?: -1L
@@ -762,6 +823,61 @@ class Repository(private val context: Context) {
             if (restored > 0) notifyChanged()
         }
         convoId
+    }
+
+    /**
+     * Starts a **new** group thread with [addresses], rather than turning the
+     * conversation they were added from into one.
+     *
+     * Adding people used to mutate the conversation in place, which silently
+     * moved the whole private history with Sarah into the group — so a group
+     * created from a 1:1 began as that conversation, history and all. A group
+     * is a new thread that starts empty; the 1:1 stays exactly as it was.
+     *
+     * Both rows carry the same `conversations.address`, which is safe because
+     * inbound attribution already resolves a 1:1 with the sender ahead of any
+     * group (see [conversationForInbound]).
+     *
+     * Returns the new conversation id, or -1 if it could not be created.
+     */
+    fun createGroupFrom(conversationId: Long, addresses: List<String>): Long = runOnIo {
+        val primaryRow = db.readableDatabase.rawQuery(
+            "SELECT address, name FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) (c.getString(0) ?: "") to (c.getString(1) ?: "") else null
+        } ?: return@runOnIo -1L
+        val primary = primaryRow.first
+        val wanted = addresses.map { it.trim() }
+            .filter { it.isNotEmpty() && it != primary }
+            .distinct()
+        if (wanted.isEmpty()) return@runOnIo -1L
+
+        val target = canonical(primary).ifEmpty { primary }
+        val cv = ContentValues().apply {
+            put("address", target)
+            put("name", primaryRow.second)
+            put("snippet", "")
+            put("timestamp", System.currentTimeMillis())
+            put("last_is_me", 0)
+        }
+        val newId = db.writableDatabase.insert("conversations", null, cv)
+        if (newId <= 0) return@runOnIo -1L
+        upsertParticipant(db.writableDatabase, target)
+        db.writableDatabase.execSQL(
+            "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+            arrayOf(newId, target)
+        )
+        for (a in wanted) {
+            val t = canonical(a).ifEmpty { a }
+            upsertParticipant(db.writableDatabase, t)
+            db.writableDatabase.execSQL(
+                "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                arrayOf(newId, t)
+            )
+        }
+        ensureGroupTitle(newId)
+        notifyChanged()
+        newId
     }
 
     suspend fun conversationByIdSuspend(id: Long): Conversation? = runOnIoAsync {
@@ -899,10 +1015,23 @@ class Repository(private val context: Context) {
     fun conversationForInboundBlocking(address: String): Long? =
         conversationIdForAddressBlocking(address) ?: soleGroupBlocking(address)
 
+    /**
+     * The conversation [address] names, or null when there is none.
+     *
+     * A group started from a 1:1 shares its primary contact's address, so this
+     * may match more than one row. The single-recipient thread wins: it is the
+     * private chat that predates the group, and a bare SMS from that person
+     * means it rather than the group.
+     */
     private fun conversationIdForAddressBlocking(address: String): Long? {
         var id: Long? = null
         db.readableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE address=? AND deleted_at=0", arrayOf(address)
+            """SELECT c.id FROM conversations c
+               WHERE c.address=? AND c.deleted_at=0
+               ORDER BY (SELECT count(*) FROM conversation_recipients r
+                          WHERE r.conversation_id=c.id)=1 DESC, c.id ASC
+               LIMIT 1""",
+            arrayOf(address)
         ).use { c -> if (c.moveToFirst()) id = c.getLong(0) }
         return id ?: matchConversationId(db.readableDatabase, address, activeOnly = true)
     }
@@ -3183,11 +3312,21 @@ class Repository(private val context: Context) {
         )
     )
 
-    /** Drops conversations left with no messages, so the list has no empty rows. */
+    /**
+     * Drops conversations left with no messages, so the list has no empty rows.
+     *
+     * A group is exempt: it is created as a new, deliberately empty thread, so
+     * this running right after one is made would erase it and leave the user on
+     * the details page for a chat that no longer exists. Deleting everything in
+     * a group trashes it like any other conversation, which is the explicit way
+     * to get rid of one.
+     */
     private fun removeEmptiedConversations() {
         db.writableDatabase.execSQL(
             "DELETE FROM conversations WHERE deleted_at=0 AND id NOT IN " +
-                "(SELECT DISTINCT conversation_id FROM messages)"
+                "(SELECT DISTINCT conversation_id FROM messages) AND id NOT IN " +
+                "(SELECT conversation_id FROM conversation_recipients " +
+                " GROUP BY conversation_id HAVING count(*)>1)"
         )
     }
 
@@ -3611,15 +3750,23 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             "SELECT id, address, deleted_at FROM conversations ORDER BY id", null
         ).use { c -> while (c.moveToNext()) convos.add(Triple(c.getLong(0), c.getString(1), c.getInt(2))) }
+        // A group is a thread in its own right, not a spelling variant of the
+        // 1:1 it shares a contact with. Folding it in would delete the group and
+        // hand its messages to the private chat, so groups are left alone on
+        // both sides of the merge.
+        val groups = HashSet<Long>()
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id FROM conversation_recipients GROUP BY conversation_id HAVING count(*)>1", null
+        ).use { c -> while (c.moveToNext()) groups.add(c.getLong(0)) }
         val canon = convos.map { canonical(it.second) }
         val primary = HashMap<Long, Long>()
         for (i in convos.indices) {
             val a = convos[i]
-            if (a.third != 0) { primary[a.first] = a.first; continue }
+            if (a.third != 0 || a.first in groups) { primary[a.first] = a.first; continue }
             var base = a.first
             for (j in 0 until i) {
                 val b = convos[j]
-                if (b.third != 0 || primary[b.first] != b.first) continue
+                if (b.third != 0 || b.first in groups || primary[b.first] != b.first) continue
                 val ca = canon[i]
                 val same = samePerson(b.second, a.second) ||
                     (ca.isNotEmpty() && ca == canon[j])
