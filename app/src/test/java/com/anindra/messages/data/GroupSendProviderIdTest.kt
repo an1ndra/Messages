@@ -43,7 +43,10 @@ class GroupSendProviderIdTest {
             Regex("if \\(oldVersion < 25\\) \\{[\\s\\S]{0,600}?createMessageProviderIds\\(db\\)")
                 .containsMatchIn(repo),
         )
-        assertTrue("the schema version must have been bumped", repo.contains("DB_VERSION = 25"))
+        // Anchored to "newer than the migration" rather than a literal version,
+        // so a later schema bump does not read as this one being undone.
+        val version = Regex("DB_VERSION = (\\d+)").find(repo)!!.groupValues[1].toInt()
+        assertTrue("the schema version must have been bumped", version >= 25)
         assertTrue(
             "every already-linked id must be backfilled",
             Regex("""INSERT OR IGNORE INTO message_provider_ids[\s\S]{0,200}?SELECT id, transport, sys_id FROM messages WHERE sys_id>0""")
