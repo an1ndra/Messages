@@ -12,8 +12,7 @@ class WakeOnLockTest {
             NotificationHelper.shouldWake(
                 keyguardLocked = true,
                 notificationsEnabled = true,
-                receiveSoundEnabled = true,
-                privacyMode = false
+                receiveSoundEnabled = true
             )
         )
     }
@@ -24,8 +23,7 @@ class WakeOnLockTest {
             NotificationHelper.shouldWake(
                 keyguardLocked = false,
                 notificationsEnabled = true,
-                receiveSoundEnabled = true,
-                privacyMode = false
+                receiveSoundEnabled = true
             )
         )
     }
@@ -36,8 +34,7 @@ class WakeOnLockTest {
             NotificationHelper.shouldWake(
                 keyguardLocked = true,
                 notificationsEnabled = false,
-                receiveSoundEnabled = true,
-                privacyMode = false
+                receiveSoundEnabled = true
             )
         )
     }
@@ -48,20 +45,18 @@ class WakeOnLockTest {
             NotificationHelper.shouldWake(
                 keyguardLocked = true,
                 notificationsEnabled = true,
-                receiveSoundEnabled = false,
-                privacyMode = false
+                receiveSoundEnabled = false
             )
         )
     }
 
     @Test
-    fun neverWakesInPrivacyMode() {
-        assertFalse(
+    fun wakesInPrivacyMode() {
+        assertTrue(
             NotificationHelper.shouldWake(
                 keyguardLocked = true,
                 notificationsEnabled = true,
-                receiveSoundEnabled = true,
-                privacyMode = true
+                receiveSoundEnabled = true
             )
         )
     }

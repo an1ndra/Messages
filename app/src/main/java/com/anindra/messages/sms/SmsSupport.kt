@@ -324,7 +324,7 @@ object NotificationHelper {
         // is what turns the screen on. Privacy mode suppresses it because the
         // trampoline would otherwise surface content over the keyguard.
         if (shouldWake(app.repository.settings, keyguardLocked(context))) {
-            builder.setFullScreenIntent(fullScreenIntent(context, from, reqCode), true)
+            builder.setFullScreenIntent(fullScreenIntent(context, reqCode), true)
         }
 
         val actionSettings = app.repository.settings
@@ -344,18 +344,16 @@ object NotificationHelper {
     internal fun shouldWake(
         keyguardLocked: Boolean,
         notificationsEnabled: Boolean,
-        receiveSoundEnabled: Boolean,
-        privacyMode: Boolean
+        receiveSoundEnabled: Boolean
     ): Boolean =
-        keyguardLocked && notificationsEnabled && receiveSoundEnabled && !privacyMode
+        keyguardLocked && notificationsEnabled && receiveSoundEnabled
 
-    /** Same policy, reading the four inputs off the settings store. */
+    /** Same policy, reading the three inputs off the settings store. */
     internal fun shouldWake(settings: SettingsStore, keyguardLocked: Boolean): Boolean =
         shouldWake(
             keyguardLocked = keyguardLocked,
             notificationsEnabled = settings.notificationsEnabled,
-            receiveSoundEnabled = settings.receiveSoundEnabled,
-            privacyMode = settings.privacyModeEnabled
+            receiveSoundEnabled = settings.receiveSoundEnabled
         )
 
     private fun keyguardLocked(context: Context): Boolean =
@@ -368,11 +366,10 @@ object NotificationHelper {
      * app's primary launch target, and a real lock screen takeover is not the
      * same as cold-launching the app.
      */
-    private fun fullScreenIntent(context: Context, from: String, reqCode: Int): PendingIntent {
+    private fun fullScreenIntent(context: Context, reqCode: Int): PendingIntent {
         val data = Intent(context, FullScreenSmsActivity::class.java)
         data.action = FullScreenSmsActivity.ACTION_SHOW
         data.setPackage(context.packageName)
-        data.putExtra(FullScreenSmsActivity.EXTRA_ADDRESS, from)
         return PendingIntent.getActivity(context, reqCode + 3000, data, PendingIntent.FLAG_IMMUTABLE)
     }
 
