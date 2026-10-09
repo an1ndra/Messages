@@ -35,6 +35,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +75,7 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -230,6 +232,7 @@ internal fun ChatBubble(
     showTime: Boolean,
     senderName: String? = null,
     onTap: () -> Unit,
+    onImageTap: (String) -> Unit = {},
     deliveryReports: Boolean,
     highlightLinks: Boolean,
     linkWarningEnabled: Boolean,
@@ -344,7 +347,10 @@ internal fun ChatBubble(
                     Column(
                         horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start,
                         modifier = Modifier.combinedClickable(
-                            onClick = { onTap() },
+                            // A tap on an image opens the full-screen preview;
+                            // `onTap` alone only toggled link reveal, which an
+                            // image has none of, so the tap did nothing visible.
+                            onClick = { onImageTap(msg.mediaUri) },
                             onLongClick = { onLongPress() }
                         )
                     ) {
@@ -711,6 +717,7 @@ fun ChatScreen(
     var showForwardPicker by remember { mutableStateOf(false) }
 
     var detailsMessage by remember { mutableStateOf<Message?>(null) }
+    var previewImageUri by remember { mutableStateOf<String?>(null) }
 
     var pendingSendText by remember { mutableStateOf("") }
     var sendCountdown by remember { mutableIntStateOf(0) }
@@ -976,6 +983,9 @@ fun ChatScreen(
         }
     }
 
+    // Registered last so it is the innermost handler: while the preview is up,
+    // back closes it instead of leaving the chat.
+    BackHandler(enabled = previewImageUri != null) { previewImageUri = null }
     BackHandler(onBack = ::leaveChat)
     BackHandler(enabled = selectionActive) { clearSelection() }
     BackHandler(enabled = searchOpen) {
@@ -1379,6 +1389,13 @@ fun ChatScreen(
                                 if (selectionActive) toggleSelection(msg.id)
                                 else if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
                             },
+                            // Selection still wins over the preview, otherwise a
+                            // tap while selecting would open a full-screen view
+                            // instead of marking the message.
+                            onImageTap = { uri ->
+                                if (selectionActive) toggleSelection(msg.id)
+                                else previewImageUri = uri
+                            },
                             deliveryReports = deliveryReports,
                             highlightLinks = vm.settings.highlightLinks,
                             linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
@@ -1507,6 +1524,10 @@ fun ChatScreen(
             address = convo?.address ?: "",
             onDismiss = { detailsMessage = null }
         )
+    }
+
+    previewImageUri?.let { uri ->
+        ImagePreview(uri = uri, onDismiss = { previewImageUri = null })
     }
 
     if (showForwardPicker) {
@@ -2479,6 +2500,66 @@ fun MessageRow(
                     start = if (!msg.isMe) 4.dp else 0.dp,
                     end = if (msg.isMe) 4.dp else 0.dp
                 )
+            )
+        }
+    }
+}
+
+/**
+ * Full-screen view of one image attachment, opened by tapping the bubble.
+ *
+ * The bubble crops to a fixed thumbnail, so anything readable in the original
+ * is unreadable there — this is the only place the full frame is shown. It is
+ * deliberately minimal: no chrome beyond a close control, because the only
+ * question it answers is "what is in this picture". Back and a tap on the
+ * backdrop both dismiss.
+ */
+@Composable
+internal fun ImagePreview(
+    uri: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BackHandler(onBack = onDismiss)
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .clickable(
+                // The image itself must not swallow this, or there would be no
+                // way out other than the button.
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onDismiss
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        coil3.compose.AsyncImage(
+            model = uri,
+            contentDescription = stringResource(R.string.access_photo),
+            // Fit, not Crop: the point is to see the whole frame.
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+                // Swallow taps so only the backdrop dismisses.
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = {}
+                )
+        )
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+                .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+        ) {
+            Icon(
+                Icons.Rounded.Close,
+                contentDescription = stringResource(R.string.chat_close),
+                tint = Color.White
             )
         }
     }
