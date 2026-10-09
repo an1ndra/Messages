@@ -745,7 +745,9 @@ internal fun ConversationRow(
     onLongClick: () -> Unit = {}
 ) {
     val now = LocalNowTick.current
-    val senderLabel = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name
+    // A group is titled by its members, not by whoever it started with.
+    val senderLabel = if (convo.groupTitle.isNotBlank()) convo.groupTitle
+    else if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name
     val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
     val draftLabel = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
     val snippetLabel = if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
@@ -804,7 +806,9 @@ internal fun ConversationRow(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name,
+                        text = if (convo.groupTitle.isNotBlank()) convo.groupTitle
+                        else if (convo.name == convo.address) BidiText.ltr(convo.display)
+                        else convo.name,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,

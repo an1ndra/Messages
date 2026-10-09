@@ -23,6 +23,7 @@ class LegacyContactDetailsWiringTest {
     private val legacy: String by lazy { locate("ui/legacy/LegacyContactDetailsScreen.kt") }
     private val modern: String by lazy { locate("ui/ContactDetailsScreen.kt") }
     private val main: String by lazy { locate("MainActivity.kt") }
+    private val legacyList: String by lazy { locate("ui/legacy/LegacyConversationsScreen.kt") }
 
     @Test
     fun addPeopleOpensTheInAppPickerNotTheContactCreator() {
@@ -147,16 +148,74 @@ class LegacyContactDetailsWiringTest {
     }
 
     @Test
+    fun theLegacyConversationListTitlesGroupsFromTheirMembers() {
+        // Without this a group shows as whoever it started with, so the home
+        // list said "Sarah" for a Sarah + Dad thread.
+        assertTrue(
+            "the legacy row title must prefer groupTitle",
+            Regex("""text = if \(convo\.groupTitle\.isNotBlank\(\)\) convo\.groupTitle""")
+                .containsMatchIn(legacyList),
+        )
+        assertTrue(
+            "the legacy draft preview must prefer groupTitle too",
+            legacyList.contains("val senderLabel = if (convo.groupTitle.isNotBlank()) convo.groupTitle"),
+        )
+    }
+
+    @Test
     fun thePencilSitsBelowTheNameNotBesideIt() {
         // Beside a long group name the icon reads as part of the name.
         assertTrue(
             "the title and pencil must share a Column",
-            Regex("""text = groupTitle[\s\S]{0,900}?Icons\.Rounded\.Edit""")
+            Regex("""text = groupTitle[\s\S]{0,1400}?Icons\.Rounded\.Edit""")
                 .containsMatchIn(legacy),
         )
         assertTrue(
             "the pencil must not share the name's Row",
             !Regex("""Row\([\s\S]{0,300}?text = groupTitle""").containsMatchIn(legacy),
+        )
+    }
+
+    @Test
+    fun renamingStartsWithTheCaretAtTheEnd() {
+        // The name is a generated default the user normally replaces wholesale.
+        // Starting at offset 0 means typing inserts mid-name and every edit
+        // begins with a manual walk to the end.
+        assertTrue(
+            "the draft must be a TextFieldValue so selection is controllable",
+            legacy.contains("mutableStateOf(TextFieldValue(\"\"))"),
+        )
+        assertTrue(
+            "opening the editor must put the caret at the end",
+            Regex("""TextFieldValue\(\s*\n?\s*groupTitle,\s*\n?\s*TextRange\(groupTitle\.length\)""")
+                .containsMatchIn(legacy),
+        )
+    }
+
+    @Test
+    fun aGroupShowsNoNumberUnderItsName() {
+        // One member's number under a group name reads as though the whole
+        // thread belongs to them.
+        assertTrue(
+            "the subtitle must be gated on !isGroup",
+            Regex("""if \(!isGroup\) \{\s*\n\s*ContactDetails\.subtitle""").containsMatchIn(legacy),
+        )
+    }
+
+    @Test
+    fun addingPeopleStaysOnTheDetailsScreen() {
+        // It is a setup screen, not somewhere to read or write: bouncing the
+        // user into the chat made them think the group had been created and
+        // already had something in it.
+        assertTrue(
+            "completing add-people must not navigate to the chat",
+            Regex("""vm\.addParticipants\([\s\S]{0,300}?onDone = \{ navRoute = "details" \}""")
+                .containsMatchIn(main),
+        )
+        assertFalse(
+            "no jump into the chat after adding people",
+            main.contains("""onDone = {
+                                                    chatId = detailsId"""),
         )
     }
 

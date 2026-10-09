@@ -66,7 +66,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -132,7 +134,11 @@ fun ContactDetailsScreen(
         ContactDetails.title(name, address, display)
     }
     var renaming by remember { mutableStateOf(false) }
-    var draft by remember { mutableStateOf("") }
+    // The caret lands at the end, not the start: the name here is a generated
+                // default the user almost always replaces wholesale, and starting
+                // at offset 0 means typing inserts into the middle of it and every
+                // edit begins with a manual walk to the end.
+                var draft by remember { mutableStateOf(TextFieldValue("")) }
 
     // Already in Contacts? Then the action opens that person instead of
     // offering to add them a second time. The modern screen has had this since
@@ -189,7 +195,7 @@ fun ContactDetailsScreen(
                         if (!renaming) return
                         renaming = false
                         // Blank clears the override, restoring the derived name.
-                        vm.setGroupTitle(conversationId, draft)
+                        vm.setGroupTitle(conversationId, draft.text)
                     }
                     // Borderless and centred: an outlined box in the middle of the header reads
                     // as a separate dialog-ish thing, and a left-aligned name would
@@ -240,7 +246,10 @@ fun ContactDetailsScreen(
                         // contact's own name and is not ours to change.
                         if (isGroup) {
                             IconButton(onClick = {
-                                draft = groupTitle
+                                draft = TextFieldValue(
+                                    groupTitle,
+                                    TextRange(groupTitle.length)
+                                )
                                 renaming = true
                             }) {
                                 Icon(
@@ -253,15 +262,19 @@ fun ContactDetailsScreen(
                         }
                     }
                 }
-                ContactDetails.subtitle(name, address, display)?.let { number ->
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = number,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                // A group has no single number to show. One member's number under a
+                // group name reads as though the whole thread belongs to them.
+                if (!isGroup) {
+                    ContactDetails.subtitle(name, address, display)?.let { number ->
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = number,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
                 if (workProfile) {
                     Spacer(Modifier.height(4.dp))
