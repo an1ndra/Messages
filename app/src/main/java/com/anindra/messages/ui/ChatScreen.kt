@@ -146,6 +146,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -2525,9 +2528,11 @@ internal fun ImagePreview(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
+            // The backdrop is the tap-anywhere-to-close surface, so it has to be
+            // reachable too — including under the status bar, which is where a
+            // user's thumb naturally lands to dismiss.
+            .windowInsetsPadding(WindowInsets.statusBars)
             .clickable(
-                // The image itself must not swallow this, or there would be no
-                // way out other than the button.
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
                 onClick = onDismiss
@@ -2539,27 +2544,34 @@ internal fun ImagePreview(
             contentDescription = stringResource(R.string.access_photo),
             // Fit, not Crop: the point is to see the whole frame.
             contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize().padding(8.dp)
+        )
+        // The backdrop clickable lives on the Box above, which is declared
+        // before this button and therefore hit-tests first.
+        Box(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.TopEnd)
+                // Clear of the status bar, or the button renders but sits in
+                // the inset where touches never arrive — it looked present and
+                // did nothing. `align(TopEnd)` alone put it at y=21..147 with
+                // the status bar covering everything above y=137.
+                .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(8.dp)
-                // Swallow taps so only the backdrop dismisses.
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.55f))
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
-                    onClick = {}
-                )
-        )
-        IconButton(
-            onClick = onDismiss,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Rounded.Close,
                 contentDescription = stringResource(R.string.chat_close),
-                tint = Color.White
+                tint = Color.White,
+                modifier = Modifier.size(28.dp)
             )
         }
     }
