@@ -84,6 +84,34 @@ class ManifestShareIntentFilterTest {
         )
     }
 
+    /**
+     * A shared image is an outgoing MMS, so without an image MIME match the app
+     * is simply absent from a photo's share sheet — the issue #304 follow-up.
+     */
+    @Test
+    fun mainActivityHandlesSendForImages() {
+        val mimeTypes = filterMatchesAction(mainActivityFilters(), "android.intent.action.SEND")
+            .flatMap { it.mimeTypeValues() }
+            .toSet()
+        assertTrue(
+            "ACTION_SEND filter must accept image/*, found: $mimeTypes",
+            "image/*" in mimeTypes,
+        )
+    }
+
+    @Test
+    fun mainActivityHandlesSendMultipleForImages() {
+        val multiple = filterMatchesAction(
+            mainActivityFilters(), "android.intent.action.SEND_MULTIPLE"
+        )
+        assertTrue("MainActivity has no ACTION_SEND_MULTIPLE filter", multiple.isNotEmpty())
+        val mimeTypes = multiple.flatMap { it.mimeTypeValues() }.toSet()
+        assertTrue(
+            "ACTION_SEND_MULTIPLE filter must accept image/*, found: $mimeTypes",
+            "image/*" in mimeTypes,
+        )
+    }
+
     private fun locateManifest(): File {
         val rel = "app/src/main/AndroidManifest.xml"
         val start = System.getProperty("user.dir") ?: "."

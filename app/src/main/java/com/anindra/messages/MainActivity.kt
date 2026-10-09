@@ -498,11 +498,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun sendMediaMessage(conversationId: Long, uri: Uri) {
+    fun sendMediaMessage(conversationId: Long, uri: Uri, caption: String = "") {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
-            val stored = repo.sendMedia(conversationId, "image", uri.toString()) ?: return@launch
+            val stored = repo.sendMedia(conversationId, "image", uri.toString(), caption) ?: return@launch
             // A group MMS addresses every member in one PDU, unlike SMS which
             // is sent once per person.
             val recipients = repo.conversationRecipients(conversationId)
@@ -943,6 +943,7 @@ class MainActivity : FragmentActivity() {
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
     private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
+    private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
 
     private var lastResumeTime = 0L
 
@@ -992,12 +993,7 @@ class MainActivity : FragmentActivity() {
                 this@MainActivity, null, it
             )
         }
-        recipientFromIntent(intent)?.let { pendingOpenAddress = it }
-        shareBodyFromIntent(intent)?.let { pendingShareBody = it }
-        when {
-            pendingOpenAddress != null && navRoute == "list" -> navRoute = "opening"
-            pendingOpenAddress == null && pendingShareBody.isNotBlank() && navRoute == "list" -> navRoute = "new"
-        }
+        applyShareIntent(intent)
 
         val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -1294,6 +1290,7 @@ class MainActivity : FragmentActivity() {
                                         vm = vm,
                                         onBack = {
                                             pendingShareBody = ""
+                                            pendingShareMedia = emptyList()
                                             navRoute = "list"
                                         },
                                         onPick = { address, name ->
@@ -1436,12 +1433,15 @@ onBack = { navRoute = "chat" },
                                         conversationId = chatId,
                                         searchQuery = chatSearchQuery,
                                         initialDraft = pendingShareBody,
+                                        initialMedia = pendingShareMedia,
                                         onBack = {
                                             pendingShareBody = ""
+                                            pendingShareMedia = emptyList()
                                             navRoute = "list"
                                         },
                                         onOpenDetails = { detailsId = chatId; navRoute = "details" },
-                                        onInitialDraftConsumed = { pendingShareBody = "" }
+                                        onInitialDraftConsumed = { pendingShareBody = "" },
+                                        onInitialMediaConsumed = { pendingShareMedia = emptyList() }
                                     )
                                 }
                             }
@@ -1640,11 +1640,23 @@ onBack = { navRoute = "chat" },
                 this@MainActivity, null, it
             )
         }
+        applyShareIntent(intent)
+    }
+
+    /**
+     * Reads an inbound share (`ACTION_SEND` / `ACTION_SEND_MULTIPLE` / `SENDTO`)
+     * and decides where it lands: a named recipient opens straight into that
+     * chat, while shared content with no recipient needs a recipient chosen
+     * first, so it opens the picker and carries the content to the chat.
+     */
+    private fun applyShareIntent(intent: Intent) {
         recipientFromIntent(intent)?.let { pendingOpenAddress = it }
         shareBodyFromIntent(intent)?.let { pendingShareBody = it }
+        sharedMediaFromIntent(intent)?.let { pendingShareMedia = it }
+        val hasContent = pendingShareBody.isNotBlank() || pendingShareMedia.isNotEmpty()
         when {
             pendingOpenAddress != null && navRoute == "list" -> navRoute = "opening"
-            pendingOpenAddress == null && pendingShareBody.isNotBlank() && navRoute == "list" -> navRoute = "new"
+            pendingOpenAddress == null && hasContent && navRoute == "list" -> navRoute = "new"
         }
     }
 
@@ -1679,5 +1691,85 @@ onBack = { navRoute = "chat" },
             else -> null
         }
         return text?.trim()?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * Image URIs from a share intent, normalised to something this process can
+     * still read later.
+     *
+     * The grant a share intent carries is tied to *this* task, so it dies with
+     * the activity and the copy would be unreadable by the time the user picks
+     * a recipient. Every incoming URI is therefore copied into the app's cache
+     * immediately and the cache copy is what travels on. `EXTRA_STREAM` is a
+     * single Uri under `ACTION_SEND` and a list under `ACTION_SEND_MULTIPLE`;
+     * both are accepted, and the clip is honoured when there is no stream extra.
+     */
+    private fun sharedMediaFromIntent(intent: Intent): List<Uri>? {
+        val shared = when (intent.action) {
+            Intent.ACTION_SEND ->
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(::listOf)
+                    ?: intent.clipDataUris()
+            Intent.ACTION_SEND_MULTIPLE ->
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                    ?: intent.clipDataUris()
+            else -> null
+        }?.filter { it.scheme == "content" || it.scheme == "file" }
+        if (shared.isNullOrEmpty()) return null
+        return shared.mapNotNull(::copyIntoCache).distinct()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun Intent.clipDataUris(): List<Uri> {
+        val clip = clipData ?: return emptyList()
+        return (0 until clip.itemCount).mapNotNull { clip.getItemAt(it)?.uri }
+    }
+
+    /**
+     * Copies a shared URI into the cache, returning null if it cannot be read.
+     *
+     * The copy keeps the image's extension. That is load-bearing, not tidiness:
+     * the stored URI is handed to Coil, which asks the resolver for a MIME type,
+     * and `FileProvider` derives that type *from the file name*. An extensionless
+     * copy reports no type, no decoder is chosen, and the bubble renders empty
+     * even though the bytes are a perfectly good image — which is exactly what a
+     * shared photo did before this was fixed.
+     */
+    private fun copyIntoCache(uri: Uri): Uri? {
+        val dir = java.io.File(cacheDir, "shared").apply { mkdirs() }
+        val file = java.io.File(dir, "share-${System.currentTimeMillis()}-${(0..9999).random()}${sharedExtension(uri)}")
+        val copied = runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                file.outputStream().use { input.copyTo(it) }
+                true
+            } ?: false
+        }.getOrDefault(false)
+        if (!copied) {
+            file.delete()
+            return null
+        }
+        return androidx.core.content.FileProvider.getUriForFile(
+            this, "$packageName.fileprovider", file
+        )
+    }
+
+    /**
+     * Extension for the cache copy, taken from the source URI's own extension
+     * and otherwise from the resolved MIME type. Falls back to `.jpg`, matching
+     * how the app already names an untyped attachment.
+     */
+    private fun sharedExtension(uri: Uri): String {
+        val fromPath = uri.lastPathSegment?.substringAfterLast('.', "")
+            ?.takeIf { it.isNotBlank() && it.length <= 5 && it.all(Char::isLetterOrDigit) }
+        if (fromPath != null) return ".$fromPath"
+        val resolved = runCatching { contentResolver.getType(uri) }.getOrNull()
+        val ext = when (MmsSupport.mime(resolved ?: "")) {
+            "image/png" -> ".png"
+            "image/webp" -> ".webp"
+            "image/heic", "image/heif" -> ".heic"
+            "image/gif" -> ".gif"
+            else -> ".jpg"
+        }
+        return ext
     }
 }
