@@ -87,6 +87,36 @@ class LegacyContactDetailsWiringTest {
     }
 
     @Test
+    fun aSavedContactOffersInfoRatherThanCreateNewContact() {
+        // The modern screen has had this since it was written; the legacy one
+        // always offered "Add", which for someone already in Contacts is a
+        // button that can only ever create a duplicate.
+        val actions = legacy.substringAfter("Icons.Rounded.Call")
+            .substringBefore("Icons.Rounded.PersonAdd")
+            .ifEmpty { legacy.substringAfter("Icons.Rounded.Call").take(1200) }
+        assertTrue(
+            "the legacy screen must look up the saved contact",
+            legacy.contains("ContactLookup.find(context, address)"),
+        )
+        assertTrue(
+            "a saved contact must get the Info action",
+            actions.contains("R.string.action_info"),
+        )
+        assertTrue(
+            "Info must open the saved contact",
+            actions.contains("savedContact!!.viewUri()"),
+        )
+        assertTrue(
+            "an unsaved contact must still get the Contact action",
+            actions.contains("R.string.action_contact"),
+        )
+        assertFalse(
+            "the saved branch must not be gated on contactsLoaded being false only",
+            !legacy.contains("contactsLoaded && savedContact != null"),
+        )
+    }
+
+    @Test
     fun theParticipantCountRowSurvives() {
         assertTrue(
             "the 'N other person' count must stay",

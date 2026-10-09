@@ -68,6 +68,10 @@ import com.anindra.messages.ui.formatPhoneNumber
 import com.anindra.messages.ui.phoneKey
 import com.anindra.messages.ui.WorkProfileBadge
 import com.anindra.messages.ui.ContactDetails
+import com.anindra.messages.data.ContactLookup
+import com.anindra.messages.data.SavedContact
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,6 +103,16 @@ fun ContactDetailsScreen(
     var showBlockDialog by remember { mutableStateOf(false) }
     var numberIsBlocked by remember { mutableStateOf(false) }
     LaunchedEffect(address) { numberIsBlocked = vm.isNumberBlocked(address) }
+
+    // Already in Contacts? Then the action opens that person instead of
+    // offering to add them a second time. The modern screen has had this since
+    // it was written; the legacy one did not, so it always offered "Add".
+    var savedContact by remember(address) { mutableStateOf<SavedContact?>(null) }
+    var contactsLoaded by remember(address) { mutableStateOf(false) }
+    LaunchedEffect(address) {
+        savedContact = withContext(Dispatchers.IO) { ContactLookup.find(context, address) }
+        contactsLoaded = true
+    }
 
     BackHandler(onBack = onBack)
 
@@ -171,18 +185,35 @@ fun ContactDetailsScreen(
                         }
                     )
                     Spacer(Modifier.width(32.dp))
-                    DetailActionButton(
-                        icon = Icons.Rounded.PersonAdd,
-                        label = stringResource(R.string.action_add),
-                        onClick = {
-                            context.startActivity(
-                                Intent(ContactsContract.Intents.Insert.ACTION).apply {
-                                    type = ContactsContract.RawContacts.CONTENT_TYPE
-                                    putExtra(ContactsContract.Intents.Insert.PHONE, address)
-                                }
-                            )
-                        }
-                    )
+                    // Saved contacts get a plain profile icon and an "Info"
+                    // label, matching Google Messages: the person already
+                    // exists, so there is nothing to add.
+                    if (contactsLoaded && savedContact != null) {
+                        DetailActionButton(
+                            icon = Icons.Rounded.Person,
+                            label = stringResource(R.string.action_info),
+                            onClick = {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, savedContact!!.viewUri())
+                                )
+                            }
+                        )
+                    } else {
+                        DetailActionButton(
+                            // Same plain profile icon as the saved case: only
+                            // the label says whether this adds or opens them.
+                            icon = Icons.Rounded.Person,
+                            label = stringResource(R.string.action_contact),
+                            onClick = {
+                                context.startActivity(
+                                    Intent(ContactsContract.Intents.Insert.ACTION).apply {
+                                        type = ContactsContract.RawContacts.CONTENT_TYPE
+                                        putExtra(ContactsContract.Intents.Insert.PHONE, address)
+                                    }
+                                )
+                            }
+                        )
+                    }
                 }
             }
 
