@@ -74,7 +74,8 @@ import com.anindra.messages.ui.ContactDetails
 fun ContactDetailsScreen(
     vm: AppViewModel,
     conversationId: Long,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onAddPeople: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val convo by vm.conversationById(conversationId).collectAsState(initial = null)
@@ -254,14 +255,11 @@ fun ContactDetailsScreen(
                         )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable {
-                                context.startActivity(
-                                    Intent(ContactsContract.Intents.Insert.ACTION).apply {
-                                        type = ContactsContract.RawContacts.CONTENT_TYPE
-                                        putExtra(ContactsContract.Intents.Insert.PHONE, address)
-                                    }
-                                )
-                            }
+                            // Must add a member to *this* chat. This used to open
+                            // the system "create new contact" intent — a different
+                            // thing entirely — because the legacy screen was never
+                            // given the callback the modern one uses.
+                            modifier = Modifier.clickable { onAddPeople() }
                         ) {
                             Icon(
                                 Icons.Rounded.PersonAdd,
@@ -277,38 +275,41 @@ fun ContactDetailsScreen(
                             )
                         }
                     }
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        PersonAvatar(address, size = 40.dp)
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    ContactDetails.title(name, address, display),
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                if (workProfile) {
-                                    Spacer(Modifier.width(6.dp))
-                                    WorkProfileBadge()
-                                }
-                            }
-                            ContactDetails.subtitle(name, address, display)?.let { number ->
-                                Text(
-                                    number,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
+                    // Commented out at the user's request, matching
+                    // ContactDetailsScreen: the row just repeated the name and
+                    // number already shown above.
+                    // HorizontalDivider(
+                    //     modifier = Modifier.padding(horizontal = 16.dp),
+                    //     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    // )
+                    // Row(
+                    //     Modifier
+                    //         .fillMaxWidth()
+                    //         .padding(horizontal = 16.dp, vertical = 12.dp),
+                    //     verticalAlignment = Alignment.CenterVertically
+                    // ) {
+                    //     PersonAvatar(address, size = 40.dp)
+                    //     Spacer(Modifier.width(16.dp))
+                    //     Column(Modifier.weight(1f)) {
+                    //         Row(verticalAlignment = Alignment.CenterVertically) {
+                    //             Text(
+                    //                 ContactDetails.title(name, address, display),
+                    //                 style = MaterialTheme.typography.bodyLarge
+                    //             )
+                    //             if (workProfile) {
+                    //                 Spacer(Modifier.width(6.dp))
+                    //                 WorkProfileBadge()
+                    //             }
+                    //         }
+                    //         ContactDetails.subtitle(name, address, display)?.let { number ->
+                    //             Text(
+                    //                 number,
+                    //                 style = MaterialTheme.typography.bodyMedium,
+                    //                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                    //             )
+                    //         }
+                    //     }
+                    // }
                 }
             }
 

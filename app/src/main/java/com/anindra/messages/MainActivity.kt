@@ -1406,6 +1406,7 @@ onBack = { navRoute = "chat" },
                                         vm = vm,
                                         conversationId = detailsId,
                                         onBack = { navRoute = "chat" },
+                                        onAddPeople = { navRoute = "add-people" },
                                     )
                                     "add-people" -> AddPeopleScreen(
                                         vm = vm,
