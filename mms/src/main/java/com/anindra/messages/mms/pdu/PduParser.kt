@@ -26,11 +26,18 @@ class PduParser(
         val charset: Int? = null,
     )
 
+    /** Why the last [parse] returned null; no content of the PDU, only the rule it broke. */
+    var failureReason: String? = null
+        private set
+
     fun parse(): Pdu? = try {
+        failureReason = null
         parseChecked()
-    } catch (_: MalformedPduException) {
+    } catch (e: MalformedPduException) {
+        failureReason = e.message
         null
     } catch (_: IndexOutOfBoundsException) {
+        failureReason = "read past the end of the PDU"
         // The contract is a null on hostile input, never a throw. A reader
         // that somehow reads past the buffer must still not surface as a
         // crash in the face of whatever a carrier pushed at us.
@@ -55,11 +62,15 @@ class PduParser(
         val wantsBody = when (messageType) {
             MessageType.SEND_REQ -> true
             MessageType.RETRIEVE_CONF -> {
-                if (contentType !in RETRIEVE_CONF_TYPES) {
+                // Some carriers omit Retrieve-Status entirely, so absent means OK.
+                val statusOk = pdu.retrieveStatus == null || pdu.retrieveStatus == HeaderField.RETRIEVE_STATUS_OK
+                // A refusal ("message not found", "expired") is a short PDU with a
+                // status and no content type, so only a PDU that claims to carry a
+                // message has to name a container.
+                if (statusOk && contentType !in RETRIEVE_CONF_TYPES) {
                     throw MalformedPduException("retrieve-conf content type $contentType")
                 }
-                // Some carriers omit Retrieve-Status entirely, so absent means OK.
-                pdu.retrieveStatus == null || pdu.retrieveStatus == HeaderField.RETRIEVE_STATUS_OK
+                statusOk
             }
             else -> false
         }

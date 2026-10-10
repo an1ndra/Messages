@@ -3831,7 +3831,15 @@ class Repository(private val context: Context) {
     /** Imports MMS that finished downloading and returns the inbound messages
      *  that were new, so the caller can notify. Not wrapped in [runOnIo]:
      *  [importProviderMms] already serializes its writes on the same executor. */
-    fun importDownloadedMms(): List<MmsSupport.InboundMms> = importProviderMms()
+    fun importDownloadedMms(): List<MmsSupport.InboundMms> {
+        val imported = importProviderMms()
+        // The rows were written straight to the database, so an open chat and
+        // the conversation list only learn of them when told: without this a
+        // picture that arrives while its chat is on screen stays invisible until
+        // something else changes.
+        if (imported.isNotEmpty()) notifyChanged()
+        return imported
+    }
 
     /** Re-runs [syncFromSystem] with the loading UI active. */
     fun requeryFromSystem() {
