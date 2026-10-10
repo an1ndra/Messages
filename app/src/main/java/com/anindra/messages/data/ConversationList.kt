@@ -75,6 +75,21 @@ object ConversationList {
     }
 
     /**
+     * The query a chat opened from search should highlight, or "" for none.
+     *
+     * A conversation that was found because its name or address matches is
+     * opened plainly: jumping to the first message that happens to contain the
+     * name would be a surprise, since the contact was what the user looked for.
+     * The scroll to a message is kept for conversations found only through a
+     * message.
+     */
+    fun handoffQuery(conversation: Conversation, query: String): String {
+        val q = query.trim()
+        if (q.isEmpty()) return ""
+        return if (conversation.name.contains(q, true) || conversation.address.contains(q, true)) "" else q
+    }
+
+    /**
      * Unread-at-top: stable reorder — pinned stays on top, then unread
      * conversations above read ones, timestamp order preserved within a tier.
      * On by default, so anything unread is visible without scrolling; archived
