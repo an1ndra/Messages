@@ -448,8 +448,6 @@ object NotificationHelper {
 
 object SmsSender {
 
-    internal const val MMS_TAG = "MmsSendDiag"
-
     internal fun manager(context: Context, subscriptionId: Int): android.telephony.SmsManager {
         val sm = context.getSystemService(android.telephony.SmsManager::class.java)
         if (subscriptionId == -1) return sm
