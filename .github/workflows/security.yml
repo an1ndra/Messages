@@ -46,23 +46,11 @@ jobs:
           limit=$(echo "$kv" | awk -F. -v OFS=. '{ $3 = $3 + 1; print }')
           echo "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT=$limit" >> "$GITHUB_ENV"
 
-      - uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+      - uses: github/codeql-action/init@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
         with:
           languages: java-kotlin
           queries: security-and-quality
           build-mode: manual
-          # android-smsmms is a vendored fork of the AOSP MMS stack: 142 files of
-          # upstream Java we do not own. It accounted for 451 of 455 open alerts,
-          # 344 of them one style lint (missing-override-annotation), which buried
-          # the handful of findings that are actually ours. The app uses 11 classes
-          # from it (the MMS PDU compose/persist layer), so it stays a real
-          # dependency - it is just not code we should be fixing linter warnings in.
-          #
-          # Path exclusion must go through `config`; `init` has no paths-ignore
-          # input and passing one fails the run at startup.
-          config: |
-            paths-ignore:
-              - android-smsmms
 
       # --no-build-cache forces kotlinc to run under the CodeQL build tracer
       - name: Build for CodeQL
@@ -71,7 +59,7 @@ jobs:
           LC_ALL: C
           TZ: UTC
 
-      - uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+      - uses: github/codeql-action/analyze@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
         with:
           category: "/language:java-kotlin"
 
@@ -93,7 +81,7 @@ jobs:
             --sarif \
             --output "$GITHUB_WORKSPACE/semgrep.sarif"
 
-      - uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+      - uses: github/codeql-action/upload-sarif@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -115,7 +103,7 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
           skip-dirs: build, .gradle, .git, app/build
 
-      - uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+      - uses: github/codeql-action/upload-sarif@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
         with:
           sarif_file: trivy-results.sarif
           category: trivy

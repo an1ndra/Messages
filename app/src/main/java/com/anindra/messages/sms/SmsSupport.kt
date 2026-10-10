@@ -150,6 +150,7 @@ object NotificationHelper {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val soundOn = app.repository.settings.receiveSoundEnabled
         val id = channelId(context)
+        recoverDemotedChannel(nm, id)
         nm.createNotificationChannel(
             NotificationChannel(
                 id, context.getString(R.string.notification_channel_title), NotificationManager.IMPORTANCE_HIGH
@@ -170,6 +171,26 @@ object NotificationHelper {
         // stays a single "Messages" entry.
         CHANNEL_VARIANTS.filter { it != id }.forEach { nm.deleteNotificationChannel(it) }
     }
+
+    /**
+     * createNotificationChannel() upserts, and an upsert cannot raise importance
+     * once the user has touched the channel — so a demotion is permanent. The
+     * only recovery is delete-then-recreate. IMPORTANCE_DEFAULT is left alone:
+     * a user who deliberately quieted the app keeps their choice, and only a
+     * channel that has fallen below it (the broken state) is rebuilt.
+     */
+    private fun recoverDemotedChannel(nm: NotificationManager, id: String) {
+        val existing = nm.getNotificationChannel(id) ?: return
+        if (existing.importance >= NotificationManager.IMPORTANCE_DEFAULT) return
+        nm.deleteNotificationChannel(id)
+    }
+
+    /** The live importance of the active channel, for Diagnostics and tests. */
+    internal fun channelImportance(context: Context): Int =
+        context.getSystemService(NotificationManager::class.java)
+            ?.getNotificationChannel(channelId(context))
+            ?.importance
+            ?: NotificationManager.IMPORTANCE_NONE
 
     private fun canPost(context: Context): Boolean {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
@@ -260,6 +281,20 @@ object NotificationHelper {
             0, "Mark as read", markReadIntent
         ).build()
 
+        val deleteData = Intent(context, DeleteMessageReceiver::class.java)
+        deleteData.action = DeleteMessageReceiver.ACTION_DELETE
+        deleteData.setPackage(context.packageName)
+        deleteData.putExtra(DeleteMessageReceiver.EXTRA_ADDRESS, from)
+        deleteData.putExtra(DeleteMessageReceiver.EXTRA_NOTIF_ID, notifId)
+        val deleteIntent = PendingIntent.getBroadcast(
+            context, reqCode + 2000,
+            deleteData,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val deleteAction = NotificationCompat.Action.Builder(
+            0, context.getString(R.string.notif_action_delete), deleteIntent
+        ).build()
+
         val senderName = app.repository.contactNameFor(from) ?: from
         val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
@@ -284,12 +319,58 @@ object NotificationHelper {
             .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
             .setStyle(groupedStyle(context, app, convoId, senderName, text))
-        if (replyAction != null) builder.addAction(replyAction)
-        builder.addAction(markReadAction)
+        // A heads-up popup is a peek: on a locked screen the panel stays asleep.
+        // Only a full-screen intent is treated as a user-initiated wake, so this
+        // is what turns the screen on. Privacy mode suppresses it because the
+        // trampoline would otherwise surface content over the keyguard.
+        if (shouldWake(app.repository.settings, keyguardLocked(context))) {
+            builder.setFullScreenIntent(fullScreenIntent(context, reqCode), true)
+        }
+
+        val actionSettings = app.repository.settings
+        if (actionSettings.notifActionReply && replyAction != null) builder.addAction(replyAction)
+        if (actionSettings.notifActionMarkRead) builder.addAction(markReadAction)
+        if (actionSettings.notifActionDelete) builder.addAction(deleteAction)
         try {
             NotificationManagerCompat.from(context).notify(notifId, builder.build())
         } catch (_: SecurityException) {
         }
+    }
+
+    /**
+     * Whether an incoming message should carry a full-screen intent and wake
+     * the device. Pure so it can be unit-tested without a device.
+     */
+    internal fun shouldWake(
+        keyguardLocked: Boolean,
+        notificationsEnabled: Boolean,
+        receiveSoundEnabled: Boolean
+    ): Boolean =
+        keyguardLocked && notificationsEnabled && receiveSoundEnabled
+
+    /** Same policy, reading the three inputs off the settings store. */
+    internal fun shouldWake(settings: SettingsStore, keyguardLocked: Boolean): Boolean =
+        shouldWake(
+            keyguardLocked = keyguardLocked,
+            notificationsEnabled = settings.notificationsEnabled,
+            receiveSoundEnabled = settings.receiveSoundEnabled
+        )
+
+    private fun keyguardLocked(context: Context): Boolean =
+        context.getSystemService(android.app.KeyguardManager::class.java)
+            ?.isKeyguardLocked == true
+
+    /**
+     * Target for the full-screen intent. A dedicated trampoline rather than
+     * MainActivity: the platform FSI policy requires the activity not be the
+     * app's primary launch target, and a real lock screen takeover is not the
+     * same as cold-launching the app.
+     */
+    private fun fullScreenIntent(context: Context, reqCode: Int): PendingIntent {
+        val data = Intent(context, FullScreenSmsActivity::class.java)
+        data.action = FullScreenSmsActivity.ACTION_SHOW
+        data.setPackage(context.packageName)
+        return PendingIntent.getActivity(context, reqCode + 3000, data, PendingIntent.FLAG_IMMUTABLE)
     }
 
     /** Posted when an outgoing SMS/MMS fails to hand off to the radio. */
@@ -430,6 +511,30 @@ object SmsSender {
         false
     }
 
+    /**
+     * A one-off SMS with no stored row and no status callback, for the reaction
+     * fallback (issue #188): the recipient should see a plain text, but the
+     * sending side must not show it as a message in its own chat.
+     */
+    fun sendRaw(
+        context: Context,
+        address: String,
+        body: String,
+        subscriptionId: Int = -1
+    ): Boolean = try {
+        val sm = manager(context, subscriptionId)
+        val dest = normalizeAddress(address)
+        val parts = sm.divideMessage(body)
+        if (parts.size <= 1) {
+            sm.sendTextMessage(dest, null, body, null, null)
+        } else {
+            sm.sendMultipartTextMessage(dest, null, parts, null, null)
+        }
+        true
+    } catch (_: Exception) {
+        false
+    }
+
     /** Strips formatting from a stored phone address; keeps digits and a
      *  leading '+'. Non-numeric (alphanumeric sender ID) addresses are returned
      *  trimmed rather than reduced to their digits (issue #207). */
@@ -440,15 +545,16 @@ object SmsSender {
     }
 
     /**
-     * Sends MMS by building the m_SendReq PDU, persisting it to the provider
-     * outbox and handing the composed PDU to the framework (see [MmsComposer]).
-     * SmsStatusReceiver confirms the result; the row is marked failed when the
-     * hand-off itself cannot be started.
+     * Sends MMS through the `:mms` stack (see [MmsSender]).
+     *
+     * The stack fits the attachment to the carrier, builds the PDU, writes the
+     * outbox row and hands it over; SmsStatusReceiver settles the app row when
+     * the platform reports the result.
      */
     fun sendMms(
         context: Context,
         messageId: Long,
-        address: String,
+        addresses: List<String>,
         media: Uri,
         subscriptionId: Int = -1,
         caption: String = ""
@@ -456,31 +562,9 @@ object SmsSender {
         val mime = com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
             context.contentResolver.getType(media), media.toString()
         )
-        val prepared = MmsComposer.prepare(
-            context, address, media, mime, caption, subscriptionId
-        ) ?: return false
-        return try {
-            val sent = PendingIntent.getBroadcast(
-                context, (messageId % Int.MAX_VALUE).toInt(),
-                Intent(SmsStatusReceiver.ACTION_MMS_SENT)
-                    .setPackage(context.packageName)
-                    .setComponent(android.content.ComponentName(context, SmsStatusReceiver::class.java))
-                    .putExtra(SmsStatusReceiver.EXTRA_MESSAGE_ID, messageId)
-                    .putExtra(SmsStatusReceiver.EXTRA_MMS_OUTBOX, prepared.outboxUri.toString())
-                    .putExtra(SmsStatusReceiver.EXTRA_MMS_PDU_FILE, prepared.pduFile.absolutePath),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val overrides = Bundle().apply {
-                putBoolean(android.telephony.SmsManager.MMS_CONFIG_GROUP_MMS_ENABLED, false)
-            }
-            manager(context, subscriptionId).sendMultimediaMessage(
-                context, prepared.pduUri, null, overrides, sent
-            )
-            true
-        } catch (t: Throwable) {
-            android.util.Log.w("MmsComposer", "sendMultimediaMessage failed: ${t.message}")
-            prepared.pduFile.delete()
-            false
-        }
+        return MmsSender.send(
+            context, messageId, addresses, media, mime, caption, subscriptionId
+        )
     }
+
 }

@@ -5,15 +5,8 @@
 -keep class com.google.i18n.phonenumbers.metadata.** { *; }
 -dontwarn com.google.i18n.phonenumbers.**
 
-# Vendored AOSP MMS stack (android-smsmms): the PDU/SMIL parsers are reached
-# through generic types and XML pull-parser hooks, so keep them intact.
--keep class com.google.android.mms.pdu_alt.** { *; }
--keep class com.google.android.mms.smil.** { *; }
--keep class com.android.mms.dom.smil.** { *; }
--keep class com.android.mms.util.** { *; }
--keep class com.android.mms.util_alt.** { *; }
--keep class com.klinker.android.send_message.** { *; }
--dontwarn com.google.android.mms.**
--dontwarn com.android.mms.**
--dontwarn com.klinker.android.send_message.**
--dontwarn org.apache.http.**
+# Required for minify: WorkManager opens its Room database reflectively (loads
+# WorkDatabase_Impl by name and calls its no-arg constructor). Without this R8
+# strips it and the release build crashes at startup.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
+-keep class androidx.work.impl.WorkDatabase_Impl { *; }

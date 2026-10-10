@@ -6,6 +6,8 @@
     <string name="lock_title">Autenticar para acceder a tus mensajes</string>
     <string name="lock_unlock_title">Desbloquear Messages</string>
     <string name="lock_auth_subtitle">Autenticar para revelar estos mensajes</string>
+    <string name="lock_change_app_lock_title">Confirma para cambiar el bloqueo de la app</string>
+    <string name="lock_change_app_lock_subtitle">Tu huella, rostro o PIN confirman que eres tú</string>
     <string name="lock_got_it">Entendido</string>
     <string name="lock_not_now">Ahora no</string>
     <string name="lock_off">El bloqueo de la app está desactivado</string>
@@ -49,6 +51,7 @@
     <string name="notification_channel_desc">Notificaciones de mensajes nuevos</string>
     <string name="notif_title_private">Mensaje nuevo</string>
     <string name="notif_body_private">Tienes un mensaje nuevo</string>
+    <string name="notif_action_delete">Eliminar</string>
     <string name="notif_you">Tú</string>
     <string name="notif_send_fail_private">No se pudo enviar el mensaje. Toca para reintentar.</string>
     <string name="notif_send_fail">No se pudo enviar el mensaje a %s. Toca para reintentar.</string>

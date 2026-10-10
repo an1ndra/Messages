@@ -31,13 +31,13 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 ## Screenshots
 
-| Conversations | Chat | Contact details | New chat |
+| Conversations | Chat | Contact details | Reactions |
 |---|---|---|---|
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01-conversations.png" alt="Conversations" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02-chat.png" alt="Chat" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03-contact-details.png" alt="Contact details" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05-new-chat.png" alt="New chat" width="160" height="356"> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01-home.png" alt="Conversations" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03-chat.png" alt="Chat" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04-contact.png" alt="Contact details" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05-reaction.png" alt="Reactions" width="160" height="356"> |
 
-| Group chat | Spam &amp; Blocked | Trash | Schedule send |
+| Typing | SIM switcher | Settings | New chat |
 |---|---|---|---|
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04-group-chat.png" alt="Group chat" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/06-spam-blocked.png" alt="Spam & Blocked" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/08-trash.png" alt="Trash" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/09-schedule-send.png" alt="Schedule send" width="160" height="356"> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/06-typing.png" alt="Typing" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/07-sim-switcher.png" alt="SIM switcher" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02-settings.png" alt="Settings" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/08-new-chat.png" alt="New chat" width="160" height="356"> |
 
 ## Download
 

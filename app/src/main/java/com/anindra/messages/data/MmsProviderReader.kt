@@ -57,14 +57,22 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
     }
 
     /** Incoming MMS the carrier has announced but that nobody has downloaded
-     *  yet; the default SMS app has to fetch it before it can be imported. */
-    fun pendingDownloadIds(): List<Long> {
-        val result = mutableListOf<Long>()
+     *  yet; the default SMS app has to fetch it before it can be imported.
+     *  The Content-Location (ct_l) is where the platform expects it to be
+     *  fetched from — a row without one cannot be requested at all. */
+    fun pendingDownloads(): List<MmsSupport.PendingDownload> {
+        val result = mutableListOf<MmsSupport.PendingDownload>()
         resolver.query(
             Telephony.Mms.CONTENT_URI,
-            arrayOf("_id"),
+            arrayOf(Telephony.Mms._ID, Telephony.Mms.CONTENT_LOCATION),
             MmsSupport.PENDING_DOWNLOAD_SELECTION, null, null
-        )?.use { cursor -> while (cursor.moveToNext()) result.add(cursor.getLong(0)) }
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(0)
+                if (id <= 0) continue
+                result.add(MmsSupport.PendingDownload(id, cursor.getString(1)))
+            }
+        }
         return result
     }
 

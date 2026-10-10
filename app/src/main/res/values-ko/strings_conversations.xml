@@ -31,4 +31,9 @@
     <string name="spam_conversation_deleted">차단된 대화 삭제됨</string>
     <string name="spam_conversations_cleared">차단된 대화가 모두 삭제됨</string>
     <string name="spam_messages_cleared">차단된 메시지가 모두 삭제됨</string>
+    <string name="convo_marked_read">읽음으로 표시했습니다</string>
+    <string name="convo_marked_unread">안 읽음으로 표시했습니다</string>
+    <string name="convo_pinned">고정했습니다</string>
+    <string name="convo_unpinned">고정을 해제했습니다</string>
+    <string name="convo_blocked">번호를 차단했습니다</string>
 </resources>

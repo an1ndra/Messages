@@ -14,10 +14,15 @@ class SimBadgeColorTest {
         File(main, "java/com/anindra/messages/ui/ChatScreen.kt").readText()
     }
 
+    /** Anchors on the declaration, not its visibility: the previews made this
+     *  internal so the composable can be rendered in a preview pane, which is
+     *  not something these colour assertions care about. */
     private val inputBar: String by lazy {
-        val start = source.indexOf("private fun InputBar(")
-        val end = source.indexOf("private fun SimPickerDialog(")
-        assertTrue(start in 0 until end)
+        val start = Regex("(?:private|internal|public)?\\s*fun InputBar\\(").find(source)?.range?.first
+            ?: error("fun InputBar( not found")
+        val end = Regex("(?:private|internal|public)?\\s*fun SimPickerDialog\\(").find(source)?.range?.first
+            ?: error("fun SimPickerDialog( not found")
+        assertTrue(start < end)
         source.substring(start, end)
     }
 

@@ -31,4 +31,9 @@
     <string name="spam_conversation_deleted">Conversación bloqueada eliminada</string>
     <string name="spam_conversations_cleared">Conversaciones bloqueadas vaciadas</string>
     <string name="spam_messages_cleared">Mensajes bloqueados vaciados</string>
+    <string name="convo_marked_read">Marcado como leído</string>
+    <string name="convo_marked_unread">Marcado como no leído</string>
+    <string name="convo_pinned">Fijado</string>
+    <string name="convo_unpinned">Desfijado</string>
+    <string name="convo_blocked">Número bloqueado</string>
 </resources>

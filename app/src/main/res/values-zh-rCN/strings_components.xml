@@ -27,7 +27,6 @@
     <string name="access_loading_messages">正在加载消息</string>
     <string name="access_photo">照片</string>
     <string name="action_call">拨打电话</string>
-    <string name="action_add">添加</string>
     <string name="access_chat_top_bar">对话顶部栏</string>
     <string name="access_swipe_background">滑动背景</string>
     <string name="access_nav">导航抽屉</string>
@@ -55,4 +54,19 @@
     <string name="sheet_block">阻止</string>
     <string name="detail_phone_number">电话号码</string>
     <string name="detail_messages">消息</string>
+    <string name="common_unblock">解除屏蔽</string>
+    <string name="swipe_action_pin">置顶</string>
+    <string name="access_mark_read">标记为已读</string>
+    <string name="access_mark_unread">标记为未读</string>
+    <string name="action_contact">联系人</string>
+    <string name="action_info">信息</string>
+    <string name="common_add">添加</string>
+    <string name="contact_people_selected">已选择 %1$d 个</string>
+    <string name="contact_people_count">%1$d 人</string>
+    <string name="contact_selected">已选择</string>
+    <string name="contact_remove_people">从群组中移除</string>
+    <string name="contact_group_name">群组名称</string>
+    <string name="contact_create_group">创建群组</string>
+    <string name="contact_group_name_optional">可选 - 我们会自动命名</string>
+    <string name="action_add">添加</string>
 </resources>

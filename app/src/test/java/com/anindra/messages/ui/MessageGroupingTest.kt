@@ -74,19 +74,25 @@ class MessageGroupingTest {
     }
 
     @Test
-    fun outgoingSingleAndFirstKeepTheTailAtTheBottomRight() {
+    fun outgoingSingleCarriesTheTailOnTheBottomRight() {
+        // A lone sent bubble is flat only on its bottom-right corner.
         val single = bubbleCorners(BubblePosition.SINGLE, isMe = true)
         assertEquals(18f, single.topStart, 0f)
         assertEquals(18f, single.topEnd, 0f)
         assertEquals(18f, single.bottomStart, 0f)
         assertEquals(4f, single.bottomEnd, 0f)
-
-        val first = bubbleCorners(BubblePosition.FIRST, isMe = true)
-        assertEquals(single, first)
     }
 
     @Test
-    fun outgoingLastMovesTheTailToTheTopRight() {
+    fun outgoingFirstAndLastFlattenOnlyTheJoinedCorner() {
+        // FIRST continues downward, so its bottom-right corner is the flat one.
+        val first = bubbleCorners(BubblePosition.FIRST, isMe = true)
+        assertEquals(18f, first.topStart, 0f)
+        assertEquals(18f, first.topEnd, 0f)
+        assertEquals(18f, first.bottomStart, 0f)
+        assertEquals(4f, first.bottomEnd, 0f)
+
+        // LAST continues from above, so its top-right corner is the flat one.
         val last = bubbleCorners(BubblePosition.LAST, isMe = true)
         assertEquals(18f, last.topStart, 0f)
         assertEquals(4f, last.topEnd, 0f)
@@ -110,14 +116,26 @@ class MessageGroupingTest {
     }
 
     @Test
-    fun middleBubblesAreFullyRoundedForBothSenders() {
+    fun middleBubblesAreSoftenedOnTheJoinedSideForBothSenders() {
         assertEquals(
-            BubbleCorners(18f, 18f, 18f, 18f),
+            BubbleCorners(18f, 8f, 18f, 8f),
             bubbleCorners(BubblePosition.MIDDLE, isMe = true)
         )
         assertEquals(
-            BubbleCorners(18f, 18f, 18f, 18f),
+            BubbleCorners(8f, 18f, 8f, 18f),
             bubbleCorners(BubblePosition.MIDDLE, isMe = false)
         )
+    }
+
+    @Test
+    fun theTailCornersOfSinglyAndRunEndsAreUnchanged() {
+        // The join was softened for middle bubbles only; the pointed tail at the
+        // end of a run is a deliberate shape and must not drift with it.
+        assertEquals(4f, bubbleCorners(BubblePosition.SINGLE, isMe = true).bottomEnd, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.FIRST, isMe = true).bottomEnd, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.LAST, isMe = true).topEnd, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.SINGLE, isMe = false).bottomStart, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.FIRST, isMe = false).bottomStart, 0f)
+        assertEquals(4f, bubbleCorners(BubblePosition.LAST, isMe = false).topStart, 0f)
     }
 }

@@ -38,8 +38,10 @@
     <string name="chat_sending_via">Wysyłanie przez %s</string>
     <string name="chat_switch_sim">Przełącz SIM</string>
     <string name="chat_scheduled_for">Zaplanowane na %s</string>
+    <string name="chat_schedule_failed">Nie udało się zaplanować wiadomości</string>
     <string name="chat_search_contacts">Szukaj w kontaktach</string>
     <string name="chat_add_people">Dodaj osoby</string>
+    <string name="chat_reaction_fallback_failed">Nie udało się wysłać reakcji do drugiej osoby</string>
     <string name="chat_locked">Zablokowane</string>
 
     <!-- Copy & links -->
@@ -75,7 +77,8 @@
 
     <string name="chat_status_not_sent">Nie wysłano</string>
     <string name="chat_status_retry">Stuknij, aby ponowić</string>
-    <string name="chat_draft_prefix">Wersja robocza: </string>
+    <string name="chat_draft_prefix">"Wersja robocza: "</string>
+    <string name="chat_scheduled_prefix">"Zaplanowano: "</string>
     <string name="chat_sending_countdown">Wysyłanie za %d sekund…</string>
     <string name="chat_alphanumeric_error">Nie można wysyłać wiadomości do nadawców alfanumerycznych, takich jak %s. Obsługiwane są tylko numery telefonów.</string>
     <string name="chat_alphanumeric_notice">%s nie może odbierać odpowiedzi. Obsługiwane są tylko numery telefonów.</string>
@@ -85,4 +88,11 @@
     <string name="chat_messages_deleted">%d wiadomości usunięto</string>
     <string name="chat_trash">Przenieś do kosza</string>
     <string name="status_not_sent">Nie wysłano</string>
+    <string name="chat_search_result">Wynik wyszukiwania</string>
+    <string name="chat_search">Szukaj</string>
+    <string name="chat_search_hint">Szukaj w czacie</string>
+    <string name="chat_search_previous">Poprzednie dopasowanie</string>
+    <string name="chat_search_next">Następne dopasowanie</string>
+    <string name="chat_search_counter">%1$d z %2$d</string>
+    <string name="chat_scroll_to_latest">Przejdź do najnowszej wiadomości</string>
 </resources>

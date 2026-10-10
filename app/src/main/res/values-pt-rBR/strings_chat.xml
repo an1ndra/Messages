@@ -38,8 +38,10 @@
     <string name="chat_sending_via">Enviando via %s</string>
     <string name="chat_switch_sim">Trocar SIM</string>
     <string name="chat_scheduled_for">Agendado para %s</string>
+    <string name="chat_schedule_failed">Não foi possível agendar a mensagem</string>
     <string name="chat_search_contacts">Pesquisar contatos</string>
     <string name="chat_add_people">Adicionar pessoas</string>
+    <string name="chat_reaction_fallback_failed">Não foi possível enviar a reação para a outra pessoa</string>
     <string name="chat_locked">Bloqueado</string>
 
     <!-- Copy & links -->
@@ -75,7 +77,8 @@
 
     <string name="chat_status_not_sent">Não enviada</string>
     <string name="chat_status_retry">Toque para tentar novamente</string>
-    <string name="chat_draft_prefix">Rascunho: </string>
+    <string name="chat_draft_prefix">"Rascunho: "</string>
+    <string name="chat_scheduled_prefix">"Agendada: "</string>
     <string name="chat_sending_countdown">Enviando em %d segundos...</string>
     <string name="chat_alphanumeric_error">Você não pode enviar mensagens para remetentes alfanuméricos como %s. Apenas números de telefone são suportados.</string>
     <string name="chat_alphanumeric_notice">%s não pode receber respostas. Somente números de telefone são suportados.</string>
@@ -85,4 +88,11 @@
     <string name="chat_messages_deleted">%d mensagens excluídas</string>
     <string name="chat_trash">Mover para a lixeira</string>
     <string name="status_not_sent">Não enviada</string>
+    <string name="chat_search_result">Resultado da pesquisa</string>
+    <string name="chat_search">Pesquisar</string>
+    <string name="chat_search_hint">Pesquisar na conversa</string>
+    <string name="chat_search_previous">Correspondência anterior</string>
+    <string name="chat_search_next">Próxima correspondência</string>
+    <string name="chat_search_counter">%1$d de %2$d</string>
+    <string name="chat_scroll_to_latest">Ir para a mensagem mais recente</string>
 </resources>

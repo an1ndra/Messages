@@ -38,8 +38,10 @@
     <string name="chat_sending_via">%s(으)로 보내는 중</string>
     <string name="chat_switch_sim">SIM 전환</string>
     <string name="chat_scheduled_for">%s에 예약됨</string>
+    <string name="chat_schedule_failed">메시지를 예약할 수 없습니다</string>
     <string name="chat_search_contacts">연락처 검색</string>
     <string name="chat_add_people">사람 추가</string>
+    <string name="chat_reaction_fallback_failed">상대방에게 반응을 보낼 수 없습니다</string>
     <string name="chat_locked">잠겨 있음</string>
 
     <!-- Copy & links -->
@@ -75,7 +77,8 @@
 
     <string name="chat_status_not_sent">전송되지 않음</string>
     <string name="chat_status_retry">다시 시도하려면 탭하세요</string>
-    <string name="chat_draft_prefix">임시 저장: </string>
+    <string name="chat_draft_prefix">"임시 저장: "</string>
+    <string name="chat_scheduled_prefix">"예약됨: "</string>
     <string name="chat_sending_countdown">%d초 후에 보내는 중...</string>
     <string name="chat_alphanumeric_error">%s와 같은 영숫자 발신자에게 메시지를 보낼 수 없습니다. 전화번호만 지원됩니다.</string>
     <string name="chat_alphanumeric_notice">%s(으)로는 회신을 받을 수 없습니다. 전화번호만 지원됩니다.</string>
@@ -85,4 +88,11 @@
     <string name="chat_messages_deleted">%d개의 메시지가 삭제되었습니다</string>
     <string name="chat_trash">휴지통으로 이동</string>
     <string name="status_not_sent">전송되지 않음</string>
+    <string name="chat_search_result">검색 결과</string>
+    <string name="chat_search">검색</string>
+    <string name="chat_search_hint">채팅에서 검색</string>
+    <string name="chat_search_previous">이전 일치</string>
+    <string name="chat_search_next">다음 일치</string>
+    <string name="chat_search_counter">%1$d/%2$d</string>
+    <string name="chat_scroll_to_latest">최신 메시지로 이동</string>
 </resources>

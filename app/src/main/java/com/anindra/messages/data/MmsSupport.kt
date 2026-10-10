@@ -15,7 +15,6 @@ object MmsSupport {
     const val PDU_NOTIFICATION_IND = 130
     const val PDU_RETRIEVE_CONF = 132
     const val PENDING_DOWNLOAD_SELECTION = "msg_box=1 AND m_type=$PDU_NOTIFICATION_IND"
-    const val DOWNLOAD_RETRY_COOLDOWN_MS = 5 * 60_000L
 
     fun acceptsTextChunk(currentBytes: Int, nextBytes: Int): Boolean =
         currentBytes in 0..MAX_TEXT_BYTES && nextBytes in 0..(MAX_TEXT_BYTES - currentBytes)
@@ -24,6 +23,16 @@ object MmsSupport {
     data class Part(val id: Long, val mime: String, val text: String? = null)
     data class Content(val body: String, val imageId: Long?, val omittedParts: Int)
     data class InboundMms(val address: String, val body: String, val timestamp: Long)
+    data class PendingDownload(val id: Long, val contentLocation: String?)
+
+    /**
+     * The label for a message this account sent.
+     *
+     * Anything carrying media goes out as an MMS, whatever it is stored as, so
+     * the label follows the message rather than the table it lives in.
+     */
+    fun outgoingKind(mediaType: String, transport: String): String =
+        if (mediaType != "text" || transport == TRANSPORT_MMS) "MMS" else "SMS"
 
     fun isImportable(box: Int, pduType: Int): Boolean =
         (box == 1 && pduType == PDU_RETRIEVE_CONF) || (box == 2 && pduType == PDU_SEND_REQ)
@@ -33,10 +42,23 @@ object MmsSupport {
     fun isPendingDownload(box: Int, pduType: Int): Boolean =
         box == 1 && pduType == PDU_NOTIFICATION_IND
 
-    fun shouldRetryDownload(lastAttemptAt: Long, now: Long): Boolean =
-        lastAttemptAt <= 0L || now - lastAttemptAt >= DOWNLOAD_RETRY_COOLDOWN_MS
-
     fun messageContentUri(id: Long): String = "content://mms/$id"
+
+    const val WAP_PUSH_MIME = "application/vnd.wap.mms-message"
+
+    /** A WAP push is recognized by action and MIME type alone: the platform
+     *  has already filed the announced provider row, so nothing else from the
+     *  broadcast is needed to fetch it. The PDU rides in the "data" extra and
+     *  there is no data URI at all. */
+    fun isMmsWapPush(action: String?, type: String?): Boolean =
+        action == android.provider.Telephony.Sms.Intents.WAP_PUSH_DELIVER_ACTION &&
+            type == WAP_PUSH_MIME
+
+    /** The Content-Location an announced MMS can be fetched from, or null when
+     *  it does not have one — there is nowhere to point the platform's
+     *  downloader at, so it cannot be requested at all. */
+    fun downloadLocation(contentLocation: String?): String? =
+        contentLocation?.takeIf { it.isNotBlank() }
 
     /** ContentResolver often reports no type for FileProvider URIs; MMS still
      *  needs a concrete content type on the wire. */
@@ -71,16 +93,41 @@ object MmsSupport {
         return digits.takeIf { it.length in 3..15 }?.let { if (value.startsWith('+')) "+$it" else it }
     }
 
+    /**
+     * Who an MMS is attributed to, or null when it cannot be trusted.
+     *
+     * A group MMS has several To/From entries, so the old single-participant
+     * rule rejected every one of them and group MMS was silently discarded
+     * unread. What is actually needed is the *sender*: the one From on an
+     * incoming message, or the recipient on one we sent, so the message can be
+     * filed against the right conversation and labelled.
+     *
+     * Types 137 and 151 are the PDU originator and destination;
+     * "insert-address-token" is the PDU's own placeholder, not a participant.
+     */
     fun peer(box: Int, addresses: List<Address>, threadRecipientCount: Int?): String? {
-        if (threadRecipientCount != 1 || box !in 1..2) return null
+        if (box !in 1..2) return null
         if (addresses.any { it.type !in setOf(137, 151) }) return null
-        val from = addresses.filter { it.type == 137 && it.value != "insert-address-token" }
-        val to = addresses.filter { it.type == 151 }
-        if (to.size > 1 || from.size > 1) return null
-        if (addresses.any { it.value != "insert-address-token" && phoneAddress(it.value) == null }) return null
-        return if (box == 1) from.singleOrNull()?.value?.let(::phoneAddress)
-        else to.singleOrNull()?.value?.let(::phoneAddress)
+        val real = addresses.filter { it.value != "insert-address-token" }
+        if (real.any { phoneAddress(it.value) == null }) return null
+        return when (box) {
+            // Incoming: the single sender, even inside a group thread.
+            1 -> addresses.filter { it.type == 137 && it.value != "insert-address-token" }
+                .singleOrNull()?.value?.let(::phoneAddress)
+            // Outgoing: a 1:1 has one recipient; a group send has several and is
+            // already filed under its conversation, so the first is enough.
+            else -> addresses.filter { it.type == 151 }
+                .let { if (threadRecipientCount == 1) it.singleOrNull() else it.firstOrNull() }
+                ?.value?.let(::phoneAddress)
+        }
     }
+
+    /** Every distinct phone recipient of an outgoing group MMS. */
+    fun participants(addresses: List<Address>): List<String> =
+        addresses.filter { it.type == 151 }
+            .mapNotNull { phoneAddress(it.value) }
+            .filter { it.isNotBlank() }
+            .distinct()
 
     fun mime(raw: String): String = raw.substringBefore(';').trim().lowercase(Locale.ROOT)
 

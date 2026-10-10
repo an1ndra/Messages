@@ -31,7 +31,6 @@
     <string name="access_loading_messages">جارٍ تحميل الرسائل</string>
     <string name="access_photo">صورة</string>
     <string name="action_call">اتصال</string>
-    <string name="action_add">إضافة</string>
     <string name="access_chat_top_bar">الشريط العلوي للمحادثة</string>
     <string name="access_swipe_background">خلفية التمرير</string>
     <string name="access_nav">درج التنقل</string>
@@ -63,4 +62,19 @@
     <!-- Detail row labels -->
     <string name="detail_phone_number">رقم الهاتف</string>
     <string name="detail_messages">الرسائل</string>
+    <string name="common_unblock">إلغاء الحظر</string>
+    <string name="swipe_action_pin">تثبيت</string>
+    <string name="access_mark_read">تعليم كمقروء</string>
+    <string name="access_mark_unread">تعليم كغير مقروء</string>
+    <string name="action_contact">جههة الاتصال</string>
+    <string name="action_info">معلومات</string>
+    <string name="common_add">إضافة</string>
+    <string name="contact_people_selected">تم تحديد %1$d</string>
+    <string name="contact_people_count">%1$d أشخاص</string>
+    <string name="contact_selected">محدد</string>
+    <string name="contact_remove_people">إزالة من المجموعة</string>
+    <string name="contact_group_name">اسم المجموعة</string>
+    <string name="contact_create_group">إنشاء مجموعة</string>
+    <string name="contact_group_name_optional">اختياري - سنقوم بتسميته</string>
+    <string name="action_add">إضافة</string>
 </resources>

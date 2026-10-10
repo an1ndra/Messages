@@ -8,6 +8,8 @@ import android.os.Environment
 import android.os.Handler
 import android.os.HandlerThread
 import android.provider.MediaStore
+import android.util.Log
+import com.anindra.messages.sms.MmsTrace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -20,12 +22,45 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 
 private const val DB_NAME = "messages.db"
-enum class BackupFormat { PIN, LEGACY }
+private const val PRE_IMPORT_BACKUP_NAME = "pre_import_backup.db"
+private const val IMPORT_TEMP_NAME = "import_temp.db"
+
+/** How long a backup snapshot may sit in the cache before it is swept. */
+private const val SNAPSHOT_TTL_MS = 60L * 60L * 1000L
+
+/** Format label for an export, which always writes the PIN container. */
+private const val PIN_FORMAT = "PIN"
+private const val EXPORT_MODE = "none"
+
+/** Format label for an SMS Import / Export archive, which has no BackupFormat. */
+private const val SMS_IE_FORMAT = "sms-ie"
+/**
+ * How a backup file is encoded.
+ *
+ * [RAW] is a plain SQLite database, which is what an unencrypted backup is, and
+ * what most of them are. It has to be told apart from [LEGACY] before any
+ * decryption is attempted, because feeding a plaintext database to the keystore
+ * cipher produces garbage rather than a clean failure.
+ */
+enum class BackupFormat { PIN, LEGACY, RAW }
 enum class ImportMode { REPLACE, MERGE }
 
-private const val DB_VERSION = 21
+/** Rows written per transaction while streaming a large backup. */
+private const val TAG_IMPORT = "BackupImport"
+
+/** Rows written per transaction while streaming a large backup. */
+private const val IMPORT_BATCH = 500
+
+/** How often the importer reports progress, in records. */
+private const val IMPORT_PROGRESS_EVERY = 250
+
+/** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
+private const val TRACE = "MmsImport"
+
+private const val DB_VERSION = 26
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -38,7 +73,7 @@ class Db(context: Context) :
         db.execSQL(
             """CREATE TABLE conversations(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                address TEXT NOT NULL UNIQUE,
+                address TEXT NOT NULL,
                 name TEXT NOT NULL,
                 snippet TEXT NOT NULL DEFAULT '',
                 timestamp INTEGER NOT NULL DEFAULT 0,
@@ -107,6 +142,56 @@ class Db(context: Context) :
                 comparable_destination TEXT NOT NULL,
                 country_code TEXT NOT NULL DEFAULT '',
                 sub_id INTEGER NOT NULL DEFAULT -1)"""
+        )
+        db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
+        createConversationRecipients(db)
+        createMessageProviderIds(db)
+    }
+
+    /**
+     * Which provider rows a local message owns.
+     *
+     * `messages.sys_id` can only hold one, which is true for a 1:1 and false for
+     * a group: sending one message to N members puts N rows in the Sent box,
+     * and sync used to adopt the first onto the local row and then import the
+     * rest as brand-new messages — so every group text appeared N times.
+     *
+     * `messages.sys_id` stays as the *primary* provider row so every existing
+     * path keeps working; this table holds the full set.
+     */
+    private fun createMessageProviderIds(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS message_provider_ids(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                transport TEXT NOT NULL,
+                sys_id INTEGER NOT NULL,
+                UNIQUE(transport, sys_id))"""
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_msg_provider_ids_msg ON message_provider_ids(message_id)"
+        )
+        db.execSQL(
+            """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+               SELECT id, transport, sys_id FROM messages WHERE sys_id>0"""
+        )
+    }
+
+    /**
+     * Who a conversation goes to. `conversations.address` stays as the primary
+     * recipient so every existing 1:1 conversation keeps working untouched; a
+     * conversation is a group once this table holds more than one row.
+     */
+    private fun createConversationRecipients(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS conversation_recipients(
+                conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                address TEXT NOT NULL,
+                PRIMARY KEY(conversation_id, address))"""
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_conv_recipients_address ON conversation_recipients(address)"
         )
     }
 
@@ -211,6 +296,85 @@ class Db(context: Context) :
             // purged the moment it is first seen.
             db.execSQL("UPDATE conversations SET blocked_at=timestamp WHERE blocked=1 AND blocked_at=0")
         }
+        if (oldVersion < 22) {
+            createConversationRecipients(db)
+            // Every existing conversation starts as its own single recipient, so
+            // 1:1 chats keep sending exactly where they did before.
+            db.execSQL(
+                """INSERT OR IGNORE INTO conversation_recipients(conversation_id, address)
+                   SELECT id, address FROM conversations WHERE deleted_at=0"""
+            )
+        }
+        if (oldVersion < 23) {
+            // Every existing conversation is 1:1, so no group titles yet; they
+            // are filled in the moment a second person is added.
+            db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
+        }
+        if (oldVersion < 24) {
+            // Who sent each message. Blank means the conversation's own address
+            // (1:1 chats, and everything sent by the user).
+            db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
+        }
+        if (oldVersion < 25) {
+            // A group message owns one provider row per recipient; messages.
+            // sys_id can only record one of them. Creating the table also
+            // backfills every id already linked.
+            createMessageProviderIds(db)
+        }
+        if (oldVersion < 26) {
+            dropConversationAddressUnique(db)
+        }
+    }
+
+    /**
+     * Rebuilds `conversations` without UNIQUE on `address`.
+     *
+     * That constraint was standing in for "a conversation is its own lookup
+     * key", which is true of a 1:1 but not of a group: starting a group from a
+     * chat gives the new thread the same primary contact, and uniqueness made
+     * that impossible. Two rows may now share an address, and the inbound
+     * lookup ([conversationIdForAddressBlocking]) resolves the tie by
+     * preferring the 1:1, which is the thread a bare SMS from that person
+     * almost certainly means.
+     *
+     * SQLite cannot drop a column constraint in place, hence the rebuild.
+     */
+    private fun dropConversationAddressUnique(db: SQLiteDatabase) {
+        db.execSQL("DROP INDEX IF EXISTS idx_conversations_list")
+        db.execSQL("DROP INDEX IF EXISTS idx_conversations_archived")
+        db.execSQL("ALTER TABLE conversations RENAME TO conversations_preunique")
+        db.execSQL(
+            """CREATE TABLE conversations(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                address TEXT NOT NULL,
+                name TEXT NOT NULL,
+                snippet TEXT NOT NULL DEFAULT '',
+                timestamp INTEGER NOT NULL DEFAULT 0,
+                unread_count INTEGER NOT NULL DEFAULT 0,
+                last_is_me INTEGER NOT NULL DEFAULT 0,
+                archived INTEGER NOT NULL DEFAULT 0,
+                blocked INTEGER NOT NULL DEFAULT 0,
+                blocked_at INTEGER NOT NULL DEFAULT 0,
+                pinned INTEGER NOT NULL DEFAULT 0,
+                draft TEXT NOT NULL DEFAULT '',
+                draft_date INTEGER NOT NULL DEFAULT 0,
+                deleted_at INTEGER NOT NULL DEFAULT 0,
+                deleted_reason TEXT NOT NULL DEFAULT 'manual',
+                group_title TEXT NOT NULL DEFAULT '')"""
+        )
+        db.execSQL(
+            """INSERT INTO conversations(
+                   id, address, name, snippet, timestamp, unread_count, last_is_me,
+                   archived, blocked, blocked_at, pinned, draft, draft_date,
+                   deleted_at, deleted_reason, group_title)
+               SELECT id, address, name, snippet, timestamp, unread_count, last_is_me,
+                   archived, blocked, blocked_at, pinned, draft, draft_date,
+                   deleted_at, deleted_reason, group_title
+               FROM conversations_preunique"""
+        )
+        db.execSQL("DROP TABLE conversations_preunique")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
     }
 
     /** Collapses rows that share a system-provider id (legacy double-imports,
@@ -343,7 +507,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.blocked,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address)
+               COALESCE(p.display_destination, c.address), c.group_title
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.deleted_at=0 ORDER BY c.pinned DESC, c.timestamp DESC""",
@@ -365,7 +529,8 @@ class Repository(private val context: Context) {
                         draft = c.getString(10),
                         draftDate = c.getLong(11),
                         deletedAt = c.getLong(12),
-                        display = c.getString(13)
+                        display = c.getString(13),
+                        groupTitle = c.getString(14).orEmpty()
                     )
                 )
             }
@@ -378,7 +543,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address)
+               COALESCE(p.display_destination, c.address), c.group_title
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.id=? AND c.deleted_at=0""",
@@ -398,7 +563,8 @@ class Repository(private val context: Context) {
                     draft = c.getString(9),
                     draftDate = c.getLong(10),
                     deletedAt = c.getLong(11),
-                    display = c.getString(12)
+                    display = c.getString(12),
+                    groupTitle = c.getString(13).orEmpty()
                 )
             }
         }
@@ -444,7 +610,7 @@ class Repository(private val context: Context) {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
             """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id,
-               transport,delivered_at FROM messages
+               transport,delivered_at,address FROM messages
                WHERE conversation_id=? AND deleted_at=0 ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
             arrayOf(conversationId.toString(), limit.toString(), offset.toString())
         ).use { c ->
@@ -463,12 +629,66 @@ class Repository(private val context: Context) {
                         locked = c.getInt(8) == 1,
                         subId = c.getInt(9),
                         transport = c.getString(10),
-                        deliveredAt = c.getLong(11)
+                        deliveredAt = c.getLong(11),
+                        address = c.getString(12).orEmpty()
                     )
                 )
             }
         }
         out.reversed()
+    }
+
+    /**
+     * Conversations with at least one non-deleted message whose body contains
+     * [query], case-insensitively — the home list's global message search, so a
+     * word buried in an old message still surfaces its thread. Returns an empty
+     * set for a blank query.
+     */
+    fun conversationIdsMatchingMessage(query: String, hideLinks: Boolean): Flow<Set<Long>> = observe {
+        val out = mutableSetOf<Long>()
+        if (query.isNotBlank()) {
+            val like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            // The LIKE is only a cheap prefilter: the visibility rule (a locked
+            // body never surfaces, hidden links match only redacted text)
+            // lives in MessageSearch, so SQL cannot quietly disagree with it.
+            db.readableDatabase.rawQuery(
+                "SELECT DISTINCT conversation_id, body, locked FROM messages WHERE deleted_at=0 " +
+                    "AND body LIKE ? ESCAPE '\\'",
+                arrayOf(like)
+            ).use { c ->
+                while (c.moveToNext()) {
+                    if (MessageSearch.matchesVisible(
+                            c.getString(1).orEmpty(), query, c.getInt(2) == 1, hideLinks
+                        )
+                    ) out += c.getLong(0)
+                }
+            }
+        }
+        out
+    }
+
+    /** Ids of [conversationId]'s messages whose *visible* body matches, oldest
+     *  first. An in-chat search has to reach a hit older than the loaded
+     *  window — the home list surfaces the thread, so the chat must be able to
+     *  reach the message. Blank query matches nothing. */
+    fun messageIdsMatching(conversationId: Long, query: String, hideLinks: Boolean): Flow<List<Long>> = observe {
+        val out = mutableListOf<Long>()
+        if (query.isNotBlank()) {
+            val like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            db.readableDatabase.rawQuery(
+                "SELECT id, body, locked FROM messages WHERE conversation_id=? AND deleted_at=0 " +
+                    "AND body LIKE ? ESCAPE '\\' ORDER BY id ASC",
+                arrayOf(conversationId.toString(), like)
+            ).use { c ->
+                while (c.moveToNext()) {
+                    if (MessageSearch.matchesVisible(
+                            c.getString(1).orEmpty(), query, c.getInt(2) == 1, hideLinks
+                        )
+                    ) out += c.getLong(0)
+                }
+            }
+        }
+        out
     }
 
     fun messageCount(conversationId: Long): Int = runOnIo {
@@ -552,24 +772,50 @@ class Repository(private val context: Context) {
         )
     }
 
+    /**
+     * The conversation for [address], creating a private one if there is none.
+     *
+     * Used by the new-chat picker: picking a person means messaging *them*, so
+     * a group that happens to carry their address is never the answer.
+     */
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =
-        getOrCreateConversationBlocking(address, displayName)
+        getOrCreateConversationBlocking(address, displayName, privateOnly = true)
 
     fun getOrCreateConversationBlocking(
         address: String,
         displayName: String? = null,
         subId: Int = -1,
-        kind: InboundKind = InboundKind.NORMAL
+        kind: InboundKind = InboundKind.NORMAL,
+        privateOnly: Boolean = false
     ): Long = runOnIo {
         // Store one canonical spelling per person: every incoming spelling
         // (E.164, national, formatted) maps to the same conversation row.
         val target = canonical(address).ifEmpty { address }
         var convoId = -1L
+        // A 1:1 wins outright: a group started from this chat carries the same
+        // address, and the private thread is the older, intended destination.
+        //
+        // `privateOnly` additionally forbids settling for a group. It is what
+        // the new-chat picker needs: someone who only appears inside "Roadtrip"
+        // has no private thread to find, and without this the query below still
+        // returned that group -- ORDER BY puts groups last, but LIMIT 1 takes
+        // one when there is nothing better. Inbound keeps the looser rule,
+        // where a text from a group member with no 1:1 of their own belongs in
+        // the group.
+        val singleRecipient =
+            "(SELECT count(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)=1"
         db.writableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE address=?",
+            """SELECT c.id FROM conversations c
+               WHERE c.address=? AND c.deleted_at=0
+                 ${if (privateOnly) "AND $singleRecipient " else ""}
+               ORDER BY $singleRecipient DESC, c.id ASC
+               LIMIT 1""",
             arrayOf(target)
         ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
-        if (convoId == -1L) convoId = findConversationForAddress(target) ?: -1L
+        if (convoId == -1L) {
+            val alt = findConversationForAddress(target)
+            if (alt != null && (!privateOnly || recipientCountBlocking(alt) <= 1)) convoId = alt
+        }
 
         if (convoId == -1L) {
             val cv = ContentValues().apply {
@@ -578,6 +824,14 @@ class Repository(private val context: Context) {
             }
             convoId = db.writableDatabase.insert("conversations", null, cv)
             upsertParticipant(db.writableDatabase, target, subId)
+            // Every conversation needs its own address as a recipient, or adding
+            // a second person would build a group that drops the original.
+            if (convoId > 0) {
+                db.writableDatabase.execSQL(
+                    "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                    arrayOf(convoId, target)
+                )
+            }
             notifyChanged()
         } else if (InboundIngest.restoresTrashedConversation(kind)) {
             // A trashed thread addressed by a new chat / incoming message must be
@@ -594,12 +848,67 @@ class Repository(private val context: Context) {
         convoId
     }
 
+    /**
+     * Starts a **new** group thread with [addresses], rather than turning the
+     * conversation they were added from into one.
+     *
+     * Adding people used to mutate the conversation in place, which silently
+     * moved the whole private history with Sarah into the group — so a group
+     * created from a 1:1 began as that conversation, history and all. A group
+     * is a new thread that starts empty; the 1:1 stays exactly as it was.
+     *
+     * Both rows carry the same `conversations.address`, which is safe because
+     * inbound attribution already resolves a 1:1 with the sender ahead of any
+     * group (see [conversationForInbound]).
+     *
+     * Returns the new conversation id, or -1 if it could not be created.
+     */
+    fun createGroupFrom(conversationId: Long, addresses: List<String>): Long = runOnIo {
+        val primaryRow = db.readableDatabase.rawQuery(
+            "SELECT address, name FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) (c.getString(0) ?: "") to (c.getString(1) ?: "") else null
+        } ?: return@runOnIo -1L
+        val primary = primaryRow.first
+        val wanted = addresses.map { it.trim() }
+            .filter { it.isNotEmpty() && it != primary }
+            .distinct()
+        if (wanted.isEmpty()) return@runOnIo -1L
+
+        val target = canonical(primary).ifEmpty { primary }
+        val cv = ContentValues().apply {
+            put("address", target)
+            put("name", primaryRow.second)
+            put("snippet", "")
+            put("timestamp", System.currentTimeMillis())
+            put("last_is_me", 0)
+        }
+        val newId = db.writableDatabase.insert("conversations", null, cv)
+        if (newId <= 0) return@runOnIo -1L
+        upsertParticipant(db.writableDatabase, target)
+        db.writableDatabase.execSQL(
+            "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+            arrayOf(newId, target)
+        )
+        for (a in wanted) {
+            val t = canonical(a).ifEmpty { a }
+            upsertParticipant(db.writableDatabase, t)
+            db.writableDatabase.execSQL(
+                "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                arrayOf(newId, t)
+            )
+        }
+        ensureGroupTitle(newId)
+        notifyChanged()
+        newId
+    }
+
     suspend fun conversationByIdSuspend(id: Long): Conversation? = runOnIoAsync {
         var found: Conversation? = null
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.pinned,c.draft,c.draft_date,
-               COALESCE(p.display_destination, c.address)
+               COALESCE(p.display_destination, c.address), c.group_title
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.id=? AND c.deleted_at=0""",
@@ -617,11 +926,207 @@ class Repository(private val context: Context) {
                 pinned = c.getInt(8) == 1,
                 draft = c.getString(9),
                 draftDate = c.getLong(10),
-                display = c.getString(11)
+                display = c.getString(11),
+                groupTitle = c.getString(12).orEmpty()
             )
         }
         found
     }
+
+    /**
+     * Who a conversation goes to, primary recipient first. Falls back to the
+     * conversation's own `address` so a conversation with no rows here (a
+     * brand-new one, or one predating the migration) still sends somewhere.
+     */
+    suspend fun conversationRecipients(conversationId: Long): List<String> =
+        runOnIoAsync { recipientsBlocking(conversationId) }
+
+    /** True once a conversation has more than one recipient. */
+    suspend fun isGroup(conversationId: Long): Boolean =
+        runOnIoAsync { recipientsBlocking(conversationId).size > 1 }
+
+    private fun recipientsBlocking(conversationId: Long): List<String> {
+        val out = mutableListOf<String>()
+        db.readableDatabase.rawQuery(
+            "SELECT address FROM conversation_recipients WHERE conversation_id=? ORDER BY rowid",
+            arrayOf(conversationId.toString())
+        ).use { c ->
+            while (c.moveToNext()) out += c.getString(0)
+        }
+        if (out.isEmpty()) {
+            db.readableDatabase.rawQuery(
+                "SELECT address FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+            ).use { c -> if (c.moveToFirst()) out += c.getString(0) }
+        }
+        return out.filter { it.isNotBlank() }.distinct()
+    }
+
+    /**
+     * Adds [addresses] to the conversation, keeping its primary recipient.
+     * Returns the addresses that were not already on the conversation.
+     */
+    suspend fun addParticipants(conversationId: Long, addresses: List<String>): List<String> =
+        runOnIoAsync {
+            val existing = recipientsBlocking(conversationId).toMutableSet()
+            val added = mutableListOf<String>()
+            for (raw in addresses) {
+                val address = raw.trim()
+                if (address.isEmpty()) continue
+                upsertParticipant(db.writableDatabase, address)
+                if (!existing.add(address)) continue
+                added += address
+                db.writableDatabase.execSQL(
+                    "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                    arrayOf(conversationId, address)
+                )
+            }
+            // A conversation that somehow lost its own recipient row would
+            // otherwise become a group that no longer sends to its original
+            // address, so put it back before anything else.
+            val primary = db.readableDatabase.rawQuery(
+                "SELECT address FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+            ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+            if (primary != null && primary !in existing && added.isNotEmpty()) {
+                db.writableDatabase.execSQL(
+                    "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                    arrayOf(conversationId, primary)
+                )
+            }
+            if (added.isNotEmpty()) {
+                ensureGroupTitle(conversationId)
+                notifyChanged()
+            }
+            added
+        }
+
+    /**
+     * Gives a group a default name from its members, once. A title the user set
+     * is never overwritten, and a 1:1 conversation keeps its contact name.
+     */
+    private fun ensureGroupTitle(conversationId: Long) {
+        val members = recipientsBlocking(conversationId)
+        if (members.size <= 1) return
+        val current = db.readableDatabase.rawQuery(
+            "SELECT group_title FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        if (!current.isNullOrBlank()) return
+        val names = members.map { contactNameFor(it) ?: it }.take(3)
+        val title = when {
+            names.size <= 1 -> names.first()
+            else -> names.dropLast(1).joinToString(", ") + " +" + names.last()
+        }
+        db.writableDatabase.update(
+            "conversations",
+            ContentValues().apply { put("group_title", title) },
+            "id=?", arrayOf(conversationId.toString())
+        )
+    }
+
+    /**
+     * Where an inbound SMS from [address] belongs, or null when the caller
+     * should create a 1:1 thread.
+     *
+     * A 1:1 with this sender always wins: if the user has a private thread with
+     * them, a text from them almost certainly means that thread, not a group.
+     * Failing that, the message goes to their group, but only when exactly one
+     * group is possible -- an SMS names a sender, never a conversation, so this
+     * refuses to guess between two.
+     */
+    suspend fun conversationForInbound(address: String): Long? =
+        runOnIoAsync { conversationForInboundBlocking(address) }
+
+    fun conversationForInboundBlocking(address: String): Long? =
+        conversationIdForAddressBlocking(address) ?: soleGroupBlocking(address)
+
+    /**
+     * The conversation [address] names, or null when there is none.
+     *
+     * A group started from a 1:1 shares its primary contact's address, so this
+     * may match more than one row. The single-recipient thread wins: it is the
+     * private chat that predates the group, and a bare SMS from that person
+     * means it rather than the group.
+     */
+    private fun conversationIdForAddressBlocking(address: String): Long? {
+        var id: Long? = null
+        db.readableDatabase.rawQuery(
+            """SELECT c.id FROM conversations c
+               WHERE c.address=? AND c.deleted_at=0
+               ORDER BY (SELECT count(*) FROM conversation_recipients r
+                          WHERE r.conversation_id=c.id)=1 DESC, c.id ASC
+               LIMIT 1""",
+            arrayOf(address)
+        ).use { c -> if (c.moveToFirst()) id = c.getLong(0) }
+        return id ?: matchConversationId(db.readableDatabase, address, activeOnly = true)
+    }
+
+    /**
+     * The one group conversation [address] belongs to, or null if ambiguous.
+     *
+     * Compared by canonical identity rather than by string: the network can
+     * deliver an address with or without a leading '+', and an exact match would
+     * silently fail to attribute those messages.
+     */
+    fun soleGroupBlocking(address: String): Long? {
+        val groups = mutableMapOf<Long, MutableList<String>>()
+        db.readableDatabase.rawQuery(
+            """SELECT r.conversation_id, r.address FROM conversation_recipients r
+               JOIN conversations c ON c.id = r.conversation_id
+               WHERE c.deleted_at = 0""",
+            null
+        ).use { c ->
+            val idIdx = c.getColumnIndex("conversation_id")
+            val addrIdx = c.getColumnIndex("address")
+            while (c.moveToNext()) {
+                groups.getOrPut(c.getLong(idIdx)) { mutableListOf() } += c.getString(addrIdx)
+            }
+        }
+        return groups
+            .filter { (_, members) -> members.size > 1 }
+            .filter { (_, members) -> members.any { samePerson(it, address) } }
+            .keys
+            .singleOrNull()
+    }
+
+    /** How many people are in [conversationId]; 1 means it is a private chat. */
+    fun recipientCountBlocking(conversationId: Long): Int =
+        db.readableDatabase.rawQuery(
+            "SELECT count(*) FROM conversation_recipients WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+
+    /** A group's own name, or blank when the conversation is 1:1. */
+    fun groupTitleBlocking(conversationId: Long): String =
+        db.readableDatabase.rawQuery(
+            "SELECT group_title FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getString(0).orEmpty() else "" }
+
+    /** Renames a group. Blank input clears it, restoring the default. */
+    suspend fun setGroupTitle(conversationId: Long, title: String) = runOnIoAsync {
+        val clean = title.trim()
+        db.writableDatabase.update(
+            "conversations",
+            ContentValues().apply { put("group_title", clean) },
+            "id=?", arrayOf(conversationId.toString())
+        )
+        if (clean.isEmpty()) ensureGroupTitle(conversationId)
+        notifyChanged()
+    }
+
+    /**
+     * Drops [address] from the conversation. The last remaining recipient
+     * cannot be removed, so a conversation always has somewhere to send.
+     * Returns true when a row was actually deleted.
+     */
+    suspend fun removeParticipant(conversationId: Long, address: String): Boolean =
+        runOnIoAsync {
+            if (recipientsBlocking(conversationId).size <= 1) return@runOnIoAsync false
+            val removed = db.writableDatabase.delete(
+                "conversation_recipients", "conversation_id=? AND address=?",
+                arrayOf(conversationId.toString(), address)
+            )
+            if (removed > 0) notifyChanged()
+            removed > 0
+        }
 
     /** Stores a text message as 'sending'; SmsStatusReceiver confirms the final state. */
     fun sendText(conversationId: Long, body: String, subId: Int = -1): Message? {
@@ -660,6 +1165,37 @@ class Repository(private val context: Context) {
         return Message(id, conversationId, clean, now, true, "sending", mediaType, uri)
     }
 
+    /**
+     * Links an app message to the provider row it is being sent as.
+     *
+     * [sendMedia] stores the message with no `sys_id`, and a sent MMS reaches
+     * the provider's sent box, where [importProviderMms] would import it as a
+     * second message (the same picture twice in the chat). Recording the
+     * provider row here makes the next sync recognise it as already present.
+     *
+     * The mapping table is written too, not just the column: this app reads it
+     * for chat deletion and for import dedupe, so a link that only filled the
+     * column would fix the duplicate on screen and then leak the provider row
+     * back as a fresh 1:1 after the chat was deleted.
+     */
+    fun linkMmsRow(messageId: Long, sysId: Long) {
+        if (messageId <= 0 || sysId <= 0) return
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET sys_id=?, transport=? WHERE id=?",
+            arrayOf<Any?>(sysId, MmsSupport.TRANSPORT_MMS, messageId)
+        )
+        runCatching {
+            db.writableDatabase.execSQL(
+                """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                   VALUES(?,?,?)""",
+                arrayOf<Any?>(messageId, MmsSupport.TRANSPORT_MMS, sysId)
+            )
+        }.onFailure {
+            MmsTrace.w(TRACE, "could not record provider row $sysId for message $messageId", it)
+        }
+        notifyChanged()
+    }
+
     private fun touchConversation(conversationId: Long, snippet: String, ts: Long, isMe: Boolean) {
         db.writableDatabase.execSQL(
             "UPDATE conversations SET snippet=?,timestamp=?,unread_count=0,last_is_me=?,deleted_at=0 WHERE id=?",
@@ -680,12 +1216,16 @@ class Repository(private val context: Context) {
     ): Long {
         val now = System.currentTimeMillis()
         val clean = MessageBody.normalize(body)
-        val convoId = getOrCreateConversationBlocking(address, null, subId)
+        val convoId = conversationForInboundBlocking(address)
+            ?: getOrCreateConversationBlocking(address, null, subId)
 
         db.writableDatabase.execSQL(
-            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
-               VALUES(?,?,?,?,?,?,?,?)""",
-            arrayOf<Any?>(convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS, subId)
+            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id,address)
+               VALUES(?,?,?,?,?,?,?,?,?)""",
+            arrayOf<Any?>(
+                convoId, clean, now, 0, "received", sysId, MmsSupport.TRANSPORT_SMS,
+                subId, address
+            )
         )
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
@@ -861,8 +1401,14 @@ class Repository(private val context: Context) {
     }
 
     fun markReadSuspend(conversationId: Long) {
+        setReadSuspend(conversationId, read = true)
+    }
+
+    /** [read] false restores the unread badge, which a swipe undo needs. */
+    fun setReadSuspend(conversationId: Long, read: Boolean) {
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET unread_count=0 WHERE id=?", arrayOf(conversationId)
+            "UPDATE conversations SET unread_count=? WHERE id=?",
+            arrayOf<Any>(if (read) 0 else 1, conversationId)
         )
         notifyChanged()
     }
@@ -986,18 +1532,22 @@ class Repository(private val context: Context) {
         // Return the two values from the query lambda instead of capturing
         // mutable locals: the capture hides the assignment from static analysis
         // (CodeQL saw `remaining` as always 0 -> java/constant-comparison).
-        val (remaining, draft) = db.readableDatabase.rawQuery(
-            """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0), draft
+        val (remaining, pending, draft) = db.readableDatabase.rawQuery(
+            """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0),
+                      (SELECT COUNT(*) FROM scheduled_messages WHERE conversation_id=?),
+                      draft
                FROM conversations WHERE id=? AND deleted_at=0""",
-            arrayOf(conversationId.toString(), conversationId.toString())
+            arrayOf(conversationId.toString(), conversationId.toString(), conversationId.toString())
         ).use { c ->
             if (!c.moveToFirst()) return
-            c.getInt(0) to (c.getString(1) ?: "")
+            Triple(c.getInt(0), c.getInt(1), c.getString(2) ?: "")
         }
         // A draft only keeps the chat around while drafts are actually surfaced;
         // a leftover column value from when the feature was on must not.
-        val draftKeepsIt = settings.draftsEnabled && draft.isNotBlank()
-        if (remaining > 0 || draftKeepsIt) return
+        // A queued message is content the user is waiting on. It lives in its own
+        // table, so without counting it the chat looks empty the moment the draft
+        // is cleared on scheduling and the conversation vanishes from the list.
+        if (ConversationLiveness.keepAlive(remaining, pending, draft)) return
         db.writableDatabase.execSQL(
             "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
             arrayOf(System.currentTimeMillis().toString(), TrashReason.MANUAL, conversationId.toString())
@@ -1033,9 +1583,15 @@ class Repository(private val context: Context) {
             if (conversationIds.isEmpty()) return
             val ph = conversationIds.joinToString(",") { "?" }
             data class Purge(val transport: String, val sysId: Long)
-            val ids = mutableListOf<Purge>()
+            val ids = mutableSetOf<Purge>()
+            // Every provider row the conversation owns, not just the one in
+            // messages.sys_id: a group message writes one per recipient, and
+            // deleting the chat must not leave the rest in the Sent box to be
+            // re-imported as a new 1:1.
             db.readableDatabase.rawQuery(
-                "SELECT transport, sys_id FROM messages WHERE conversation_id IN ($ph) AND sys_id>0",
+                """SELECT p.transport, p.sys_id FROM message_provider_ids p
+                   JOIN messages m ON m.id = p.message_id
+                   WHERE m.conversation_id IN ($ph)""",
                 conversationIds.map { it.toString() }.toTypedArray()
             ).use { c -> while (c.moveToNext()) ids.add(Purge(c.getString(0), c.getLong(1))) }
             ids.groupBy { it.transport }.forEach { (transport, messages) ->
@@ -1163,6 +1719,43 @@ class Repository(private val context: Context) {
             arrayOf<Any?>(serializeReactions(reactions), messageId)
         )
         notifyChanged()
+    }
+
+    /**
+     * Applies a reaction that arrived as text from another of our devices
+     * (#188). Finds the newest message in the conversation whose body matches
+     * the quoted snippet and toggles the emoji on it. Returns false when nothing
+     * matches, so the caller stores the text as an ordinary message instead.
+     */
+    suspend fun applyIncomingReaction(
+        address: String,
+        emoji: String,
+        snippet: String,
+        added: Boolean
+    ): Boolean = runOnIoAsync {
+        val convoId = conversationIdForAddressBlocking(address) ?: return@runOnIoAsync false
+        val like = snippet.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        var targetId = -1L
+        var current = ""
+        db.readableDatabase.rawQuery(
+            "SELECT id,reactions FROM messages WHERE conversation_id=? AND deleted_at=0 " +
+                "AND body LIKE ? ESCAPE '\\' ORDER BY timestamp DESC, id DESC LIMIT 1",
+            arrayOf(convoId.toString(), like)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                targetId = c.getLong(0)
+                current = c.getString(1)
+            }
+        }
+        if (targetId < 0) return@runOnIoAsync false
+        val map = parseReactions(current).toMutableMap()
+        if (added) map[emoji] = (map[emoji] ?: 0) + 1 else map.remove(emoji)
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET reactions=? WHERE id=?",
+            arrayOf<Any?>(serializeReactions(map), targetId)
+        )
+        notifyChanged()
+        true
     }
 
     fun markMessageStatusSuspend(messageId: Long, status: String) {
@@ -1411,109 +2004,325 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
+    suspend fun scheduledMessageById(id: Long): ScheduledMessage? = runOnIoAsync {
+        db.readableDatabase.rawQuery(
+            "SELECT id,address,body,timestamp,conversation_id,sub_id FROM scheduled_messages WHERE id=?",
+            arrayOf(id.toString())
+        ).use { c ->
+            if (!c.moveToFirst()) return@use null
+            ScheduledMessage(
+                id = c.getLong(0),
+                address = c.getString(1),
+                body = c.getString(2),
+                timestamp = c.getLong(3),
+                conversationId = c.getLong(4),
+                subId = c.getInt(5)
+            )
+        }
+    }
+
+    fun updateScheduledMessage(id: Long, timestamp: Long) {
+        require(timestamp > System.currentTimeMillis()) { "Scheduled time must be in the future" }
+        val updated = db.writableDatabase.update(
+            "scheduled_messages",
+            ContentValues().apply { put("timestamp", timestamp) },
+            "id=?",
+            arrayOf(id.toString())
+        )
+        require(updated > 0) { "No scheduled message with id $id" }
+        notifyChanged()
+    }
+
     fun peekBackupFormat(context: Context, sourceUri: android.net.Uri): BackupFormat {
         return try {
             context.contentResolver.openInputStream(sourceUri)?.use { inp ->
-                val magic = ByteArray(4)
-                if (inp.read(magic) == 4 && BackupCrypto.isPinMagic(magic)) BackupFormat.PIN
-                else BackupFormat.LEGACY
+                val magic = ByteArray(16)
+                val read = inp.read(magic)
+                when {
+                    read >= 4 && BackupCrypto.isPinMagic(magic.copyOf(4)) -> BackupFormat.PIN
+                    // A SQLite database names itself in its first 16 bytes, so an
+                    // unencrypted backup is recognisable without trying to
+                    // decrypt it.
+                    read == 16 && String(magic).startsWith("SQLite format 3") ->
+                        BackupFormat.RAW
+                    else -> BackupFormat.LEGACY
+                }
             } ?: BackupFormat.LEGACY
         } catch (_: Exception) {
             BackupFormat.LEGACY
         }
     }
 
-    fun backupDatabase(context: Context, pin: String): Boolean {
-        return try {
-            if (!BackupPolicy.isBackupAllowed(settings.privacyModeEnabled)) return false
-            if (!BackupCrypto.isValidPin(pin)) return false
-            val dbFile = context.getDatabasePath(DB_NAME)
-            if (!dbFile.exists()) return false
-            val resolver = context.contentResolver
-            val name = "messages_backup_${System.currentTimeMillis()}.enc"
-            val custom = settings.backupTreeUri.takeIf { it.isNotEmpty() }
-            // A user-chosen location must never silently fall back to internal
-            // storage: fail instead, so they know the backup did not go where
-            // they asked (e.g. revoked SD-card access).
-            val target = if (custom != null) {
-                val treeUri = android.net.Uri.parse(custom)
-                android.provider.DocumentsContract.createDocument(
-                    resolver,
-                    android.provider.DocumentsContract.buildDocumentUriUsingTree(
-                        treeUri, android.provider.DocumentsContract.getTreeDocumentId(treeUri)
-                    ),
-                    "application/octet-stream",
-                    name
-                ) ?: return false
-            } else {
-                resolver.insert(
-                    MediaStore.Files.getContentUri("external"),
-                    ContentValues().apply {
-                        put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-                        put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
-                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/Messages")
-                    }
-                ) ?: return false
-            }
-            resolver.openOutputStream(target)?.use { out ->
-                dbFile.inputStream().use { inp -> BackupCrypto.encryptWithPin(inp, out, pin) }
-            } ?: return false
-            true
-        } catch (_: Exception) { false }
+    /**
+     * Writes an encrypted copy of the database to the configured location.
+     *
+     * Every `return false` used to be the same `false`, so a revoked SD-card
+     * permission and a rejected PIN both reached the user as one generic
+     * failure. Each early exit now carries the reason it took.
+     */
+    sealed interface ExportResult {
+        data class Success(
+            val fileName: String,
+            val bytes: Long,
+            /** Attempts made; >1 means a retry produced this file. */
+            val attempts: Int = 1
+        ) : ExportResult
+
+        data class Error(
+            val message: String,
+            val attempts: Int = 1,
+            /** Whether another attempt could plausibly have helped. */
+            val transient: Boolean = false
+        ) : ExportResult
     }
 
-    sealed interface ImportResult {
-        /** [merged] is the number of messages added, non-null only for a merge import. */
-        data class Success(val merged: Int? = null) : ImportResult
-        data class Error(val message: String) : ImportResult
+    fun backupDatabase(context: Context, pin: String): ExportResult {
+        if (!BackupPolicy.isBackupAllowed(settings.privacyModeEnabled)) {
+            return exportFailed("Backups are turned off while privacy mode is on", PIN_FORMAT)
+        }
+        if (!BackupCrypto.isValidPin(pin)) return exportFailed("PIN must be 4 digits or more", PIN_FORMAT)
+        return writeBackup(context, PIN_FORMAT, ".enc") { snapshot, out ->
+            snapshot.inputStream().use { inp -> BackupCrypto.encryptWithPin(inp, out, pin) }
+        }
     }
 
     /**
-     * Imports an SMS Import / Export (sms-ie) backup. Messages are matched to
-     * existing conversations by canonical address; MMS attachments are copied
-     * into app storage so they survive the backup file going away.
+     * Plaintext SQLite copy, readable outside the app (issue #292). The caller
+     * must have warned the user first: this file is not encrypted.
      */
-    fun importSmsIe(messages: List<SmsIeBackup.Message>): Int {
-        if (messages.isEmpty()) return 0
-        val database = db.writableDatabase
-        var added = 0
-        database.beginTransaction()
+    fun backupDatabaseUnencrypted(context: Context): ExportResult {
+        if (!BackupPolicy.isBackupAllowed(settings.privacyModeEnabled)) {
+            return exportFailed("Backups are turned off while privacy mode is on", BackupFormat.RAW.name)
+        }
+        return writeBackup(context, BackupFormat.RAW.name, ".db") { snapshot, out ->
+            snapshot.inputStream().use { inp -> inp.copyTo(out) }
+        }
+    }
+
+    /**
+     * Writes a verified snapshot to the configured location, retrying the
+     * destination write with backoff.
+     *
+     * The live database is snapshotted once and the retries re-stream that
+     * stable file, so a transient failure re-reads neither the moving database
+     * nor (for an encrypted export) the cipher. Only a complete, non-empty write
+     * is recorded as success; a partial destination file is deleted.
+     */
+    private fun writeBackup(
+        context: Context,
+        format: String,
+        extension: String,
+        writeBody: (java.io.File, java.io.OutputStream) -> Long
+    ): ExportResult {
+        val dbFile = context.getDatabasePath(DB_NAME)
+        if (!dbFile.exists()) return exportFailed("No message database to back up yet", format)
+        val snapshot = createSnapshot(dbFile)
+            ?: return exportFailed("Could not snapshot the message database", format)
         try {
-            for (msg in messages.sortedBy { it.timestamp }) {
-                val address = canonical(msg.address).ifEmpty { msg.address }
-                val cid = matchConversationId(database, address) ?: database.insertOrThrow(
-                    "conversations", null, ContentValues().apply {
-                        put("address", address)
-                        put("name", contactNameFor(address) ?: address)
+            if (!isValidSqliteFile(snapshot)) {
+                return exportFailed("Backup snapshot is not a valid database", format)
+            }
+            val name = "messages_backup_${System.currentTimeMillis()}$extension"
+            val target = createBackupTarget(context, name) ?: return exportFailed(
+                if (settings.backupTreeUri.isNotEmpty()) "Cannot write to the chosen backup folder"
+                else "Cannot write to Documents/Messages",
+                format
+            )
+            val outcome = TransferRetry.run {
+                // Debug-only: the regression script forces the first N attempts
+                // to fail so the backoff path can be observed on a device.
+                if (TransferRetry.consumeInjectedFailure()) {
+                    throw IOException("injected backup failure on attempt $it")
+                }
+                context.contentResolver.openOutputStream(target)?.use { out ->
+                    writeBody(snapshot, out)
+                } ?: throw IOException("cannot open the backup file for writing")
+            }
+            return when (outcome) {
+                is TransferRetry.Result.Success -> {
+                    val written = outcome.value
+                    if (written <= 0L) {
+                        context.contentResolver.delete(target, null, null)
+                        exportFailed("Backup file was written empty", format, outcome.attempts)
+                    } else {
+                        recordTransfer(
+                            TransferOperation.EXPORT, format, EXPORT_MODE, true,
+                            "Saved $name", attempts = outcome.attempts
+                        )
+                        ExportResult.Success(name, written, outcome.attempts)
                     }
-                )
-                val image = msg.imageBytes
-                database.insertOrThrow("messages", null, ContentValues().apply {
-                    put("conversation_id", cid)
-                    put("body", msg.body)
-                    put("timestamp", msg.timestamp)
-                    put("is_me", if (msg.isMe) 1 else 0)
-                    put("status", msg.status)
-                    put("transport", if (msg.isMms) MmsSupport.TRANSPORT_MMS else MmsSupport.TRANSPORT_SMS)
-                    put("media_type", if (image != null) "image" else "text")
-                    put("media_uri", if (image != null) storeImportedImage(image, msg) else "")
-                })
-                if (!msg.isMe && !msg.read) {
-                    database.execSQL(
-                        "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
+                }
+                is TransferRetry.Result.Failure -> {
+                    // A half-written file must not masquerade as a backup.
+                    context.contentResolver.delete(target, null, null)
+                    exportFailed(
+                        outcome.error.message ?: outcome.error.javaClass.simpleName,
+                        format, outcome.attempts, outcome.transient
                     )
                 }
-                upsertParticipant(database, address)
-                added++
             }
-            database.setTransactionSuccessful()
         } finally {
-            database.endTransaction()
+            snapshot.delete()
         }
-        refreshConversationSnippets()
-        reMigrateParticipants()
-        notifyChanged()
-        return added
+    }
+
+    /**
+     * A stable copy of the live database to stream from, or null if it cannot be
+     * made. Folds the journal into the main file first, matching the pre-prune
+     * snapshot, so the copy is one coherent database rather than a file caught
+     * mid-write.
+     */
+    private fun createSnapshot(dbFile: File): File? {
+        val dir = File(context.cacheDir, "backup-snapshots")
+        return try {
+            dir.mkdirs()
+            // Unique per run: a manual backup can overlap the periodic worker,
+            // and two runs must never delete or stream each other's snapshot.
+            val target = File.createTempFile("snapshot-", ".db", dir)
+            // Sweep only snapshots old enough to be a previous crash's leftovers.
+            val staleBefore = System.currentTimeMillis() - SNAPSHOT_TTL_MS
+            dir.listFiles()?.forEach { if (it != target && it.lastModified() < staleBefore) it.delete() }
+            runCatching { db.writableDatabase.rawQuery("PRAGMA wal_checkpoint(FULL)", null).close() }
+            dbFile.copyTo(target, overwrite = true)
+            target
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Opens the destination document in the configured location. */
+    private fun createBackupTarget(context: Context, name: String): android.net.Uri? {
+        val resolver = context.contentResolver
+        val custom = settings.backupTreeUri.takeIf { it.isNotEmpty() }
+        // A user-chosen location must never silently fall back to internal
+        // storage: fail instead, so they know the backup did not go where
+        // they asked (e.g. revoked SD-card access).
+        return if (custom != null) {
+            val treeUri = android.net.Uri.parse(custom)
+            android.provider.DocumentsContract.createDocument(
+                resolver,
+                android.provider.DocumentsContract.buildDocumentUriUsingTree(
+                    treeUri, android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+                ),
+                "application/octet-stream",
+                name
+            )
+        } else {
+            resolver.insert(
+                MediaStore.Files.getContentUri("external"),
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/Messages")
+                }
+            )
+        }
+    }
+
+    private fun exportFailed(
+        reason: String,
+        format: String = PIN_FORMAT,
+        attempts: Int = 1,
+        transient: Boolean = false
+    ): ExportResult.Error {
+        recordTransfer(
+            TransferOperation.EXPORT, format, EXPORT_MODE, false, reason, attempts = attempts
+        )
+        return ExportResult.Error(reason, attempts, transient)
+    }
+
+
+    sealed interface ImportResult {
+        /** [merged] is the number of messages added, non-null only for a merge import. */
+        data class Success(
+            val merged: Int? = null,
+            val attempts: Int = 1
+        ) : ImportResult
+
+        data class Error(
+            val message: String,
+            val attempts: Int = 1,
+            /** Whether another attempt could plausibly have helped. */
+            val transient: Boolean = false
+        ) : ImportResult
+    }
+
+    /**
+     * Why a message in an incoming backup was not written.
+     *
+     * The counts are the only record that a merge left rows behind. Without
+     * them "merged 4,000" reads as a clean run when 600 were already there.
+     */
+    object Conflict {
+        const val ALREADY_PRESENT = "already present"
+        const val PROVIDER_ID_TAKEN = "provider id already used"
+        const val PROVIDER_ID_DROPPED = "provider id from another device"
+        const val CONVERSATION_MERGED = "conversation matched an existing one"
+        const val CONVERSATION_UNRESOLVED = "conversation could not be matched"
+        const val RECORD_UNREADABLE = "record could not be read"
+        const val PART_TOO_LARGE = "attachment too large"
+    }
+
+    /**
+     * How a streaming import went.
+     *
+     * [skipped] and [truncated] are reported rather than swallowed: a 50k backup
+     * that silently loses records to a damaged line or an oversized photo is
+     * worse than one that says so.
+     */
+    data class ImportReport(
+        val added: Int,
+        val seen: Int,
+        val skipped: Int,
+        val truncated: Boolean = false,
+        /** Reason -> count; see [Conflict]. Empty for a run with nothing lost. */
+        val conflicts: Map<String, Int> = emptyMap()
+    )
+
+    /** Bumps [reason] in a running tally, so each site reports its own loss. */
+    private fun MutableMap<String, Int>.count(reason: String, by: Int = 1) {
+        if (by <= 0) return
+        this[reason] = (this[reason] ?: 0) + by
+    }
+
+    /**
+     * Writes one run to the transfer log.
+     *
+     * Recorded here rather than in the ViewModel so every path that reaches the
+     * database is logged, including the debug probes the regression scripts
+     * drive — a script asserting on a conflict count depends on the same call
+     * the UI makes.
+     */
+    private fun recordTransfer(
+        operation: TransferOperation,
+        format: String,
+        mode: String,
+        succeeded: Boolean,
+        detail: String,
+        added: Int = 0,
+        seen: Int = 0,
+        skipped: Int = 0,
+        attempts: Int = 1,
+        recovered: Boolean = false,
+        conflicts: Map<String, Int> = emptyMap()
+    ) {
+        TransferLogStore.append(
+            context,
+            TransferEntry(
+                timestamp = System.currentTimeMillis(),
+                operation = operation,
+                format = format,
+                mode = mode,
+                succeeded = succeeded,
+                detail = if (attempts > 1) "$detail (after $attempts attempts)" else detail,
+                added = added,
+                seen = seen,
+                skipped = skipped,
+                attempts = attempts,
+                recovered = recovered,
+                conflicts = conflicts.filterValues { it > 0 }
+            )
+        )
     }
 
     /** Copies an imported MMS attachment into app storage and returns its URI. */
@@ -1533,16 +2342,236 @@ class Repository(private val context: Context) {
     fun importSmsIeFrom(
         context: Context,
         uri: android.net.Uri,
-        mode: ImportMode = ImportMode.MERGE
+        mode: ImportMode = ImportMode.MERGE,
+        onProgress: ((done: Int, total: Int) -> Unit)? = null
     ): ImportResult {
-        val loaded = SmsIeReader.load(context, uri)
-            ?: return ImportResult.Error("Cannot read that backup file")
-        if (loaded.parsed.messages.isEmpty()) {
-            return ImportResult.Error("No messages found in that backup")
+        val staged = SmsIeReader.stage(context, uri, context.cacheDir)
+            ?: run {
+                recordTransfer(
+                    TransferOperation.IMPORT, SMS_IE_FORMAT, mode.name, false,
+                    "Cannot read that backup file"
+                )
+                return ImportResult.Error("Cannot read that backup file")
+            }
+        return staged.use {
+            val report = importStaged(staged, mode, onProgress)
+            when {
+                report.seen == 0 -> {
+                    recordTransfer(
+                        TransferOperation.IMPORT, SMS_IE_FORMAT, mode.name, false,
+                        "No messages found in that backup"
+                    )
+                    ImportResult.Error("No messages found in that backup")
+                }
+                // Partial success is still success: a backup with one unreadable
+                // record should not read as a total failure to the user.
+                else -> {
+                    // Mirror into the system SMS store, so the phone's own
+                    // messaging app shows the imported history too. Without this
+                    // an sms-ie import lives only here, and the user finds their
+                    // backup missing from the app they actually use day to day.
+                    pushLocalMessagesToProvider()
+                    recordTransfer(
+                        TransferOperation.IMPORT, SMS_IE_FORMAT, mode.name, true,
+                        "Imported ${report.added} of ${report.seen} message(s)",
+                        added = report.added,
+                        seen = report.seen,
+                        skipped = report.skipped,
+                        conflicts = report.conflicts
+                    )
+                    ImportResult.Success(report.added)
+                }
+            }
         }
+    }
+
+    /**
+     * Streams a staged backup into the database.
+     *
+     * Three things make this survive a 50k-message backup with images:
+     *
+     *  - records are read and written one at a time, in batches, so neither the
+     *    message list nor the MMS payload is ever fully resident;
+     *  - conversations are looked up through a map built once, instead of
+     *    re-scanning the whole table per message, which was quadratic;
+     *  - a record that fails to insert costs that record, not the batch and not
+     *    the import. One bad row used to discard everything with it.
+     */
+    fun importStaged(
+        staged: SmsIeReader.Staged,
+        mode: ImportMode = ImportMode.MERGE,
+        onProgress: ((done: Int, total: Int) -> Unit)? = null
+    ): ImportReport {
         if (SmsIeBackupPolicy.clearsExisting(mode)) clearAllMessages()
-        val added = importSmsIe(loaded.parsed.messages)
-        return ImportResult.Success(added)
+
+        val database = db.writableDatabase
+        val byAddress = HashMap<String, Long>()
+        database.rawQuery("SELECT id, address FROM conversations", null).use { c ->
+            while (c.moveToNext()) {
+                val id = c.getLong(0)
+                val address = c.getString(1) ?: continue
+                byAddress[address] = id
+                // Also key the canonical spelling, so a backup written with a
+                // different national/E.164 formatting still finds the thread.
+                val canon = canonical(address)
+                if (canon != address) byAddress.putIfAbsent(canon, id)
+            }
+        }
+
+        val batch = ArrayList<SmsIeBackup.Message>(IMPORT_BATCH)
+        var added = 0
+        var seen = 0
+        var skipped = 0
+        var truncated = staged.skippedParts.isNotEmpty()
+        val conflicts = LinkedHashMap<String, Int>()
+        conflicts.count(Conflict.PART_TOO_LARGE, staged.skippedParts.size)
+        // Only meaningful when merging. After a Replace the table is empty, so
+        // seeding from it would cost a full scan to find nothing.
+        val known = if (SmsIeBackupPolicy.clearsExisting(mode)) HashSet()
+        else existingMessageKeys()
+
+        fun flush() {
+            if (batch.isEmpty()) return
+            val rows = batch.sortedBy { it.timestamp }
+            batch.clear()
+            // Snapshot the shared tally so a retried batch starts from the state
+            // before its rolled-back attempt rather than double-counting it.
+            val baseAdded = added
+            val baseSkipped = skipped
+            val baseConflicts = LinkedHashMap(conflicts)
+            val baseKnown = HashSet(known)
+            val baseByAddress = HashMap(byAddress)
+            val outcome = TransferRetry.run {
+                added = baseAdded
+                skipped = baseSkipped
+                conflicts.clear()
+                conflicts.putAll(baseConflicts)
+                known.clear()
+                known.addAll(baseKnown)
+                byAddress.clear()
+                byAddress.putAll(baseByAddress)
+                database.beginTransaction()
+                try {
+                    for (msg in rows) {
+                        val address = canonical(msg.address).ifEmpty { msg.address }
+                        var cid = byAddress[address] ?: byAddress[msg.address]
+                        if (cid == null) {
+                            cid = database.insert("conversations", null, ContentValues().apply {
+                                put("address", address)
+                                put("name", contactNameFor(address) ?: address)
+                            })
+                            if (cid <= 0) {
+                                skipped++
+                                conflicts.count(Conflict.CONVERSATION_UNRESOLVED)
+                                continue
+                            }
+                            byAddress[address] = cid
+                        }
+                        val transport = if (msg.isMms) MmsSupport.TRANSPORT_MMS else MmsSupport.TRANSPORT_SMS
+                        val key = messageKey(address, msg.timestamp, msg.isMe, msg.body, transport)
+                        if (!known.add(key)) {
+                            skipped++
+                            conflicts.count(Conflict.ALREADY_PRESENT)
+                            continue
+                        }
+                        val image = msg.imageBytes
+                        val row = database.insert("messages", null, ContentValues().apply {
+                            put("conversation_id", cid)
+                            put("body", msg.body)
+                            put("timestamp", msg.timestamp)
+                            put("is_me", if (msg.isMe) 1 else 0)
+                            put("status", msg.status)
+                            put("transport", transport)
+                            put("media_type", if (image != null) "image" else "text")
+                            put("media_uri", if (image != null) storeImportedImage(image, msg) else "")
+                        })
+                        if (row <= 0) {
+                            skipped++
+                            conflicts.count(Conflict.RECORD_UNREADABLE)
+                            continue
+                        }
+                        if (!msg.isMe && !msg.read) {
+                            database.execSQL(
+                                "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?",
+                                arrayOf(cid)
+                            )
+                        }
+                        upsertParticipant(database, address)
+                        added++
+                    }
+                    database.setTransactionSuccessful()
+                } finally {
+                    database.endTransaction()
+                }
+            }
+            if (outcome is TransferRetry.Result.Failure) {
+                // A batch that keeps failing must not take the rest of the
+                // import with it; the rows already written in it are lost, and
+                // that is reported rather than hidden.
+                added = baseAdded
+                skipped = baseSkipped + rows.size
+                conflicts.clear()
+                conflicts.putAll(baseConflicts)
+                conflicts.count(Conflict.RECORD_UNREADABLE, rows.size)
+                Log.w(
+                    "SmsIeImport",
+                    "batch failed after ${outcome.attempts} attempt(s): ${outcome.error.message}"
+                )
+            }
+        }
+
+        SmsIeReader.forEachRecord(staged) { json ->
+            val msg = SmsIeBackup.record(json) { name ->
+                if (staged.wasSkipped(name)) null else staged.partBytes(name)
+            }
+            seen++
+            if (msg == null) {
+                skipped++
+                conflicts.count(Conflict.RECORD_UNREADABLE)
+            } else {
+                batch.add(msg)
+                if (batch.size >= IMPORT_BATCH) flush()
+            }
+            if (seen % IMPORT_PROGRESS_EVERY == 0) onProgress?.invoke(seen, 0)
+        }
+        flush()
+
+        refreshConversationSnippets()
+        reMigrateParticipants()
+        notifyChanged()
+        onProgress?.invoke(seen, seen)
+        return ImportReport(added, seen, skipped, truncated, conflicts)
+    }
+
+    /**
+     * Identity of a message for duplicate detection: the same conversation, the
+     * same instant, the same direction, transport and text. Deliberately not the
+     * provider id — that belongs to whichever device issued it.
+     */
+    private fun messageKey(
+        address: String,
+        timestamp: Long,
+        isMe: Boolean,
+        body: String,
+        transport: String
+    ): String = "$address|$timestamp|${if (isMe) 1 else 0}|$transport|$body"
+
+    /** Keys for every message already stored, so a merge can skip repeats. */
+    private fun existingMessageKeys(): HashSet<String> {
+        val keys = HashSet<String>()
+        val addressByConvo = HashMap<Long, String>()
+        db.readableDatabase.rawQuery("SELECT id, address FROM conversations", null).use { c ->
+            while (c.moveToNext()) addressByConvo[c.getLong(0)] = c.getString(1) ?: ""
+        }
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id, timestamp, is_me, body, transport FROM messages", null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val address = addressByConvo[c.getLong(0)] ?: continue
+                keys += messageKey(address, c.getLong(1), c.getInt(2) == 1, c.getString(3) ?: "", c.getString(4) ?: "")
+            }
+        }
+        return keys
     }
 
     /** Drops every stored message and conversation, leaving settings intact. */
@@ -1568,47 +2597,105 @@ class Repository(private val context: Context) {
         onProgress: (Int) -> Unit = {}
     ): ImportResult {
         val dbFile = context.getDatabasePath(DB_NAME)
-        val backupFile = File(dbFile.parent, "pre_import_backup.db")
-        val tempFile = File(dbFile.parent, "import_temp.db")
+        val backupFile = File(dbFile.parent, PRE_IMPORT_BACKUP_NAME)
+        val tempFile = File(dbFile.parent, IMPORT_TEMP_NAME)
         try {
             val isPin = peekBackupFormat(context, sourceUri) == BackupFormat.PIN
             if (isPin && pin == null) {
                 return ImportResult.Error("Backup is PIN-protected. Enter the PIN to import.")
             }
-            // Decrypt to temp file first (never touch the live DB until we have a valid file)
-            val decrypted = context.contentResolver.openInputStream(sourceUri)?.use { inp ->
-                FileOutputStream(tempFile).use { out ->
-                    if (isPin) BackupCrypto.decryptWithPin(inp, out, pin!!)
-                    else BackupCrypto.decrypt(inp, out)
-                }
-            } ?: return ImportResult.Error("Cannot open backup file")
+            // Stage the file first, and never touch the live DB until it is
+            // verified. A plain SQLite backup is copied as-is: attempting to
+            // decrypt it and then re-opening the source to recover was how a
+            // perfectly good backup came back as "corrupted", because the second
+            // read produced nothing and the check then saw an empty file.
+            val format = peekBackupFormat(context, sourceUri)
+            if (format == BackupFormat.PIN && pin == null) {
+                return ImportResult.Error("Backup is PIN-protected. Enter the PIN to import.")
+            }
 
-            if (!decrypted) {
-                if (isPin) {
-                    // Wrong PIN (or tampered). A PIN file is never a raw sqlite dump.
-                    tempFile.delete()
-                    return ImportResult.Error("Wrong PIN or corrupted file")
+            // A transient read failure is retried with backoff; a rejected PIN
+            // is not, because no number of retries can change it.
+            val staging = stageBackup(context, sourceUri, format, pin, tempFile)
+            val staged: Boolean
+            val attempts: Int
+            when (staging) {
+                is TransferRetry.Result.Success -> {
+                    staged = staging.value
+                    attempts = staging.attempts
                 }
-                // Legacy (or raw) backup that doesn't decrypt — try a raw import
-                tempFile.delete()
-                context.contentResolver.openInputStream(sourceUri)?.use { raw ->
-                    FileOutputStream(tempFile).use { raw::copyTo }
+                is TransferRetry.Result.Failure -> {
+                    tempFile.delete()
+                    val reason = "Cannot open backup file"
+                    recordTransfer(
+                        TransferOperation.IMPORT, format.name, mode.name, false, reason,
+                        attempts = staging.attempts
+                    )
+                    return ImportResult.Error(reason, staging.attempts, staging.transient)
                 }
             }
+
+            if (!staged) {
+                tempFile.delete()
+                val reason =
+                    if (format == BackupFormat.PIN) "Wrong PIN or corrupted file"
+                    else "Cannot decrypt this backup on this device"
+                recordTransfer(
+                    TransferOperation.IMPORT, format.name, mode.name, false, reason,
+                    attempts = attempts
+                )
+                return ImportResult.Error(reason, attempts)
+            }
+            Log.i(
+                TAG_IMPORT,
+                "staged ${tempFile.length()} bytes from ${sourceUri.lastPathSegment} ($format)"
+            )
 
             // Validate the temp file is a real SQLite database
             if (!isValidSqliteFile(tempFile)) {
+                Log.e(
+                    TAG_IMPORT,
+                    "temp file is not a SQLite database: ${tempFile.length()} bytes " +
+                        "header=${runCatching {
+                            RandomAccessFile(tempFile, "r").use { raf ->
+                                ByteArray(16).also { raf.readFully(it) }
+                            }.joinToString("") { b -> "%02x".format(b) }
+                        }.getOrNull()}"
+                )
                 tempFile.delete()
-                return ImportResult.Error("Invalid or corrupted backup file")
+                recordTransfer(
+                    TransferOperation.IMPORT, format.name, mode.name, false,
+                    "Invalid or corrupted backup file", attempts = attempts
+                )
+                return ImportResult.Error("Invalid or corrupted backup file", attempts)
             }
 
             if (mode == ImportMode.MERGE) {
-                val merged = mergeDatabase(tempFile, onProgress)
-                tempFile.delete()
-                pushLocalMessagesToProvider()
-                reMigrateParticipants()
-                notifyChanged()
-                return ImportResult.Success(merged)
+                when (val merge = TransferRetry.run { mergeDatabase(tempFile, onProgress) }) {
+                    is TransferRetry.Result.Failure -> {
+                        tempFile.delete()
+                        val reason =
+                            "Merge failed: ${merge.error.message ?: merge.error.javaClass.simpleName}"
+                        recordTransfer(
+                            TransferOperation.IMPORT, format.name, mode.name, false, reason,
+                            attempts = merge.attempts
+                        )
+                        return ImportResult.Error(reason, merge.attempts, merge.transient)
+                    }
+                    is TransferRetry.Result.Success -> {
+                        val merged = merge.value
+                        tempFile.delete()
+                        pushLocalMessagesToProvider()
+                        reMigrateParticipants()
+                        notifyChanged()
+                        recordTransfer(
+                            TransferOperation.IMPORT, format.name, mode.name, true,
+                            "Merged ${merged.added} message(s)", added = merged.added,
+                            attempts = attempts, conflicts = merged.conflicts
+                        )
+                        return ImportResult.Success(merged.added, attempts)
+                    }
+                }
             }
 
             // Backup current DB in case swap fails
@@ -1623,7 +2710,11 @@ class Repository(private val context: Context) {
                     // Restore from backup
                     backupFile.renameTo(dbFile)
                     db = Db(context)
-                    return ImportResult.Error("Failed to replace database file")
+                    recordTransfer(
+                        TransferOperation.IMPORT, format.name, mode.name, false,
+                        "Failed to replace database file", attempts = attempts
+                    )
+                    return ImportResult.Error("Failed to replace database file", attempts)
                 }
                 db = Db(context)
                 // A restored backup should be fully visible: lift any
@@ -1636,19 +2727,121 @@ class Repository(private val context: Context) {
                 // Clean up
                 tempFile.delete()
                 backupFile.delete()
-                return ImportResult.Success()
+                recordTransfer(
+                    TransferOperation.IMPORT, format.name, mode.name, true,
+                    "Restored backup", attempts = attempts
+                )
+                return ImportResult.Success(null, attempts)
             } catch (e: Exception) {
                 // Restore backup on failure
                 if (!dbFile.exists()) backupFile.renameTo(dbFile)
                 db = Db(context)
                 tempFile.delete()
-                return ImportResult.Error("Database swap failed: ${e.message ?: e.javaClass.simpleName}")
+                val reason = "Database swap failed: ${e.message ?: e.javaClass.simpleName}"
+                recordTransfer(
+                    TransferOperation.IMPORT, format.name, mode.name, false, reason,
+                    attempts = attempts
+                )
+                return ImportResult.Error(reason, attempts, TransferRetry.isTransient(e))
             }
         } catch (e: Exception) {
             tempFile.delete()
-            return ImportResult.Error("Import failed: ${e.message ?: e.javaClass.simpleName}")
+            val reason = "Import failed: ${e.message ?: e.javaClass.simpleName}"
+            recordTransfer(TransferOperation.IMPORT, BackupFormat.RAW.name, mode.name, false, reason)
+            return ImportResult.Error(reason, transient = TransferRetry.isTransient(e))
         }
     }
+
+    /**
+     * Reads the source into [tempFile], retrying a transient read failure.
+     *
+     * Returns false rather than throwing when the stream opened but the
+     * container did not decode — a wrong PIN or a corrupt file — because that is
+     * permanent and a retry would only re-reject it.
+     */
+    private fun stageBackup(
+        context: Context,
+        sourceUri: android.net.Uri,
+        format: BackupFormat,
+        pin: String?,
+        tempFile: File
+    ): TransferRetry.Result<Boolean> = TransferRetry.run {
+        var decrypted = false
+        val opened = context.contentResolver.openInputStream(sourceUri)?.use { inp ->
+            FileOutputStream(tempFile).use { out ->
+                when (format) {
+                    BackupFormat.PIN -> decrypted = BackupCrypto.decryptWithPin(inp, out, pin!!)
+                    BackupFormat.RAW -> {
+                        inp.copyTo(out)
+                        decrypted = true
+                    }
+                    // Legacy keystore-bound. A wrong or absent key fails the
+                    // GCM tag, which is the correct outcome rather than
+                    // silently importing an empty database.
+                    BackupFormat.LEGACY -> decrypted = BackupCrypto.decrypt(inp, out)
+                }
+            }
+            true
+        }
+        if (opened == null) throw IOException("cannot open backup file")
+        decrypted
+    }
+
+    /**
+     * Repairs the database if a REPLACE import died mid-swap.
+     *
+     * Called once at startup before anything opens the database. The importer
+     * keeps the pre-import copy and the verified temp file beside the live
+     * database until the swap is complete; if the live file is gone, one of
+     * those is the whole history and is promoted back. If the live file is
+     * healthy, the leftovers are just scratch and are removed.
+     */
+    fun recoverInterruptedImport() {
+        val dbFile = context.getDatabasePath(DB_NAME)
+        val preImport = File(dbFile.parent, PRE_IMPORT_BACKUP_NAME)
+        val temp = File(dbFile.parent, IMPORT_TEMP_NAME)
+        val liveExists = dbFile.isFile && dbFile.length() > 0L
+        val action = ImportRecovery.decide(
+            liveDatabaseExists = liveExists,
+            preImportExists = preImport.isFile,
+            tempIsValid = temp.isFile && isValidSqliteFile(temp)
+        )
+        when (action) {
+            ImportRecovery.Action.RESTORE_PRE_IMPORT -> {
+                val restored = runCatching { preImport.copyTo(dbFile, overwrite = true) }.isSuccess &&
+                    dbFile.isFile && dbFile.length() > 0L
+                if (restored) {
+                    Log.w(TAG_IMPORT, "recovered an interrupted restore from $PRE_IMPORT_BACKUP_NAME")
+                    recordTransfer(
+                        TransferOperation.IMPORT, BackupFormat.RAW.name, "replace", true,
+                        "Recovered an interrupted restore", recovered = true
+                    )
+                }
+            }
+            ImportRecovery.Action.PROMOTE_TEMP -> {
+                val promoted = runCatching { temp.copyTo(dbFile, overwrite = true) }.isSuccess &&
+                    dbFile.isFile && dbFile.length() > 0L
+                if (promoted) {
+                    Log.w(TAG_IMPORT, "completed an interrupted restore from $IMPORT_TEMP_NAME")
+                    recordTransfer(
+                        TransferOperation.IMPORT, BackupFormat.RAW.name, "replace", true,
+                        "Completed an interrupted restore", recovered = true
+                    )
+                }
+            }
+            ImportRecovery.Action.NONE -> Unit
+        }
+        // Keep the pre-import copy if the live database is still broken, so the
+        // next launch can try again rather than deleting the only history.
+        val healthy = dbFile.isFile && dbFile.length() > 0L
+        if (healthy) {
+            temp.delete()
+            preImport.delete()
+        } else if (temp.isFile && !isValidSqliteFile(temp)) {
+            temp.delete()
+        }
+    }
+
 
     /** Total message rows in a decrypted backup—shown as the target count for a replace import. */
     private fun countMessages(file: File): Int = try {
@@ -1664,10 +2857,37 @@ class Repository(private val context: Context) {
     /** Merges the backup DB's conversations and messages into the live DB, keeping
      *  existing rows and adding only backup rows not already present. Returns the
      *  number of messages written. */
-    private fun mergeDatabase(backupFile: File, onProgress: (Int) -> Unit): Int {
+    private fun mergeDatabase(backupFile: File, onProgress: (Int) -> Unit): MergeReport {
         val target = db.writableDatabase
         var added = 0
+        val conflicts = LinkedHashMap<String, Int>()
         SQLiteDatabase.openDatabase(backupFile.path, null, SQLiteDatabase.OPEN_READONLY).use { backup ->
+            // Ids this device's provider actually holds. A backup carries ids from
+            // wherever it was made, and those mean nothing here.
+            val liveProviderIds = HashSet<Long>()
+            runCatching {
+                context.contentResolver.query(
+                    android.provider.Telephony.Sms.CONTENT_URI,
+                    arrayOf(android.provider.Telephony.Sms._ID), null, null, null
+                )?.use { c -> while (c.moveToNext()) liveProviderIds.add(c.getLong(0)) }
+            }
+            val carriedIds = ArrayList<Long>()
+            runCatching {
+                backup.rawQuery(
+                    "SELECT sys_id FROM messages WHERE sys_id>0", null
+                ).use { c -> while (c.moveToNext()) carriedIds.add(c.getLong(0)) }
+            }
+            val adopted = LegacyBackupSchema.adoptProviderIds(carriedIds, liveProviderIds)
+            val droppedIds = carriedIds.distinct().size - adopted.size
+            val conflicts = LinkedHashMap<String, Int>()
+            if (droppedIds > 0) {
+                conflicts[Conflict.PROVIDER_ID_DROPPED] = droppedIds
+                Log.i(
+                    TAG_IMPORT,
+                    "dropped $droppedIds provider id(s) from another device; ${adopted.size} kept"
+                )
+            }
+
             val existing = HashSet<String>()
             target.rawQuery("SELECT address FROM conversations", null).use { c ->
                 while (c.moveToNext()) existing.add(c.getString(0))
@@ -1687,11 +2907,13 @@ class Repository(private val context: Context) {
                         val address = c.getString(1)
                         val tId: Long =
                             if (existing.contains(address)) {
+                                conflicts.count(Conflict.CONVERSATION_MERGED)
                                 target.rawQuery("SELECT id FROM conversations WHERE address=?", arrayOf(address))
                                     .use { q -> if (q.moveToFirst()) q.getLong(0) else -1L }
                             } else {
                                 val mergedId = matchConversationId(target, address)
                                 if (mergedId != null) {
+                                    conflicts.count(Conflict.CONVERSATION_MERGED)
                                     existing.add(address)
                                     mergedId
                                 } else {
@@ -1724,18 +2946,17 @@ class Repository(private val context: Context) {
                 backup.rawQuery("PRAGMA table_info(messages)", null).use { columns ->
                     while (columns.moveToNext()) backupColumns.add(columns.getString(1))
                 }
-                val transportColumn = if ("transport" in backupColumns) "transport" else "'sms'"
-                backup.rawQuery(
-                    """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,
-                       reactions,sys_id,locked,sub_id,$transportColumn FROM messages
-                       WHERE deleted_at=0 ORDER BY timestamp""", null
-                ).use { m ->
+                val messageQuery = LegacyBackupSchema.messagesQuery(backupColumns)
+                backup.rawQuery(messageQuery, null).use { m ->
                     while (m.moveToNext()) {
-                        val tId = convoMap[m.getLong(0)] ?: continue
+                        val tId = convoMap[m.getLong(0)] ?: run {
+                            conflicts.count(Conflict.CONVERSATION_UNRESOLVED)
+                            continue
+                        }
                         val body = m.getString(1)
                         val ts = m.getLong(2)
                         val isMe = m.getInt(3)
-                        val transport = m.getString(11)
+                        val transport = m.getString(LegacyBackupSchema.TRANSPORT_INDEX)
                         val dup = target.rawQuery(
                             """SELECT 1 FROM messages WHERE conversation_id=? AND timestamp=?
                                AND is_me=? AND body=? AND transport=? AND media_type=? AND media_uri=?
@@ -1743,16 +2964,29 @@ class Repository(private val context: Context) {
                             arrayOf(tId.toString(), ts.toString(), isMe.toString(), body, transport,
                                 m.getString(5), m.getString(6), transport, m.getLong(8).toString())
                         ).use { q -> q.moveToFirst() }
-                        if (dup) continue
-                        val sysId = m.getLong(8)
+                        if (dup) {
+                            conflicts.count(Conflict.ALREADY_PRESENT)
+                            continue
+                        }
+                        // A provider id only means something on the device that
+                        // issued it. Carrying it from a backup made on another
+                        // phone leaves rows whose ids match nothing here, and the
+                        // next reconcile then deletes the import as though the
+                        // messages had been removed. Kept only when this device's
+                        // provider really has the row.
+                        val carried = m.getLong(8)
+                        val sysId = if (carried in liveProviderIds) carried else 0L
                         if (sysId > 0) {
                             val dupSys = target.rawQuery(
                                 "SELECT 1 FROM messages WHERE transport=? AND sys_id=?",
                                 arrayOf(transport, sysId.toString())
                             ).use { q -> q.moveToFirst() }
-                            if (dupSys) continue
+                            if (dupSys) {
+                                conflicts.count(Conflict.PROVIDER_ID_TAKEN)
+                                continue
+                            }
                         }
-                        target.insert(
+                        val insertId = target.insert(
                             "messages", null,
                             ContentValues().apply {
                                 put("conversation_id", tId)
@@ -1769,8 +3003,14 @@ class Repository(private val context: Context) {
                                 put("sub_id", m.getInt(10))
                             }
                         )
+                        if (insertId <= 0) continue
                         added++
                         onProgress(added)
+                        // A refused insert (constraint, disk) is a lost message
+                        // and used to look exactly like a successful merge.
+                        if (insertId <= 0) {
+                            conflicts.count(Conflict.RECORD_UNREADABLE)
+                        }
                         if (isMe == 0) {
                             unreadBump[tId] = (unreadBump[tId] ?: 0) + 1
                         }
@@ -1809,16 +3049,24 @@ class Repository(private val context: Context) {
                     }
                 }
 
-                backup.rawQuery(
-                    "SELECT conversation_id,notifications_enabled FROM conversation_notifications", null
-                ).use { c ->
-                    while (c.moveToNext()) {
-                        val tId = convoMap[c.getLong(0)] ?: continue
-                        target.execSQL(
-                            "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled) VALUES(?,?)",
-                            arrayOf<Any?>(tId, c.getInt(1))
-                        )
+                // conversation_notifications arrived after v8, so a backup from an
+                // older build simply does not have the table. Per-conversation
+                // notification settings are then left at their default, which is
+                // what a fresh conversation gets anyway.
+                if (backupHasTable(backup, "conversation_notifications")) {
+                    backup.rawQuery(
+                        "SELECT conversation_id,notifications_enabled FROM conversation_notifications", null
+                    ).use { c ->
+                        while (c.moveToNext()) {
+                            val tId = convoMap[c.getLong(0)] ?: continue
+                            target.execSQL(
+                                "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled) VALUES(?,?)",
+                                arrayOf<Any?>(tId, c.getInt(1))
+                            )
+                        }
                     }
+                } else {
+                    Log.i(TAG_IMPORT, "backup predates conversation_notifications; using defaults")
                 }
 
                 target.setTransactionSuccessful()
@@ -1826,8 +3074,20 @@ class Repository(private val context: Context) {
                 target.endTransaction()
             }
         }
-        return added
+        return MergeReport(added, conflicts)
     }
+
+    /** What a merge wrote and what it had to leave alone. */
+    data class MergeReport(val added: Int, val conflicts: Map<String, Int> = emptyMap())
+
+    /** True when the incoming backup has the named table; older ones do not. */
+    private fun backupHasTable(backup: SQLiteDatabase, name: String): Boolean =
+        runCatching {
+            backup.rawQuery(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                arrayOf(name)
+            ).use { it.moveToFirst() }
+        }.getOrDefault(false)
 
     private fun isValidSqliteFile(file: File): Boolean {
         return try {
@@ -1860,6 +3120,20 @@ class Repository(private val context: Context) {
                 reactions = parseReactions(c.getString(7))
             )
         }
+        found
+    }
+
+    /**
+     * Newest incoming message in [conversationId], used by the notification
+     * Delete action (#285) to trash the message the notification is showing.
+     */
+    suspend fun latestReceivedMessageIdSuspend(conversationId: Long): Long? = runOnIoAsync {
+        var found: Long? = null
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM messages WHERE conversation_id=? AND deleted_at=0 AND is_me=0 " +
+                "ORDER BY timestamp DESC, id DESC LIMIT 1",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) found = c.getLong(0) }
         found
     }
 
@@ -1958,7 +3232,212 @@ class Repository(private val context: Context) {
     /** True until a sync that actually had SMS access completes. */
     val needsInitialImport: Boolean get() = !settings.firstImportDone
 
+    /**
+     * Records that [sysId] belongs to the row just inserted, which has no
+     * handle until the insert's row id is read back.
+     */
+    private fun linkProviderId(db: Db, sysId: Long, transport: String) {
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM messages WHERE transport=? AND sys_id=?",
+            arrayOf(transport, sysId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) {
+                db.writableDatabase.execSQL(
+                    """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                       VALUES(?,?,?)""",
+                    arrayOf(c.getLong(0).toString(), transport, sysId.toString())
+                )
+            }
+        }
+    }
+
     /** Imports system SMS into the local DB, grouped by address, deduped by sys_id. */
+    /**
+     * Deletes local message rows whose provider row no longer exists.
+     *
+     * The local database is the app's own store, not a view of the provider, so
+     * a delete performed by another app -- SMS Import / Export's "Wipe messages"
+     * being the one users hit -- left every message still on screen even though
+     * the phone had none of them.
+     *
+     * Only rows that came *from* the provider are considered: `sys_id = 0` marks
+     * a row that only ever existed locally (an import, or a message this app
+     * wrote while not being the default handler), and those must survive a
+     * provider that has never heard of them.
+     *
+     * Returns true when anything was removed.
+     */
+    fun pruneMessagesMissingFromProvider(): Boolean {
+        val resolver = context.contentResolver
+        val live = HashSet<Long>()
+        for ((uri, idColumn, transport) in PROVIDER_MESSAGE_SOURCES) {
+            runCatching {
+                resolver.query(
+                    uri, arrayOf(idColumn), null, null, null
+                )?.use { c ->
+                    val i = c.getColumnIndex(idColumn)
+                    if (i >= 0) while (c.moveToNext()) live.add(
+                        ProviderPresence.key(transport, c.getLong(i))
+                    )
+                }
+            }.onFailure {
+                // Without permission the provider cannot be read, so nothing can
+                // be proven missing. Guessing here would delete real messages.
+                Log.w("RepoSync", "provider read failed, not pruning: ${it.message}")
+                return false
+            }
+        }
+
+        val database = db.writableDatabase
+        val doomed = ArrayList<Long>()
+        database.rawQuery("SELECT id, transport, sys_id FROM messages WHERE sys_id>0", null)
+            .use { c ->
+                while (c.moveToNext()) {
+                    val id = c.getLong(0)
+                    val transport = c.getString(1) ?: "sms"
+                    // SMS and MMS have independent id spaces, so a row only counts
+                    // as present if its own transport's id is still there.
+                    if (live.contains(ProviderPresence.key(transport, c.getLong(2)))) continue
+                    doomed.add(id)
+                }
+            }
+        if (doomed.isEmpty()) return false
+
+        // This deletes user data on the strength of the provider's state, and
+        // the local copy is the only one left if the provider was emptied by
+        // something else. A copy is taken first so the decision is reversible.
+        backUpBeforePrune(doomed.size)
+
+        database.beginTransaction()
+        try {
+            doomed.forEach { database.delete("messages", "id=?", arrayOf(it.toString())) }
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+        removeEmptiedConversations()
+        Log.i("RepoSync", "pruned ${doomed.size} message(s) deleted outside the app")
+        return true
+    }
+
+    /**
+     * Snapshots the database before a prune removes anything.
+     *
+     * The prune decides to delete on the strength of what the system provider
+     * currently holds, and the local rows are frequently the only surviving copy
+     * -- that is exactly the case that made this necessary. If the reconcile is
+     * ever wrong, the messages have to be recoverable, so the file is copied
+     * aside first and the name says how many rows it was taken for.
+     */
+    private fun backUpBeforePrune(doomed: Int) {
+        runCatching {
+            val dbFile = context.getDatabasePath(DB_NAME)
+            if (!dbFile.isFile) return
+            // Fold the write-ahead log in first, or the copy is missing whatever
+            // has not been checkpointed yet.
+            runCatching { db.writableDatabase.rawQuery("PRAGMA wal_checkpoint(FULL)", null).close() }
+            val dir = File(context.filesDir, "prune-backups").apply { mkdirs() }
+            val stamp = java.text.SimpleDateFormat(
+                "yyyyMMdd-HHmmss", java.util.Locale.US
+            ).format(java.util.Date())
+            val target = File(dir, "before-prune-$stamp-$doomed.db")
+            dbFile.copyTo(target, overwrite = true)
+            // Keep the three most recent; each is a full copy of the history.
+            dir.listFiles()
+                ?.filter { it.name.startsWith("before-prune-") }
+                ?.sortedByDescending { it.name }
+                ?.drop(3)
+                ?.forEach { runCatching { it.delete() } }
+            Log.i("RepoSync", "database copied to ${target.name} before pruning $doomed row(s)")
+        }.onFailure {
+            // Not fatal: the prune is still correct. But say so, because this is
+            // the difference between a reversible decision and an irreversible one.
+            Log.w("RepoSync", "could not back up before prune: ${it.message}")
+        }
+    }
+
+    private var providerObserver: android.database.ContentObserver? = null
+    private var providerHandler: android.os.Handler? = null
+    private val resyncRunnable = Runnable { syncFromSystem() }
+
+    private val PROVIDER_MESSAGE_SOURCES = listOf(
+        Triple(
+            android.provider.Telephony.Sms.CONTENT_URI,
+            android.provider.Telephony.Sms._ID,
+            MmsSupport.TRANSPORT_SMS
+        ),
+        Triple(
+            android.provider.Telephony.Mms.CONTENT_URI,
+            android.provider.Telephony.Mms._ID,
+            MmsSupport.TRANSPORT_MMS
+        )
+    )
+
+    /**
+     * Drops conversations left with no messages, so the list has no empty rows.
+     *
+     * A group is exempt: it is created as a new, deliberately empty thread, so
+     * this running right after one is made would erase it and leave the user on
+     * the details page for a chat that no longer exists. Deleting everything in
+     * a group trashes it like any other conversation, which is the explicit way
+     * to get rid of one.
+     */
+    private fun removeEmptiedConversations() {
+        db.writableDatabase.execSQL(
+            "DELETE FROM conversations WHERE deleted_at=0 AND id NOT IN " +
+                "(SELECT DISTINCT conversation_id FROM messages) AND id NOT IN " +
+                "(SELECT conversation_id FROM conversation_recipients " +
+                " GROUP BY conversation_id HAVING count(*)>1)"
+        )
+    }
+
+    /**
+     * Watches the system SMS/MMS provider and re-syncs when another app changes it.
+     *
+     * Without this, a delete performed elsewhere -- SMS Import / Export's "Wipe
+     * messages" is the one users hit -- was invisible until the app was
+     * restarted, because the local database is a store of its own rather than a
+     * view of the provider.
+     *
+     * Notifications are coalesced with a short debounce, because wiping a phone
+     * produces one notification per deleted row and re-syncing on each of those
+     * would be a great deal of work for the same end state.
+     */
+    fun observeProviderChanges() {
+        if (providerObserver != null) return
+        if (providerHandler == null) {
+            providerHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        }
+        val resolver = context.contentResolver
+        val observer = object : android.database.ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                scheduleProviderResync()
+            }
+        }
+        runCatching {
+            for ((uri, _, _) in PROVIDER_MESSAGE_SOURCES) {
+                resolver.registerContentObserver(uri, true, observer)
+            }
+        }.onFailure {
+            Log.w("RepoSync", "could not observe provider: ${it.message}")
+            return
+        }
+        providerObserver = observer
+    }
+
+    private fun scheduleProviderResync() {
+        val handler = providerHandler ?: return
+        handler.removeCallbacks(resyncRunnable)
+        handler.postDelayed(resyncRunnable, PROVIDER_RESYNC_DEBOUNCE_MS)
+    }
+
+    private fun releaseProviderObserver() {
+        providerObserver?.let {
+            runCatching { context.contentResolver.unregisterContentObserver(it) }
+        }
+        providerObserver = null
+    }
+
     fun syncFromSystem() {
         if (syncRunning) return
         syncRunning = true
@@ -2023,8 +3502,11 @@ class Repository(private val context: Context) {
                 val existing = mutableSetOf<Long>()
                 incomingSysIds.chunked(500).forEach { chunk ->
                     val ph = chunk.joinToString(",") { "?" }
+                    // From the mapping table, not messages.sys_id: a group
+                    // message owns several provider rows and only one of them
+                    // is recorded in that column.
                     db.readableDatabase.rawQuery(
-                        "SELECT sys_id FROM messages WHERE transport=? AND sys_id IN ($ph)",
+                        "SELECT sys_id FROM message_provider_ids WHERE transport=? AND sys_id IN ($ph)",
                         arrayOf(MmsSupport.TRANSPORT_SMS) + chunk.map { it.toString() }
                     ).use { c -> while (c.moveToNext()) existing.add(c.getLong(0)) }
                 }
@@ -2065,28 +3547,57 @@ class Repository(private val context: Context) {
                                     m.date.toString(), m.date.toString())
                             ).use { c -> if (c.moveToFirst()) localId = c.getLong(0) }
 
-                            try {
-                                if (localId != -1L) {
-                                    db.writableDatabase.execSQL(
-                                        "UPDATE messages SET sys_id=? WHERE id=?",
-                                        arrayOf(m.sysId.toString(), localId.toString())
-                                    )
-                                } else {
-                                    db.writableDatabase.execSQL(
-                                        """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
-                                           VALUES(?,?,?,?,?,?,?,?)""",
-                                        arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
-                                            when (m.type) {
-                                                android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
-                                                android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
-                                                else -> "sent"
-                                            },
-                                            m.sysId, MmsSupport.TRANSPORT_SMS, m.subId)
-                                    )
+                            if (localId == -1L) {
+                                    // A group send puts one provider row per
+                                    // recipient on the wire, so by the time the
+                                    // second is reached the first has already
+                                    // claimed the only sys_id=0 row. Without this
+                                    // second lookup every member beyond the first
+                                    // arrived as a brand-new message, and one tap
+                                    // showed N bubbles. The window is tight
+                                    // because these rows are written in the same
+                                    // send loop; 24h would swallow a genuine
+                                    // repeat of the same text.
+                                    db.readableDatabase.rawQuery(
+                                        """SELECT id FROM messages
+                                           WHERE conversation_id=? AND transport=? AND body=? AND is_me=?
+                                             AND ABS(timestamp-?) < 120000
+                                           ORDER BY ABS(timestamp-?) LIMIT 1""",
+                                        arrayOf(cid.toString(), MmsSupport.TRANSPORT_SMS, m.body,
+                                            if (isMe) "1" else "0", m.date.toString(), m.date.toString())
+                                    ).use { c -> if (c.moveToFirst()) localId = c.getLong(0) }
                                 }
-                            } catch (e: android.database.sqlite.SQLiteException) {
-                                android.util.Log.e("RepoSync", "INSERT failed: ${e.message}", e)
-                            }
+
+                                try {
+                                    if (localId != -1L) {
+                                        db.writableDatabase.execSQL(
+                                            """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                                               VALUES(?,?,?)""",
+                                            arrayOf(localId.toString(), MmsSupport.TRANSPORT_SMS, m.sysId.toString())
+                                        )
+                                        // messages.sys_id keeps only the primary
+                                        // row; the mapping table holds the rest.
+                                        db.writableDatabase.execSQL(
+                                            "UPDATE messages SET sys_id=? WHERE id=? AND sys_id=0",
+                                            arrayOf(m.sysId.toString(), localId.toString())
+                                        )
+                                    } else {
+                                        db.writableDatabase.execSQL(
+                                            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
+                                               VALUES(?,?,?,?,?,?,?,?)""",
+                                            arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
+                                                when (m.type) {
+                                                    android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
+                                                    android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
+                                                    else -> "sent"
+                                                },
+                                                m.sysId, MmsSupport.TRANSPORT_SMS, m.subId)
+                                        )
+                                        linkProviderId(db, m.sysId, MmsSupport.TRANSPORT_SMS)
+                                    }
+                                } catch (e: android.database.sqlite.SQLiteException) {
+                                    android.util.Log.e("RepoSync", "INSERT failed: ${e.message}", e)
+                                }
                             existing.add(m.sysId)
                             done++
                             _initialSyncProgress.value = SyncProgress.import(done, pending)
@@ -2105,6 +3616,13 @@ class Repository(private val context: Context) {
                        WHERE timestamp=0 AND id IN (SELECT DISTINCT conversation_id FROM messages)""",
                     null
                 ).use { c -> c.moveToFirst() && c.getLong(0) > 0 }
+
+                // Messages deleted in the system provider by another app -- most
+                // often SMS Import / Export's "Wipe messages" -- have to come out
+                // of the local database too. The sync only ever added rows, so
+                // without this the app keeps showing messages that no longer
+                // exist anywhere on the phone.
+                if (pruneMessagesMissingFromProvider()) changed = true
 
                 if (changed || stale) {
                     refreshConversationSnippets()
@@ -2207,9 +3725,17 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery("SELECT sys_id FROM messages WHERE transport='mms' AND sys_id>0", null)
             .use { cursor -> while (cursor.moveToNext()) existing.add(cursor.getLong(0)) }
         val imported = mutableListOf<MmsSupport.InboundMms>()
+        // Counts of what the provider offered and what was taken, because the
+        // difference is the whole duplicate story: a sent picture whose outbox
+        // row was never linked is imported a second time, and the only evidence
+        // is that "offered" grew while "linked" did not.
+        var offered = 0
+        var linked = 0
+        MmsTrace.i(TRACE, "MMS import: ${existing.size} provider row(s) already linked")
         try {
             MmsProviderReader(context.contentResolver).read(existing) { message ->
                 runOnIo {
+                    offered++
                     val database = db.writableDatabase
                     database.beginTransaction()
                     try {
@@ -2219,12 +3745,16 @@ class Repository(private val context: Context) {
                         ).use { it.moveToFirst() }
                         if (!duplicate) {
                             val address = canonical(message.address).ifEmpty { message.address }
-                            val cid = matchConversationId(database, address) ?: database.insertOrThrow(
-                                "conversations", null, ContentValues().apply {
-                                    put("address", address)
-                                    put("name", contactNameFor(address) ?: address)
-                                }
-                            )
+                            // Same routing as an inbound SMS: a 1:1 with the
+                            // sender wins, otherwise the group they are in, and
+                            // only when exactly one is possible.
+                            val cid = conversationForInboundBlocking(address)
+                                ?: database.insertOrThrow(
+                                    "conversations", null, ContentValues().apply {
+                                        put("address", address)
+                                        put("name", contactNameFor(address) ?: address)
+                                    }
+                                )
                             database.insertOrThrow("messages", null, ContentValues().apply {
                                 put("conversation_id", cid)
                                 put("body", message.content.body)
@@ -2236,6 +3766,7 @@ class Repository(private val context: Context) {
                                 put("sub_id", message.subId)
                                 put("media_type", if (message.content.imageId == null) "text" else "image")
                                 put("media_uri", message.content.imageId?.let { "content://mms/part/$it" } ?: "")
+                                put("address", if (message.isMe) "" else address)
                             })
                             if (!message.isMe && !message.read) database.execSQL(
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
@@ -2244,6 +3775,15 @@ class Repository(private val context: Context) {
                             if (!message.isMe) imported.add(
                                 MmsSupport.InboundMms(address, message.content.body, message.timestamp)
                             )
+                            MmsTrace.i(
+                                TRACE,
+                                "imported provider MMS row=${message.id} " +
+                                    "mine=${message.isMe} media=${message.content.imageId != null} " +
+                                    "sub=${message.subId} read=${message.read}"
+                            )
+                        } else {
+                            linked++
+                            MmsTrace.i(TRACE, "provider MMS row=${message.id} already present, skipped")
                         }
                         database.setTransactionSuccessful()
                     } finally {
@@ -2251,9 +3791,10 @@ class Repository(private val context: Context) {
                     }
                 }
             }
-        } catch (_: Exception) {
-            android.util.Log.w("RepoSync", "MMS import incomplete; retry on next sync")
+        } catch (e: Exception) {
+            MmsTrace.w(TRACE, "MMS import incomplete after $offered row(s); retry on next sync", e)
         }
+        MmsTrace.i(TRACE, "MMS import done: $offered offered, $imported.size imported, $linked already present")
         return imported
     }
 
@@ -2288,15 +3829,23 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             "SELECT id, address, deleted_at FROM conversations ORDER BY id", null
         ).use { c -> while (c.moveToNext()) convos.add(Triple(c.getLong(0), c.getString(1), c.getInt(2))) }
+        // A group is a thread in its own right, not a spelling variant of the
+        // 1:1 it shares a contact with. Folding it in would delete the group and
+        // hand its messages to the private chat, so groups are left alone on
+        // both sides of the merge.
+        val groups = HashSet<Long>()
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id FROM conversation_recipients GROUP BY conversation_id HAVING count(*)>1", null
+        ).use { c -> while (c.moveToNext()) groups.add(c.getLong(0)) }
         val canon = convos.map { canonical(it.second) }
         val primary = HashMap<Long, Long>()
         for (i in convos.indices) {
             val a = convos[i]
-            if (a.third != 0) { primary[a.first] = a.first; continue }
+            if (a.third != 0 || a.first in groups) { primary[a.first] = a.first; continue }
             var base = a.first
             for (j in 0 until i) {
                 val b = convos[j]
-                if (b.third != 0 || primary[b.first] != b.first) continue
+                if (b.third != 0 || b.first in groups || primary[b.first] != b.first) continue
                 val ca = canon[i]
                 val same = samePerson(b.second, a.second) ||
                     (ca.isNotEmpty() && ca == canon[j])
@@ -2527,16 +4076,44 @@ class Repository(private val context: Context) {
         }
     }
 
-    /** After a local backup import, re-populates the system SMS provider so the
-     *  rest of the phone (default Messaging app, other SMS tools) mirrors the
-     *  restored history. Best-effort: only possible while the app is the default
+    /** After a backup import, re-populates the system SMS provider so the rest of
+     *  the phone (the phone's own messaging app, other SMS tools) mirrors the
+     *  restored history. Best-effort: only possible while this app is the default
      *  handler; rows whose sys_id still exists in the provider are skipped, and
-     *  freshly inserted rows get their new provider id written back locally so
-     *  the next system sync does not duplicate them. */
+     *  freshly inserted rows get their new provider id written back locally so the
+     *  next system sync does not duplicate them.
+     *
+     *  Only plain SMS is mirrored. Writing MMS into `content://mms` means building
+     *  a multipart, uploading each part, then setting the message box, and doing
+     *  that wrong leaves malformed entries in the user's system store -- so an
+     *  imported MMS stays in this app only, which is deliberate rather than
+     *  forgotten.
+     *
+     *  The existence check for already-mirrored rows is one query per row, which
+     *  is a binder round trip each. For a 50k import that dominates the run, so
+     *  the set of live provider ids is read once and membership tested in memory.
+     */
     fun pushLocalMessagesToProvider() {
         try {
             val resolver = context.contentResolver
             val providerUri = android.provider.Telephony.Sms.CONTENT_URI
+
+            // One read of the live ids, instead of a per-row existence query.
+            val live = HashSet<Long>()
+            runCatching {
+                resolver.query(
+                    providerUri, arrayOf(android.provider.Telephony.Sms._ID),
+                    null, null, null
+                )?.use { c ->
+                    while (c.moveToNext()) live.add(c.getLong(0))
+                }
+            }.onFailure {
+                // Without a readable provider nothing can be written anyway, and
+                // a half-mirrored history is worse than none.
+                Log.w("RepoMirror", "provider not readable, not mirroring: ${it.message}")
+                return
+            }
+
             val linked = ArrayList<Pair<Long, Long>>()
             var attempted = 0
             db.readableDatabase.rawQuery(
@@ -2548,14 +4125,7 @@ class Repository(private val context: Context) {
                 while (c.moveToNext()) {
                     val localId = c.getLong(0)
                     val existingSysId = c.getLong(7)
-                    if (existingSysId > 0) {
-                        val stillThere = resolver.query(
-                            providerUri, arrayOf(android.provider.Telephony.Sms._ID),
-                            android.provider.Telephony.Sms._ID + "=?",
-                            arrayOf(existingSysId.toString()), null
-                        )?.use { it.moveToFirst() } ?: false
-                        if (stillThere) continue
-                    }
+                    if (existingSysId > 0 && live.contains(existingSysId)) continue
                     val address = c.getString(1) ?: continue
                     val body = c.getString(2) ?: continue
                     val isMe = c.getInt(4) == 1
@@ -2581,26 +4151,60 @@ class Repository(private val context: Context) {
                         if (subId > 0) put(android.provider.Telephony.Sms.SUBSCRIPTION_ID, subId)
                     }
                     val sysId = resolver.insert(providerUri, cv)?.lastPathSegment?.toLongOrNull() ?: -1L
-                    if (sysId > 0) linked.add(localId to sysId)
+                    if (sysId > 0) {
+                        live.add(sysId)
+                        linked.add(localId to sysId)
+                    }
+                    // Written back in batches: one transaction per few hundred
+                    // rather than one per row, because a 50k import otherwise
+                    // spends most of its time committing.
+                    if (linked.size >= MIRROR_FLUSH_EVERY) {
+                        writeBackSysIds(linked)
+                        linked.clear()
+                    }
                 }
             }
-            android.util.Log.w("RepoMirror", "push: attempted=$attempted linked=${linked.size}")
-            if (linked.isNotEmpty()) {
-                for ((localId, sysId) in linked) {
-                    db.writableDatabase.execSQL(
-                        "UPDATE messages SET sys_id=? WHERE id=?",
-                        arrayOf(sysId.toString(), localId.toString())
-                    )
-                }
-            }
-        } catch (e: SecurityException) {
-            android.util.Log.e("RepoMirror", "mirror skipped (not default?): ${e.message}")
+            writeBackSysIds(linked)
+            Log.i("RepoMirror", "mirrored $attempted message(s) into the system SMS store")
         } catch (e: Exception) {
-            android.util.Log.e("RepoMirror", "mirror failed: ${e.message}", e)
+            Log.w("RepoMirror", "mirror failed: ${e.message}")
+        }
+    }
+
+    /** Writes the new provider ids back so a later sync does not re-add the rows. */
+    private fun writeBackSysIds(linked: List<Pair<Long, Long>>) {
+        if (linked.isEmpty()) return
+        val database = db.writableDatabase
+        database.beginTransaction()
+        try {
+            for ((localId, sysId) in linked) {
+                database.execSQL(
+                    "UPDATE messages SET sys_id=? WHERE id=?",
+                    arrayOf(sysId.toString(), localId.toString())
+                )
+            }
+            database.setTransactionSuccessful()
+        } catch (e: SecurityException) {
+            // Not the default SMS handler: writing to the provider is not
+            // permitted, and the local history is unaffected either way.
+            Log.w("RepoMirror", "mirror skipped (not the default SMS app): ${e.message}")
+        } catch (e: Exception) {
+            Log.w("RepoMirror", "mirror write-back failed: ${e.message}")
+        } finally {
+            database.endTransaction()
         }
     }
 
     companion object {
+        /**
+         * A provider wipe emits one notification per deleted row, so the resync
+         * is debounced rather than run per notification.
+         */
+        const val PROVIDER_RESYNC_DEBOUNCE_MS = 2_000L
+
+        /** Provider ids written back per transaction while mirroring a backup. */
+        const val MIRROR_FLUSH_EVERY = 500
+
         fun serializeReactions(r: Map<String, Int>): String =
             r.entries.filter { it.value > 0 }
                 .joinToString(",") { "${it.key}:${it.value}" }
