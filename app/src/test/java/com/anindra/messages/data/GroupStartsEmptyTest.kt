@@ -102,13 +102,30 @@ class GroupStartsEmptyTest {
 
     @Test
     fun `a shared address resolves to the private chat`() {
-        // Both a new chat and an inbound SMS must pick the 1:1, not the group
-        // that happens to share the contact. That is what keeps the two threads
-        // from stealing each other's messages.
-        val occurrences = Regex(
-            "ORDER BY \\(SELECT count\\(\\*\\) FROM conversation_recipients r\\s*" +
-                "WHERE r\\.conversation_id=c\\.id\\)=1 DESC, c\\.id ASC"
-        ).findAll(repo).count()
-        assertTrue("expected both lookups to prefer the single-recipient thread", occurrences >= 2)
+        // A new chat and an inbound SMS must both pick the 1:1 over the group
+        // that happens to share the contact, or the two threads steal each
+        // other's messages.
+        assertTrue(
+            "the inbound lookup must prefer the single-recipient thread",
+            Regex(
+                "ORDER BY \\(SELECT count\\(\\*\\) FROM conversation_recipients r\\s*" +
+                    "WHERE r\\.conversation_id=c\\.id\\)=1 DESC, c\\.id ASC"
+            ).containsMatchIn(repo),
+        )
+        // The new-chat lookup additionally refuses a group outright: ordering
+        // groups last is not enough, because LIMIT 1 still takes one when the
+        // person has no private thread of their own.
+        val open = repo.substringAfter("fun getOrCreateConversationBlocking(")
+            .substringBefore("\n    fun ")
+        assertTrue(
+            "starting a new chat must be able to exclude groups",
+            open.contains("privateOnly: Boolean = false") &&
+                open.contains("if (privateOnly)")
+        )
+        assertTrue(
+            "the picker path must ask for that behaviour",
+            Regex("""fun getOrCreateConversation\([\s\S]{0,120}?privateOnly = true""")
+                .containsMatchIn(repo),
+        )
     }
 }
