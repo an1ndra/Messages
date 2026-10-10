@@ -646,6 +646,7 @@ class Mms(
             ),
             maxImageWidth = profile.maxImageWidth(),
             maxImageHeight = profile.maxImageHeight(),
+            dimensionLimitsReported = profile.imageLimitsReported(),
         )
         val outcome = fitter.fit(request)
         // Reported here rather than inside the fitters: this is the only place

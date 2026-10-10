@@ -54,6 +54,27 @@ object ConversationList {
     }
 
     /**
+     * For a word search: conversations whose name (or address) matches go first,
+     * those found only through a message go after them. Each group keeps the
+     * order it came in, so recency — or unread-at-top — still decides within it.
+     *
+     * Without this a contact only tops the results by being the most recent
+     * thread, and chats that merely mention the name sit above it. A number
+     * query already returns contacts only, and a number still being typed leaves
+     * the list alone, so both are returned unchanged.
+     */
+    fun nameMatchesFirst(conversations: List<Conversation>, query: String): List<Conversation> {
+        if (query.isBlank() ||
+            AddressIdentity.tooShortToBeNumber(query) ||
+            AddressIdentity.isNumberQuery(query)
+        ) return conversations
+        val (named, mentioned) = conversations.partition {
+            it.name.contains(query, true) || it.address.contains(query, true)
+        }
+        return named + mentioned
+    }
+
+    /**
      * Unread-at-top: stable reorder — pinned stays on top, then unread
      * conversations above read ones, timestamp order preserved within a tier.
      * On by default, so anything unread is visible without scrolling; archived

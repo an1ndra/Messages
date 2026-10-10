@@ -94,4 +94,5 @@
     <string name="chat_search_previous">Vorheriger Treffer</string>
     <string name="chat_search_next">Nächster Treffer</string>
     <string name="chat_search_counter">%1$d von %2$d</string>
+    <string name="chat_scroll_to_latest">Zur neuesten Nachricht</string>
 </resources>

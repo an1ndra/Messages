@@ -94,4 +94,5 @@
     <string name="chat_search_previous">المطابقة السابقة</string>
     <string name="chat_search_next">المطابقة التالية</string>
     <string name="chat_search_counter">%1$d من %2$d</string>
+    <string name="chat_scroll_to_latest">الانتقال إلى أحدث رسالة</string>
 </resources>

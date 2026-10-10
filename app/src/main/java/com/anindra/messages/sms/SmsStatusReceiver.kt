@@ -88,7 +88,11 @@ class SmsStatusReceiver : BroadcastReceiver() {
                 )
             }
         }
-        intent.getStringExtra(EXTRA_MMS_PDU_FILE)?.let { File(it).delete() }
+        // Only the name is taken from the extra, and it is resolved inside the cache
+        // root the app itself wrote it to, so the extra cannot point the delete
+        // anywhere else.
+        intent.getStringExtra(EXTRA_MMS_PDU_FILE)
+            ?.let { File(context.cacheDir, File(it).name).delete() }
         if (messageId > 0) {
             if (ok) repo.markMessageStatusSuspend(messageId, "sent")
             else fail(repo, context, messageId)
