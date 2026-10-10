@@ -1166,6 +1166,36 @@ class Repository(private val context: Context) {
     }
 
     /**
+     * Points a sent picture at the copy the provider holds for it.
+     *
+     * [sendMedia] stores the URI the picker returned. That grant lasts only as
+     * long as the app's process, so after the app is closed and reopened the
+     * bubble has nothing to read and shows an empty black box. The provider's
+     * own copy of the picture (the part of the outbox row) is readable by the
+     * default SMS app for as long as the message exists, and it is the same
+     * place a received or imported MMS picture is read from.
+     */
+    fun adoptProviderImage(messageId: Long, outboxRowId: Long) {
+        if (messageId <= 0 || outboxRowId <= 0) return
+        val partId = runCatching {
+            context.contentResolver.query(
+                android.net.Uri.parse("content://mms/$outboxRowId/part"),
+                arrayOf("_id", "ct"), null, null, null
+            )?.use { c ->
+                var found: Long? = null
+                while (c.moveToNext() && found == null) {
+                    if (c.getString(1)?.startsWith("image/") == true) found = c.getLong(0)
+                }
+                found
+            }
+        }.getOrNull() ?: return
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET media_uri=? WHERE id=? AND media_type='image'",
+            arrayOf<Any?>("content://mms/part/$partId", messageId)
+        )
+    }
+
+    /**
      * Links an app message to the provider row it is being sent as.
      *
      * [sendMedia] stores the message with no `sys_id`, and a sent MMS reaches

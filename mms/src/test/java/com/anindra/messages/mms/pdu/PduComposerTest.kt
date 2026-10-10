@@ -266,7 +266,9 @@ class PduComposerTest {
                 "89 10 80 0E EA 2B 31 35 35 35 31 32 33 30 30 30 30 00" +
                     "8C 80" +
                     "8D 92" +
-                    "97 0E EA 2B 31 35 35 35 39 39 39 38 38 38 38 00" +
+                    // 0x97 To: a phone recipient goes out as number/TYPE=PLMN,
+                    // so the encoded value is 24 octets, not 14.
+                    "97 18 EA 2B 31 35 35 35 39 39 39 38 38 38 38 2F 54 59 50 45 3D 50 4C 4D 4E 00" +
                     "98 54 2D 33 00" +
                     // 0x84 closes the header block: 0xB3 multipart/related,
                     // 0x8A start, 0x89 type — the last header before the body,

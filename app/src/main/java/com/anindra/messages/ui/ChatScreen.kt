@@ -1065,6 +1065,31 @@ fun ChatScreen(
                 }
         }
     }
+    // Pictures have no size until they are decoded, so the list grows after the
+    // scroll above has already reached what was then the bottom, and the chat
+    // opens a few rows short. Follow the growth for a few seconds, and stop the
+    // moment the user touches the list so nothing ever fights their scrolling.
+    var userScrolledList by remember(conversationId) { mutableStateOf(false) }
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect {
+            if (it is DragInteraction.Start) {
+                userScrolledList = true
+            }
+        }
+    }
+    LaunchedEffect(conversationId, focusedSearchId) {
+        if (focusedSearchId != null) return@LaunchedEffect
+        withTimeoutOrNull(4_000L) {
+            snapshotFlow {
+                val info = listState.layoutInfo
+                info.totalItemsCount to info.visibleItemsInfo.sumOf { it.size }
+            }.collect {
+                if (!userScrolledList && messages.isNotEmpty()) {
+                    listState.scrollToItem(Int.MAX_VALUE)
+                }
+            }
+        }
+    }
     // The search hit flashes like a settings jump: fade in, hold, fade out, so
     // it points at the message without painting it permanently.
     var searchFlashOn by remember(conversationId, activeSearch) { mutableStateOf(false) }

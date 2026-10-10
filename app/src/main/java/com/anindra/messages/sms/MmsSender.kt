@@ -173,8 +173,11 @@ internal object MmsSender {
             // imported as a second one, so the picture shows twice.
             row.lastPathSegment?.toLongOrNull()?.let { rowId ->
                 runCatching {
-                    (context.applicationContext as MessagesApplication)
-                        .repository.linkMmsRow(messageId, rowId)
+                    val repository = (context.applicationContext as MessagesApplication).repository
+                    repository.linkMmsRow(messageId, rowId)
+                    // The picker's URI is dead after the app is closed; show the
+                    // provider's copy of the picture instead.
+                    repository.adoptProviderImage(messageId, rowId)
                 }.onFailure { Log.w(TAG, "could not link message $messageId: ${it.message}") }
             }
             val transactionId = MmsPendingSends.transactionIdOf(context, row)

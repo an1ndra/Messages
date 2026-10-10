@@ -4,13 +4,20 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.anindra.messages.data.MmsSupport
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
- * Receives the MMS notification-indication WAP push. The broadcast carries the
- * raw PDU in its "data" extra and no data URI, and the platform has already
- * filed an announced-but-empty provider row for it — so the pending-row sweep
- * in [MmsDownloader] covers the push, and every broadcast missed while the app
- * was not the default handler, without parsing anything.
+ * Receives the MMS notification-indication WAP push.
+ *
+ * The broadcast carries the raw `m-notification-ind` in its "data" extra and
+ * nothing else: the platform does not file a message row for it when this app
+ * is the default SMS app, so the notification has to be read and stored here
+ * before there is anything for [MmsDownloader] to fetch. Every announced
+ * message that was missed while the app was not the default handler is picked
+ * up by the pending-row sweep that follows.
  */
 class MmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -20,6 +27,21 @@ class MmsReceiver : BroadcastReceiver() {
         // anywhere else.
         MmsTrace.i("MmsDownload", "WAP push broadcast: action=${intent.action} type=${intent.type}")
         if (!MmsSupport.isMmsWapPush(intent.action, intent.type)) return
-        MmsDownloader.onWapPush(context)
+        val data = intent.getByteArrayExtra("data")
+        val subscriptionId = intent.getIntExtra("subscription", -1)
+        val app = context.applicationContext
+        val pendingResult = goAsync()
+        val wakeLock = ReceiverWakeLock.acquire(context, "mms-notification")
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                MmsDownloader.onWapPush(app, data, subscriptionId)
+            } catch (t: Throwable) {
+                // The default SMS app has to survive every incoming broadcast.
+                MmsTrace.w("MmsDownload", "incoming MMS notification failed", t)
+            } finally {
+                wakeLock.safeRelease()
+                pendingResult.finish()
+            }
+        }
     }
 }

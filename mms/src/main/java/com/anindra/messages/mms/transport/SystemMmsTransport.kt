@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.telephony.SmsManager
+import android.util.Log
 import com.anindra.messages.mms.WspMmsCodec
 import com.anindra.messages.mms.net.CarrierProfile
 import com.anindra.messages.mms.net.CarrierProfileStore
@@ -109,6 +110,10 @@ class SmsManagerMmsPlatform(
 ) : MmsPlatform {
     private val applicationContext = context.applicationContext
 
+    private companion object {
+        const val TAG = "MmsTransport"
+    }
+
     override fun canSend(subscriptionId: Int): Boolean = try {
         managerFor(subscriptionId)
         true
@@ -122,9 +127,13 @@ class SmsManagerMmsPlatform(
         configOverrides: Map<String, Any>,
         sent: MmsCallback,
     ) {
+        val outgoing = Uri.parse(locationUri)
+        if (!PlatformMmsAccess.grant(applicationContext, outgoing, write = false)) {
+            Log.w(TAG, "no platform package could be granted $outgoing; the send will read no PDU")
+        }
         managerFor(subscriptionId).sendMultimediaMessage(
             applicationContext,
-            Uri.parse(locationUri),
+            outgoing,
             null,
             configOverrides.toBundle(),
             pendingIntents.broadcast(sent),
@@ -138,6 +147,12 @@ class SmsManagerMmsPlatform(
         configOverrides: Map<String, Any>,
         completion: MmsCallback,
     ) {
+        if (contentUri.startsWith("content://")) {
+            val destination = Uri.parse(contentUri)
+            if (!PlatformMmsAccess.grant(applicationContext, destination, write = true)) {
+                Log.w(TAG, "no platform package could be granted $destination; the download will write nothing")
+            }
+        }
         managerFor(subscriptionId).downloadMultimediaMessage(
             applicationContext,
             locationUrl,

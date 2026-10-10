@@ -125,7 +125,7 @@ class PduParser(
                 headers.setEncoded(field, reader.readEncodedStringValue())
 
             HeaderField.Kind.ENCODED_STRING_VALUE_LIST ->
-                headers.addEncoded(field, reader.readEncodedStringValue())
+                headers.addEncoded(field, reader.readEncodedStringValue().withoutPhoneAddressType())
 
             HeaderField.Kind.FROM -> headers.setFrom(readFrom(reader))
 
@@ -177,7 +177,7 @@ class PduParser(
         }
         val token = reader.readOctet()
         return if (token == EncodedStringValue.ADDRESS_PRESENT_TOKEN) {
-            reader.readEncodedStringValue()
+            reader.readEncodedStringValue().withoutPhoneAddressType()
         } else {
             EncodedStringValue.insertAddressToken()
         }
