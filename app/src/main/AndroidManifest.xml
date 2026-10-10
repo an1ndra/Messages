@@ -182,7 +182,7 @@
             <intent-filter>
                 <action android:name="com.anindra.messages.SMS_SENT" />
                 <action android:name="com.anindra.messages.SMS_DELIVERED" />
-                <action android:name="com.anindra.messages.MMS_SENT" />
+                <action android:name="com.anindra.messages.mms.action.SEND_SENT" />
             </intent-filter>
         </receiver>
 

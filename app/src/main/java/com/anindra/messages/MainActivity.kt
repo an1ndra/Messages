@@ -1409,17 +1409,12 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         conversationListState = spamConversationList,
                                         messageListState = spamMessageList
                                     )
-                                    "details" -> if (useNewUi) ContactDetailsScreen(
-                                        vm = vm,
-                                        conversationId = detailsId,
-onBack = { navRoute = "chat" },
-                                        onAddPeople = { navRoute = "add-people" },
-                                        scrollState = contactDetailsScroll
-                                    ) else com.anindra.messages.ui.legacy.ContactDetailsScreen(
+                                    "details" -> ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
                                         onBack = { navRoute = "chat" },
                                         onAddPeople = { navRoute = "add-people" },
+                                        scrollState = contactDetailsScroll
                                     )
                                     "add-people" -> AddPeopleScreen(
                                         vm = vm,
@@ -1517,7 +1512,7 @@ onBack = { navRoute = "chat" },
         }
         // A SIM swap or carrier change alters the MMS size and image limits, so the
         // cached carrier config is dropped rather than pinned to the old SIM.
-        com.anindra.messages.sms.MmsCarrierConfig.invalidate()
+        com.anindra.messages.sms.MmsFacade.profiles(this).invalidate()
         // Catch MMS whose WAP push was missed (e.g. the app was not the default
         // handler at the time); they stay announced in the provider until fetched.
         com.anindra.messages.sms.MmsDownloader.requestPending(this)

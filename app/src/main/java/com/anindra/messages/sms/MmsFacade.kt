@@ -13,6 +13,7 @@ import com.anindra.messages.mms.debug.MmsDebugRecorder
 import com.anindra.messages.mms.fit.DefaultAttachmentFitter
 import com.anindra.messages.mms.net.CarrierProfileStore
 import com.anindra.messages.mms.pdu.Pdu
+import com.anindra.messages.mms.spi.MmsDiagnostics
 import com.anindra.messages.mms.spi.MmsDownloadTarget
 import com.anindra.messages.mms.store.TelephonyMmsStore
 import com.anindra.messages.mms.transport.SmsManagerMmsPlatform
@@ -60,18 +61,30 @@ internal object MmsFacade {
         LogcatMmsDiagnostics(recorder)
     }
 
-    fun of(context: Context): Mms {
+    /**
+     * The carrier profiles, shared with [of].
+     *
+     * Built here as well as inside [of] because the read limit for an outgoing
+     * attachment is a carrier limit, and asking a fresh store for it would
+     * register a second carrier-config receiver per send.
+     */
+    fun profiles(context: Context): CarrierProfileStore {
         val app = context.applicationContext
-        val profiles = profileStore ?: synchronized(this) {
+        return profileStore ?: synchronized(this) {
             profileStore ?: CarrierProfileStore.create(app).also { profileStore = it }
         }
+    }
+
+    fun of(context: Context, diagnostics: MmsDiagnostics = traced): Mms {
+        val app = context.applicationContext
+        val profiles = profiles(app)
         val transport = SystemMmsTransport(
             fileProviderAuthority = app.packageName + ".fileprovider",
             cacheDir = app.cacheDir,
             targets = AnnouncementRows(app),
             carrierProfiles = profiles,
             platform = SmsManagerMmsPlatform(app),
-            diagnostics = traced,
+            diagnostics = diagnostics,
         )
         return Mms(
             store = TelephonyMmsStore(
@@ -87,7 +100,7 @@ internal object MmsFacade {
             ),
             sendAddress = SendAddressSource { subscriptionId -> ownNumber(app, subscriptionId) },
             carrierConfig = CarrierProfileStore.platformSource(app),
-            diagnostics = traced,
+            diagnostics = diagnostics,
         )
     }
 
