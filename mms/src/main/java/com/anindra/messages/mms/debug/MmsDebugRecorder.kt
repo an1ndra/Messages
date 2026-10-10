@@ -1,5 +1,7 @@
 package com.anindra.messages.mms.debug
 
+import com.anindra.messages.mms.spi.FitOutcome
+import com.anindra.messages.mms.spi.FitRequest
 import com.anindra.messages.mms.spi.MmsDiagnostics
 
 /**
@@ -122,6 +124,92 @@ class MmsDebugRecorder(private val capacity: Int = DEFAULT_CAPACITY) : MmsDiagno
                 category = "network",
                 name = "resolved",
                 details = mapOf("available" to available.toString()),
+            ),
+        )
+    }
+
+    override fun attachmentFitted(request: FitRequest, outcome: FitOutcome.Fitted) {
+        record(
+            MmsEvent(
+                category = "fit",
+                name = "fitted",
+                details = mapOf(
+                    "mime" to request.mimeType,
+                    "source" to "${request.sourceWidth}x${request.sourceHeight}",
+                    "sourceBytes" to request.bytes.size.toString(),
+                    "sent" to "${outcome.width}x${outcome.height}",
+                    "sentBytes" to outcome.bytes.size.toString(),
+                    "budget" to request.budgetBytes.toString(),
+                    "carrierCap" to "${request.maxImageWidth}x${request.maxImageHeight}",
+                ),
+            ),
+        )
+    }
+
+    override fun attachmentRejected(
+        mimeType: String,
+        sourceBytes: Int,
+        budgetBytes: Long,
+        reason: String,
+    ) {
+        record(
+            MmsEvent(
+                category = "fit",
+                name = "rejected",
+                details = mapOf(
+                    "mime" to mimeType,
+                    "sourceBytes" to sourceBytes.toString(),
+                    "budget" to budgetBytes.toString(),
+                    "reason" to reason,
+                ),
+            ),
+        )
+    }
+
+    override fun downloadRequested(rowId: Long, contentLocation: String?, attempt: Int) {
+        record(
+            MmsEvent(
+                category = "download",
+                name = "requested",
+                details = mapOf(
+                    "row" to rowId.toString(),
+                    "location" to (contentLocation?.takeIf { it.isNotBlank() } ?: "-"),
+                    "attempt" to attempt.toString(),
+                ),
+            ),
+        )
+    }
+
+    override fun pendingSwept(count: Int) {
+        record(
+            MmsEvent(
+                category = "download",
+                name = "swept",
+                details = mapOf("pending" to count.toString()),
+            ),
+        )
+    }
+
+    override fun noted(tag: String, level: String, message: String) {
+        record(
+            MmsEvent(
+                category = "log",
+                name = level,
+                details = mapOf("tag" to tag, "line" to message),
+            ),
+        )
+    }
+
+    override fun downloadCompleted(rowId: Long, resultCode: Int, httpStatus: Int) {
+        record(
+            MmsEvent(
+                category = "download",
+                name = "completed",
+                details = mapOf(
+                    "row" to rowId.toString(),
+                    "resultCode" to resultCode.toString(),
+                    "httpStatus" to httpStatus.toString(),
+                ),
             ),
         )
     }

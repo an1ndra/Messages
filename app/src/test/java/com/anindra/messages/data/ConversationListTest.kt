@@ -211,4 +211,61 @@ class ConversationListTest {
             ids(ConversationList.filter(list, false, "buried", emptySet()) { it.snippet })
         )
     }
+
+    @Test
+    fun aNamedContactOutranksAChatThatOnlyMentionsIt() {
+        val list = listOf(
+            convo(1, name = "Work Group", snippet = "unrelated"),
+            convo(2, name = "Alice", snippet = "see you then"),
+            convo(3, name = "Bob", snippet = "asked Alice about it"),
+        )
+
+        val ranked = ConversationList.nameMatchesFirst(list, "Alice")
+
+        assertEquals(listOf(2L, 1L, 3L), ids(ranked))
+    }
+
+    @Test
+    fun eachGroupKeepsTheOrderItArrivedIn() {
+        val list = listOf(
+            convo(1, name = "Alice Two"),
+            convo(2, name = "Mention one"),
+            convo(3, name = "Alice One"),
+        )
+
+        val ranked = ConversationList.nameMatchesFirst(list, "Alice")
+
+        assertEquals(listOf(1L, 3L, 2L), ids(ranked))
+    }
+
+    @Test
+    fun anAddressMatchCountsAsANameMatch() {
+        val list = listOf(
+            convo(1, name = "Nobody", address = "+15551230004"),
+            convo(2, name = "Alice"),
+        )
+
+        assertEquals(listOf(1L, 2L), ids(ConversationList.nameMatchesFirst(list, "+15551230004")))
+    }
+
+    @Test
+    fun aNumberQueryIsLeftAlone() {
+        val list = listOf(convo(1), convo(2))
+
+        assertEquals(list, ConversationList.nameMatchesFirst(list, "1555"))
+    }
+
+    @Test
+    fun aBlankQueryIsLeftAlone() {
+        val list = listOf(convo(1), convo(2))
+
+        assertEquals(list, ConversationList.nameMatchesFirst(list, "   "))
+    }
+
+    @Test
+    fun theQueryIsMatchedRegardlessOfCase() {
+        val list = listOf(convo(1, name = "Mention"), convo(2, name = "ALICE"))
+
+        assertEquals(listOf(2L, 1L), ids(ConversationList.nameMatchesFirst(list, "alice")))
+    }
 }

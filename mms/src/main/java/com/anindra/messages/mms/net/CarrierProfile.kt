@@ -58,6 +58,22 @@ class CarrierProfile(
 
     fun maxImageHeight(): Int = layeredInt(KEY_MAX_IMAGE_HEIGHT, DEFAULT_MAX_IMAGE_HEIGHT)
 
+    /**
+     * Whether the carrier actually declared an image size limit.
+     *
+     * [maxImageWidth] and [maxImageHeight] can always answer, because the
+     * defaults layer fills them in — so they cannot distinguish "this carrier
+     * caps images at 640x480" from "nothing was declared and 640x480 is the
+     * AOSP guess". Only the platform layer can. Enforcing the guess is what
+     * makes every photo a user sends arrive blurry, so the send path asks this
+     * before treating the numbers as a limit.
+     */
+    fun imageLimitsReported(): Boolean {
+        val fromPlatform = platform ?: return false
+        return fromPlatform.integer(KEY_MAX_IMAGE_WIDTH, 0) > 0 &&
+            fromPlatform.integer(KEY_MAX_IMAGE_HEIGHT, 0) > 0
+    }
+
     fun notifyWapMmsc(): Boolean = layeredBoolean(KEY_NOTIFY_WAP_MMSC, false)
 
     fun transIdEnabled(): Boolean = layeredBoolean(KEY_TRANS_ID_ENABLED, false)
@@ -156,14 +172,21 @@ class CarrierProfileStore(
         fun platformSource(context: Context): CarrierConfigSource = CarrierConfigSource { subscriptionId ->
             val manager = context.applicationContext.getSystemService(CarrierConfigManager::class.java)
                 ?: return@CarrierConfigSource null
-            if (subscriptionId <= 0) return@CarrierConfigSource null
+            // A negative id means "whatever SIM carries the default SMS role".
+            // This source is also called straight from Mms.sendHeadersFor,
+            // bypassing CarrierProfileStore's own mapping, so it has to resolve
+            // that here or a send on the default SIM would silently lose its
+            // delivery and read report headers.
+            val subId = if (subscriptionId > 0) subscriptionId
+            else SubscriptionManager.getDefaultSmsSubscriptionId()
+            if (subId <= 0) return@CarrierConfigSource null
             // getConfigForSubId is deprecated in favour of
             // getConfigByComponentForSubId, but the latter returns a
             // component-filtered bundle that is empty for a library, which would
             // silently discard every MMS limit. Verified on API 36.
             @Suppress("DEPRECATION")
             val bundle = try {
-                manager.getConfigForSubId(subscriptionId)
+                manager.getConfigForSubId(subId)
             } catch (_: SecurityException) {
                 // READ_PHONE_STATE denied, and it can be revoked between a check
                 // and the call, so a pre-flight check cannot close this.

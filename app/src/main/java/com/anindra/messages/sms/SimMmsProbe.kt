@@ -101,10 +101,30 @@ object SimMmsProbe {
             if (config.containsKey(key)) config.getBoolean(key, false).toString() else "absent"
         fun int(key: String) =
             if (config.containsKey(key)) config.getInt(key, 0).toString() else "absent"
+        fun string(key: String) =
+            config.getString(key, null)?.takeIf { it.isNotBlank() } ?: "absent"
+
+        val imageWidth = int(CarrierConfigManager.KEY_MMS_MAX_IMAGE_WIDTH_INT)
+        val imageHeight = int(CarrierConfigManager.KEY_MMS_MAX_IMAGE_HEIGHT_INT)
+        // The send path only enforces a dimension cap when the carrier declared
+        // both bounds. When they are absent the AOSP 640x480 baseline is a guess,
+        // not a limit, and applying it is what makes a photo arrive blurry — so
+        // this verdict is the answer to "why is this carrier's picture soft?".
+        val imageLimitsReported = imageWidth.toIntOrNull()?.let { it > 0 } == true &&
+            imageHeight.toIntOrNull()?.let { it > 0 } == true
+
         return listOf(
             "verdict: ${run(context).firstOrNull { it.subscriptionId == subscriptionId }?.verdict}",
             "${CarrierConfigManager.KEY_MMS_MMS_ENABLED_BOOL}: ${bool(CarrierConfigManager.KEY_MMS_MMS_ENABLED_BOOL)}",
             "${CarrierConfigManager.KEY_MMS_MAX_MESSAGE_SIZE_INT}: ${int(CarrierConfigManager.KEY_MMS_MAX_MESSAGE_SIZE_INT)}",
+            "${CarrierConfigManager.KEY_MMS_MAX_IMAGE_WIDTH_INT}: $imageWidth",
+            "${CarrierConfigManager.KEY_MMS_MAX_IMAGE_HEIGHT_INT}: $imageHeight",
+            "imageLimitsReported: $imageLimitsReported",
+            "${CarrierConfigManager.KEY_MMS_HTTP_SOCKET_TIMEOUT_INT}: ${int(CarrierConfigManager.KEY_MMS_HTTP_SOCKET_TIMEOUT_INT)}",
+            "${CarrierConfigManager.KEY_MMS_GROUP_MMS_ENABLED_BOOL}: ${bool(CarrierConfigManager.KEY_MMS_GROUP_MMS_ENABLED_BOOL)}",
+            "${com.anindra.messages.data.MmsConfig.KEY_DELIVERY_REPORT}: ${bool(com.anindra.messages.data.MmsConfig.KEY_DELIVERY_REPORT)}",
+            "${com.anindra.messages.data.MmsConfig.KEY_READ_REPORT}: ${bool(com.anindra.messages.data.MmsConfig.KEY_READ_REPORT)}",
+            "${CarrierConfigManager.KEY_MMS_USER_AGENT_STRING}: ${string(CarrierConfigManager.KEY_MMS_USER_AGENT_STRING)}",
             "${CarrierConfigManager.KEY_MMS_SMS_TO_MMS_TEXT_THRESHOLD_INT}: ${int(CarrierConfigManager.KEY_MMS_SMS_TO_MMS_TEXT_THRESHOLD_INT)}",
             "${CarrierConfigManager.KEY_MMS_SMS_TO_MMS_TEXT_LENGTH_THRESHOLD_INT}: ${int(CarrierConfigManager.KEY_MMS_SMS_TO_MMS_TEXT_LENGTH_THRESHOLD_INT)}",
             "${CarrierConfigManager.KEY_MMS_RECIPIENT_LIMIT_INT}: ${int(CarrierConfigManager.KEY_MMS_RECIPIENT_LIMIT_INT)}"

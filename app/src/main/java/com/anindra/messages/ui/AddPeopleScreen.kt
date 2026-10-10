@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -23,12 +25,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +40,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,14 +60,13 @@ fun AddPeopleScreen(
     vm: AppViewModel,
     conversationId: Long,
     onBack: () -> Unit,
-    onDone: (addresses: List<String>, groupName: String) -> Unit
+    onDone: (addresses: List<String>) -> Unit
 ) {
     BackHandler(onBack = onBack)
     val contacts by vm.contacts.collectAsState()
     var query by remember { mutableStateOf("") }
+    var searching by remember { mutableStateOf(false) }
     var chosen by remember { mutableStateOf(emptySet<String>()) }
-    // The name is optional: left blank, the app derives one from the members.
-    var groupName by remember { mutableStateOf("") }
     var existing by remember { mutableStateOf(emptySet<String>()) }
 
     androidx.compose.runtime.LaunchedEffect(conversationId) {
@@ -75,20 +81,58 @@ fun AddPeopleScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.contact_add_people)) },
+                title = {
+                    if (searching) {
+                        // Same control the conversation list uses: a bare field
+                        // with no underline or container, so the two read alike.
+                        val focusRequester = remember { FocusRequester() }
+                        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+                        TextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            placeholder = { Text(stringResource(R.string.conversations_search)) },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester)
+                        )
+                    } else {
+                        Text(stringResource(R.string.contact_add_people))
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = {
+                            if (searching) {
+                                searching = false
+                                query = ""
+                            } else {
+                                onBack()
+                            }
+                        }
+                    ) {
                         Icon(
-                            Icons.Rounded.Close,
-                            stringResource(R.string.common_close),
+                            if (searching) Icons.AutoMirrored.Rounded.ArrowBack else Icons.Rounded.Close,
+                            stringResource(if (searching) R.string.icon_close_search else R.string.common_close),
                             modifier = Modifier.size(20.dp)
                         )
                     }
                 },
                 actions = {
+                    if (!searching) {
+                        IconButton(onClick = { searching = true }) {
+                            Icon(Icons.Outlined.Search, stringResource(R.string.icon_search))
+                        }
+                    }
                     TextButton(
                         enabled = chosen.isNotEmpty(),
-                        onClick = { onDone(chosen.toList(), groupName.trim()) }
+                        onClick = { onDone(chosen.toList()) }
                     ) { Text(stringResource(R.string.contact_create_group)) }
                 }
             )
@@ -159,21 +203,6 @@ fun AddPeopleScreen(
                         }
                     }
                 }
-            }
-            if (chosen.isNotEmpty()) {
-                OutlinedTextField(
-                    value = groupName,
-                    onValueChange = { groupName = it },
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.contact_group_name)) },
-                    placeholder = { Text(stringResource(R.string.contact_group_name_optional)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            horizontal = SettingsLayout.ROW_CONTENT_PADDING,
-                            vertical = 12.dp
-                        )
-                )
             }
         }
     }

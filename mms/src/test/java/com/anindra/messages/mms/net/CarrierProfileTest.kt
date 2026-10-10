@@ -199,4 +199,49 @@ class CarrierProfileTest {
         assertEquals("mmsUaProfileUrl", CarrierProfile.KEY_UA_PROFILE_URL)
         assertEquals("mmsUserAgent", CarrierProfile.KEY_USER_AGENT)
     }
+
+    @Test
+    fun anImageCapIsOnlyRealWhenTheCarrierDeclaredIt() {
+        // The app-defaults layer always carries 640x480, so it cannot answer
+        // this: only the platform layer can say a cap was actually declared.
+        val silent = CarrierProfile(
+            MapCarrierValues(
+                mapOf(
+                    CarrierProfile.KEY_MAX_IMAGE_WIDTH to 640,
+                    CarrierProfile.KEY_MAX_IMAGE_HEIGHT to 480,
+                )
+            ),
+            platform = null,
+        )
+        assertFalse(silent.imageLimitsReported())
+
+        val empty = CarrierProfile(appDefaults, MapCarrierValues(emptyMap()))
+        assertFalse(empty.imageLimitsReported())
+    }
+
+    @Test
+    fun aDeclaredImageCapIsReported() {
+        val declared = CarrierProfile(
+            appDefaults,
+            MapCarrierValues(
+                mapOf(
+                    CarrierProfile.KEY_MAX_IMAGE_WIDTH to 1_080,
+                    CarrierProfile.KEY_MAX_IMAGE_HEIGHT to 1_080,
+                )
+            ),
+        )
+
+        assertTrue(declared.imageLimitsReported())
+        assertEquals(1_080, declared.maxImageWidth())
+    }
+
+    @Test
+    fun halfAnImageCapIsNotACap() {
+        val half = CarrierProfile(
+            appDefaults,
+            MapCarrierValues(mapOf(CarrierProfile.KEY_MAX_IMAGE_WIDTH to 1_080)),
+        )
+
+        assertFalse(half.imageLimitsReported())
+    }
 }

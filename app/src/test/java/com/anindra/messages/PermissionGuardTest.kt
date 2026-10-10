@@ -27,10 +27,11 @@ class PermissionGuardTest {
      * default the call site degrades to when the user has refused the permission.
      */
     private val gated = listOf(
+        // The carrier-config read moved into the :mms module when sending did.
         Gated(
-            "com/anindra/messages/sms/MmsCarrierConfig.kt",
+            "com/anindra/messages/mms/net/CarrierProfile.kt",
             "manager.getConfigForSubId(subId)",
-            default = "null PersistableBundle, so MmsConfig falls back to the AOSP MMS limits",
+            default = "null PersistableBundle, so the profile falls back to the AOSP MMS limits",
         ),
         Gated(
             "com/anindra/messages/sms/SimMmsProbe.kt",
@@ -116,6 +117,9 @@ class PermissionGuardTest {
             for (candidate in listOf(
                 File(dir, "app/src/main/java/$relativePath"),
                 File(dir, "src/main/java/$relativePath"),
+                // The :mms module holds its own copy of the app's sources.
+                File(dir, "mms/src/main/java/$relativePath"),
+                File(dir, "../mms/src/main/java/$relativePath"),
             )) {
                 if (candidate.isFile) return candidate.readText()
             }

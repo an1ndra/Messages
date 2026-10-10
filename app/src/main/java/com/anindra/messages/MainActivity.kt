@@ -498,11 +498,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun sendMediaMessage(conversationId: Long, uri: Uri) {
+    fun sendMediaMessage(conversationId: Long, uri: Uri, caption: String = "") {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
-            val stored = repo.sendMedia(conversationId, "image", uri.toString()) ?: return@launch
+            val stored = repo.sendMedia(conversationId, "image", uri.toString(), caption) ?: return@launch
             // A group MMS addresses every member in one PDU, unlike SMS which
             // is sent once per person.
             val recipients = repo.conversationRecipients(conversationId)
@@ -581,6 +581,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openOrCreate(address: String, name: String?, onReady: (Long) -> Unit) {
         scope.launch {
             onReady(repo.getOrCreateConversation(address, name))
+        }
+    }
+
+    /**
+     * Starts a new group thread from [conversationId] with [addresses]. The
+     * conversation they were added from is left untouched, so a group started
+     * from a 1:1 does not inherit that history. [onReady] receives the new
+     * conversation id.
+     */
+    fun createGroup(conversationId: Long, addresses: List<String>, onReady: (Long) -> Unit) {
+        scope.launch(Dispatchers.IO) {
+            val id = repo.createGroupFrom(conversationId, addresses)
+            withContext(Dispatchers.Main) { onReady(id) }
         }
     }
 
@@ -942,6 +955,8 @@ class MainActivity : FragmentActivity() {
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
+    private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
+    private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
 
     private var lastResumeTime = 0L
 
@@ -991,10 +1006,7 @@ class MainActivity : FragmentActivity() {
                 this@MainActivity, null, it
             )
         }
-        recipientFromIntent(intent)?.let { pendingOpenAddress = it }
-        // Opening straight from an external sms:/smsto: launch: hold on a neutral
-        // screen while the conversation resolves, so the list never flashes first.
-        if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
+        applyShareIntent(intent)
 
         val defaultSmsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -1289,7 +1301,11 @@ class MainActivity : FragmentActivity() {
                                     "opening" -> androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())
                                     "new" -> NewChatScreen(
                                         vm = vm,
-                                        onBack = { navRoute = "list" },
+                                        onBack = {
+                                            pendingShareBody = ""
+                                            pendingShareMedia = emptyList()
+                                            navRoute = "list"
+                                        },
                                         onPick = { address, name ->
                                             vm.openOrCreate(address, name) { id ->
                                                 chatId = id
@@ -1393,44 +1409,55 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         conversationListState = spamConversationList,
                                         messageListState = spamMessageList
                                     )
-                                    "details" -> if (useNewUi) ContactDetailsScreen(
-                                        vm = vm,
-                                        conversationId = detailsId,
-onBack = { navRoute = "chat" },
-                                        onAddPeople = { navRoute = "add-people" },
-                                        scrollState = contactDetailsScroll
-                                    ) else com.anindra.messages.ui.legacy.ContactDetailsScreen(
+                                    "details" -> ContactDetailsScreen(
                                         vm = vm,
                                         conversationId = detailsId,
                                         onBack = { navRoute = "chat" },
+                                        onAddPeople = { navRoute = "add-people" },
+                                        scrollState = contactDetailsScroll
                                     )
                                     "add-people" -> AddPeopleScreen(
                                         vm = vm,
                                         conversationId = detailsId,
                                         onBack = { navRoute = "details" },
-                                        onDone = { picked, groupName ->
-                                            // Add them, name the group, then take
-                                            // the user into the new group chat so
-                                            // they can carry on writing.
-                                            vm.addParticipants(
-                                                detailsId, picked,
-                                                onDone = {
-                                                    if (groupName.isNotEmpty()) {
-                                                        vm.setGroupTitle(detailsId, groupName)
-                                                    }
-                                                    chatId = detailsId
-                                                    chatSearchQuery = null
-                                                    navRoute = "chat"
-                                                }
-                                            )
+                                        onDone = { picked ->
+                                            // A group is a new thread, not the
+                                            // conversation it was started from
+                                            // — it must not carry that history.
+                                            // Stay on the details screen, now
+                                            // showing the new group, where its
+                                            // name can be edited.
+                                            vm.createGroup(detailsId, picked) { newId ->
+                                                if (newId > 0) detailsId = newId
+                                                navRoute = "details"
+                                            }
                                         }
                                     )
                                     else -> ChatScreen(
                                         vm = vm,
                                         conversationId = chatId,
                                         searchQuery = chatSearchQuery,
-                                        onBack = { navRoute = "list" },
-                                        onOpenDetails = { detailsId = chatId; navRoute = "details" }
+                                        initialDraft = pendingShareBody,
+                                        initialMedia = pendingShareMedia,
+                                        onBack = {
+                                            pendingShareBody = ""
+                                            pendingShareMedia = emptyList()
+                                            navRoute = "list"
+                                        },
+                                        // Leaving for contact details consumes the
+                                        // search handoff. ChatScreen lives inside
+                                        // AnimatedContent and is disposed on the
+                                        // route change, so coming back built a fresh
+                                        // one that re-read this same query and replayed
+                                        // the highlight on the message. Every other
+                                        // route out of a chat already clears it.
+                                        onOpenDetails = {
+                                            detailsId = chatId
+                                            chatSearchQuery = null
+                                            navRoute = "details"
+                                        },
+                                        onInitialDraftConsumed = { pendingShareBody = "" },
+                                        onInitialMediaConsumed = { pendingShareMedia = emptyList() }
                                     )
                                 }
                             }
@@ -1485,7 +1512,7 @@ onBack = { navRoute = "chat" },
         }
         // A SIM swap or carrier change alters the MMS size and image limits, so the
         // cached carrier config is dropped rather than pinned to the old SIM.
-        com.anindra.messages.sms.MmsCarrierConfig.invalidate()
+        com.anindra.messages.sms.MmsFacade.profiles(this).invalidate()
         // Catch MMS whose WAP push was missed (e.g. the app was not the default
         // handler at the time); they stay announced in the provider until fetched.
         com.anindra.messages.sms.MmsDownloader.requestPending(this)
@@ -1629,10 +1656,24 @@ onBack = { navRoute = "chat" },
                 this@MainActivity, null, it
             )
         }
+        applyShareIntent(intent)
+    }
+
+    /**
+     * Reads an inbound share (`ACTION_SEND` / `ACTION_SEND_MULTIPLE` / `SENDTO`)
+     * and decides where it lands: a named recipient opens straight into that
+     * chat, while shared content with no recipient needs a recipient chosen
+     * first, so it opens the picker and carries the content to the chat.
+     */
+    private fun applyShareIntent(intent: Intent) {
         recipientFromIntent(intent)?.let { pendingOpenAddress = it }
-        // Warm external launch: hide whatever is on screen (usually the list)
-        // immediately so it never shows before the resolved chat.
-        if (pendingOpenAddress != null && navRoute == "list") navRoute = "opening"
+        shareBodyFromIntent(intent)?.let { pendingShareBody = it }
+        sharedMediaFromIntent(intent)?.let { pendingShareMedia = it }
+        val hasContent = pendingShareBody.isNotBlank() || pendingShareMedia.isNotEmpty()
+        when {
+            pendingOpenAddress != null && navRoute == "list" -> navRoute = "opening"
+            pendingOpenAddress == null && hasContent && navRoute == "list" -> navRoute = "new"
+        }
     }
 
     /** Recipient of an external `sms:`/`smsto:`/`mms:`/`mmsto:` launch (the
@@ -1647,5 +1688,104 @@ onBack = { navRoute = "chat" },
         val first = raw.substringBefore('?').split(';', ',').firstOrNull()?.trim().orEmpty()
         val decoded = Uri.decode(first)
         return decoded.ifBlank { null }
+    }
+
+    /** Body text supplied by an external share intent, either as the
+     *  `?body=` query on an SMS URI or as `EXTRA_TEXT` from an `ACTION_SEND`. */
+    private fun shareBodyFromIntent(intent: Intent): String? {
+        val text = when (intent.action) {
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
+            Intent.ACTION_SENDTO, Intent.ACTION_VIEW -> {
+                val data = intent.data
+                val query = data?.encodedQuery
+                if (query.isNullOrBlank()) null
+                else query.split('&').map { it.split('=', limit = 2) }
+                    .find { it.getOrNull(0) == "body" }
+                    ?.getOrNull(1)
+                    ?.let(Uri::decode)
+            }
+            else -> null
+        }
+        return text?.trim()?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * Image URIs from a share intent, normalised to something this process can
+     * still read later.
+     *
+     * The grant a share intent carries is tied to *this* task, so it dies with
+     * the activity and the copy would be unreadable by the time the user picks
+     * a recipient. Every incoming URI is therefore copied into the app's cache
+     * immediately and the cache copy is what travels on. `EXTRA_STREAM` is a
+     * single Uri under `ACTION_SEND` and a list under `ACTION_SEND_MULTIPLE`;
+     * both are accepted, and the clip is honoured when there is no stream extra.
+     */
+    private fun sharedMediaFromIntent(intent: Intent): List<Uri>? {
+        val shared = when (intent.action) {
+            Intent.ACTION_SEND ->
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(::listOf)
+                    ?: intent.clipDataUris()
+            Intent.ACTION_SEND_MULTIPLE ->
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                    ?: intent.clipDataUris()
+            else -> null
+        }?.filter { it.scheme == "content" || it.scheme == "file" }
+        if (shared.isNullOrEmpty()) return null
+        return shared.mapNotNull(::copyIntoCache).distinct()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun Intent.clipDataUris(): List<Uri> {
+        val clip = clipData ?: return emptyList()
+        return (0 until clip.itemCount).mapNotNull { clip.getItemAt(it)?.uri }
+    }
+
+    /**
+     * Copies a shared URI into the cache, returning null if it cannot be read.
+     *
+     * The copy keeps the image's extension. That is load-bearing, not tidiness:
+     * the stored URI is handed to Coil, which asks the resolver for a MIME type,
+     * and `FileProvider` derives that type *from the file name*. An extensionless
+     * copy reports no type, no decoder is chosen, and the bubble renders empty
+     * even though the bytes are a perfectly good image — which is exactly what a
+     * shared photo did before this was fixed.
+     */
+    private fun copyIntoCache(uri: Uri): Uri? {
+        val dir = java.io.File(cacheDir, "shared").apply { mkdirs() }
+        val file = java.io.File(dir, "share-${System.currentTimeMillis()}-${(0..9999).random()}${sharedExtension(uri)}")
+        val copied = runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                file.outputStream().use { input.copyTo(it) }
+                true
+            } ?: false
+        }.getOrDefault(false)
+        if (!copied) {
+            file.delete()
+            return null
+        }
+        return androidx.core.content.FileProvider.getUriForFile(
+            this, "$packageName.fileprovider", file
+        )
+    }
+
+    /**
+     * Extension for the cache copy, taken from the source URI's own extension
+     * and otherwise from the resolved MIME type. Falls back to `.jpg`, matching
+     * how the app already names an untyped attachment.
+     */
+    private fun sharedExtension(uri: Uri): String {
+        val fromPath = uri.lastPathSegment?.substringAfterLast('.', "")
+            ?.takeIf { it.isNotBlank() && it.length <= 5 && it.all(Char::isLetterOrDigit) }
+        if (fromPath != null) return ".$fromPath"
+        val resolved = runCatching { contentResolver.getType(uri) }.getOrNull()
+        val ext = when (MmsSupport.mime(resolved ?: "")) {
+            "image/png" -> ".png"
+            "image/webp" -> ".webp"
+            "image/heic", "image/heif" -> ".heic"
+            "image/gif" -> ".gif"
+            else -> ".jpg"
+        }
+        return ext
     }
 }

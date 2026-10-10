@@ -3,6 +3,7 @@ package com.anindra.messages.sms
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.telephony.SmsManager
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,11 +18,12 @@ class MmsDownloadReceiver : BroadcastReceiver() {
         // Only valid on the receiver thread; the platform reports the transfer
         // result as the PendingResult result code.
         val resultCode = resultCode
+        val httpStatus = intent.getIntExtra(SmsManager.EXTRA_MMS_HTTP_STATUS, 0)
         val pendingResult = goAsync()
         val wakeLock = ReceiverWakeLock.acquire(context, "mms-download")
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                MmsDownloader.onComplete(context.applicationContext, uri, resultCode)
+                MmsDownloader.onComplete(context.applicationContext, uri, resultCode, httpStatus)
                 if (resultCode != android.app.Activity.RESULT_OK) return@launch
                 val repo = (context.applicationContext as com.anindra.messages.MessagesApplication).repository
                 for (mms in repo.importDownloadedMms()) {

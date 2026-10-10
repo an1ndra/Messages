@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.provider.MediaStore
 import android.util.Log
+import com.anindra.messages.sms.MmsTrace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -56,7 +57,10 @@ private const val IMPORT_BATCH = 500
 /** How often the importer reports progress, in records. */
 private const val IMPORT_PROGRESS_EVERY = 250
 
-private const val DB_VERSION = 24
+/** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
+private const val TRACE = "MmsImport"
+
+private const val DB_VERSION = 26
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -69,7 +73,7 @@ class Db(context: Context) :
         db.execSQL(
             """CREATE TABLE conversations(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                address TEXT NOT NULL UNIQUE,
+                address TEXT NOT NULL,
                 name TEXT NOT NULL,
                 snippet TEXT NOT NULL DEFAULT '',
                 timestamp INTEGER NOT NULL DEFAULT 0,
@@ -142,6 +146,36 @@ class Db(context: Context) :
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
         db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
         createConversationRecipients(db)
+        createMessageProviderIds(db)
+    }
+
+    /**
+     * Which provider rows a local message owns.
+     *
+     * `messages.sys_id` can only hold one, which is true for a 1:1 and false for
+     * a group: sending one message to N members puts N rows in the Sent box,
+     * and sync used to adopt the first onto the local row and then import the
+     * rest as brand-new messages — so every group text appeared N times.
+     *
+     * `messages.sys_id` stays as the *primary* provider row so every existing
+     * path keeps working; this table holds the full set.
+     */
+    private fun createMessageProviderIds(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS message_provider_ids(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                transport TEXT NOT NULL,
+                sys_id INTEGER NOT NULL,
+                UNIQUE(transport, sys_id))"""
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_msg_provider_ids_msg ON message_provider_ids(message_id)"
+        )
+        db.execSQL(
+            """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+               SELECT id, transport, sys_id FROM messages WHERE sys_id>0"""
+        )
     }
 
     /**
@@ -281,6 +315,66 @@ class Db(context: Context) :
             // (1:1 chats, and everything sent by the user).
             db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
         }
+        if (oldVersion < 25) {
+            // A group message owns one provider row per recipient; messages.
+            // sys_id can only record one of them. Creating the table also
+            // backfills every id already linked.
+            createMessageProviderIds(db)
+        }
+        if (oldVersion < 26) {
+            dropConversationAddressUnique(db)
+        }
+    }
+
+    /**
+     * Rebuilds `conversations` without UNIQUE on `address`.
+     *
+     * That constraint was standing in for "a conversation is its own lookup
+     * key", which is true of a 1:1 but not of a group: starting a group from a
+     * chat gives the new thread the same primary contact, and uniqueness made
+     * that impossible. Two rows may now share an address, and the inbound
+     * lookup ([conversationIdForAddressBlocking]) resolves the tie by
+     * preferring the 1:1, which is the thread a bare SMS from that person
+     * almost certainly means.
+     *
+     * SQLite cannot drop a column constraint in place, hence the rebuild.
+     */
+    private fun dropConversationAddressUnique(db: SQLiteDatabase) {
+        db.execSQL("DROP INDEX IF EXISTS idx_conversations_list")
+        db.execSQL("DROP INDEX IF EXISTS idx_conversations_archived")
+        db.execSQL("ALTER TABLE conversations RENAME TO conversations_preunique")
+        db.execSQL(
+            """CREATE TABLE conversations(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                address TEXT NOT NULL,
+                name TEXT NOT NULL,
+                snippet TEXT NOT NULL DEFAULT '',
+                timestamp INTEGER NOT NULL DEFAULT 0,
+                unread_count INTEGER NOT NULL DEFAULT 0,
+                last_is_me INTEGER NOT NULL DEFAULT 0,
+                archived INTEGER NOT NULL DEFAULT 0,
+                blocked INTEGER NOT NULL DEFAULT 0,
+                blocked_at INTEGER NOT NULL DEFAULT 0,
+                pinned INTEGER NOT NULL DEFAULT 0,
+                draft TEXT NOT NULL DEFAULT '',
+                draft_date INTEGER NOT NULL DEFAULT 0,
+                deleted_at INTEGER NOT NULL DEFAULT 0,
+                deleted_reason TEXT NOT NULL DEFAULT 'manual',
+                group_title TEXT NOT NULL DEFAULT '')"""
+        )
+        db.execSQL(
+            """INSERT INTO conversations(
+                   id, address, name, snippet, timestamp, unread_count, last_is_me,
+                   archived, blocked, blocked_at, pinned, draft, draft_date,
+                   deleted_at, deleted_reason, group_title)
+               SELECT id, address, name, snippet, timestamp, unread_count, last_is_me,
+                   archived, blocked, blocked_at, pinned, draft, draft_date,
+                   deleted_at, deleted_reason, group_title
+               FROM conversations_preunique"""
+        )
+        db.execSQL("DROP TABLE conversations_preunique")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
     }
 
     /** Collapses rows that share a system-provider id (legacy double-imports,
@@ -678,24 +772,50 @@ class Repository(private val context: Context) {
         )
     }
 
+    /**
+     * The conversation for [address], creating a private one if there is none.
+     *
+     * Used by the new-chat picker: picking a person means messaging *them*, so
+     * a group that happens to carry their address is never the answer.
+     */
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =
-        getOrCreateConversationBlocking(address, displayName)
+        getOrCreateConversationBlocking(address, displayName, privateOnly = true)
 
     fun getOrCreateConversationBlocking(
         address: String,
         displayName: String? = null,
         subId: Int = -1,
-        kind: InboundKind = InboundKind.NORMAL
+        kind: InboundKind = InboundKind.NORMAL,
+        privateOnly: Boolean = false
     ): Long = runOnIo {
         // Store one canonical spelling per person: every incoming spelling
         // (E.164, national, formatted) maps to the same conversation row.
         val target = canonical(address).ifEmpty { address }
         var convoId = -1L
+        // A 1:1 wins outright: a group started from this chat carries the same
+        // address, and the private thread is the older, intended destination.
+        //
+        // `privateOnly` additionally forbids settling for a group. It is what
+        // the new-chat picker needs: someone who only appears inside "Roadtrip"
+        // has no private thread to find, and without this the query below still
+        // returned that group -- ORDER BY puts groups last, but LIMIT 1 takes
+        // one when there is nothing better. Inbound keeps the looser rule,
+        // where a text from a group member with no 1:1 of their own belongs in
+        // the group.
+        val singleRecipient =
+            "(SELECT count(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)=1"
         db.writableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE address=?",
+            """SELECT c.id FROM conversations c
+               WHERE c.address=? AND c.deleted_at=0
+                 ${if (privateOnly) "AND $singleRecipient " else ""}
+               ORDER BY $singleRecipient DESC, c.id ASC
+               LIMIT 1""",
             arrayOf(target)
         ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
-        if (convoId == -1L) convoId = findConversationForAddress(target) ?: -1L
+        if (convoId == -1L) {
+            val alt = findConversationForAddress(target)
+            if (alt != null && (!privateOnly || recipientCountBlocking(alt) <= 1)) convoId = alt
+        }
 
         if (convoId == -1L) {
             val cv = ContentValues().apply {
@@ -726,6 +846,61 @@ class Repository(private val context: Context) {
             if (restored > 0) notifyChanged()
         }
         convoId
+    }
+
+    /**
+     * Starts a **new** group thread with [addresses], rather than turning the
+     * conversation they were added from into one.
+     *
+     * Adding people used to mutate the conversation in place, which silently
+     * moved the whole private history with Sarah into the group — so a group
+     * created from a 1:1 began as that conversation, history and all. A group
+     * is a new thread that starts empty; the 1:1 stays exactly as it was.
+     *
+     * Both rows carry the same `conversations.address`, which is safe because
+     * inbound attribution already resolves a 1:1 with the sender ahead of any
+     * group (see [conversationForInbound]).
+     *
+     * Returns the new conversation id, or -1 if it could not be created.
+     */
+    fun createGroupFrom(conversationId: Long, addresses: List<String>): Long = runOnIo {
+        val primaryRow = db.readableDatabase.rawQuery(
+            "SELECT address, name FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) (c.getString(0) ?: "") to (c.getString(1) ?: "") else null
+        } ?: return@runOnIo -1L
+        val primary = primaryRow.first
+        val wanted = addresses.map { it.trim() }
+            .filter { it.isNotEmpty() && it != primary }
+            .distinct()
+        if (wanted.isEmpty()) return@runOnIo -1L
+
+        val target = canonical(primary).ifEmpty { primary }
+        val cv = ContentValues().apply {
+            put("address", target)
+            put("name", primaryRow.second)
+            put("snippet", "")
+            put("timestamp", System.currentTimeMillis())
+            put("last_is_me", 0)
+        }
+        val newId = db.writableDatabase.insert("conversations", null, cv)
+        if (newId <= 0) return@runOnIo -1L
+        upsertParticipant(db.writableDatabase, target)
+        db.writableDatabase.execSQL(
+            "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+            arrayOf(newId, target)
+        )
+        for (a in wanted) {
+            val t = canonical(a).ifEmpty { a }
+            upsertParticipant(db.writableDatabase, t)
+            db.writableDatabase.execSQL(
+                "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                arrayOf(newId, t)
+            )
+        }
+        ensureGroupTitle(newId)
+        notifyChanged()
+        newId
     }
 
     suspend fun conversationByIdSuspend(id: Long): Conversation? = runOnIoAsync {
@@ -863,10 +1038,23 @@ class Repository(private val context: Context) {
     fun conversationForInboundBlocking(address: String): Long? =
         conversationIdForAddressBlocking(address) ?: soleGroupBlocking(address)
 
+    /**
+     * The conversation [address] names, or null when there is none.
+     *
+     * A group started from a 1:1 shares its primary contact's address, so this
+     * may match more than one row. The single-recipient thread wins: it is the
+     * private chat that predates the group, and a bare SMS from that person
+     * means it rather than the group.
+     */
     private fun conversationIdForAddressBlocking(address: String): Long? {
         var id: Long? = null
         db.readableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE address=? AND deleted_at=0", arrayOf(address)
+            """SELECT c.id FROM conversations c
+               WHERE c.address=? AND c.deleted_at=0
+               ORDER BY (SELECT count(*) FROM conversation_recipients r
+                          WHERE r.conversation_id=c.id)=1 DESC, c.id ASC
+               LIMIT 1""",
+            arrayOf(address)
         ).use { c -> if (c.moveToFirst()) id = c.getLong(0) }
         return id ?: matchConversationId(db.readableDatabase, address, activeOnly = true)
     }
@@ -898,6 +1086,13 @@ class Repository(private val context: Context) {
             .keys
             .singleOrNull()
     }
+
+    /** How many people are in [conversationId]; 1 means it is a private chat. */
+    fun recipientCountBlocking(conversationId: Long): Int =
+        db.readableDatabase.rawQuery(
+            "SELECT count(*) FROM conversation_recipients WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
     /** A group's own name, or blank when the conversation is 1:1. */
     fun groupTitleBlocking(conversationId: Long): String =
@@ -968,6 +1163,37 @@ class Repository(private val context: Context) {
         val id = db.writableDatabase.insertOrThrow("messages", null, cv)
         touchConversation(conversationId, if (mediaType == "image") "Photo" else "Voice message", now, isMe = true)
         return Message(id, conversationId, clean, now, true, "sending", mediaType, uri)
+    }
+
+    /**
+     * Links an app message to the provider row it is being sent as.
+     *
+     * [sendMedia] stores the message with no `sys_id`, and a sent MMS reaches
+     * the provider's sent box, where [importProviderMms] would import it as a
+     * second message (the same picture twice in the chat). Recording the
+     * provider row here makes the next sync recognise it as already present.
+     *
+     * The mapping table is written too, not just the column: this app reads it
+     * for chat deletion and for import dedupe, so a link that only filled the
+     * column would fix the duplicate on screen and then leak the provider row
+     * back as a fresh 1:1 after the chat was deleted.
+     */
+    fun linkMmsRow(messageId: Long, sysId: Long) {
+        if (messageId <= 0 || sysId <= 0) return
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET sys_id=?, transport=? WHERE id=?",
+            arrayOf<Any?>(sysId, MmsSupport.TRANSPORT_MMS, messageId)
+        )
+        runCatching {
+            db.writableDatabase.execSQL(
+                """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                   VALUES(?,?,?)""",
+                arrayOf<Any?>(messageId, MmsSupport.TRANSPORT_MMS, sysId)
+            )
+        }.onFailure {
+            MmsTrace.w(TRACE, "could not record provider row $sysId for message $messageId", it)
+        }
+        notifyChanged()
     }
 
     private fun touchConversation(conversationId: Long, snippet: String, ts: Long, isMe: Boolean) {
@@ -1357,9 +1583,15 @@ class Repository(private val context: Context) {
             if (conversationIds.isEmpty()) return
             val ph = conversationIds.joinToString(",") { "?" }
             data class Purge(val transport: String, val sysId: Long)
-            val ids = mutableListOf<Purge>()
+            val ids = mutableSetOf<Purge>()
+            // Every provider row the conversation owns, not just the one in
+            // messages.sys_id: a group message writes one per recipient, and
+            // deleting the chat must not leave the rest in the Sent box to be
+            // re-imported as a new 1:1.
             db.readableDatabase.rawQuery(
-                "SELECT transport, sys_id FROM messages WHERE conversation_id IN ($ph) AND sys_id>0",
+                """SELECT p.transport, p.sys_id FROM message_provider_ids p
+                   JOIN messages m ON m.id = p.message_id
+                   WHERE m.conversation_id IN ($ph)""",
                 conversationIds.map { it.toString() }.toTypedArray()
             ).use { c -> while (c.moveToNext()) ids.add(Purge(c.getString(0), c.getLong(1))) }
             ids.groupBy { it.transport }.forEach { (transport, messages) ->
@@ -3000,6 +3232,25 @@ class Repository(private val context: Context) {
     /** True until a sync that actually had SMS access completes. */
     val needsInitialImport: Boolean get() = !settings.firstImportDone
 
+    /**
+     * Records that [sysId] belongs to the row just inserted, which has no
+     * handle until the insert's row id is read back.
+     */
+    private fun linkProviderId(db: Db, sysId: Long, transport: String) {
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM messages WHERE transport=? AND sys_id=?",
+            arrayOf(transport, sysId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) {
+                db.writableDatabase.execSQL(
+                    """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                       VALUES(?,?,?)""",
+                    arrayOf(c.getLong(0).toString(), transport, sysId.toString())
+                )
+            }
+        }
+    }
+
     /** Imports system SMS into the local DB, grouped by address, deduped by sys_id. */
     /**
      * Deletes local message rows whose provider row no longer exists.
@@ -3122,11 +3373,21 @@ class Repository(private val context: Context) {
         )
     )
 
-    /** Drops conversations left with no messages, so the list has no empty rows. */
+    /**
+     * Drops conversations left with no messages, so the list has no empty rows.
+     *
+     * A group is exempt: it is created as a new, deliberately empty thread, so
+     * this running right after one is made would erase it and leave the user on
+     * the details page for a chat that no longer exists. Deleting everything in
+     * a group trashes it like any other conversation, which is the explicit way
+     * to get rid of one.
+     */
     private fun removeEmptiedConversations() {
         db.writableDatabase.execSQL(
             "DELETE FROM conversations WHERE deleted_at=0 AND id NOT IN " +
-                "(SELECT DISTINCT conversation_id FROM messages)"
+                "(SELECT DISTINCT conversation_id FROM messages) AND id NOT IN " +
+                "(SELECT conversation_id FROM conversation_recipients " +
+                " GROUP BY conversation_id HAVING count(*)>1)"
         )
     }
 
@@ -3241,8 +3502,11 @@ class Repository(private val context: Context) {
                 val existing = mutableSetOf<Long>()
                 incomingSysIds.chunked(500).forEach { chunk ->
                     val ph = chunk.joinToString(",") { "?" }
+                    // From the mapping table, not messages.sys_id: a group
+                    // message owns several provider rows and only one of them
+                    // is recorded in that column.
                     db.readableDatabase.rawQuery(
-                        "SELECT sys_id FROM messages WHERE transport=? AND sys_id IN ($ph)",
+                        "SELECT sys_id FROM message_provider_ids WHERE transport=? AND sys_id IN ($ph)",
                         arrayOf(MmsSupport.TRANSPORT_SMS) + chunk.map { it.toString() }
                     ).use { c -> while (c.moveToNext()) existing.add(c.getLong(0)) }
                 }
@@ -3283,28 +3547,57 @@ class Repository(private val context: Context) {
                                     m.date.toString(), m.date.toString())
                             ).use { c -> if (c.moveToFirst()) localId = c.getLong(0) }
 
-                            try {
-                                if (localId != -1L) {
-                                    db.writableDatabase.execSQL(
-                                        "UPDATE messages SET sys_id=? WHERE id=?",
-                                        arrayOf(m.sysId.toString(), localId.toString())
-                                    )
-                                } else {
-                                    db.writableDatabase.execSQL(
-                                        """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
-                                           VALUES(?,?,?,?,?,?,?,?)""",
-                                        arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
-                                            when (m.type) {
-                                                android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
-                                                android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
-                                                else -> "sent"
-                                            },
-                                            m.sysId, MmsSupport.TRANSPORT_SMS, m.subId)
-                                    )
+                            if (localId == -1L) {
+                                    // A group send puts one provider row per
+                                    // recipient on the wire, so by the time the
+                                    // second is reached the first has already
+                                    // claimed the only sys_id=0 row. Without this
+                                    // second lookup every member beyond the first
+                                    // arrived as a brand-new message, and one tap
+                                    // showed N bubbles. The window is tight
+                                    // because these rows are written in the same
+                                    // send loop; 24h would swallow a genuine
+                                    // repeat of the same text.
+                                    db.readableDatabase.rawQuery(
+                                        """SELECT id FROM messages
+                                           WHERE conversation_id=? AND transport=? AND body=? AND is_me=?
+                                             AND ABS(timestamp-?) < 120000
+                                           ORDER BY ABS(timestamp-?) LIMIT 1""",
+                                        arrayOf(cid.toString(), MmsSupport.TRANSPORT_SMS, m.body,
+                                            if (isMe) "1" else "0", m.date.toString(), m.date.toString())
+                                    ).use { c -> if (c.moveToFirst()) localId = c.getLong(0) }
                                 }
-                            } catch (e: android.database.sqlite.SQLiteException) {
-                                android.util.Log.e("RepoSync", "INSERT failed: ${e.message}", e)
-                            }
+
+                                try {
+                                    if (localId != -1L) {
+                                        db.writableDatabase.execSQL(
+                                            """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                                               VALUES(?,?,?)""",
+                                            arrayOf(localId.toString(), MmsSupport.TRANSPORT_SMS, m.sysId.toString())
+                                        )
+                                        // messages.sys_id keeps only the primary
+                                        // row; the mapping table holds the rest.
+                                        db.writableDatabase.execSQL(
+                                            "UPDATE messages SET sys_id=? WHERE id=? AND sys_id=0",
+                                            arrayOf(m.sysId.toString(), localId.toString())
+                                        )
+                                    } else {
+                                        db.writableDatabase.execSQL(
+                                            """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
+                                               VALUES(?,?,?,?,?,?,?,?)""",
+                                            arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
+                                                when (m.type) {
+                                                    android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
+                                                    android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
+                                                    else -> "sent"
+                                                },
+                                                m.sysId, MmsSupport.TRANSPORT_SMS, m.subId)
+                                        )
+                                        linkProviderId(db, m.sysId, MmsSupport.TRANSPORT_SMS)
+                                    }
+                                } catch (e: android.database.sqlite.SQLiteException) {
+                                    android.util.Log.e("RepoSync", "INSERT failed: ${e.message}", e)
+                                }
                             existing.add(m.sysId)
                             done++
                             _initialSyncProgress.value = SyncProgress.import(done, pending)
@@ -3432,9 +3725,17 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery("SELECT sys_id FROM messages WHERE transport='mms' AND sys_id>0", null)
             .use { cursor -> while (cursor.moveToNext()) existing.add(cursor.getLong(0)) }
         val imported = mutableListOf<MmsSupport.InboundMms>()
+        // Counts of what the provider offered and what was taken, because the
+        // difference is the whole duplicate story: a sent picture whose outbox
+        // row was never linked is imported a second time, and the only evidence
+        // is that "offered" grew while "linked" did not.
+        var offered = 0
+        var linked = 0
+        MmsTrace.i(TRACE, "MMS import: ${existing.size} provider row(s) already linked")
         try {
             MmsProviderReader(context.contentResolver).read(existing) { message ->
                 runOnIo {
+                    offered++
                     val database = db.writableDatabase
                     database.beginTransaction()
                     try {
@@ -3474,6 +3775,15 @@ class Repository(private val context: Context) {
                             if (!message.isMe) imported.add(
                                 MmsSupport.InboundMms(address, message.content.body, message.timestamp)
                             )
+                            MmsTrace.i(
+                                TRACE,
+                                "imported provider MMS row=${message.id} " +
+                                    "mine=${message.isMe} media=${message.content.imageId != null} " +
+                                    "sub=${message.subId} read=${message.read}"
+                            )
+                        } else {
+                            linked++
+                            MmsTrace.i(TRACE, "provider MMS row=${message.id} already present, skipped")
                         }
                         database.setTransactionSuccessful()
                     } finally {
@@ -3481,9 +3791,10 @@ class Repository(private val context: Context) {
                     }
                 }
             }
-        } catch (_: Exception) {
-            android.util.Log.w("RepoSync", "MMS import incomplete; retry on next sync")
+        } catch (e: Exception) {
+            MmsTrace.w(TRACE, "MMS import incomplete after $offered row(s); retry on next sync", e)
         }
+        MmsTrace.i(TRACE, "MMS import done: $offered offered, $imported.size imported, $linked already present")
         return imported
     }
 
@@ -3518,15 +3829,23 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             "SELECT id, address, deleted_at FROM conversations ORDER BY id", null
         ).use { c -> while (c.moveToNext()) convos.add(Triple(c.getLong(0), c.getString(1), c.getInt(2))) }
+        // A group is a thread in its own right, not a spelling variant of the
+        // 1:1 it shares a contact with. Folding it in would delete the group and
+        // hand its messages to the private chat, so groups are left alone on
+        // both sides of the merge.
+        val groups = HashSet<Long>()
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id FROM conversation_recipients GROUP BY conversation_id HAVING count(*)>1", null
+        ).use { c -> while (c.moveToNext()) groups.add(c.getLong(0)) }
         val canon = convos.map { canonical(it.second) }
         val primary = HashMap<Long, Long>()
         for (i in convos.indices) {
             val a = convos[i]
-            if (a.third != 0) { primary[a.first] = a.first; continue }
+            if (a.third != 0 || a.first in groups) { primary[a.first] = a.first; continue }
             var base = a.first
             for (j in 0 until i) {
                 val b = convos[j]
-                if (b.third != 0 || primary[b.first] != b.first) continue
+                if (b.third != 0 || b.first in groups || primary[b.first] != b.first) continue
                 val ca = canon[i]
                 val same = samePerson(b.second, a.second) ||
                     (ca.isNotEmpty() && ca == canon[j])

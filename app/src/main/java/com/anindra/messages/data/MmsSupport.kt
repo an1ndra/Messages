@@ -25,6 +25,15 @@ object MmsSupport {
     data class InboundMms(val address: String, val body: String, val timestamp: Long)
     data class PendingDownload(val id: Long, val contentLocation: String?)
 
+    /**
+     * The label for a message this account sent.
+     *
+     * Anything carrying media goes out as an MMS, whatever it is stored as, so
+     * the label follows the message rather than the table it lives in.
+     */
+    fun outgoingKind(mediaType: String, transport: String): String =
+        if (mediaType != "text" || transport == TRANSPORT_MMS) "MMS" else "SMS"
+
     fun isImportable(box: Int, pduType: Int): Boolean =
         (box == 1 && pduType == PDU_RETRIEVE_CONF) || (box == 2 && pduType == PDU_SEND_REQ)
 

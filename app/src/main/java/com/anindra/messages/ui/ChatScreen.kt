@@ -32,9 +32,16 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +81,7 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -98,6 +106,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -118,6 +127,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -144,6 +154,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -176,6 +189,7 @@ import java.io.File
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onEach
@@ -230,6 +244,7 @@ internal fun ChatBubble(
     showTime: Boolean,
     senderName: String? = null,
     onTap: () -> Unit,
+    onImageTap: (String) -> Unit = {},
     deliveryReports: Boolean,
     highlightLinks: Boolean,
     linkWarningEnabled: Boolean,
@@ -344,7 +359,10 @@ internal fun ChatBubble(
                     Column(
                         horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start,
                         modifier = Modifier.combinedClickable(
-                            onClick = { onTap() },
+                            // A tap on an image opens the full-screen preview;
+                            // `onTap` alone only toggled link reveal, which an
+                            // image has none of, so the tap did nothing visible.
+                            onClick = { onImageTap(msg.mediaUri) },
                             onLongClick = { onLongPress() }
                         )
                     ) {
@@ -465,7 +483,7 @@ internal fun ChatBubble(
                     when {
                         deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                         msg.status == "sending" -> "Sending…"
-                        else -> "SMS"
+                        else -> com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
                     }
                 } else ""
                 val simLabel = if (showSimIndicator && msg.subId > 0) {
@@ -580,8 +598,12 @@ fun ChatScreen(
     vm: AppViewModel,
     conversationId: Long,
     searchQuery: String? = null,
+    initialDraft: String = "",
+    initialMedia: List<android.net.Uri> = emptyList(),
     onBack: () -> Unit,
-    onOpenDetails: () -> Unit = {}
+    onOpenDetails: () -> Unit = {},
+    onInitialDraftConsumed: () -> Unit = {},
+    onInitialMediaConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -707,6 +729,7 @@ fun ChatScreen(
     var showForwardPicker by remember { mutableStateOf(false) }
 
     var detailsMessage by remember { mutableStateOf<Message?>(null) }
+    var previewImageUri by remember { mutableStateOf<String?>(null) }
 
     var pendingSendText by remember { mutableStateOf("") }
     var sendCountdown by remember { mutableIntStateOf(0) }
@@ -972,6 +995,9 @@ fun ChatScreen(
         }
     }
 
+    // Registered last so it is the innermost handler: while the preview is up,
+    // back closes it instead of leaving the chat.
+    BackHandler(enabled = previewImageUri != null) { previewImageUri = null }
     BackHandler(onBack = ::leaveChat)
     BackHandler(enabled = selectionActive) { clearSelection() }
     BackHandler(enabled = searchOpen) {
@@ -1013,6 +1039,30 @@ fun ChatScreen(
             delay(80)
             listState.scrollToItem(Int.MAX_VALUE)
             hasScrolledToBottom = true
+        }
+    }
+    // A picture has no size until it has been decoded, so rows grow after the
+    // scroll above has already reached what was then the bottom and the chat
+    // opens a few rows short. Follow that growth, but only while the view is
+    // already at the bottom: a prepend while reading history has to keep its
+    // own anchoring (issue #284), and re-scrolling there would undo it.
+    var userDraggedList by remember(conversationId) { mutableStateOf(false) }
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect {
+            if (it is DragInteraction.Start) userDraggedList = true
+        }
+    }
+    LaunchedEffect(conversationId, focusedSearchId) {
+        if (focusedSearchId != null) return@LaunchedEffect
+        withTimeoutOrNull(4_000L) {
+            snapshotFlow { chatRows.size to listState.layoutInfo.visibleItemsInfo.sumOf { it.size } }
+                .collect {
+                    if (userDraggedList || messages.isEmpty()) return@collect
+                    val info = listState.layoutInfo
+                    val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    if (lastVisible < 0 || lastVisible >= info.totalItemsCount - 2) return@collect
+                    listState.scrollToItem(Int.MAX_VALUE)
+                }
         }
     }
     // The search hit flashes like a settings jump: fade in, hold, fade out, so
@@ -1072,6 +1122,21 @@ fun ChatScreen(
             context, conversationId
         )
         draftLoaded = false
+    }
+    // Content handed over by an external share, handled in one effect so the text
+    // and the media are read from the same composition. Sharing text with an
+    // image makes the text that image's caption, not a second message, so it is
+    // never also left in the composer. Both are cleared through the consume
+    // callbacks, which re-runs this effect with nothing to do.
+    LaunchedEffect(conversationId, initialDraft, initialMedia) {
+        if (initialMedia.isNotEmpty()) {
+            initialMedia.forEach { vm.sendMediaMessage(conversationId, it, initialDraft) }
+            onInitialMediaConsumed()
+            onInitialDraftConsumed()
+        } else if (initialDraft.isNotBlank()) {
+            draft = initialDraft
+            onInitialDraftConsumed()
+        }
     }
     LaunchedEffect(convo?.address) {
         com.anindra.messages.sms.ForegroundTracker.setOpenConversation(convo?.address)
@@ -1360,6 +1425,13 @@ fun ChatScreen(
                                 if (selectionActive) toggleSelection(msg.id)
                                 else if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
                             },
+                            // Selection still wins over the preview, otherwise a
+                            // tap while selecting would open a full-screen view
+                            // instead of marking the message.
+                            onImageTap = { uri ->
+                                if (selectionActive) toggleSelection(msg.id)
+                                else previewImageUri = uri
+                            },
                             deliveryReports = deliveryReports,
                             highlightLinks = vm.settings.highlightLinks,
                             linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
@@ -1384,6 +1456,40 @@ fun ChatScreen(
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
+                }
+            }
+            // Back to the newest message, offered only once the view has left
+            // it: after opening a search hit, or after reading back.
+            val showJumpToLatest by remember {
+                derivedStateOf {
+                    val info = listState.layoutInfo
+                    val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    last >= 0 && last < info.totalItemsCount - 2
+                }
+            }
+            AnimatedVisibility(
+                visible = showJumpToLatest && !selectionActive,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 12.dp)
+            ) {
+                SmallFloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            val last = (chatRows.size - 1).coerceAtLeast(0)
+                            if (reduceMotion) listState.scrollToItem(last)
+                            else listState.animateScrollToItem(last)
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        stringResource(R.string.chat_scroll_to_latest)
+                    )
                 }
             }
             if (sendCountdown > 0) {
@@ -1488,6 +1594,10 @@ fun ChatScreen(
             address = convo?.address ?: "",
             onDismiss = { detailsMessage = null }
         )
+    }
+
+    previewImageUri?.let { uri ->
+        ImagePreview(uri = uri, onDismiss = { previewImageUri = null })
     }
 
     if (showForwardPicker) {
@@ -2447,7 +2557,7 @@ fun MessageRow(
                 when {
                     showStatus && deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                     showStatus && msg.status == "sending" -> "Sending…"
-                    else -> "SMS"
+                    else -> com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
                 }
             } else ""
             val prefix = if (statusText.isNotEmpty()) " • $statusText" else ""
@@ -2460,6 +2570,75 @@ fun MessageRow(
                     start = if (!msg.isMe) 4.dp else 0.dp,
                     end = if (msg.isMe) 4.dp else 0.dp
                 )
+            )
+        }
+    }
+}
+
+/**
+ * Full-screen view of one image attachment, opened by tapping the bubble.
+ *
+ * The bubble crops to a fixed thumbnail, so anything readable in the original
+ * is unreadable there — this is the only place the full frame is shown. It is
+ * deliberately minimal: no chrome beyond a close control, because the only
+ * question it answers is "what is in this picture". Back and a tap on the
+ * backdrop both dismiss.
+ */
+@Composable
+internal fun ImagePreview(
+    uri: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BackHandler(onBack = onDismiss)
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            // The backdrop is the tap-anywhere-to-close surface, so it has to be
+            // reachable too — including under the status bar, which is where a
+            // user's thumb naturally lands to dismiss.
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onDismiss
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        coil3.compose.AsyncImage(
+            model = uri,
+            contentDescription = stringResource(R.string.access_photo),
+            // Fit, not Crop: the point is to see the whole frame.
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize().padding(8.dp)
+        )
+        // The backdrop clickable lives on the Box above, which is declared
+        // before this button and therefore hit-tests first.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                // Clear of the status bar, or the button renders but sits in
+                // the inset where touches never arrive — it looked present and
+                // did nothing. `align(TopEnd)` alone put it at y=21..147 with
+                // the status bar covering everything above y=137.
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(8.dp)
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.55f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.Close,
+                contentDescription = stringResource(R.string.chat_close),
+                tint = Color.White,
+                modifier = Modifier.size(28.dp)
             )
         }
     }
