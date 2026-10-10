@@ -119,6 +119,7 @@ import com.anindra.messages.data.Conversation
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import com.anindra.messages.ui.A11y
+import com.anindra.messages.ui.ContactDetails
 import com.anindra.messages.ui.PersonAvatar
 import com.anindra.messages.ui.BidiText
 import com.anindra.messages.ui.phoneKey
@@ -746,8 +747,9 @@ internal fun ConversationRow(
 ) {
     val now = LocalNowTick.current
     // A group is titled by its members, not by whoever it started with.
-    val senderLabel = if (convo.groupTitle.isNotBlank()) convo.groupTitle
-    else if (convo.name == convo.address) BidiText.ltr(convo.display) else convo.name
+    val senderLabel = ContactDetails.listLabel(
+        convo.groupTitle, convo.name, convo.address, BidiText.ltr(convo.display)
+    )
     val hasDraft = settings.draftsEnabled && convo.draft.isNotBlank()
     val draftLabel = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
     val snippetLabel = if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
@@ -806,9 +808,7 @@ internal fun ConversationRow(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (convo.groupTitle.isNotBlank()) convo.groupTitle
-                        else if (convo.name == convo.address) BidiText.ltr(convo.display)
-                        else convo.name,
+                        text = senderLabel,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,

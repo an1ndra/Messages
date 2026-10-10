@@ -26,7 +26,7 @@ import org.junit.Test
 class ContactDetailsWiringTest {
     private val screen: String by lazy { locate("ui/ContactDetailsScreen.kt") }
     private val main: String by lazy { locate("MainActivity.kt") }
-    private val conversations: String by lazy { locate("ui/legacy/LegacyConversationsScreen.kt") }
+    private val helpers: String by lazy { locate("ui/ContactDetails.kt") }
 
     @Test
     fun addPeopleOpensTheInAppPickerNotTheContactCreator() {
@@ -164,16 +164,25 @@ class ContactDetailsWiringTest {
     @Test
     fun theConversationListTitlesGroupsFromTheirMembers() {
         // Without this a group shows as whoever it started with, so the home
-        // list said "Sarah" for a Sarah + Dad thread.
+        // list said "Sarah" for a Sarah + Dad thread -- and, in the redesigned
+        // list, so did the label a screen reader announced.
+        //
+        // Both lists now call the one helper. It is asserted here rather than in
+        // each list because the rule being in three places is what let the
+        // redesigned list lose it in the first place.
         assertTrue(
-            "the row title must prefer groupTitle",
-            Regex("""text = if \(convo\.groupTitle\.isNotBlank\(\)\) convo\.groupTitle""")
-                .containsMatchIn(conversations),
+            "the rule must live in ContactDetails",
+            Regex("""fun listLabel\([\s\S]{0,200}?groupTitle\.isNotBlank\(\)\) groupTitle""")
+                .containsMatchIn(helpers),
         )
-        assertTrue(
-            "the draft preview must prefer groupTitle too",
-            conversations.contains("val senderLabel = if (convo.groupTitle.isNotBlank()) convo.groupTitle"),
-        )
+        listOf("ui/ConversationsScreen.kt", "ui/legacy/LegacyConversationsScreen.kt").forEach { path ->
+            val src = locate(path)
+            assertTrue("$path must use the shared label", src.contains("ContactDetails.listLabel("))
+            assertTrue(
+                "$path must not decide the title for itself again",
+                !src.contains("convo.groupTitle.isNotBlank()"),
+            )
+        }
     }
 
     @Test
