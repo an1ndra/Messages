@@ -14,6 +14,11 @@ import com.anindra.messages.data.MmsSupport
  */
 class MmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        // Logged before the filter: a broadcast the app receives but does not
+        // match is the difference between "the carrier never sent it" and "the
+        // manifest filter never let it in", and that difference is invisible
+        // anywhere else.
+        MmsTrace.i("MmsDownload", "WAP push broadcast: action=${intent.action} type=${intent.type}")
         if (!MmsSupport.isMmsWapPush(intent.action, intent.type)) return
         MmsDownloader.onWapPush(context)
     }

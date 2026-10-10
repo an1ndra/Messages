@@ -154,4 +154,13 @@ class MmsSupportTest {
         assertNull(MmsSupport.downloadLocation(""))
         assertNull(MmsSupport.downloadLocation("   "))
     }
+
+    @Test
+    fun anOwnMessageIsLabelledByWhatItCarries() {
+        // A picture leaves as an MMS even while its row is still stored as sms,
+        // so the label cannot come from the transport column alone.
+        assertEquals("MMS", MmsSupport.outgoingKind("image", MmsSupport.TRANSPORT_SMS))
+        assertEquals("MMS", MmsSupport.outgoingKind("text", MmsSupport.TRANSPORT_MMS))
+        assertEquals("SMS", MmsSupport.outgoingKind("text", MmsSupport.TRANSPORT_SMS))
+    }
 }

@@ -72,7 +72,6 @@ android {
 }
 
 dependencies {
-    implementation(project(":android-smsmms"))
     implementation(project(":mms"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.work.runtime)

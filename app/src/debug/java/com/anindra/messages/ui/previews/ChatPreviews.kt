@@ -38,6 +38,7 @@ import com.anindra.messages.ui.SimPickerDialog
 import com.anindra.messages.ui.SkeletonMessageRow
 import com.anindra.messages.ui.TextCopyDialog
 import com.anindra.messages.ui.ForwardPicker
+import com.anindra.messages.ui.ImagePreview
 import com.anindra.messages.ui.ProvideShimmer
 
 @PreviewLightDark
@@ -249,6 +250,18 @@ private fun SkeletonMessageRowPreview() {
 @Composable
 private fun TextCopyDialogPreview() {
     Stage { TextCopyDialog("The message body that would be copied", onDismiss = {}) }
+}
+
+@PreviewLightDark
+@Preview(name = "Image preview", showBackground = true, widthDp = 380, heightDp = 620)
+@Composable
+private fun ImagePreviewPreview() {
+    // The preview renders its own opaque backdrop, so it is shown without the
+    // themed Stage — a surface here would only hide it.
+    ImagePreview(
+        uri = "android.resource://com.anindra.messages/drawable/ic_launcher",
+        onDismiss = {}
+    )
 }
 
 @PreviewLightDark

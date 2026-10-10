@@ -5,10 +5,10 @@ import android.content.BroadcastReceiver
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.provider.Telephony
 import com.anindra.messages.MessagesApplication
 import com.anindra.messages.data.Repository
+import com.anindra.messages.mms.transport.SystemMmsTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +23,11 @@ class SmsStatusReceiver : BroadcastReceiver() {
         val action = intent.action
         // getResultCode() is only valid on the receiver thread; snapshot before goAsync().
         val resultCodeSnapshot = resultCode
+        MmsTrace.i(
+            "MmsSend",
+            "receiver fired action=$action messageId=$messageId code=$resultCodeSnapshot " +
+                "trId=${intent.getStringExtra(SystemMmsTransport.EXTRA_TRANSACTION_ID)}"
+        )
 
         val app = context.applicationContext as MessagesApplication
         val repo = app.repository
@@ -31,8 +36,8 @@ class SmsStatusReceiver : BroadcastReceiver() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 when {
-                    action == ACTION_MMS_SENT -> mms(
-                        repo, context, intent, messageId, resultCodeSnapshot
+                    action == SystemMmsTransport.ACTION_SEND_SENT -> mms(
+                        repo, context, intent, resultCodeSnapshot
                     )
                     resultCodeSnapshot != Activity.RESULT_OK -> fail(repo, context, messageId)
                     action == ACTION_SMS_DELIVERED ->
@@ -55,19 +60,23 @@ class SmsStatusReceiver : BroadcastReceiver() {
         repo: Repository,
         context: Context,
         intent: Intent,
-        messageId: Long,
         resultCode: Int
     ) {
         val ok = resultCode == Activity.RESULT_OK
-        android.util.Log.i(
-            "MmsSend",
-            "MMS send finished for message $messageId: code $resultCode"
-        )
-        val outbox = intent.getStringExtra(EXTRA_MMS_OUTBOX)?.let(Uri::parse)
-        if (outbox != null) {
+        val transactionId = intent.getStringExtra(SystemMmsTransport.EXTRA_TRANSACTION_ID)
+        MmsTrace.i("MmsSend", "MMS send finished: code=$resultCode trId=$transactionId")
+        // The location is the PDU file's name inside the cache root; only the
+        // name is used, so an extra cannot point outside it.
+        intent.getStringExtra(SystemMmsTransport.EXTRA_LOCATION)
+            ?.let { File(context.cacheDir, File(it).name).delete() }
+        if (transactionId == null) {
+            MmsTrace.w("MmsSend", "MMS result carried no transaction id; row not settled")
+            return
+        }
+        MmsPendingSends.rowOf(context, transactionId)?.let { row ->
             runCatching {
                 context.contentResolver.update(
-                    outbox,
+                    row,
                     ContentValues().apply {
                         put(
                             Telephony.Mms.MESSAGE_BOX,
@@ -76,13 +85,12 @@ class SmsStatusReceiver : BroadcastReceiver() {
                         )
                     }, null, null
                 )
-            }
-        }
-        intent.getStringExtra(EXTRA_MMS_PDU_FILE)?.let { File(it).delete() }
-        if (messageId > 0) {
-            if (ok) repo.markMessageStatusSuspend(messageId, "sent")
-            else fail(repo, context, messageId)
-        }
+            }.onFailure { MmsTrace.w("MmsSend", "could not move provider row to its final box", it) }
+        } ?: MmsTrace.w("MmsSend", "no provider row for trId=$transactionId")
+        val messageId = MmsPendingSends.take(context, transactionId) ?: return
+        MmsTrace.i("MmsSend", "MMS result applied id=$messageId ok=$ok")
+        if (ok) repo.markMessageStatusSuspend(messageId, "sent")
+        else fail(repo, context, messageId)
     }
 
     private suspend fun sent(repo: Repository, messageId: Long) {
@@ -109,9 +117,6 @@ class SmsStatusReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_SMS_SENT = "com.anindra.messages.SMS_SENT"
         const val ACTION_SMS_DELIVERED = "com.anindra.messages.SMS_DELIVERED"
-        const val ACTION_MMS_SENT = "com.anindra.messages.MMS_SENT"
         const val EXTRA_MESSAGE_ID = "mid"
-        const val EXTRA_MMS_OUTBOX = "mms_outbox"
-        const val EXTRA_MMS_PDU_FILE = "mms_pdu_file"
     }
 }

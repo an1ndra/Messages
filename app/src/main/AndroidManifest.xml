@@ -79,7 +79,37 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
+                <data android:scheme="sms" />
                 <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+            <!-- Appear in text share sheets from other apps (bank receipts,
+                 share-to-SMS). The platform only offers an activity whose
+                 filter explicitly matches the shared MIME type. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <!-- A shared image is an outgoing MMS, so the app must answer for
+                 image/* as well or it is simply absent from a photo's share
+                 sheet. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
 
@@ -152,7 +182,7 @@
             <intent-filter>
                 <action android:name="com.anindra.messages.SMS_SENT" />
                 <action android:name="com.anindra.messages.SMS_DELIVERED" />
-                <action android:name="com.anindra.messages.MMS_SENT" />
+                <action android:name="com.anindra.messages.mms.action.SEND_SENT" />
             </intent-filter>
         </receiver>
 

@@ -633,8 +633,8 @@ class Mms(
      * The budget comes from [BudgetPolicy] rather than from a subtraction here,
      * so the split between caption and attachment has one owner.
      */
-    private fun fit(message: OutgoingMessage, profile: CarrierProfile): FitOutcome = fitter.fit(
-        FitRequest(
+    private fun fit(message: OutgoingMessage, profile: CarrierProfile): FitOutcome {
+        val request = FitRequest(
             mimeType = message.attachmentMimeType,
             bytes = message.attachmentBytes,
             sourceWidth = message.sourceWidth,
@@ -646,8 +646,23 @@ class Mms(
             ),
             maxImageWidth = profile.maxImageWidth(),
             maxImageHeight = profile.maxImageHeight(),
-        ),
-    )
+            dimensionLimitsReported = profile.imageLimitsReported(),
+        )
+        val outcome = fitter.fit(request)
+        // Reported here rather than inside the fitters: this is the only place
+        // that knows the carrier profile the budget came from, so it is the only
+        // place a picture can be traced from source pixels to sent bytes.
+        when (outcome) {
+            is FitOutcome.Fitted -> diagnostics.attachmentFitted(request, outcome)
+            FitOutcome.Unreadable -> diagnostics.attachmentRejected(
+                request.mimeType, request.bytes.size, request.budgetBytes, "unreadable",
+            )
+            FitOutcome.TooLarge -> diagnostics.attachmentRejected(
+                request.mimeType, request.bytes.size, request.budgetBytes, "too_large",
+            )
+        }
+        return outcome
+    }
 
     private fun sendHeadersFor(subscriptionId: Int): SendHeaderPolicy = SendHeaderPolicy.withCarrierConfig(
         base = SendHeaderPolicy.DEFAULT,
