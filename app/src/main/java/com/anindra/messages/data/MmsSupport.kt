@@ -16,6 +16,11 @@ object MmsSupport {
     const val PDU_RETRIEVE_CONF = 132
     const val PENDING_DOWNLOAD_SELECTION = "msg_box=1 AND m_type=$PDU_NOTIFICATION_IND"
 
+    /** The line a message belongs to. A single-SIM provider has no such column,
+     *  so a query naming it fails and the caller has to be able to ask again
+     *  without it. */
+    const val PROVIDER_SUBSCRIPTION_ID = "sub_id"
+
     fun acceptsTextChunk(currentBytes: Int, nextBytes: Int): Boolean =
         currentBytes in 0..MAX_TEXT_BYTES && nextBytes in 0..(MAX_TEXT_BYTES - currentBytes)
 
@@ -23,7 +28,9 @@ object MmsSupport {
     data class Part(val id: Long, val mime: String, val text: String? = null)
     data class Content(val body: String, val imageId: Long?, val omittedParts: Int)
     data class InboundMms(val address: String, val body: String, val timestamp: Long)
-    data class PendingDownload(val id: Long, val contentLocation: String?)
+    /** [subscriptionId] is the line the announcement was filed under, or -1 when the
+     *  provider does not record one. The downloaded message keeps it. */
+    data class PendingDownload(val id: Long, val contentLocation: String?, val subscriptionId: Int = -1)
 
     /**
      * The label for a message this account sent.

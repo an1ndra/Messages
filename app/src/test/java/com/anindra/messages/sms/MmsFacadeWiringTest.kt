@@ -1,5 +1,6 @@
 package com.anindra.messages.sms
 
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -44,10 +45,17 @@ class MmsFacadeWiringTest {
     }
 
     @Test
-    fun theAnnouncedRowIsFoundByItsTransactionId() {
-        assertTrue(
-            "the download target must resolve the announced row by tr_id",
+    fun theFacadeHandsThePlatformNoDownloadDestinationItCannotWrite() {
+        // A `content://mms/<id>` row is not a destination the MMS service can
+        // open: every download against one fails with MMS_ERROR_IO_ERROR. The
+        // facade used to build exactly that by resolving the announcement row.
+        assertFalse(
+            "the download target must not resolve an announcement row as a destination",
             source.contains("Telephony.Mms.TRANSACTION_ID")
+        )
+        assertFalse(
+            "the download target must not build a provider row URI",
+            source.contains("Uri.withAppendedPath")
         )
     }
 }

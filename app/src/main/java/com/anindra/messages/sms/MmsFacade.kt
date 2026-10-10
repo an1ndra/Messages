@@ -1,8 +1,6 @@
 package com.anindra.messages.sms
 
 import android.content.Context
-import android.net.Uri
-import android.provider.Telephony
 import android.telephony.TelephonyManager
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.mms.Mms
@@ -15,6 +13,7 @@ import com.anindra.messages.mms.net.CarrierProfileStore
 import com.anindra.messages.mms.pdu.Pdu
 import com.anindra.messages.mms.spi.MmsDiagnostics
 import com.anindra.messages.mms.spi.MmsDownloadTarget
+import com.anindra.messages.mms.store.MmsStore
 import com.anindra.messages.mms.store.TelephonyMmsStore
 import com.anindra.messages.mms.transport.SmsManagerMmsPlatform
 import com.anindra.messages.mms.transport.SystemMmsTransport
@@ -75,22 +74,30 @@ internal object MmsFacade {
         }
     }
 
+    /** The provider-backed MMS store, for code that handles a message without a send.
+     *  [of] builds the same store, so both go through here: two constructions of
+     *  it is two places to keep in step. */
+    fun store(context: Context): MmsStore {
+        val app = context.applicationContext
+        return TelephonyMmsStore(
+            resolver = app.contentResolver,
+            lineOneNumber = { ownNumber(app, DEFAULT_SUBSCRIPTION) },
+        )
+    }
+
     fun of(context: Context, diagnostics: MmsDiagnostics = traced): Mms {
         val app = context.applicationContext
         val profiles = profiles(app)
         val transport = SystemMmsTransport(
             fileProviderAuthority = app.packageName + ".fileprovider",
             cacheDir = app.cacheDir,
-            targets = AnnouncementRows(app),
+            targets = AnnouncementRows,
             carrierProfiles = profiles,
             platform = SmsManagerMmsPlatform(app),
             diagnostics = diagnostics,
         )
         return Mms(
-            store = TelephonyMmsStore(
-                resolver = app.contentResolver,
-                lineOneNumber = { ownNumber(app, DEFAULT_SUBSCRIPTION) },
-            ),
+            store = store(app),
             transports = TransportRegistry(listOf(transport)),
             fitter = DefaultAttachmentFitter(),
             carrierProfiles = profiles,
@@ -98,7 +105,9 @@ internal object MmsFacade {
                 enabled = { true },
                 roaming = { subscriptionId -> isRoaming(app, subscriptionId) },
             ),
-            sendAddress = SendAddressSource { subscriptionId -> ownNumber(app, subscriptionId) },
+            // See sendableNumber: the MSISDN is written out only when the device can name
+            // the line it belongs to, and otherwise left to the carrier.
+            sendAddress = SendAddressSource { subscriptionId -> sendableNumber(app, subscriptionId) },
             carrierConfig = CarrierProfileStore.platformSource(app),
             diagnostics = diagnostics,
         )
@@ -114,6 +123,24 @@ internal object MmsFacade {
         (card ?: cards.firstOrNull())?.number?.takeIf { it.isNotBlank() }
     }.getOrNull()
 
+    /**
+     * The MSISDN to write as `From`, or null for the insert-address token.
+     *
+     * Unlike [ownNumber] this never falls back to another line: a submission
+     * whose `From` is not the line it leaves on is refused, so an unreadable
+     * number is worth less than no number at all. Only a genuinely single-line
+     * device is allowed to answer for the line it cannot name.
+     */
+    private fun sendableNumber(context: Context, subscriptionId: Int): String? = runCatching {
+        val cards = SimCards.load(context)
+        val card = cards.firstOrNull { it.subscriptionId == subscriptionId }
+        when {
+            card != null -> card.number?.takeIf { it.isNotBlank() }
+            subscriptionId <= 0 && cards.size == 1 -> cards.first().number?.takeIf { it.isNotBlank() }
+            else -> null
+        }
+    }.getOrNull()
+
     @Suppress("DEPRECATION")
     private fun isRoaming(context: Context, subscriptionId: Int): Boolean = runCatching {
         val manager = context.getSystemService(TelephonyManager::class.java)
@@ -124,29 +151,31 @@ internal object MmsFacade {
     }.getOrDefault(false)
 
     /**
-     * The provider row an announced message is fetched into.
+     * The destination an announced message is fetched into.
      *
-     * The platform files that row when it announces the message, so it is found
-     * by the notification's transaction id — the `tr_id` the row carries.
-     * Returning null (no row) defers the fetch rather than naming a row that
-     * does not exist.
+     * It deliberately refuses. `Mms.receive` hands this destination to the
+     * platform download API, which writes it from the MMS service's own process:
+     * a `content://mms/<id>` message row is not a destination it can open, and
+     * every attempt fails with `MMS_ERROR_IO_ERROR`. Returning null defers the
+     * fetch, which `Mms.receive` already handles, rather than guaranteeing the
+     * failure.
+     *
+     * The working answer is the staging file `MmsDownloader` uses, but this path
+     * would then also have to read the PDU back out of it, and nothing in
+     * `:mms` does: `receive` returns AWAITING_PLATFORM and leaves the platform's
+     * own broadcast to the app's receiver. Pointing it at a staging file before
+     * that exists would store nothing at all, which is harder to diagnose than
+     * the code 5 it replaces. So this stays a refusal until the read-back
+     * exists — see `MmsStaging` for the one way to name a destination.
      */
-    private class AnnouncementRows(private val context: Context) : MmsDownloadTarget {
+    private object AnnouncementRows : MmsDownloadTarget {
         override fun contentUriOf(notification: Pdu, subscriptionId: Int): String? {
-            val transactionId = notification.transactionId ?: return null
-            return context.contentResolver.query(
-                Telephony.Mms.CONTENT_URI,
-                arrayOf(Telephony.Mms._ID),
-                "${Telephony.Mms.TRANSACTION_ID} = ?",
-                arrayOf(transactionId),
-                "${Telephony.Mms.DATE} DESC",
-            )?.use { cursor ->
-                if (!cursor.moveToFirst()) return@use null
-                Uri.withAppendedPath(
-                    Telephony.Mms.CONTENT_URI,
-                    cursor.getLong(0).toString(),
-                ).toString()
-            }
+            MmsTrace.w(
+                "MmsDownload",
+                "the :mms retrieve path has no writable destination for " +
+                    "${notification.transactionId ?: "an unnamed transaction"}; deferring",
+            )
+            return null
         }
     }
 }
