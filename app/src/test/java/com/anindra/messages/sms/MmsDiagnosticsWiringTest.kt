@@ -51,7 +51,7 @@ class MmsDiagnosticsWiringTest {
         val source = sourceOf("app/src/main/java/com/anindra/messages/sms/MmsFacade.kt")
         assertTrue(
             "Mms.send must get the diagnostics, or nothing it does is recorded",
-            source.contains("diagnostics = traced")
+            Regex("""Mms\([\s\S]*?diagnostics = diagnostics""").containsMatchIn(source)
         )
     }
 

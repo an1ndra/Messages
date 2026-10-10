@@ -1139,6 +1139,37 @@ class Repository(private val context: Context) {
         return Message(id, conversationId, clean, now, true, "sending", mediaType, uri)
     }
 
+    /**
+     * Links an app message to the provider row it is being sent as.
+     *
+     * [sendMedia] stores the message with no `sys_id`, and a sent MMS reaches
+     * the provider's sent box, where [importProviderMms] would import it as a
+     * second message (the same picture twice in the chat). Recording the
+     * provider row here makes the next sync recognise it as already present.
+     *
+     * The mapping table is written too, not just the column: this app reads it
+     * for chat deletion and for import dedupe, so a link that only filled the
+     * column would fix the duplicate on screen and then leak the provider row
+     * back as a fresh 1:1 after the chat was deleted.
+     */
+    fun linkMmsRow(messageId: Long, sysId: Long) {
+        if (messageId <= 0 || sysId <= 0) return
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET sys_id=?, transport=? WHERE id=?",
+            arrayOf<Any?>(sysId, MmsSupport.TRANSPORT_MMS, messageId)
+        )
+        runCatching {
+            db.writableDatabase.execSQL(
+                """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                   VALUES(?,?,?)""",
+                arrayOf<Any?>(messageId, MmsSupport.TRANSPORT_MMS, sysId)
+            )
+        }.onFailure {
+            MmsTrace.w(TRACE, "could not record provider row $sysId for message $messageId", it)
+        }
+        notifyChanged()
+    }
+
     private fun touchConversation(conversationId: Long, snippet: String, ts: Long, isMe: Boolean) {
         db.writableDatabase.execSQL(
             "UPDATE conversations SET snippet=?,timestamp=?,unread_count=0,last_is_me=?,deleted_at=0 WHERE id=?",

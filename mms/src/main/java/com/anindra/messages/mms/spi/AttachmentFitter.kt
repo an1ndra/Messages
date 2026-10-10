@@ -21,6 +21,14 @@ data class FitRequest(
     val budgetBytes: Long,
     val maxImageWidth: Int,
     val maxImageHeight: Int,
+    /**
+     * Whether [maxImageWidth]/[maxImageHeight] are the carrier's own limits.
+     *
+     * False means the numbers are the fallback guess, not a restriction: the
+     * fitter must then treat the byte budget as the only limit, because cutting
+     * a photo to a size nobody asked for is what makes it arrive blurry.
+     */
+    val dimensionLimitsReported: Boolean = false,
 )
 
 sealed interface FitOutcome {

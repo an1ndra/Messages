@@ -9,7 +9,6 @@
 .cxx
 local.properties
 /app/build
-/android-smsmms/build
 /mms/build
 .kotlin
 screenshots/*
