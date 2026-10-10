@@ -14,8 +14,19 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Granted at install up to Android 13. From 14 it is only auto-granted to
+         calling/messaging apps; as the default SMS handler this app qualifies.
+         Without it the platform discards the intent and a locked screen never
+         wakes for an incoming message. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+
+    <!-- SMS/MMS/phone-state permissions imply telephony; this app degrades to a
+         simulated SIM on devices without a radio (ChromeOS, tablets). -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
 
     <application
         android:name=".MessagesApplication"
@@ -41,22 +52,75 @@
                 <category android:name="android.intent.category.APP_MESSAGING" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.SENDTO" />
-                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data android:scheme="sms" />
                 <data android:scheme="smsto" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.SENDTO" />
-                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data android:scheme="mms" />
                 <data android:scheme="mmsto" />
             </intent-filter>
+            <!-- RoleManager qualifies the SMS role against SENDTO+smsto. The VIEW
+                 filter above does not satisfy it, so "Set as default" silently did
+                 nothing. DEFAULT is required: the role check resolves with
+                 MATCH_DEFAULT_ONLY, so a filter without it never qualifies. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SENDTO" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+            <!-- Appear in text share sheets from other apps (bank receipts,
+                 share-to-SMS). The platform only offers an activity whose
+                 filter explicitly matches the shared MIME type. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <!-- A shared image is an outgoing MMS, so the app must answer for
+                 image/* as well or it is simply absent from a photo's share
+                 sheet. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="image/*" />
+            </intent-filter>
         </activity>
+
+        <activity
+            android:name=".sms.FullScreenSmsActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Messages.FullScreen" />
 
         <receiver
             android:name=".sms.SmsReceiver"
@@ -91,6 +155,14 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".sms.DeleteMessageReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.anindra.messages.NOTIFICATION_DELETE" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".sms.NoConfirmationSmsSendService"
             android:exported="true"
@@ -110,7 +182,7 @@
             <intent-filter>
                 <action android:name="com.anindra.messages.SMS_SENT" />
                 <action android:name="com.anindra.messages.SMS_DELIVERED" />
-                <action android:name="com.anindra.messages.MMS_SENT" />
+                <action android:name="com.anindra.messages.mms.action.SEND_SENT" />
             </intent-filter>
         </receiver>
 

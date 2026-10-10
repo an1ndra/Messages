@@ -6,6 +6,8 @@
     <string name="lock_title">अपने संदेशों तक पहुँचने के लिए प्रमाणीकृत करें</string>
     <string name="lock_unlock_title">Messages अनलॉक करें</string>
     <string name="lock_auth_subtitle">इन संदेशों को दिखाने के लिए प्रमाणीकृत करें</string>
+    <string name="lock_change_app_lock_title">ऐप लॉक बदलने की पुष्टि करें</string>
+    <string name="lock_change_app_lock_subtitle">आपकी उंगली, चेहरा या पिन यह पुष्टि करता है कि आप ही हैं</string>
     <string name="lock_got_it">समझ गया</string>
     <string name="lock_not_now">अभी नहीं</string>
     <string name="lock_off">एप लॉक बंद है</string>
@@ -49,6 +51,7 @@
     <string name="notification_channel_desc">नए संदेश सूचनाएँ</string>
     <string name="notif_title_private">नया संदेश</string>
     <string name="notif_body_private">आपके पास एक नया संदेश है</string>
+    <string name="notif_action_delete">हटाएं</string>
     <string name="notif_you">आप</string>
     <string name="notif_send_fail_private">संदेश भेजा नहीं जा सका। पुनः प्रयास करने के लिए टैप करें।</string>
     <string name="notif_send_fail">%s को संदेश भेजा नहीं जा सका। पुनः प्रयास करने के लिए टैप करें।</string>

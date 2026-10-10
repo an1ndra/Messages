@@ -9,7 +9,7 @@
 .cxx
 local.properties
 /app/build
-/android-smsmms/build
+/mms/build
 .kotlin
 screenshots/*
 release.keystore
@@ -17,3 +17,7 @@ release.keystore
 .commandcode/
 .cache/
 .opencode/
+demo.keystore
+
+# throwaway key for local demo/personal builds
+demo-sign.keystore

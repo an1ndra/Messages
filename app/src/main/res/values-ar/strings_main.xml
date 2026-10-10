@@ -6,6 +6,8 @@
     <string name="lock_title">اعتماد هويتك للوصول إلى رسائلك</string>
     <string name="lock_unlock_title">فتح قفل الرسائل</string>
     <string name="lock_auth_subtitle">اعتماد هويتك لإظهار هذه الرسائل</string>
+    <string name="lock_change_app_lock_title">أكّد لتغيير قفل التطبيق</string>
+    <string name="lock_change_app_lock_subtitle">بصمة إصبعك أو وجهك أو رمزك يثبت أنك أنت</string>
     <string name="lock_got_it">فهمت</string>
     <string name="lock_not_now">ليس الآن</string>
     <string name="lock_off">قفل التطبيق غير مفعّل</string>
@@ -49,6 +51,7 @@
     <string name="notification_channel_desc">إشعارات الرسائل الجديدة</string>
     <string name="notif_title_private">رسالة جديدة</string>
     <string name="notif_body_private">لديك رسالة جديدة</string>
+    <string name="notif_action_delete">حذف</string>
     <string name="notif_you">أنت</string>
     <string name="notif_send_fail_private">فشل إرسال الرسالة. انقر للمحاولة مرة أخرى.</string>
     <string name="notif_send_fail">فشل إرسال الرسالة إلى %s. انقر للمحاولة مرة أخرى.</string>

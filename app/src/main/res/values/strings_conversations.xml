@@ -31,4 +31,9 @@
     <string name="spam_conversation_deleted">Blocked conversation deleted</string>
     <string name="spam_conversations_cleared">Blocked conversations cleared</string>
     <string name="spam_messages_cleared">Blocked messages cleared</string>
+    <string name="convo_marked_read">Marked as read</string>
+    <string name="convo_marked_unread">Marked as unread</string>
+    <string name="convo_pinned">Pinned</string>
+    <string name="convo_unpinned">Unpinned</string>
+    <string name="convo_blocked">Number blocked</string>
 </resources>

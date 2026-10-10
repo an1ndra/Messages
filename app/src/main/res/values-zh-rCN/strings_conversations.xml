@@ -30,4 +30,9 @@
     <string name="spam_conversation_deleted">已删除已屏蔽的对话</string>
     <string name="spam_conversations_cleared">已清空已屏蔽的对话</string>
     <string name="spam_messages_cleared">已清空已屏蔽的消息</string>
+    <string name="convo_marked_read">已标记为已读</string>
+    <string name="convo_marked_unread">已标记为未读</string>
+    <string name="convo_pinned">已置顶</string>
+    <string name="convo_unpinned">已取消置顶</string>
+    <string name="convo_blocked">已屏蔽该号码</string>
 </resources>

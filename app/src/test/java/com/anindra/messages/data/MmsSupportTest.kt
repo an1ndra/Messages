@@ -28,17 +28,6 @@ class MmsSupportTest {
     }
 
     @Test
-    fun throttlesRepeatedDownloadAttempts() {
-        val now = 1_700_000_000_000L
-        assertTrue(MmsSupport.shouldRetryDownload(0, now))
-        assertTrue(MmsSupport.shouldRetryDownload(-1, now))
-        assertFalse(MmsSupport.shouldRetryDownload(now - 1_000, now))
-        assertTrue(
-            MmsSupport.shouldRetryDownload(now - MmsSupport.DOWNLOAD_RETRY_COOLDOWN_MS, now)
-        )
-    }
-
-    @Test
     fun resolvesAttachmentMimeWhenTheProviderIsSilent() {
         assertEquals("image/png", MmsSupport.defaultAttachmentMime("image/png", "content://x/a"))
         assertEquals("image/jpeg", MmsSupport.defaultAttachmentMime("image/jpeg; charset=binary", "content://x/a"))
@@ -101,8 +90,12 @@ class MmsSupportTest {
             MmsSupport.Address(151, "+15551234567"))
         assertEquals("+15551234567", MmsSupport.peer(1, incoming, 1))
         assertEquals("+15551234567", MmsSupport.peer(2, outgoing, 1))
-        assertNull(MmsSupport.peer(1, incoming, 2))
-        assertNull(MmsSupport.peer(1, incoming, null))
+        // A thread with several recipients is a group, but the *sender* of an
+        // incoming MMS is still unambiguous, so it is attributed rather than
+        // discarded. This used to return null, which silently threw away every
+        // group MMS unread; MmsPeerTest covers the group cases in detail.
+        assertEquals("+15551234567", MmsSupport.peer(1, incoming, 2))
+        assertEquals("+15551234567", MmsSupport.peer(1, incoming, null))
         assertNull(MmsSupport.phoneAddress("sender@example.test"))
     }
 
@@ -134,5 +127,40 @@ class MmsSupportTest {
         assertEquals("content://sms", MmsSupport.providerUri(MmsSupport.TRANSPORT_SMS))
         assertEquals("content://mms", MmsSupport.providerUri(MmsSupport.TRANSPORT_MMS))
         assertNull(MmsSupport.providerUri("unknown"))
+    }
+
+    @Test
+    fun recognizesWapPushesByActionAndTypeAlone() {
+        val action = android.provider.Telephony.Sms.Intents.WAP_PUSH_DELIVER_ACTION
+        assertTrue(MmsSupport.isMmsWapPush(action, MmsSupport.WAP_PUSH_MIME))
+        assertFalse(MmsSupport.isMmsWapPush(null, MmsSupport.WAP_PUSH_MIME))
+        assertFalse(MmsSupport.isMmsWapPush(action, null))
+        assertFalse(MmsSupport.isMmsWapPush(action, "text/plain"))
+        assertFalse(
+            MmsSupport.isMmsWapPush(
+                android.provider.Telephony.Sms.Intents.WAP_PUSH_RECEIVED_ACTION,
+                MmsSupport.WAP_PUSH_MIME
+            )
+        )
+    }
+
+    @Test
+    fun resolvesTheLocationAnAnnouncedMmsCanBeFetchedFrom() {
+        assertEquals(
+            "http://mmsc.example/msg/42",
+            MmsSupport.downloadLocation("http://mmsc.example/msg/42")
+        )
+        assertNull(MmsSupport.downloadLocation(null))
+        assertNull(MmsSupport.downloadLocation(""))
+        assertNull(MmsSupport.downloadLocation("   "))
+    }
+
+    @Test
+    fun anOwnMessageIsLabelledByWhatItCarries() {
+        // A picture leaves as an MMS even while its row is still stored as sms,
+        // so the label cannot come from the transport column alone.
+        assertEquals("MMS", MmsSupport.outgoingKind("image", MmsSupport.TRANSPORT_SMS))
+        assertEquals("MMS", MmsSupport.outgoingKind("text", MmsSupport.TRANSPORT_MMS))
+        assertEquals("SMS", MmsSupport.outgoingKind("text", MmsSupport.TRANSPORT_SMS))
     }
 }

@@ -31,7 +31,6 @@
     <string name="access_loading_messages">메시지 로딩 중</string>
     <string name="access_photo">사진</string>
     <string name="action_call">전화</string>
-    <string name="action_add">추가</string>
     <string name="access_chat_top_bar">채팅 상단 바</string>
     <string name="access_swipe_background">스와이프 배경</string>
     <string name="access_nav">내비게이션 드로어</string>
@@ -63,4 +62,19 @@
     <!-- Detail row labels -->
     <string name="detail_phone_number">전화번호</string>
     <string name="detail_messages">메시지</string>
+    <string name="common_unblock">차단 해제</string>
+    <string name="swipe_action_pin">고정</string>
+    <string name="access_mark_read">읽음으로 표시</string>
+    <string name="access_mark_unread">안 읽음으로 표시</string>
+    <string name="action_contact">연락처</string>
+    <string name="action_info">정보</string>
+    <string name="common_add">추가</string>
+    <string name="contact_people_selected">%1$d명 선택됨</string>
+    <string name="contact_people_count">%1$d명</string>
+    <string name="contact_selected">선택됨</string>
+    <string name="contact_remove_people">그룹에서 제거</string>
+    <string name="contact_group_name">그룹 이름</string>
+    <string name="contact_create_group">그룹 만들기</string>
+    <string name="contact_group_name_optional">선택 사항 - 이름이 지정됩니다</string>
+    <string name="action_add">추가</string>
 </resources>
