@@ -34,6 +34,30 @@ class EncodedStringValue(val charsetMibEnum: Int, val textBytes: ByteArray) {
     fun withText(text: String): EncodedStringValue =
         EncodedStringValue(charsetMibEnum, text)
 
+    /**
+     * This address as a carrier's MMSC expects it on a submission: a phone
+     * number carries the `/TYPE=PLMN` qualifier. E-mail addresses and anything
+     * already qualified, or not number-shaped (an alphanumeric sender id), are
+     * left as they are.
+     */
+    fun withPhoneAddressType(): EncodedStringValue {
+        val value = text
+        if (value.isEmpty() || value.contains('@') || value.contains("/TYPE=", ignoreCase = true)) return this
+        if (!value.all { it.isDigit() || it in "+-(). " }) return this
+        return withText("$value/TYPE=PLMN")
+    }
+
+    /** The reverse of [withPhoneAddressType], so a stored address is the bare number. */
+    fun withoutPhoneAddressType(): EncodedStringValue {
+        val value = text
+        val suffix = "/TYPE=PLMN"
+        return if (value.length > suffix.length && value.endsWith(suffix, ignoreCase = true)) {
+            withText(value.dropLast(suffix.length))
+        } else {
+            this
+        }
+    }
+
     override fun equals(other: Any?): Boolean =
         other is EncodedStringValue &&
             charsetMibEnum == other.charsetMibEnum &&

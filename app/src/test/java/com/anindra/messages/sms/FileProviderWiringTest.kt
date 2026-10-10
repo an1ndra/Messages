@@ -93,10 +93,25 @@ class FileProviderWiringTest {
     }
 
     @Test
-    fun theAnnouncedRowIsFoundByItsTransactionId() {
+    fun everyDownloadDestinationIsAStagingFileThePlatformCanWrite() {
+        // Both paths that hand the platform a destination have to hand it a file.
+        // The provider row the download used to be aimed at is not one, and the
+        // failure it produced (MMS_ERROR_IO_ERROR on every attempt) is quiet
+        // enough that only pinning this stops it coming back.
+        val downloader = File(main, "java/com/anindra/messages/sms/MmsDownloader.kt").readText()
+        val destination = Regex("""val destination = (.+)""").find(downloader)?.groupValues?.get(1)
+            ?: error("no download destination found in MmsDownloader.kt")
+        assertFalse(
+            "the download destination must not be the announcement row: $destination",
+            destination.contains("Uri.parse(key)")
+        )
         assertTrue(
-            "the download target must resolve the announced row by tr_id",
-            facade.contains("Telephony.Mms.TRANSACTION_ID")
+            "the download destination must come from the staging file: $destination",
+            destination.contains("stagingUri(") || destination.contains("MmsStaging.uriFor(")
+        )
+        assertFalse(
+            "the facade must not build a provider row URI as a destination",
+            facade.contains("Uri.withAppendedPath")
         )
     }
 }

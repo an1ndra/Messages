@@ -61,16 +61,34 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
      *  The Content-Location (ct_l) is where the platform expects it to be
      *  fetched from — a row without one cannot be requested at all. */
     fun pendingDownloads(): List<MmsSupport.PendingDownload> {
+        val columns = arrayOf(
+            Telephony.Mms._ID, Telephony.Mms.CONTENT_LOCATION, MmsSupport.PROVIDER_SUBSCRIPTION_ID,
+        )
+        val rows = runCatching { queryPending(columns, withSubscription = true) }
+            .getOrElse {
+                // A single-SIM provider has no sub_id column at all, and naming
+                // it fails the whole query rather than returning a null column.
+                android.util.Log.w("MmsDownload", "provider has no sub_id; pending rows carry no line")
+                queryPending(columns.take(2).toTypedArray(), withSubscription = false)
+            }
+        return rows
+    }
+
+    private fun queryPending(columns: Array<String>, withSubscription: Boolean): List<MmsSupport.PendingDownload> {
         val result = mutableListOf<MmsSupport.PendingDownload>()
         resolver.query(
             Telephony.Mms.CONTENT_URI,
-            arrayOf(Telephony.Mms._ID, Telephony.Mms.CONTENT_LOCATION),
+            columns,
             MmsSupport.PENDING_DOWNLOAD_SELECTION, null, null
         )?.use { cursor ->
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(0)
                 if (id <= 0) continue
-                result.add(MmsSupport.PendingDownload(id, cursor.getString(1)))
+                result.add(
+                    MmsSupport.PendingDownload(
+                        id, cursor.getString(1), if (withSubscription) cursor.getInt(2) else -1,
+                    )
+                )
             }
         }
         return result
