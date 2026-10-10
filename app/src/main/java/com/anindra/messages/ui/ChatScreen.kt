@@ -32,9 +32,15 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -100,6 +106,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -120,6 +127,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -181,6 +189,7 @@ import java.io.File
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onEach
@@ -474,7 +483,7 @@ internal fun ChatBubble(
                     when {
                         deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                         msg.status == "sending" -> "Sending…"
-                        else -> "SMS"
+                        else -> com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
                     }
                 } else ""
                 val simLabel = if (showSimIndicator && msg.subId > 0) {
@@ -1032,6 +1041,30 @@ fun ChatScreen(
             hasScrolledToBottom = true
         }
     }
+    // A picture has no size until it has been decoded, so rows grow after the
+    // scroll above has already reached what was then the bottom and the chat
+    // opens a few rows short. Follow that growth, but only while the view is
+    // already at the bottom: a prepend while reading history has to keep its
+    // own anchoring (issue #284), and re-scrolling there would undo it.
+    var userDraggedList by remember(conversationId) { mutableStateOf(false) }
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect {
+            if (it is DragInteraction.Start) userDraggedList = true
+        }
+    }
+    LaunchedEffect(conversationId, focusedSearchId) {
+        if (focusedSearchId != null) return@LaunchedEffect
+        withTimeoutOrNull(4_000L) {
+            snapshotFlow { chatRows.size to listState.layoutInfo.visibleItemsInfo.sumOf { it.size } }
+                .collect {
+                    if (userDraggedList || messages.isEmpty()) return@collect
+                    val info = listState.layoutInfo
+                    val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    if (lastVisible < 0 || lastVisible >= info.totalItemsCount - 2) return@collect
+                    listState.scrollToItem(Int.MAX_VALUE)
+                }
+        }
+    }
     // The search hit flashes like a settings jump: fade in, hold, fade out, so
     // it points at the message without painting it permanently.
     var searchFlashOn by remember(conversationId, activeSearch) { mutableStateOf(false) }
@@ -1423,6 +1456,40 @@ fun ChatScreen(
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
+                }
+            }
+            // Back to the newest message, offered only once the view has left
+            // it: after opening a search hit, or after reading back.
+            val showJumpToLatest by remember {
+                derivedStateOf {
+                    val info = listState.layoutInfo
+                    val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    last >= 0 && last < info.totalItemsCount - 2
+                }
+            }
+            AnimatedVisibility(
+                visible = showJumpToLatest && !selectionActive,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 12.dp)
+            ) {
+                SmallFloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            val last = (chatRows.size - 1).coerceAtLeast(0)
+                            if (reduceMotion) listState.scrollToItem(last)
+                            else listState.animateScrollToItem(last)
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        stringResource(R.string.chat_scroll_to_latest)
+                    )
                 }
             }
             if (sendCountdown > 0) {
@@ -2490,7 +2557,7 @@ fun MessageRow(
                 when {
                     showStatus && deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
                     showStatus && msg.status == "sending" -> "Sending…"
-                    else -> "SMS"
+                    else -> com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
                 }
             } else ""
             val prefix = if (statusText.isNotEmpty()) " • $statusText" else ""

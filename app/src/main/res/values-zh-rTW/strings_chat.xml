@@ -90,4 +90,5 @@
     <string name="chat_search_previous">上一個符合項</string>
     <string name="chat_search_next">下一個符合項</string>
     <string name="chat_search_counter">%1$d/%2$d</string>
+    <string name="chat_scroll_to_latest">跳至最新訊息</string>
 </resources>

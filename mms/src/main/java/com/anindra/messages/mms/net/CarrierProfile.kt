@@ -58,6 +58,22 @@ class CarrierProfile(
 
     fun maxImageHeight(): Int = layeredInt(KEY_MAX_IMAGE_HEIGHT, DEFAULT_MAX_IMAGE_HEIGHT)
 
+    /**
+     * Whether the carrier actually declared an image size limit.
+     *
+     * [maxImageWidth] and [maxImageHeight] can always answer, because the
+     * defaults layer fills them in — so they cannot distinguish "this carrier
+     * caps images at 640x480" from "nothing was declared and 640x480 is the
+     * AOSP guess". Only the platform layer can. Enforcing the guess is what
+     * makes every photo a user sends arrive blurry, so the send path asks this
+     * before treating the numbers as a limit.
+     */
+    fun imageLimitsReported(): Boolean {
+        val fromPlatform = platform ?: return false
+        return fromPlatform.integer(KEY_MAX_IMAGE_WIDTH, 0) > 0 &&
+            fromPlatform.integer(KEY_MAX_IMAGE_HEIGHT, 0) > 0
+    }
+
     fun notifyWapMmsc(): Boolean = layeredBoolean(KEY_NOTIFY_WAP_MMSC, false)
 
     fun transIdEnabled(): Boolean = layeredBoolean(KEY_TRANS_ID_ENABLED, false)
