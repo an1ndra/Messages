@@ -67,7 +67,7 @@ class PduParser(
                 // A refusal ("message not found", "expired") is a short PDU with a
                 // status and no content type, so only a PDU that claims to carry a
                 // message has to name a container.
-                if (statusOk && contentType !in RETRIEVE_CONF_TYPES) {
+                if (statusOk && (contentType == null || !ContentTypes.isMultipart(contentType))) {
                     throw MalformedPduException("retrieve-conf content type $contentType")
                 }
                 statusOk
@@ -411,12 +411,6 @@ class PduParser(
             "application/vnd.wap.multipart.alternative",
         )
 
-        /** The containers an M-Retrieve.conf body is allowed to use. */
-        val RETRIEVE_CONF_TYPES = setOf(
-            ContentTypes.MULTIPART_MIXED,
-            ContentTypes.MULTIPART_ALTERNATIVE,
-            ContentTypes.MULTIPART_RELATED,
-            "multipart/related",
-        )
+
     }
 }

@@ -160,6 +160,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
@@ -1090,6 +1091,18 @@ fun ChatScreen(
             }
         }
     }
+    val chatLifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(conversationId, messages.size) {
+        if (messages.isNotEmpty() &&
+            chatLifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+        ) {
+            vm.markRead(conversationId)
+            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+                context, conversationId
+            )
+        }
+    }
+
     // The search hit flashes like a settings jump: fade in, hold, fade out, so
     // it points at the message without painting it permanently.
     var searchFlashOn by remember(conversationId, activeSearch) { mutableStateOf(false) }

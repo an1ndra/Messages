@@ -70,8 +70,10 @@ class CarrierProfile(
      */
     fun imageLimitsReported(): Boolean {
         val fromPlatform = platform ?: return false
-        return fromPlatform.integer(KEY_MAX_IMAGE_WIDTH, 0) > 0 &&
-            fromPlatform.integer(KEY_MAX_IMAGE_HEIGHT, 0) > 0
+        val width = fromPlatform.integer(KEY_MAX_IMAGE_WIDTH, 0)
+        val height = fromPlatform.integer(KEY_MAX_IMAGE_HEIGHT, 0)
+        val isBaseline = width == DEFAULT_MAX_IMAGE_WIDTH && height == DEFAULT_MAX_IMAGE_HEIGHT
+        return width > 0 && height > 0 && !isBaseline
     }
 
     fun notifyWapMmsc(): Boolean = layeredBoolean(KEY_NOTIFY_WAP_MMSC, false)
