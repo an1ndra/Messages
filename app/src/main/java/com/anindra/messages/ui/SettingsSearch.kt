@@ -105,6 +105,7 @@ object SettingsSearch {
             R.string.settings_retention_blocked,
             R.string.settings_retention_keep_spam)
         card(Route.ADVANCED, 14,
+            R.string.mms_check_title,
             R.string.settings_new_ui_title,
             R.string.transfer_log_title,
             R.string.diagnostics_title)

@@ -59,6 +59,7 @@ fun AdvancedSettingsScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
     onOpenAccessibility: () -> Unit = {},
+    onOpenMmsCheck: () -> Unit = {},
     onOpenTransferLog: () -> Unit = {},
     searchRow: Int? = null,
     onSearchRowHandled: () -> Unit = {}
@@ -367,6 +368,11 @@ fun AdvancedSettingsScreen(
 
             // Support
         SettingsCard(14) {
+                SettingsRow(
+                    title = stringResource(R.string.mms_check_title),
+                    subtitle = stringResource(R.string.mms_check_subtitle),
+                    onClick = onOpenMmsCheck
+                )
                 // Mirrors the switch in the redesigned screen. Without it here the
                 // legacy UI is a one-way door: switch off, no way back.
                 SettingsRow(
