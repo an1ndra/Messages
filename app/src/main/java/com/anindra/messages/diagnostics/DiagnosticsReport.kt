@@ -178,6 +178,15 @@ data class DiagnosticsData(
     /** MMS carrier-config values per subscriptionId; see SimMmsProbe.carrierFacts. */
     val mmsFacts: Map<Int, List<String>> = emptyMap(),
     /**
+     * Recent MMS stack events, oldest first.
+     *
+     * Read from the recorder the `:mms` stack writes to, never re-derived: the
+     * question "did the send reach the transport, and what did the carrier
+     * answer?" has exactly one answer, and a report that recomputed it would
+     * eventually contradict the log.
+     */
+    val mmsTrace: List<String> = emptyList(),
+    /**
      * Recent import/export runs, newest last.
      *
      * Read from [TransferLogStore] rather than recomputed: a report that
@@ -331,6 +340,13 @@ object DiagnosticsReport {
                 }
             }
             appendLine()
+            appendLine("--- MMS activity ---")
+            if (data.mmsTrace.isEmpty()) {
+                appendLine("No MMS events recorded this session.")
+            } else {
+                data.mmsTrace.forEach { appendLine("  $it") }
+            }
+            appendLine()
             appendLine("--- Display ---")
             appendLine("Current mode: id=${data.display.modeId} ${data.display.width}x${data.display.height} @ ${data.display.refreshRate}Hz")
             appendLine("Density: ${data.display.densityDpi}dpi (config ${data.display.configDensityDpi}dpi)")
@@ -482,6 +498,7 @@ object DiagnosticsReport {
                     s.subscriptionId to
                         com.anindra.messages.sms.SimMmsProbe.carrierFacts(context, s.subscriptionId)
                 },
+                mmsTrace = com.anindra.messages.sms.MmsFacade.trace().map { it.toString() },
                 transfers = TransferLogStore.read(context),
                 backupHealth = BackupHealthInfo(
                     enabled = settings.periodicBackupEnabled,

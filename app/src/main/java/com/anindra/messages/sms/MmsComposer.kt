@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.Telephony
-import android.util.Log
 import com.android.mms.dom.smil.parser.SmilXmlSerializer
 import com.anindra.messages.data.MmsConfig
 import com.anindra.messages.data.MmsImageSizing
@@ -80,7 +79,7 @@ internal object MmsComposer {
         } catch (f: EncodeFailure) {
             return Outcome.Rejected(f.reason)
         } catch (t: Throwable) {
-            Log.w(TAG, "could not read attachment $media: ${t.message}")
+            MmsTrace.w(TAG, "could not read attachment $media: ${t.message}")
             return Outcome.Rejected(Reason.ATTACHMENT_UNREADABLE)
         } ?: return Outcome.Rejected(Reason.ATTACHMENT_UNREADABLE)
 
@@ -92,7 +91,7 @@ internal object MmsComposer {
                 request, Telephony.Mms.Outbox.CONTENT_URI, true, true, null, subscriptionId
             )
             if (outbox.lastPathSegment?.toLongOrNull() == null) {
-                Log.w(TAG, "outbox persist returned $outbox")
+                MmsTrace.w(TAG, "outbox persist returned $outbox")
                 return Outcome.Rejected(Reason.ATTACHMENT_UNREADABLE)
             }
             // Re-read so the transmitted bytes match the stored row. The
@@ -100,17 +99,17 @@ internal object MmsComposer {
             // id travels in the sent PendingIntent instead.
             val bytes = PduComposer(context, PduPersister.getPduPersister(context).load(outbox)).make()
             if (!config.acceptsPayload(bytes.size.toLong())) {
-                Log.w(TAG, "composed PDU is ${bytes.size}B over carrier cap ${config.maxMessageSize}B")
+                MmsTrace.w(TAG, "composed PDU is ${bytes.size}B over carrier cap ${config.maxMessageSize}B")
                 context.contentResolver.delete(outbox, null, null)
                 return Outcome.Rejected(Reason.TOO_LARGE)
             }
             val file = File(context.cacheDir, "mms-send-${UUID.randomUUID()}.dat")
             file.outputStream().use { it.write(bytes) }
             val prepared = Prepared(outbox, file, pduContentUri(context, file), bytes.size)
-            Log.i(TAG, "composed ${bytes.size}B PDU at ${prepared.pduUri}")
+            MmsTrace.i(TAG, "composed ${bytes.size}B PDU at ${prepared.pduUri}")
             Outcome.Ready(prepared)
         } catch (t: Throwable) {
-            Log.w(TAG, "failed to build mms pdu: ${t.message}")
+            MmsTrace.w(TAG, "failed to build mms pdu: ${t.message}")
             Outcome.Rejected(Reason.ATTACHMENT_UNREADABLE)
         }
     }
@@ -184,7 +183,7 @@ internal object MmsComposer {
                 if (out.size().toLong() <= budget) {
                     // Downscaling may have turned a PNG or WebP into JPEG, so the
                     // part has to be typed from the bytes actually being sent.
-                    Log.i(
+                    MmsTrace.i(
                         TAG,
                         "attachment ${sourceWidth}x${sourceHeight} -> " +
                             "${scaled.width}x${scaled.height} " +
@@ -230,7 +229,7 @@ internal object MmsComposer {
     private fun openMedia(context: Context, media: Uri): InputStream? = try {
         context.contentResolver.openInputStream(media)
     } catch (t: Throwable) {
-        Log.w(TAG, "openInputStream($media) failed: ${t.message}")
+        MmsTrace.w(TAG, "openInputStream($media) failed: ${t.message}")
         null
     }
 

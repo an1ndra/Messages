@@ -5,7 +5,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import com.anindra.messages.data.MmsProviderReader
 import com.anindra.messages.data.MmsRetry
 import com.anindra.messages.data.MmsSupport
@@ -47,9 +46,13 @@ internal object MmsDownloader {
         val rows = try {
             MmsProviderReader(context.contentResolver).pendingDownloads()
         } catch (t: Throwable) {
-            Log.w(TAG, "pending MMS query failed: ${t.message}")
+            MmsTrace.w(TAG, "pending MMS query failed: ${t.message}")
             emptyList()
         }
+        // The count is the first thing to check when nothing arrives: a WAP push
+        // that produced no pending row never reached the download path at all.
+        MmsTrace.i(TAG, "pending MMS notifications: ${rows.size}")
+        MmsFacade.diagnostics.pendingSwept(rows.size)
         for (row in rows) request(context, row)
     }
 
@@ -62,7 +65,7 @@ internal object MmsDownloader {
     fun request(context: Context, row: MmsSupport.PendingDownload): Boolean {
         val location = MmsSupport.downloadLocation(row.contentLocation)
         if (location == null) {
-            Log.w(TAG, "announced MMS ${row.id} has no Content-Location to fetch")
+            MmsTrace.w(TAG, "announced MMS ${row.id} has no Content-Location to fetch")
             return false
         }
         val key = MmsSupport.messageContentUri(row.id)
@@ -73,12 +76,13 @@ internal object MmsDownloader {
                 MmsRetry.AUTO_RETRY, attempt.count, attempt.lastAt, now
             )
         ) {
-            Log.i(TAG, "MMS download for $key still backing off (${attempt.count} attempts)")
+            MmsTrace.i(TAG, "MMS download for $key still backing off (${attempt.count} attempts)")
             return false
         }
         attempt.count++
         attempt.lastAt = now
         attempt.location = location
+        MmsFacade.diagnostics.downloadRequested(row.id, location, attempt.count)
         return try {
             val completion = PendingIntent.getBroadcast(
                 context, key.hashCode(),
@@ -91,13 +95,13 @@ internal object MmsDownloader {
             SmsSender.manager(context, -1).downloadMultimediaMessage(
                 context, location, uri, null, completion
             )
-            Log.i(
+            MmsTrace.i(
                 TAG,
                 "MMS download requested for $key from $location (attempt ${attempt.count})"
             )
             true
         } catch (t: Throwable) {
-            Log.w(TAG, "MMS download request failed for $key: ${t.message}")
+            MmsTrace.w(TAG, "MMS download request failed for $key: ${t.message}")
             attempt.count--
             false
         }
@@ -108,22 +112,34 @@ internal object MmsDownloader {
      * transient failure is retried while the attempt budget lasts; a message the
      * carrier has discarded is forgotten so it stops being reconsidered.
      */
-    fun onComplete(context: Context, uri: String?, resultCode: Int) {
+    fun onComplete(context: Context, uri: String?, resultCode: Int, httpStatus: Int = 0) {
         val key = uri ?: return
-        val outcome = MmsRetry.classify(resultCode)
+        val rowId = key.substringAfterLast('/').toLongOrNull() ?: -1L
+        // The result code alone cannot separate "the network was down" from "the
+        // carrier has thrown this message away": a discarded message reports 404,
+        // and retrying it forever re-requests a URL that will never exist.
+        if (resultCode != android.app.Activity.RESULT_OK) {
+            MmsTrace.w(
+                TAG,
+                "MMS $key download result code $resultCode, http status $httpStatus " +
+                    "-> ${MmsRetry.classify(resultCode, httpStatus)}"
+            )
+        }
+        MmsFacade.diagnostics.downloadCompleted(rowId, resultCode, httpStatus)
+        val outcome = MmsRetry.classify(resultCode, httpStatus)
         if (outcome == MmsRetry.SUCCEEDED) {
             attempts.remove(key)
             return
         }
         if (outcome == MmsRetry.NO_RETRY) {
-            Log.w(TAG, "MMS $key permanently failed (code $resultCode), not retrying")
+            MmsTrace.w(TAG, "MMS $key permanently failed (code $resultCode), not retrying")
             attempts.remove(key)
             return
         }
         val attempt = attempts[key] ?: return
         if (outcome == MmsRetry.AUTO_RETRY) {
             val delay = MmsRetry.delayFor(attempt.count)
-            Log.i(TAG, "MMS $key failed (code $resultCode), retrying in ${delay}ms")
+            MmsTrace.i(TAG, "MMS $key failed (code $resultCode), retrying in ${delay}ms")
             val id = key.substringAfterLast('/').toLongOrNull() ?: return
             scheduleRetry(
                 context, MmsSupport.PendingDownload(id, attempt.location), delay
@@ -131,7 +147,7 @@ internal object MmsDownloader {
         } else {
             // Manual retry: the user has to decide, so keep the row eligible but
             // stop the automatic loop.
-            Log.w(TAG, "MMS $key needs manual retry (code $resultCode)")
+            MmsTrace.w(TAG, "MMS $key needs manual retry (code $resultCode)")
             attempts.remove(key)
         }
     }
@@ -144,7 +160,7 @@ internal object MmsDownloader {
         val app = context.applicationContext
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             runCatching { request(app, row) }
-                .onFailure { Log.w(TAG, "scheduled retry failed: ${it.message}") }
+                .onFailure { MmsTrace.w(TAG, "scheduled retry failed: ${it.message}") }
         }, delayMs)
     }
 }

@@ -23,6 +23,12 @@ class SmsStatusReceiver : BroadcastReceiver() {
         val action = intent.action
         // getResultCode() is only valid on the receiver thread; snapshot before goAsync().
         val resultCodeSnapshot = resultCode
+        MmsTrace.i(
+            SmsSender.MMS_TAG,
+            "receiver fired action=$action messageId=$messageId code=$resultCodeSnapshot " +
+                "hasOutbox=${intent.getStringExtra(EXTRA_MMS_OUTBOX) != null} " +
+                "hasPdu=${intent.getStringExtra(EXTRA_MMS_PDU_FILE)}"
+        )
 
         val app = context.applicationContext as MessagesApplication
         val repo = app.repository
@@ -59,9 +65,13 @@ class SmsStatusReceiver : BroadcastReceiver() {
         resultCode: Int
     ) {
         val ok = resultCode == Activity.RESULT_OK
-        android.util.Log.i(
+        MmsTrace.i(
             "MmsSend",
             "MMS send finished for message $messageId: code $resultCode"
+        )
+        MmsTrace.i(
+            SmsSender.MMS_TAG,
+            "MMS result applied id=$messageId ok=$ok outbox=${intent.getStringExtra(EXTRA_MMS_OUTBOX)}"
         )
         val outbox = intent.getStringExtra(EXTRA_MMS_OUTBOX)?.let(Uri::parse)
         if (outbox != null) {

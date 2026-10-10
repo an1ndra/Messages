@@ -448,6 +448,8 @@ object NotificationHelper {
 
 object SmsSender {
 
+    internal const val MMS_TAG = "MmsSendDiag"
+
     internal fun manager(context: Context, subscriptionId: Int): android.telephony.SmsManager {
         val sm = context.getSystemService(android.telephony.SmsManager::class.java)
         if (subscriptionId == -1) return sm
@@ -562,12 +564,17 @@ object SmsSender {
             context.contentResolver.getType(media), media.toString()
         )
         val config = MmsCarrierConfig.of(context, subscriptionId)
+        MmsTrace.i(
+            MMS_TAG,
+            "sendMms start id=$messageId sub=$subscriptionId addrs=$addresses " +
+                "media=$media mime=$mime cap=${config.maxMessageSize}B"
+        )
         val prepared = when (val outcome = MmsComposer.prepare(
             context, addresses, media, mime, caption, subscriptionId, config
         )) {
             is MmsComposer.Outcome.Ready -> outcome.prepared
             is MmsComposer.Outcome.Rejected -> {
-                android.util.Log.w("MmsComposer", "MMS not sent: ${outcome.reason}")
+                MmsTrace.w("MmsComposer", "MMS not sent: ${outcome.reason}")
                 return false
             }
         }
@@ -609,12 +616,35 @@ object SmsSender {
                     config.notifyWapMmsc
                 )
             }
+            MmsTrace.i(
+                MMS_TAG,
+                "sendMms handing off id=$messageId sub=$subscriptionId " +
+                    "size=${prepared.size}B pdu=${prepared.pduUri} " +
+                    "fileExists=${prepared.pduFile.exists()} " +
+                    "fileLen=${if (prepared.pduFile.exists()) prepared.pduFile.length() else -1L} " +
+                    "contentUriScheme=${prepared.pduUri.scheme} " +
+                    "maxSize=${config.maxMessageSize} " +
+                    "sentPI=${sent.hashCode()}"
+            )
+            val readable = try {
+                context.contentResolver.openFileDescriptor(prepared.pduUri, "r")
+                    ?.use { it.statSize }
+            } catch (t: Throwable) {
+                MmsTrace.w(MMS_TAG, "pduUri not readable by resolver: ${t.message}")
+                null
+            }
+            MmsTrace.i(MMS_TAG, "sendMms pduUri readable length=$readable")
             manager(context, subscriptionId).sendMultimediaMessage(
                 context, prepared.pduUri, null, overrides, sent
             )
+            MmsTrace.i(MMS_TAG, "sendMultimediaMessage returned without throwing id=$messageId")
             true
         } catch (t: Throwable) {
-            android.util.Log.w("MmsComposer", "sendMultimediaMessage failed: ${t.message}")
+            MmsTrace.w(
+                MMS_TAG,
+                "sendMultimediaMessage failed: ${t.javaClass.name}: ${t.message}",
+                t
+            )
             prepared.pduFile.delete()
             false
         }
