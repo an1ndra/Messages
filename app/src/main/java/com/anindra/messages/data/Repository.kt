@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.provider.MediaStore
 import android.util.Log
+import com.anindra.messages.sms.MmsTrace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -55,6 +56,9 @@ private const val IMPORT_BATCH = 500
 
 /** How often the importer reports progress, in records. */
 private const val IMPORT_PROGRESS_EVERY = 250
+
+/** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
+private const val TRACE = "MmsImport"
 
 private const val DB_VERSION = 26
 private const val PREFS_NAME = "messages_schema"
@@ -3664,9 +3668,17 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery("SELECT sys_id FROM messages WHERE transport='mms' AND sys_id>0", null)
             .use { cursor -> while (cursor.moveToNext()) existing.add(cursor.getLong(0)) }
         val imported = mutableListOf<MmsSupport.InboundMms>()
+        // Counts of what the provider offered and what was taken, because the
+        // difference is the whole duplicate story: a sent picture whose outbox
+        // row was never linked is imported a second time, and the only evidence
+        // is that "offered" grew while "linked" did not.
+        var offered = 0
+        var linked = 0
+        MmsTrace.i(TRACE, "MMS import: ${existing.size} provider row(s) already linked")
         try {
             MmsProviderReader(context.contentResolver).read(existing) { message ->
                 runOnIo {
+                    offered++
                     val database = db.writableDatabase
                     database.beginTransaction()
                     try {
@@ -3706,6 +3718,15 @@ class Repository(private val context: Context) {
                             if (!message.isMe) imported.add(
                                 MmsSupport.InboundMms(address, message.content.body, message.timestamp)
                             )
+                            MmsTrace.i(
+                                TRACE,
+                                "imported provider MMS row=${message.id} " +
+                                    "mine=${message.isMe} media=${message.content.imageId != null} " +
+                                    "sub=${message.subId} read=${message.read}"
+                            )
+                        } else {
+                            linked++
+                            MmsTrace.i(TRACE, "provider MMS row=${message.id} already present, skipped")
                         }
                         database.setTransactionSuccessful()
                     } finally {
@@ -3713,9 +3734,10 @@ class Repository(private val context: Context) {
                     }
                 }
             }
-        } catch (_: Exception) {
-            android.util.Log.w("RepoSync", "MMS import incomplete; retry on next sync")
+        } catch (e: Exception) {
+            MmsTrace.w(TRACE, "MMS import incomplete after $offered row(s); retry on next sync", e)
         }
+        MmsTrace.i(TRACE, "MMS import done: $offered offered, $imported.size imported, $linked already present")
         return imported
     }
 
