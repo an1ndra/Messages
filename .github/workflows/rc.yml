@@ -1,14 +1,26 @@
 name: RC Build
 
-# Quick bug-fix release from Develop: build the APK, scan it with
-# VirusTotal, then publish the APK + scan report as a GitHub pre-release.
+# Quick bug-fix release candidate from a `v*-rc*` tag: build a release-signed
+# APK, prove it is signed by the real key, scan it with VirusTotal, and only
+# then publish it as a GitHub pre-release.
 #
-# Start it from Actions -> "RC Build" -> Run workflow (branch: develop),
-# or push a `v*-rc*` tag. It is intentionally NOT wired to every develop
-# push, since each run consumes VirusTotal quota.
+# The tag is the identity of the release. It is never derived from
+# versionName, because versionName lags: a run against a tag whose base version
+# already shipped would have republished the live release as a pre-release.
+#
+# Start it by pushing the tag:
+#     git tag v1.0.28-rc1 && git push origin v1.0.28-rc1
+# or from Actions -> "RC Build" -> Run workflow, passing the same tag.
+# It is intentionally NOT wired to every develop push, since each run consumes
+# VirusTotal quota.
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "RC tag to build, e.g. v1.0.28-rc1"
+        required: true
+        type: string
   push:
     tags:
       - "v*-rc*"
@@ -17,8 +29,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: rc-${{ github.ref }}
-  cancel-in-progress: false
+  group: rc-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: true
 
 env:
   VT_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
@@ -32,6 +44,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.tag || github.ref_name }}
           persist-credentials: false
 
       - name: Set up JDK 21
@@ -50,59 +63,130 @@ jobs:
         with:
           packages: 'platform-tools'
 
-      - name: Read versionName
-        id: ver
+      # An RC is handed to testers who already have the released build
+      # installed, so the version it claims has to be the one the tag names and
+      # it must not already be published. Both checks are cheap and both
+      # prevent publishing over a live release.
+      - name: Validate RC tag and version
+        id: rc
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          V=$(grep -oE 'versionName = "[^"]+"' app/build.gradle.kts | cut -d '"' -f2)
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "Building $V from ${{ github.ref_name }}"
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="$REF_NAME"
+          fi
+          if ! printf '%s' "$TAG" | grep -qE '^v[0-9]+(\.[0-9]+)+-rc[0-9]+$'; then
+            echo "::error::'$TAG' is not an RC tag (expected v1.2.3-rc1)"
+            exit 1
+          fi
+          BASE="${TAG#v}"
+          BASE="${BASE%-rc*}"
+          NAME=$(grep -oE 'versionName = "[^"]+"' app/build.gradle.kts | cut -d '"' -f2)
+          CODE=$(grep -oE 'versionCode = [0-9]+' app/build.gradle.kts | head -1 | grep -oE '[0-9]+')
+          if [ "$BASE" != "$NAME" ]; then
+            echo "::error::tag $TAG says $BASE but versionName is $NAME - bump versionName/versionCode and commit before tagging"
+            exit 1
+          fi
+          if curl -sf -o /dev/null -H "Authorization: Bearer $GH_TOKEN" \
+              "$GITHUB_API/repos/$GITHUB_REPOSITORY/releases/tags/v$NAME"; then
+            echo "::error::release v$NAME is already published - this RC would overwrite it"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "Building $NAME ($CODE) as $TAG from $(git rev-parse --short HEAD)"
 
-      # Signing is optional for RCs: signed when keystore secrets exist,
-      # otherwise falls back to an installable debug APK.
+      # No debug fallback. A debug-signed APK has a different certificate than
+      # the release key, so it cannot install over v1.0.27 on a tester's phone;
+      # shipping one as an RC strands them until they uninstall.
       - name: Restore keystore
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
-            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-          else
-            echo "::notice::RELEASE_KEYSTORE_BASE64 not set - building debug APK"
-          fi
-
-      - name: Build APK
-        env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -f release.keystore ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
-            ./gradlew --no-daemon assembleRelease
-          else
-            ./gradlew --no-daemon assembleDebug
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 secret is not set"
+            exit 1
           fi
+          if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::KEYSTORE_PASSWORD and KEY_PASSWORD secrets must be set together with the keystore"
+            exit 1
+          fi
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+
+      - name: Build APK and run unit tests
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          LC_ALL: C
+          TZ: UTC
+        run: ./gradlew --no-daemon assembleRelease testDebugUnitTest
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f release.keystore
 
       - name: Collect APK
         id: apk
+        env:
+          TAG: ${{ steps.rc.outputs.tag }}
         run: |
-          src=$(ls app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
-          kind=release
-          if [ -z "$src" ]; then
-            src=$(ls app/build/outputs/apk/debug/*.apk | head -1)
-            kind=debug
-          fi
-          name="Messages-${{ steps.ver.outputs.version }}-$kind.apk"
+          set -euo pipefail
+          src=$(ls app/build/outputs/apk/release/*.apk)
+          name="Messages-$TAG.apk"
           cp "$src" "$name"
-          rm -f release.keystore
           echo "file=$name" >> "$GITHUB_OUTPUT"
           echo "APK: $name"
 
-      - name: Publish RC pre-release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+      # release.yml pins the same digest. Without it an RC can be signed with
+      # the debug key or a throwaway keystore and testers install a build they
+      # can never upgrade from.
+      - name: Verify APK signature
+        env:
+          FILE: ${{ steps.apk.outputs.file }}
+          CODE: ${{ steps.rc.outputs.code }}
+          VERSION: ${{ steps.rc.outputs.version }}
+        run: |
+          set -euo pipefail
+          BT="$(ls -d "${ANDROID_HOME}"/build-tools/*/ | sort -V | tail -1)"
+          expected="cf860ec345a6810230629e24a66adaa58c311ef2dae2d77da02b85d4022bf608"
+          got="$("$BT/apksigner" verify --print-certs "$FILE" \
+            | grep 'SHA-256 digest' | head -1 | sed 's/.*digest: *//' | tr -d ' :' | tr 'A-F' 'a-f')"
+          echo "Signing certificate SHA-256: $got"
+          if [ -z "$got" ]; then
+            echo "::error::APK has no verifiable signature (unsigned?)"
+            exit 1
+          fi
+          if [ "$got" != "$expected" ]; then
+            echo "::error::APK signed with unexpected certificate (expected $expected)"
+            exit 1
+          fi
+          got_code="$("$BT/aapt" dump badging "$FILE" | sed -n 's/.*versionCode.\([0-9]*\).*/\1/p' | head -1)"
+          if [ "$got_code" != "$CODE" ]; then
+            echo "::error::APK versionCode is '$got_code' but build.gradle.kts says '$CODE'"
+            exit 1
+          fi
+          got_name="$("$BT/aapt" dump badging "$FILE" | sed -n 's/.*versionName.\([^ ]*\).*/\1/p' | head -1)"
+          if [ "$got_name" != "$VERSION" ]; then
+            echo "::error::APK versionName is '$got_name' but the tag says '$VERSION'"
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          tag_name: v${{ steps.ver.outputs.version }}
-          name: RC ${{ steps.ver.outputs.version }}
-          prerelease: true
-          generate_release_notes: true
-          files: Messages-*.apk
+          name: rc-${{ steps.rc.outputs.tag }}
+          path: ${{ steps.apk.outputs.file }}
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Check VirusTotal API key
         run: |
@@ -158,10 +242,27 @@ jobs:
           print(f"engines={total} malicious={st.get('malicious',0)} suspicious={st.get('suspicious',0)}")
           PY
 
+      # The APK is world-downloadable the moment the release exists, so the
+      # scan has to finish before this step, not after it.
+      - name: Flag malware detections
+        if: steps.result.outputs.malicious != '' && steps.result.outputs.malicious != '0'
+        run: |
+          echo "::error::VirusTotal reported ${{ steps.result.outputs.malicious }} malicious detection(s) for this RC APK - not publishing"
+          exit 1
+
+      - name: Publish RC pre-release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ steps.rc.outputs.tag }}
+          name: RC ${{ steps.rc.outputs.version }}
+          prerelease: true
+          generate_release_notes: true
+          files: ${{ steps.apk.outputs.file }}
+
       - name: Post scan report to release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: v${{ steps.ver.outputs.version }}
+          TAG: ${{ steps.rc.outputs.tag }}
           FILE: ${{ steps.apk.outputs.file }}
           SHA: ${{ steps.result.outputs.sha256 }}
           MAL: ${{ steps.result.outputs.malicious }}
@@ -170,10 +271,7 @@ jobs:
           UNDET: ${{ steps.result.outputs.undetected }}
           TOTAL: ${{ steps.result.outputs.total }}
         run: |
-          sleep 20
           GUILINK="https://www.virustotal.com/gui/file/$SHA"
-          # releases have no comments endpoint; append the report to the
-          # release notes (matches softprops-generated notes)
           REPORT=$(cat <<EOF
           ## VirusTotal Scan Report
 
@@ -192,17 +290,17 @@ jobs:
           )
           # The release notes can be rewritten by the release pipeline a short
           # while after publishing (eventual consistency), which would clobber
-          # an append done once. Re-check and re-append for a few minutes so the
-          # report is present at the end regardless of when the last write lands.
+          # an append done once. Re-check and re-append until the report sticks,
+          # then stop -- polling for a fixed count just burns six minutes.
           for i in $(seq 1 12); do
             BODY=$(gh release view "$TAG" --json body --jq .body)
             if printf '%s' "$BODY" | grep -qF "## VirusTotal Scan Report"; then
               echo "VirusTotal report present (check $i)"
-            else
-              printf '%s\n\n%s\n' "$BODY" "$REPORT" > /tmp/vt/notes.md
-              gh release edit "$TAG" --notes-file /tmp/vt/notes.md
-              echo "Appended VirusTotal report (attempt $i)"
+              break
             fi
+            printf '%s\n\n%s\n' "$BODY" "$REPORT" > /tmp/vt/notes.md
+            gh release edit "$TAG" --notes-file /tmp/vt/notes.md
+            echo "Appended VirusTotal report (attempt $i)"
             sleep 30
           done
           {
@@ -218,9 +316,3 @@ jobs:
             echo "| Undetected | $UNDET |"
             echo "| Total engines | $TOTAL |"
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Flag malware detections
-        if: steps.result.outputs.malicious != '' && steps.result.outputs.malicious != '0'
-        run: |
-          echo "::error::VirusTotal reported ${{ steps.result.outputs.malicious }} malicious detection(s) for this RC APK - investigate before distributing"
-          exit 1
