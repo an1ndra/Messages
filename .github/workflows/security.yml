@@ -81,7 +81,7 @@ jobs:
             --sarif \
             --output "$GITHUB_WORKSPACE/semgrep.sarif"
 
-      - uses: github/codeql-action/upload-sarif@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
+      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -103,7 +103,7 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
           skip-dirs: build, .gradle, .git, app/build
 
-      - uses: github/codeql-action/upload-sarif@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
+      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: trivy-results.sarif
           category: trivy
