@@ -772,31 +772,50 @@ class Repository(private val context: Context) {
         )
     }
 
+    /**
+     * The conversation for [address], creating a private one if there is none.
+     *
+     * Used by the new-chat picker: picking a person means messaging *them*, so
+     * a group that happens to carry their address is never the answer.
+     */
     fun getOrCreateConversation(address: String, displayName: String? = null): Long =
-        getOrCreateConversationBlocking(address, displayName)
+        getOrCreateConversationBlocking(address, displayName, privateOnly = true)
 
     fun getOrCreateConversationBlocking(
         address: String,
         displayName: String? = null,
         subId: Int = -1,
-        kind: InboundKind = InboundKind.NORMAL
+        kind: InboundKind = InboundKind.NORMAL,
+        privateOnly: Boolean = false
     ): Long = runOnIo {
         // Store one canonical spelling per person: every incoming spelling
         // (E.164, national, formatted) maps to the same conversation row.
         val target = canonical(address).ifEmpty { address }
         var convoId = -1L
-        // Prefer the 1:1: a group started from this chat carries the same
-        // address, and starting a new chat with someone means their private
-        // thread, not the group that also contains them.
+        // A 1:1 wins outright: a group started from this chat carries the same
+        // address, and the private thread is the older, intended destination.
+        //
+        // `privateOnly` additionally forbids settling for a group. It is what
+        // the new-chat picker needs: someone who only appears inside "Roadtrip"
+        // has no private thread to find, and without this the query below still
+        // returned that group -- ORDER BY puts groups last, but LIMIT 1 takes
+        // one when there is nothing better. Inbound keeps the looser rule,
+        // where a text from a group member with no 1:1 of their own belongs in
+        // the group.
+        val singleRecipient =
+            "(SELECT count(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)=1"
         db.writableDatabase.rawQuery(
             """SELECT c.id FROM conversations c
                WHERE c.address=? AND c.deleted_at=0
-               ORDER BY (SELECT count(*) FROM conversation_recipients r
-                          WHERE r.conversation_id=c.id)=1 DESC, c.id ASC
+                 ${if (privateOnly) "AND $singleRecipient " else ""}
+               ORDER BY $singleRecipient DESC, c.id ASC
                LIMIT 1""",
             arrayOf(target)
         ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
-        if (convoId == -1L) convoId = findConversationForAddress(target) ?: -1L
+        if (convoId == -1L) {
+            val alt = findConversationForAddress(target)
+            if (alt != null && (!privateOnly || recipientCountBlocking(alt) <= 1)) convoId = alt
+        }
 
         if (convoId == -1L) {
             val cv = ContentValues().apply {
@@ -1067,6 +1086,13 @@ class Repository(private val context: Context) {
             .keys
             .singleOrNull()
     }
+
+    /** How many people are in [conversationId]; 1 means it is a private chat. */
+    fun recipientCountBlocking(conversationId: Long): Int =
+        db.readableDatabase.rawQuery(
+            "SELECT count(*) FROM conversation_recipients WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
     /** A group's own name, or blank when the conversation is 1:1. */
     fun groupTitleBlocking(conversationId: Long): String =
