@@ -122,6 +122,7 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.data.ConversationList
 import com.anindra.messages.data.SwipeAction
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -520,7 +521,7 @@ fun ConversationsScreen(
                                 onClick = {
                                     onOpenConversation(
                                         convo.id,
-                                        if (searching) query.trim() else ""
+                                        if (searching) ConversationList.handoffQuery(convo, query) else ""
                                     )
                                 },
                                 onDelete = { moveToTrash(convo) },

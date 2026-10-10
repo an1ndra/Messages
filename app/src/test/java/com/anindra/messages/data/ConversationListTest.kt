@@ -268,4 +268,19 @@ class ConversationListTest {
 
         assertEquals(listOf(2L, 1L), ids(ConversationList.nameMatchesFirst(list, "alice")))
     }
+
+    @Test
+    fun aChatFoundByNameOpensWithoutAMessageHighlight() {
+        assertEquals("", ConversationList.handoffQuery(convo(1, name = "Alice"), " alice "))
+    }
+
+    @Test
+    fun aChatFoundOnlyThroughAMessageKeepsTheQueryForTheHighlight() {
+        assertEquals("alice", ConversationList.handoffQuery(convo(1, name = "Mention"), " alice "))
+    }
+
+    @Test
+    fun aBlankQueryHandsOverNothing() {
+        assertEquals("", ConversationList.handoffQuery(convo(1, name = "Alice"), "   "))
+    }
 }
