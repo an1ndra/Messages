@@ -145,7 +145,12 @@ object PduComposer {
                     // §4: one field code per value, so a group message repeats
                     // 0x97 once per recipient rather than packing them together.
                     out.appendOctet(field)
-                    out.appendEncodedStringValue(value)
+                    // A submission names its phone recipients as number/TYPE=PLMN;
+                    // the parser removes the qualifier again, so stored and parsed
+                    // addresses stay bare numbers.
+                    out.appendEncodedStringValue(
+                        if (pdu.messageType == MessageType.SEND_REQ) value.withPhoneAddressType() else value
+                    )
                 }
                 out.toByteArray()
             }
