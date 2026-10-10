@@ -64,7 +64,8 @@ class SmsStatusReceiver : BroadcastReceiver() {
     ) {
         val ok = resultCode == Activity.RESULT_OK
         val transactionId = intent.getStringExtra(SystemMmsTransport.EXTRA_TRANSACTION_ID)
-        MmsTrace.i("MmsSend", "MMS send finished: code=$resultCode trId=$transactionId")
+        val httpStatus = intent.getIntExtra(android.telephony.SmsManager.EXTRA_MMS_HTTP_STATUS, 0)
+        MmsTrace.i("MmsSend", "MMS send finished: code=$resultCode httpStatus=$httpStatus trId=$transactionId")
         // The location is the PDU file's name inside the cache root; only the
         // name is used, so an extra cannot point outside it.
         intent.getStringExtra(SystemMmsTransport.EXTRA_LOCATION)

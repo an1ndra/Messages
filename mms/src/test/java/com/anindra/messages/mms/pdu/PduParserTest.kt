@@ -4,6 +4,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -616,6 +617,67 @@ class PduParserTest {
         assertNotNull(parsed)
         assertNull(parsed!!.body)
         assertEquals(false, parsed.carriesContent)
+    }
+
+    @Test
+    fun aCarrierRefusalWithNoMessageContainerStillParses() {
+        // A refusal ("message not found", "expired") is a short PDU carrying a
+        // status and no message. Rejecting it as malformed made the downloader
+        // treat the carrier's answer as an unreadable message and re-request it
+        // on every start forever.
+        val bytes = retrieveConf(
+            retrieveStatus = HeaderField.RETRIEVE_STATUS_ERROR_PERMANENT_FAILURE,
+            messageContentType = media(ContentTypes.TABLE.indexOf("text/plain")!!),
+            bodyBytes = byteArrayOf(),
+        )
+        val parsed = parse(bytes)
+        assertNotNull("a refusal is a valid retrieve-conf, not a malformed one", parsed)
+        assertNull(parsed!!.body)
+        assertEquals(false, parsed.carriesContent)
+        assertEquals(
+            HeaderField.RETRIEVE_STATUS_ERROR_PERMANENT_FAILURE,
+            parsed.retrieveStatus,
+        )
+    }
+
+    @Test
+    fun aRejectedPduRecordsWhichRuleRefusedIt() {
+        val bytes = retrieveConf(
+            retrieveStatus = HeaderField.RETRIEVE_STATUS_OK,
+            messageContentType = media(ContentTypes.TABLE.indexOf("text/plain")!!),
+            bodyBytes = body(part(textPlain, "a.txt", data = text("a"))),
+        )
+        val parser = PduParser(bytes, nowSeconds = { now })
+        assertNull(parser.parse())
+        assertTrue(
+            "a rejected PDU has to say which check refused it; a bare null leaves " +
+                "one carrier's encoding indistinguishable from another's",
+            !parser.failureReason.isNullOrBlank(),
+        )
+    }
+
+    @Test
+    fun aParsedPduClearsAPreviouslyRecordedFailure() {
+        // The parser is reused per download attempt, so a stale reason must not
+        // be reported for a PDU that parsed.
+        val parser = PduParser(
+            retrieveConf(
+                retrieveStatus = HeaderField.RETRIEVE_STATUS_OK,
+                messageContentType = media(ContentTypes.TABLE.indexOf("text/plain")!!),
+                bodyBytes = body(part(textPlain, "a.txt", data = text("a"))),
+            ),
+            nowSeconds = { now },
+        )
+        assertNull(parser.parse())
+        val good = PduParser(
+            retrieveConf(
+                retrieveStatus = HeaderField.RETRIEVE_STATUS_OK,
+                bodyBytes = body(part(textPlain, "a.txt", data = text("a"))),
+            ),
+            nowSeconds = { now },
+        )
+        assertNotNull(good.parse())
+        assertNull(good.failureReason)
     }
 
     @Test

@@ -6,8 +6,10 @@ package com.anindra.messages.mms.pdu
  *
  * X-Mms-Content-Type closes the header block — receivers, including the
  * production reference, stop reading headers at it — so it is emitted last
- * whatever its field code sorts as. The rest go out in ascending field-code
- * order, which makes two identical PDUs produce identical octets.
+ * whatever its field code sorts as. Message-Type, Transaction-Id and
+ * MMS-Version open it in that order (§8.1.4); everything else follows in
+ * ascending field-code order, which makes two identical PDUs produce
+ * identical octets.
  *
  * Composition fails by returning null rather than throwing. Every reason is a
  * property of the PDU being handed over — a missing mandatory header, an
@@ -27,6 +29,11 @@ object PduComposer {
     /** §6: the two content-type parameters on the multipart container header. */
     private const val PARAM_START = 0x8A
     private const val PARAM_TYPE = 0x89
+
+    /** §8.1.4: these open the header block, in this order, before everything
+     *  else in ascending field-code order. */
+    private val LEADING_FIELDS =
+        listOf(HeaderField.MESSAGE_TYPE, HeaderField.TRANSACTION_ID, HeaderField.MMS_VERSION)
 
     fun compose(pdu: Pdu): ByteArray? = try {
         composeWithinRange(pdu)
@@ -62,7 +69,15 @@ object PduComposer {
         // X-Mms-Content-Type closes the header block: receivers stop reading
         // headers at it, so it is emitted last whatever its field code sorts as.
         fields.remove(HeaderField.CONTENT_TYPE)
-        for (field in fields) {
+        // The encapsulation spec puts Message-Type, Transaction-Id and
+        // MMS-Version ahead of everything else, in that order; the rest follow
+        // ascending. A tolerant MMSC reads either, a strict one rejects the
+        // ascending form outright because From (0x89) would arrive before the
+        // type it belongs to. Transaction-Id is absent on a report PDU, so it
+        // is filtered rather than forced.
+        val leading = LEADING_FIELDS.filter { it in fields }
+        fields.removeAll(leading.toSet())
+        for (field in leading + fields) {
             out.appendBytes(encodeField(pdu, field) ?: return null)
         }
         pdu.headers.contentTypeOrNull()?.let {

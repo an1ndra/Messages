@@ -10,6 +10,9 @@ import com.anindra.messages.data.MmsRetry
 import com.anindra.messages.data.MmsSupport
 import androidx.core.content.FileProvider
 import com.anindra.messages.mms.WspMmsCodec
+import com.anindra.messages.mms.pdu.HeaderField
+import com.anindra.messages.mms.pdu.MessageType
+import com.anindra.messages.mms.pdu.PduParser
 import com.anindra.messages.mms.store.MmsBox
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -80,6 +83,9 @@ internal object MmsDownloader {
     private fun stagingFile(context: Context, rowId: Long) =
         MmsStaging.file(context, MmsStaging.nameFor(rowId))
 
+    /** A refusal PDU is a handful of header bytes; a real message is far larger. */
+    private const val REFUSAL_PDU_MAX_BYTES = 512
+
     /**
      * Turns the PDU the platform wrote for [rowId] into a stored message: the
      * downloaded `m-retrieve-conf` replaces the announcement row. Returns false
@@ -97,12 +103,38 @@ internal object MmsDownloader {
                 MmsTrace.w(TAG, "MMS $rowId: platform reported success but wrote no PDU")
                 return false
             }
-            val retrieved = WspMmsCodec().parse(bytes)
+            // Named and logged rather than swallowed: the reason a PDU was
+            // rejected is the only thing that distinguishes one carrier's
+            // encoding from another's, and "unreadable" never says which.
+            val parser = PduParser(bytes)
+            val retrieved = parser.parse()
             if (retrieved == null) {
-                MmsTrace.w(TAG, "MMS $rowId: downloaded PDU is unreadable (${bytes.size} bytes)")
+                val reason = parser.failureReason ?: "no reason recorded"
+                MmsTrace.w(TAG, "MMS $rowId: downloaded PDU is unreadable (${bytes.size} bytes): $reason")
+                // A few dozen bytes is the carrier's refusal notice, never a
+                // message; keeping the announcement would re-request it on every
+                // start forever.
+                if (bytes.size < REFUSAL_PDU_MAX_BYTES) {
+                    MmsFacade.store(context).delete(Uri.parse(MmsSupport.messageContentUri(rowId)))
+                    MmsTrace.i(TAG, "MMS $rowId: carrier no longer has the message, announcement removed")
+                    return true
+                }
                 return false
             }
+            val announcement = Uri.parse(MmsSupport.messageContentUri(rowId))
             val store = MmsFacade.store(context)
+            val status = retrieved.retrieveStatus
+            if (retrieved.messageType == MessageType.RETRIEVE_CONF &&
+                status != null && status != HeaderField.RETRIEVE_STATUS_OK
+            ) {
+                store.delete(announcement)
+                MmsTrace.i(
+                    TAG,
+                    "MMS $rowId: carrier refused the download (retrieve-status 0x%02X), announcement removed"
+                        .format(status),
+                )
+                return true
+            }
             val stored = store.persist(retrieved, MmsBox.INBOX, subscriptionId)
             if (stored == null) {
                 MmsTrace.w(TAG, "MMS $rowId: downloaded message could not be stored")
@@ -110,7 +142,7 @@ internal object MmsDownloader {
             }
             // The announcement is superseded by the message itself, and only
             // once the message has a row of its own.
-            if (!store.delete(Uri.parse(MmsSupport.messageContentUri(rowId)))) {
+            if (!store.delete(announcement)) {
                 MmsTrace.w(TAG, "MMS $rowId: announcement left behind, message may show twice")
             }
             MmsTrace.i(TAG, "MMS $rowId stored as $stored (${bytes.size} bytes)")
