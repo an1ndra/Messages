@@ -301,6 +301,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun markRead(id: Long) = scope.launch { repo.markReadSuspend(id) }
 
+    fun setViewedConversation(id: Long) { repo.viewedConversationId = id }
+
     fun markUnread(id: Long) = scope.launch { repo.setReadSuspend(id, read = false) }
 
     /** Restores a read state exactly, which is what an undo needs. */

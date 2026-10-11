@@ -1156,10 +1156,14 @@ fun ChatScreen(
     }
     LaunchedEffect(conversationId) {
         vm.markRead(conversationId)
+        vm.setViewedConversation(conversationId)
         com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
             context, conversationId
         )
         draftLoaded = false
+    }
+    DisposableEffect(conversationId) {
+        onDispose { vm.setViewedConversation(0L) }
     }
     // Content handed over by an external share, handled in one effect so the text
     // and the media are read from the same composition. Sharing text with an

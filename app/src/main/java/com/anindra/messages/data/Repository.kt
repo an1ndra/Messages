@@ -457,6 +457,8 @@ class Repository(private val context: Context) {
         return future.get()
     }
 
+    @Volatile var viewedConversationId: Long = 0L
+
     /** Same as [runOnIo] but coroutine-friendly: suspends on the same single
      *  executor. Preferred over [runOnIo] from `viewModelScope`/composables. */
     private suspend inline fun <T> runOnIoAsync(crossinline block: () -> T): T =
@@ -1260,7 +1262,7 @@ class Repository(private val context: Context) {
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
                unread_count=unread_count+? WHERE id=?""",
-            arrayOf<Any?>(clean, now, if (markUnread) 1 else 0, convoId)
+            arrayOf<Any?>(clean, now, if (markUnread && convoId != viewedConversationId) 1 else 0, convoId)
         )
         notifyChanged()
         return convoId
@@ -3761,6 +3763,7 @@ class Repository(private val context: Context) {
         // is that "offered" grew while "linked" did not.
         var offered = 0
         var linked = 0
+        val refreshed = mutableSetOf<Long>()
         MmsTrace.i(TRACE, "MMS import: ${existing.size} provider row(s) already linked")
         try {
             MmsProviderReader(context.contentResolver).read(existing) { message ->
@@ -3798,9 +3801,10 @@ class Repository(private val context: Context) {
                                 put("media_uri", message.content.imageId?.let { "content://mms/part/$it" } ?: "")
                                 put("address", if (message.isMe) "" else address)
                             })
-                            if (!message.isMe && !message.read) database.execSQL(
+                            if (!message.isMe && !message.read && cid != viewedConversationId) database.execSQL(
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
                             )
+                            refreshed.add(cid)
                             upsertParticipant(database, address, message.subId)
                             if (!message.isMe) imported.add(
                                 MmsSupport.InboundMms(address, message.content.body, message.timestamp)
@@ -3824,6 +3828,7 @@ class Repository(private val context: Context) {
         } catch (e: Exception) {
             MmsTrace.w(TRACE, "MMS import incomplete after $offered row(s); retry on next sync", e)
         }
+        refreshed.forEach { refreshConversationSnippetFor(it) }
         MmsTrace.i(TRACE, "MMS import done: $offered offered, $imported.size imported, $linked already present")
         return imported
     }
