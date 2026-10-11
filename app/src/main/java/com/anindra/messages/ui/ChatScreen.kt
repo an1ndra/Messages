@@ -1042,52 +1042,26 @@ fun ChatScreen(
             hasScrolledToBottom = true
         }
     }
-    // A picture has no size until it has been decoded, so rows grow after the
-    // scroll above has already reached what was then the bottom and the chat
-    // opens a few rows short. Follow that growth, but only while the view is
-    // already at the bottom: a prepend while reading history has to keep its
-    // own anchoring (issue #284), and re-scrolling there would undo it.
+    // A picture row has no height until Coil decodes it, so the list grows
+    // after the scroll above already reached what was then the bottom. Follow
+    // that growth, but only while the user is still parked at the bottom.
+    // Keyed on newestId so each arrival opens its own window: keying it on the
+    // conversation alone meant a picture arriving seconds after the chat
+    // settled found every window expired and left only its upper part showing.
     var userDraggedList by remember(conversationId) { mutableStateOf(false) }
     LaunchedEffect(listState) {
         listState.interactionSource.interactions.collect {
             if (it is DragInteraction.Start) userDraggedList = true
         }
     }
-    LaunchedEffect(conversationId, focusedSearchId) {
-        if (focusedSearchId != null) return@LaunchedEffect
-        withTimeoutOrNull(4_000L) {
-            snapshotFlow { chatRows.size to listState.layoutInfo.visibleItemsInfo.sumOf { it.size } }
-                .collect {
-                    if (userDraggedList || messages.isEmpty()) return@collect
-                    val info = listState.layoutInfo
-                    val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-                    if (lastVisible < 0 || lastVisible >= info.totalItemsCount - 2) return@collect
-                    listState.scrollToItem(Int.MAX_VALUE)
-                }
-        }
-    }
-    // Pictures have no size until they are decoded, so the list grows after the
-    // scroll above has already reached what was then the bottom, and the chat
-    // opens a few rows short. Follow the growth for a few seconds, and stop the
-    // moment the user touches the list so nothing ever fights their scrolling.
-    var userScrolledList by remember(conversationId) { mutableStateOf(false) }
-    LaunchedEffect(listState) {
-        listState.interactionSource.interactions.collect {
-            if (it is DragInteraction.Start) {
-                userScrolledList = true
-            }
-        }
-    }
-    LaunchedEffect(conversationId, focusedSearchId) {
-        if (focusedSearchId != null) return@LaunchedEffect
+    LaunchedEffect(conversationId, newestId, focusedSearchId) {
+        if (focusedSearchId != null || newestId == null) return@LaunchedEffect
         withTimeoutOrNull(4_000L) {
             snapshotFlow {
                 val info = listState.layoutInfo
                 info.totalItemsCount to info.visibleItemsInfo.sumOf { it.size }
             }.collect {
-                if (!userScrolledList && messages.isNotEmpty()) {
-                    listState.scrollToItem(Int.MAX_VALUE)
-                }
+                if (!userDraggedList) listState.scrollToItem(Int.MAX_VALUE)
             }
         }
     }
