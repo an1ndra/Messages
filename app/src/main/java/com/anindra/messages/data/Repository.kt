@@ -60,7 +60,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 26
+private const val DB_VERSION = 27
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -324,6 +324,38 @@ class Db(context: Context) :
         if (oldVersion < 26) {
             dropConversationAddressUnique(db)
         }
+        if (oldVersion < 27) {
+            healInflatedTimestamps(db)
+        }
+    }
+
+    /**
+     * Repairs timestamps that were written in the wrong unit.
+     *
+     * Two directions, both from the provider being read without normalising:
+     * an MMS whose `date` was already milliseconds got scaled twice and landed
+     * in the year 58000, sorting above every real message forever (#317); and
+     * an SMS `date` in seconds was stored unscaled, so it read as 1970. The
+     * list orders by timestamp, so either one hides other conversations.
+     *
+     * Both tables are fixed in place rather than deriving the conversation value
+     * from its messages: a conversation with nothing left would yield NULL, and
+     * `timestamp` is NOT NULL -- that crash was caught on device, not guessed.
+     */
+    private fun healInflatedTimestamps(db: SQLiteDatabase) {
+        val floor = MmsSupport.timestampMillisecondsFloor()
+        // Order matters. Seconds are scaled up first, which would otherwise put
+        // them above the floor and have the very next statement divide them
+        // straight back -- leaving the table exactly as it was.
+        db.execSQL("UPDATE messages SET timestamp=timestamp*1000 WHERE timestamp<$floor")
+        db.execSQL("UPDATE conversations SET timestamp=timestamp*1000 WHERE timestamp<$floor")
+        // Milliseconds multiplied a second time, landing in the year 58000.
+        db.execSQL(
+            "UPDATE messages SET timestamp=timestamp/1000 WHERE timestamp>${floor * 1000}"
+        )
+        db.execSQL(
+            "UPDATE conversations SET timestamp=timestamp/1000 WHERE timestamp>${floor * 1000}"
+        )
     }
 
     /**
@@ -3617,7 +3649,7 @@ class Repository(private val context: Context) {
                                         db.writableDatabase.execSQL(
                                             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
                                                VALUES(?,?,?,?,?,?,?,?)""",
-                                            arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
+                                            arrayOf<Any?>(cid, m.body, MmsSupport.milliseconds(m.date) ?: m.date * 1000, if (isMe) 1 else 0,
                                                 when (m.type) {
                                                     android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
                                                     android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"

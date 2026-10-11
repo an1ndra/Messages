@@ -90,8 +90,36 @@ object MmsSupport {
         if (caption.isNotBlank()) add(OutgoingPart("text", "text/plain", true))
     }
 
-    fun milliseconds(seconds: Long): Long? =
-        seconds.takeIf { it in 0..Long.MAX_VALUE / 1000 }?.times(1000)
+    /**
+     * Normalises an MMS provider `date` to milliseconds.
+     *
+     * The column is seconds on most carriers but already milliseconds on
+     * others. Multiplying an already-millisecond value by 1000 produced a date
+     * far in the future, which sorts that conversation to the top of the list
+     * permanently and buries every message sent afterwards (#317).
+     */
+    fun milliseconds(raw: Long): Long? = when {
+        raw < 0 -> null
+        // A date already in milliseconds is kept, but only within the range a
+        // real date occupies: an absurd value is a unit this cannot vouch for,
+        // not a timestamp to store.
+        raw >= MILLISECOND_FLOOR -> raw.takeIf { it <= PLAUSIBLE_DATE_CEILING }
+        raw <= Long.MAX_VALUE / 1000 -> raw * 1000
+        else -> null
+    }
+
+    /** Below this a provider `date` can only already be milliseconds. */
+    private const val MILLISECOND_FLOOR = 1_000_000_000_000L
+
+    /**
+     * Above this (year ~2286 in milliseconds) nothing real is stored, so the
+     * value is rejected rather than kept. Guards against an overflowing or
+     * already-scaled date reaching the list.
+     */
+    private const val PLAUSIBLE_DATE_CEILING = 9_999_999_999_999L
+
+    /** The same threshold, for migrating rows that were already written wrong. */
+    fun timestampMillisecondsFloor(): Long = MILLISECOND_FLOOR
 
     fun phoneAddress(raw: String): String? {
         val value = raw.trim().replace(Regex("/TYPE=PLMN$", RegexOption.IGNORE_CASE), "")
