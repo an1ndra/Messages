@@ -74,6 +74,7 @@ import com.anindra.messages.data.Repository
 import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.data.ForwardPlan
 import com.anindra.messages.sms.SmsSender
+import com.anindra.messages.share.ShareText
 import com.anindra.messages.ui.ChatScreen
 import com.anindra.messages.ui.ConversationsScreen
 import com.anindra.messages.ui.AddPeopleScreen
@@ -1693,23 +1694,25 @@ onOpenAccessibility = { navRoute = "accessibility" },
         return decoded.ifBlank { null }
     }
 
-    /** Body text supplied by an external share intent, either as the
-     *  `?body=` query on an SMS URI or as `EXTRA_TEXT` from an `ACTION_SEND`. */
+    /**
+     * Body text supplied by an external share intent.
+     *
+     * `sms_body` is checked first because that is what every other SMS app
+     * reads and the order has to match theirs: an app that fills both it and
+     * the `?body=` query means the extra, and we would otherwise take the
+     * query's copy. `EXTRA_TEXT` is read on every action, not just
+     * `ACTION_SEND` — a bank app firing `SENDTO` puts the receipt there.
+     *
+     * The result is passed through [ShareText.repairMojibake] because a sender
+     * that built its URI from UTF-8 bytes read as Latin-1 hands over a body
+     * that is unreadable in any script, and it is sent exactly as received.
+     */
     private fun shareBodyFromIntent(intent: Intent): String? {
-        val text = when (intent.action) {
-            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
-            Intent.ACTION_SENDTO, Intent.ACTION_VIEW -> {
-                val data = intent.data
-                val query = data?.encodedQuery
-                if (query.isNullOrBlank()) null
-                else query.split('&').map { it.split('=', limit = 2) }
-                    .find { it.getOrNull(0) == "body" }
-                    ?.getOrNull(1)
-                    ?.let(Uri::decode)
-            }
-            else -> null
-        }
-        return text?.trim()?.takeIf { it.isNotBlank() }
+        val query = intent.data?.encodedQuery
+        val text = intent.getStringExtra("sms_body")
+            ?: ShareText.bodyFromQuery(query)
+            ?: intent.getStringExtra(Intent.EXTRA_TEXT)
+        return text?.let(ShareText::repairMojibake)?.trim()?.takeIf { it.isNotBlank() }
     }
 
     /**
