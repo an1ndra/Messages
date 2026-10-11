@@ -66,11 +66,15 @@ Mbox/Forward/Delete/Cancel range above 0x88 parses to null.
 
 Only these are built outbound. Anything else composes to `null`.
 
-**Header order.** Every other field may appear anywhere in the header block
-(the composer emits the rest in ascending field-code order), but
-`X-Mms-Content-Type` must be the **last** header: receivers — including the
-production reference parser — stop reading headers at it, so a Content-Type
-emitted first turns every remaining mandatory header into body bytes.
+**Header order.** `Message-Type`, `Transaction-Id` and `MMS-Version` open the
+header block in that order (§8.1.4), then every other field follows in
+ascending field-code order. The order matters to a strict MMSC, which rejects
+the ascending form outright: `From` (0x89) would otherwise arrive before the
+Message-Type (0x8C) it belongs to. `Transaction-Id` is absent on a report PDU
+and is simply skipped. `X-Mms-Content-Type` must be the **last** header:
+receivers — including the production reference parser — stop reading headers at
+it, so a Content-Type emitted first turns every remaining mandatory header into
+body bytes.
 
 | Type | Required headers |
 |---|---|

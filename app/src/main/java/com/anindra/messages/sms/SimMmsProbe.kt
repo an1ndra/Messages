@@ -111,7 +111,8 @@ object SimMmsProbe {
         // not a limit, and applying it is what makes a photo arrive blurry — so
         // this verdict is the answer to "why is this carrier's picture soft?".
         val imageLimitsReported = imageWidth.toIntOrNull()?.let { it > 0 } == true &&
-            imageHeight.toIntOrNull()?.let { it > 0 } == true
+            imageHeight.toIntOrNull()?.let { it > 0 } == true &&
+            !(imageWidth == "640" && imageHeight == "480")
 
         return listOf(
             "verdict: ${run(context).firstOrNull { it.subscriptionId == subscriptionId }?.verdict}",

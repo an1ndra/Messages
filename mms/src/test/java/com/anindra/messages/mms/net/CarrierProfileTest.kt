@@ -244,4 +244,19 @@ class CarrierProfileTest {
 
         assertFalse(half.imageLimitsReported())
     }
+
+    @Test
+    fun theBaselineImageCapIsAGuessNotADeclaration() {
+        val baseline = CarrierProfile(
+            appDefaults,
+            MapCarrierValues(
+                mapOf(
+                    CarrierProfile.KEY_MAX_IMAGE_WIDTH to 640,
+                    CarrierProfile.KEY_MAX_IMAGE_HEIGHT to 480,
+                )
+            ),
+        )
+
+        assertFalse(baseline.imageLimitsReported())
+    }
 }

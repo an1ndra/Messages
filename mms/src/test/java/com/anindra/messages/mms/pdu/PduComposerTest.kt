@@ -57,19 +57,70 @@ class PduComposerTest {
         }
 
     @Test
-    fun aNotifyRespIsExactlyElevenOctets() {
-        // 0x8C type, 0x8D version 1.2 as a short-integer, 0x95 status, 0x98 "T-2".
-        assertArrayEquals(hexOf("8C 83 8D 92 95 81 98 54 2D 32 00"), PduComposer.compose(notifyResp()))
+    fun aSendReqOpensWithTheTypeTransactionAndVersion() {
+        // §8.1.4. Without this, From (0x89) opens the block and a strict MMSC
+        // sees an address before the Message-Type that qualifies it.
+        val pdu = sendReq(textPart("a.txt", "a")).apply {
+            headers.setText(HeaderField.TRANSACTION_ID, "T-order")
+            headers.setEncoded(HeaderField.SUBJECT, EncodedStringValue.utf8("s"))
+        }
+        assertTrue(
+            "expected the leading three in spec order",
+            containsOctets(
+                PduComposer.compose(pdu)!!,
+                hexOf("8C 80 98 54 2D 6F 72 64 65 72 00 8D 92"),
+            ),
+        )
     }
 
     @Test
-    fun aReadRecEmitsEveryFieldInAscendingCodeOrder() {
+    fun aReadRecWithoutATransactionIdLeadsWithTypeAndVersionOnly() {
+        // A report PDU carries no Transaction-Id, so the leading rule has to
+        // skip it rather than force an empty one into the block.
+        val bytes = PduComposer.compose(readRec())!!
+        assertTrue(
+            "expected type then version with nothing between",
+            containsOctets(bytes, hexOf("8C 87 8D 92")),
+        )
+    }
+
+    @Test
+    fun contentTypeStillClosesTheHeaderBlock() {
+        // Transaction-Id is 0x98, well past Content-Type's 0x84, so this fails
+        // the moment the Content-Type is emitted in field-code order instead of
+        // last — which is the mistake that makes every remaining header read as
+        // body bytes on a receiver that stops at it.
+        val bytes = PduComposer.compose(sendReq(textPart("a.txt", "a")).apply {
+            headers.setText(HeaderField.TRANSACTION_ID, "T-order")
+        })!!
+        val transactionId = indexOfRun(bytes, hexOf("98 54 2D 6F 72 64 65 72 00"))
+        val contentType = indexOfRun(bytes, hexOf("84 16 B3"))
+        assertTrue("expected a Transaction-Id in the block", transactionId >= 0)
+        assertTrue("expected a multipart/related Content-Type in the block", contentType >= 0)
+        assertTrue(
+            "X-Mms-Content-Type must be emitted after every other header, " +
+                "not in field-code order",
+            contentType > transactionId,
+        )
+    }
+
+    @Test
+    fun aNotifyRespIsExactlyElevenOctets() {
+        // 0x8C type, then Transaction-Id, then 0x8D version 1.2 as a
+        // short-integer, then 0x95 status 0x81 retrieved.
+        assertArrayEquals(hexOf("8C 83 98 54 2D 32 00 8D 92 95 81"), PduComposer.compose(notifyResp()))
+    }
+
+    @Test
+    fun aReadRecOpensWithTheTypeAndVersionThenSortsTheRestAscending() {
         assertArrayEquals(
             hexOf(
-                "89 10 80 0E EA 2B 31 35 35 35 39 39 39 38 38 38 38 00" +
-                    "8B 6D 69 64 00" +
-                    "8C 87" +
+                // §8.1.4: Message-Type and MMS-Version lead; a report PDU has no
+                // Transaction-Id, so what is left follows in field-code order.
+                "8C 87" +
                     "8D 92" +
+                    "89 10 80 0E EA 2B 31 35 35 35 39 39 39 38 38 38 38 00" +
+                    "8B 6D 69 64 00" +
                     "97 0E EA 2B 31 35 35 35 31 32 33 30 30 30 30 00" +
                     "9B 80",
             ),
@@ -262,14 +313,15 @@ class PduComposerTest {
     fun aOnePartSendReqIsPinnedOctetForOctet() {
         assertArrayEquals(
             hexOf(
-                // 0x89 From with an address: 0x80 token, then the encoded value.
-                "89 10 80 0E EA 2B 31 35 35 35 31 32 33 30 30 30 30 00" +
-                    "8C 80" +
-                    "8D 92" +
-                    // 0x97 To: a phone recipient goes out as number/TYPE=PLMN,
-                    // so the encoded value is 24 octets, not 14.
-                    "97 18 EA 2B 31 35 35 35 39 39 39 38 38 38 38 2F 54 59 50 45 3D 50 4C 4D 4E 00" +
+                // 0x8C Message-Type, then 0x98 Transaction-Id, then 0x8D
+                // version 1.2, per the leading-three rule. 0x89 From with an
+                // address: 0x80 token, then the encoded value. 0x97 To carries
+                // the /TYPE=PLMN qualifier, so its encoded value is 24 octets.
+                "8C 80" +
                     "98 54 2D 33 00" +
+                    "8D 92" +
+                    "89 10 80 0E EA 2B 31 35 35 35 31 32 33 30 30 30 30 00" +
+                    "97 18 EA 2B 31 35 35 35 39 39 39 38 38 38 38 2F 54 59 50 45 3D 50 4C 4D 4E 00" +
                     // 0x84 closes the header block: 0xB3 multipart/related,
                     // 0x8A start, 0x89 type — the last header before the body,
                     // where receivers stop reading headers.

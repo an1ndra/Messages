@@ -103,6 +103,18 @@ interface MmsPlatform {
     )
 }
 
+/**
+ * Whether [subscriptionId] means "whatever SIM carries the default SMS role"
+ * rather than a named line.
+ *
+ * The app stores that choice as a negative id and hands it straight to
+ * `Mms.send`, and the telephony APN lookup reads the same range as "default", so
+ * the platform entry points have to agree: a non-positive id is not a
+ * subscription the MMS service can validate, and passing one through fails the
+ * send rather than using the default SIM.
+ */
+internal fun usesDefaultSmsManager(subscriptionId: Int) = subscriptionId <= 0
+
 /** [MmsPlatform] over `SmsManager`. */
 class SmsManagerMmsPlatform(
     context: Context,
@@ -168,13 +180,21 @@ class SmsManagerMmsPlatform(
      * Throwing rather than returning null is what lets [canSend] and the two
      * send paths share one lookup: the caller has already asked whether this
      * process may use the API, and a refusal after that is a bug rather than a
-     * condition to branch on a second time. `getSmsManagerForSubscriptionId` is
-     * deprecated in favour of the instance method, which needs API 31, and the
-     * deprecated call is the only route at this module's minimum.
+     * condition to branch on a second time. [usesDefaultSmsManager] is what picks
+     * the default-SIM manager rather than the per-subscription one, and it is the
+     * same rule `CarrierProfile.platformSource` applies when it resolves an APN.
+     * `getSmsManagerForSubscriptionId` is deprecated in favour of the instance
+     * method, which needs API 31, and the deprecated call is the only route at
+     * this module's minimum.
      */
     @Suppress("DEPRECATION")
     private fun managerFor(subscriptionId: Int): SmsManager =
-        SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
+        if (usesDefaultSmsManager(subscriptionId)) {
+            applicationContext.getSystemService(SmsManager::class.java)
+                ?: throw SecurityException("no default SmsManager")
+        } else {
+            SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
+        }
 
     private fun Map<String, Any>.toBundle() = Bundle().also { bundle ->
         forEach { (key, value) ->
