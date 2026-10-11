@@ -4,7 +4,6 @@
     <string name="contact_block_confirm">%s — nie będziesz otrzymywać połączeń ani wiadomości od tego numeru.</string>
     <string name="contact_block_report">Zablokuj numer</string>
     <string name="contact_notifications">Powiadomienia</string>
-
     <string name="contact_one_person">1 inna osoba</string>
     <string name="contact_add_people">Dodaj osoby</string>
 </resources>

@@ -10,7 +10,6 @@
     <string name="trash_tab_messages">Mensagens</string>
     <string name="trash_messages_empty">Nenhuma mensagem excluída</string>
     <string name="trash_messages_empty_message">As mensagens excluídas ficam aqui até você removê-las</string>
-
     <string name="trash_empty_is_empty">A lixeira está vazia</string>
     <string name="trash_empty_message">Conversas excluídas são removidas permanentemente após 30 dias</string>
     <string name="trash_empty_confirm">Excluir todas as %d conversas da lixeira? Esta ação não pode ser desfeita.</string>
