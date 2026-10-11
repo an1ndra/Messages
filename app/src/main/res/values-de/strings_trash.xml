@@ -10,7 +10,6 @@
     <string name="trash_tab_messages">Nachrichten</string>
     <string name="trash_messages_empty">Keine gelöschten Nachrichten</string>
     <string name="trash_messages_empty_message">Gelöschte Nachrichten bleiben hier, bis du sie entfernst</string>
-
     <string name="trash_empty_is_empty">Papierkorb ist leer</string>
     <string name="trash_empty_message">Gelöschte Unterhaltungen werden nach 30 Tagen endgültig entfernt</string>
     <string name="trash_empty_confirm">%d Unterhaltungen endgültig aus dem Papierkorb löschen? Dies kann nicht rückgängig gemacht werden.</string>
