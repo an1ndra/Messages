@@ -1209,7 +1209,7 @@ internal fun ImportRadioGroup(
     onSelect: (Int) -> Unit
 ) {
     Column(Modifier.selectableGroup()) {
-        options.forEachIndexed { index, (label, supporting) ->
+        options.forEachIndexed { index, (label, _) ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier

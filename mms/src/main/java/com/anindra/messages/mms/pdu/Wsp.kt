@@ -93,7 +93,7 @@ class WspWriter {
     fun appendTextString(value: String) = appendTextStringBytes(value.toByteArray(Charsets.UTF_8))
 
     fun appendTextStringBytes(bytes: ByteArray) {
-        if (bytes.isNotEmpty() && bytes[0].toInt() and 0xFF > 0x7F) out.write(TEXT_STRING_QUOTE)
+        if (bytes.isNotEmpty() && (bytes[0].toInt() and 0xFF) > 0x7F) out.write(TEXT_STRING_QUOTE)
         out.write(bytes, 0, bytes.size)
         out.write(0x00)
     }
@@ -202,7 +202,7 @@ class WspReader(private val data: ByteArray, start: Int = 0, private val end: In
             val byte = readOctet()
             // WAP-230 §3.1: the most significant group arrives first.
             result = (result shl 7) or (byte and 0x7F).toLong()
-            if (byte and 0x80 == 0) return result
+            if ((byte and 0x80) == 0) return result
             count++
         }
     }
@@ -226,7 +226,7 @@ class WspReader(private val data: ByteArray, start: Int = 0, private val end: In
 
     private fun readWapStringBytes(quote: Int): ByteArray {
         if (exhausted) throw MalformedPduException("string past end at $index")
-        if (data[index].toInt() and 0xFF == quote) index++
+        if ((data[index].toInt() and 0xFF) == quote) index++
         val start = index
         while (index < end) {
             if (data[index].toInt() == 0x00) {

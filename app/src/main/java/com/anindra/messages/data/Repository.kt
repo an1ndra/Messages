@@ -3727,7 +3727,7 @@ class Repository(private val context: Context) {
                         ).use { q ->
                             if (q.moveToFirst()) q.getString(0) to q.getString(1) else null
                         } ?: continue
-                        val (oldAddr, oldName) = row
+                        val (oldAddr, _) = row
                         if (AddressIdentity.samePerson(oldAddr, addr)) continue
                         db.writableDatabase.execSQL(
                             """UPDATE conversations

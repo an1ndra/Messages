@@ -161,12 +161,23 @@ object SmsIeReader {
                         else -> {
                             partsDir.mkdirs()
                             val target = File(partsDir, name)
-                            val written = copy(zip, target.outputStream(), MAX_PART_BYTES.toLong())
-                            if (written < 0) {
-                                // Over the cap: drop this part and keep going.
-                                target.delete()
+                            // [name] is already reduced to its final segment, so a
+                            // `../` cannot survive; this makes that guarantee
+                            // explicit and rejects a bare "." or ".." as well.
+                            val insideParts = runCatching {
+                                target.canonicalFile.parentFile == partsDir.canonicalFile
+                            }.getOrDefault(false)
+                            if (!insideParts) {
                                 skipped += name
-                                Log.w(TAG, "part too large, skipped: $name")
+                                Log.w(TAG, "part name escapes staging dir, skipped: $name")
+                            } else {
+                                val written = copy(zip, target.outputStream(), MAX_PART_BYTES.toLong())
+                                if (written < 0) {
+                                    // Over the cap: drop this part and keep going.
+                                    target.delete()
+                                    skipped += name
+                                    Log.w(TAG, "part too large, skipped: $name")
+                                }
                             }
                         }
                     }

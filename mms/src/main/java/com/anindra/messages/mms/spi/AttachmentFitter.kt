@@ -66,7 +66,7 @@ object BudgetPolicy {
     ): Long {
         val total = carrierMaxMessageSize.toLong() - PDU_OVERHEAD_BYTES
         if (total <= 0) return 0
-        val textShare = (captionBytes.toLong() * MMS_TEXT_BUDGET_FRACTION).toLong() + partCount * 512
+        val textShare = (captionBytes.toLong() * MMS_TEXT_BUDGET_FRACTION).toLong() + partCount.toLong() * 512
         return (total - textShare).coerceAtLeast(0)
     }
 }
