@@ -60,7 +60,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 26
+private const val DB_VERSION = 27
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -324,6 +324,38 @@ class Db(context: Context) :
         if (oldVersion < 26) {
             dropConversationAddressUnique(db)
         }
+        if (oldVersion < 27) {
+            healInflatedTimestamps(db)
+        }
+    }
+
+    /**
+     * Repairs timestamps that were written in the wrong unit.
+     *
+     * Two directions, both from the provider being read without normalising:
+     * an MMS whose `date` was already milliseconds got scaled twice and landed
+     * in the year 58000, sorting above every real message forever (#317); and
+     * an SMS `date` in seconds was stored unscaled, so it read as 1970. The
+     * list orders by timestamp, so either one hides other conversations.
+     *
+     * Both tables are fixed in place rather than deriving the conversation value
+     * from its messages: a conversation with nothing left would yield NULL, and
+     * `timestamp` is NOT NULL -- that crash was caught on device, not guessed.
+     */
+    private fun healInflatedTimestamps(db: SQLiteDatabase) {
+        val floor = MmsSupport.timestampMillisecondsFloor()
+        // Order matters. Seconds are scaled up first, which would otherwise put
+        // them above the floor and have the very next statement divide them
+        // straight back -- leaving the table exactly as it was.
+        db.execSQL("UPDATE messages SET timestamp=timestamp*1000 WHERE timestamp<$floor")
+        db.execSQL("UPDATE conversations SET timestamp=timestamp*1000 WHERE timestamp<$floor")
+        // Milliseconds multiplied a second time, landing in the year 58000.
+        db.execSQL(
+            "UPDATE messages SET timestamp=timestamp/1000 WHERE timestamp>${floor * 1000}"
+        )
+        db.execSQL(
+            "UPDATE conversations SET timestamp=timestamp/1000 WHERE timestamp>${floor * 1000}"
+        )
     }
 
     /**
@@ -3169,17 +3201,14 @@ class Repository(private val context: Context) {
         found
     }
 
-    private val contactCache = HashMap<String, Pair<String?, Long>>()
-    private val CONTACT_CACHE_TTL = 5 * 60 * 1000L
+    private val contactCache = ContactNameCache()
 
-    fun contactNameFor(address: String): String? {
-        val now = System.currentTimeMillis()
-        contactCache[address]?.let { (name, ts) ->
-            if (now - ts < CONTACT_CACHE_TTL) return name
-        }
-        val resolved = lookupContactName(address)
-        contactCache[address] = resolved to now
-        return resolved
+    fun contactNameFor(address: String): String? =
+        contactCache.getOrResolve(address) { lookupContactName(it) }
+
+    /** Drops every cached contact name, so the next read re-queries Contacts. */
+    fun invalidateContactNames() {
+        contactCache.invalidate()
     }
 
     private fun lookupContactName(address: String): String? {
@@ -3470,6 +3499,54 @@ class Repository(private val context: Context) {
         providerObserver = null
     }
 
+    private var contactsObserver: android.database.ContentObserver? = null
+    private val contactRefreshRunnable = Runnable {
+        // The stored name is only rewritten from a fresh lookup, so the cache
+        // has to be dropped first or an edit within the TTL is invisible.
+        invalidateContactNames()
+        refreshContactNames()
+    }
+
+    /**
+     * Watches Contacts so a rename, addition or deletion shows in the list right
+     * away instead of waiting for a resume that clears the 5-minute refresh gate.
+     *
+     * Without this the app only re-resolved names on a resume more than five
+     * minutes after the previous one, so a contact edited while the app was in
+     * front (and the SMS provider untouched) kept its old name -- the reporter's
+     * "20 minutes to 2 hours" in #317.
+     */
+    fun observeContactChanges() {
+        if (contactsObserver != null) return
+        if (providerHandler == null) {
+            providerHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        }
+        val resolver = context.contentResolver
+        val observer = object : android.database.ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                scheduleContactRefresh()
+            }
+        }
+        runCatching {
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Contacts.CONTENT_URI, true, observer
+            )
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Data.CONTENT_URI, true, observer
+            )
+        }.onFailure {
+            Log.w("RepoSync", "could not observe contacts: ${it.message}")
+            return
+        }
+        contactsObserver = observer
+    }
+
+    private fun scheduleContactRefresh() {
+        val handler = providerHandler ?: return
+        handler.removeCallbacks(contactRefreshRunnable)
+        handler.postDelayed(contactRefreshRunnable, CONTACT_REFRESH_DEBOUNCE_MS)
+    }
+
     fun syncFromSystem() {
         if (syncRunning) return
         syncRunning = true
@@ -3617,7 +3694,7 @@ class Repository(private val context: Context) {
                                         db.writableDatabase.execSQL(
                                             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
                                                VALUES(?,?,?,?,?,?,?,?)""",
-                                            arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
+                                            arrayOf<Any?>(cid, m.body, MmsSupport.milliseconds(m.date) ?: m.date * 1000, if (isMe) 1 else 0,
                                                 when (m.type) {
                                                     android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
                                                     android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
@@ -4244,6 +4321,12 @@ class Repository(private val context: Context) {
          * is debounced rather than run per notification.
          */
         const val PROVIDER_RESYNC_DEBOUNCE_MS = 2_000L
+
+        /**
+         * A single contact edit writes the name row and the phone row, each with
+         * its own notification, so the refresh is debounced to run once.
+         */
+        const val CONTACT_REFRESH_DEBOUNCE_MS = 500L
 
         /** Provider ids written back per transaction while mirroring a backup. */
         const val MIRROR_FLUSH_EVERY = 500

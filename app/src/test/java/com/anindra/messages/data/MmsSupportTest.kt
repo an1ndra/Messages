@@ -84,6 +84,38 @@ class MmsSupportTest {
     }
 
     @Test
+    fun leavesAProviderDateThatIsAlreadyMilliseconds() {
+        // Some carriers store the MMS `date` in milliseconds. Scaling it again
+        // put the conversation in the year 58000, where it sorted above every
+        // real message in the list forever (#317).
+        val alreadyMs = 1_791_706_107_000L
+        assertEquals(alreadyMs, MmsSupport.milliseconds(alreadyMs))
+        assertEquals(
+            "a millisecond date must not move a day",
+            "2026-10-11",
+            java.time.Instant.ofEpochMilli(MmsSupport.milliseconds(alreadyMs)!!)
+                .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+        )
+    }
+
+    @Test
+    fun secondsAndMillisecondsMapToTheSameInstant() {
+        // The point of the unit-aware reader: one instant, two provider
+        // encodings, one stored value.
+        assertEquals(
+            MmsSupport.milliseconds(1_700_000_000L),
+            MmsSupport.milliseconds(1_700_000_000_000L)
+        )
+    }
+
+    @Test
+    fun theMigrationFloorSeparatesMillisecondsFromSeconds() {
+        val floor = MmsSupport.timestampMillisecondsFloor()
+        assertTrue("a real millisecond timestamp must be above the floor", 1_700_000_000_000L > floor)
+        assertTrue("seconds-valued timestamps must stay below it", 1_700_000_000L < floor)
+    }
+
+    @Test
     fun resolvesIncomingSenderAndOutgoingRecipient() {
         val incoming = listOf(MmsSupport.Address(137, "+15551234567/TYPE=PLMN"))
         val outgoing = listOf(MmsSupport.Address(137, "insert-address-token"),
