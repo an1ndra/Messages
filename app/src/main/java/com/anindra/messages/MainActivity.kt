@@ -1514,6 +1514,10 @@ onOpenAccessibility = { navRoute = "accessibility" },
             repo.observeProviderChanges()
             lastResumeTime = now
         }
+        // Registered outside the 5-minute gate: a contact edited while the app is
+        // in front must reach the list without a resume, which is what #317 is
+        // about.
+        repo.observeContactChanges()
         // A SIM swap or carrier change alters the MMS size and image limits, so the
         // cached carrier config is dropped rather than pinned to the old SIM.
         com.anindra.messages.sms.MmsFacade.profiles(this).invalidate()

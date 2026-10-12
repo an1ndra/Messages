@@ -3201,17 +3201,14 @@ class Repository(private val context: Context) {
         found
     }
 
-    private val contactCache = HashMap<String, Pair<String?, Long>>()
-    private val CONTACT_CACHE_TTL = 5 * 60 * 1000L
+    private val contactCache = ContactNameCache()
 
-    fun contactNameFor(address: String): String? {
-        val now = System.currentTimeMillis()
-        contactCache[address]?.let { (name, ts) ->
-            if (now - ts < CONTACT_CACHE_TTL) return name
-        }
-        val resolved = lookupContactName(address)
-        contactCache[address] = resolved to now
-        return resolved
+    fun contactNameFor(address: String): String? =
+        contactCache.getOrResolve(address) { lookupContactName(it) }
+
+    /** Drops every cached contact name, so the next read re-queries Contacts. */
+    fun invalidateContactNames() {
+        contactCache.invalidate()
     }
 
     private fun lookupContactName(address: String): String? {
@@ -3500,6 +3497,54 @@ class Repository(private val context: Context) {
             runCatching { context.contentResolver.unregisterContentObserver(it) }
         }
         providerObserver = null
+    }
+
+    private var contactsObserver: android.database.ContentObserver? = null
+    private val contactRefreshRunnable = Runnable {
+        // The stored name is only rewritten from a fresh lookup, so the cache
+        // has to be dropped first or an edit within the TTL is invisible.
+        invalidateContactNames()
+        refreshContactNames()
+    }
+
+    /**
+     * Watches Contacts so a rename, addition or deletion shows in the list right
+     * away instead of waiting for a resume that clears the 5-minute refresh gate.
+     *
+     * Without this the app only re-resolved names on a resume more than five
+     * minutes after the previous one, so a contact edited while the app was in
+     * front (and the SMS provider untouched) kept its old name -- the reporter's
+     * "20 minutes to 2 hours" in #317.
+     */
+    fun observeContactChanges() {
+        if (contactsObserver != null) return
+        if (providerHandler == null) {
+            providerHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        }
+        val resolver = context.contentResolver
+        val observer = object : android.database.ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                scheduleContactRefresh()
+            }
+        }
+        runCatching {
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Contacts.CONTENT_URI, true, observer
+            )
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Data.CONTENT_URI, true, observer
+            )
+        }.onFailure {
+            Log.w("RepoSync", "could not observe contacts: ${it.message}")
+            return
+        }
+        contactsObserver = observer
+    }
+
+    private fun scheduleContactRefresh() {
+        val handler = providerHandler ?: return
+        handler.removeCallbacks(contactRefreshRunnable)
+        handler.postDelayed(contactRefreshRunnable, CONTACT_REFRESH_DEBOUNCE_MS)
     }
 
     fun syncFromSystem() {
@@ -4276,6 +4321,12 @@ class Repository(private val context: Context) {
          * is debounced rather than run per notification.
          */
         const val PROVIDER_RESYNC_DEBOUNCE_MS = 2_000L
+
+        /**
+         * A single contact edit writes the name row and the phone row, each with
+         * its own notification, so the refresh is debounced to run once.
+         */
+        const val CONTACT_REFRESH_DEBOUNCE_MS = 500L
 
         /** Provider ids written back per transaction while mirroring a backup. */
         const val MIRROR_FLUSH_EVERY = 500

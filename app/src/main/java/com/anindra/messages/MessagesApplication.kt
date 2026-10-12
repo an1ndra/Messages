@@ -54,6 +54,9 @@ class MessagesApplication : Application() {
                 // Watch for changes made by other apps -- a wipe in SMS Import /
                 // Export has to be noticed without waiting for a restart.
                 repository.observeProviderChanges()
+                // Contacts too, or a rename made in the phone book keeps the old
+                // name until a resume clears the refresh gate (#317).
+                repository.observeContactChanges()
             }
         }
     }
