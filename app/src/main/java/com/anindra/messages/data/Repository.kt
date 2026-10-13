@@ -1591,27 +1591,43 @@ class Repository(private val context: Context) {
 
     /** Moves a conversation to trash once it has nothing left to show: no
      *  non-deleted messages and no draft worth keeping. Otherwise a no-op, so it
-     *  is safe to call on every exit from a chat. */
+     *  is safe to call on every exit from a chat. A group is never trash this
+     *  way — it is a thread the user built deliberately. */
     fun trashConversationIfEmptySuspend(conversationId: Long) {
-        // Return the two values from the query lambda instead of capturing
-        // mutable locals: the capture hides the assignment from static analysis
-        // (CodeQL saw `remaining` as always 0 -> java/constant-comparison).
-        val (remaining, pending, draft) = db.readableDatabase.rawQuery(
+        // Return the values from the query lambda instead of capturing mutable
+        // locals: the capture hides the assignment from static analysis (CodeQL
+        // saw `remaining` as always 0 -> java/constant-comparison).
+        data class Liveness(
+            val remaining: Int,
+            val pending: Int,
+            val draft: String,
+            val recipients: Int
+        )
+        val liveness = db.readableDatabase.rawQuery(
             """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0),
                       (SELECT COUNT(*) FROM scheduled_messages WHERE conversation_id=?),
-                      draft
+                      draft,
+                      (SELECT COUNT(*) FROM conversation_recipients WHERE conversation_id=?)
                FROM conversations WHERE id=? AND deleted_at=0""",
-            arrayOf(conversationId.toString(), conversationId.toString(), conversationId.toString())
+            arrayOf(
+                conversationId.toString(), conversationId.toString(),
+                conversationId.toString(), conversationId.toString()
+            )
         ).use { c ->
             if (!c.moveToFirst()) return
-            Triple(c.getInt(0), c.getInt(1), c.getString(2) ?: "")
+            Liveness(c.getInt(0), c.getInt(1), c.getString(2) ?: "", c.getInt(3))
         }
         // A draft only keeps the chat around while drafts are actually surfaced;
         // a leftover column value from when the feature was on must not.
         // A queued message is content the user is waiting on. It lives in its own
         // table, so without counting it the chat looks empty the moment the draft
         // is cleared on scheduling and the conversation vanishes from the list.
-        if (ConversationLiveness.keepAlive(remaining, pending, draft)) return
+        // A group with members stays too: it was created on purpose and has not
+        // been written to yet, so an empty group must not vanish on the way out.
+        if (ConversationLiveness.keepAlive(
+                liveness.remaining, liveness.pending, liveness.draft, liveness.recipients
+            )
+        ) return
         db.writableDatabase.execSQL(
             "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
             arrayOf(System.currentTimeMillis().toString(), TrashReason.MANUAL, conversationId.toString())

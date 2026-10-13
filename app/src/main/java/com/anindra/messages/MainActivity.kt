@@ -1431,12 +1431,14 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                             // A group is a new thread, not the
                                             // conversation it was started from
                                             // — it must not carry that history.
-                                            // Stay on the details screen, now
-                                            // showing the new group, where its
-                                            // name can be edited.
+                                            // Land in the new group's chat, ready
+                                            // to write; back from there goes to
+                                            // the list, never the old 1:1.
                                             vm.createGroup(detailsId, picked) { newId ->
-                                                if (newId > 0) detailsId = newId
-                                                navRoute = "details"
+                                                if (newId > 0) {
+                                                    chatId = newId
+                                                    navRoute = "chat"
+                                                }
                                             }
                                         }
                                     )

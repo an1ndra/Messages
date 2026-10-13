@@ -21,11 +21,23 @@ class PendingMediaWiringTest {
         )
         assertTrue(
             "a gallery pick must be staged, not sent",
-            chat.contains("uri?.let { pendingMedia.add(it) }"),
+            chat.contains("uris.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }"),
         )
         assertFalse(
             "picking a picture must not send it immediately",
             chat.contains("vm.sendMediaMessage(conversationId, it)"),
+        )
+    }
+
+    @Test
+    fun theGalleryPickersAllowSeveralPhotosInOnePass() {
+        assertTrue(
+            "the gallery must use the multi-select picker",
+            chat.contains("ActivityResultContracts.PickMultipleVisualMedia()"),
+        )
+        assertFalse(
+            "the single-select gallery picker must be gone",
+            chat.contains("ActivityResultContracts.PickVisualMedia()"),
         )
     }
 

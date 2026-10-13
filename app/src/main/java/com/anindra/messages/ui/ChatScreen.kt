@@ -821,9 +821,9 @@ fun ChatScreen(
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        uri?.let { pendingMedia.add(it) }
+        ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        uris.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
     }
 
     fun leaveChat() {
