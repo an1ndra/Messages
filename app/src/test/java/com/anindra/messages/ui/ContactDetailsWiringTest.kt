@@ -59,7 +59,7 @@ class ContactDetailsWiringTest {
         )
         assertTrue(
             "MainActivity must pass onAddPeople to the details screen",
-            Regex("ContactDetailsScreen\\([\\s\\S]*?onAddPeople = \\{ navRoute = \"add-people\" \\}")
+            Regex("ContactDetailsScreen\\([\\s\\S]*?onAddPeople = \\{[^}]*navRoute = \"add-people\" \\}")
                 .containsMatchIn(main),
         )
     }

@@ -1115,6 +1115,9 @@ class MainActivity : FragmentActivity() {
                 // other way into a chat (new, scheduled, spam, intent).
                 var chatSearchQuery by remember { mutableStateOf<String?>(null) }
                 var detailsId by remember { mutableStateOf(-1L) }
+                // Where the add-people picker returns to. Opened from a chat it
+                // goes back to the chat; from contact details, to the details.
+                var addPeopleReturn by remember { mutableStateOf("details") }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
                 var defaultSmsChecked by remember { mutableStateOf(false) }
                 // Hoisted above the AnimatedContent so every settings screen keeps
@@ -1417,13 +1420,13 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         vm = vm,
                                         conversationId = detailsId,
                                         onBack = { navRoute = "chat" },
-                                        onAddPeople = { navRoute = "add-people" },
+                                        onAddPeople = { addPeopleReturn = "details"; navRoute = "add-people" },
                                         scrollState = contactDetailsScroll
                                     )
                                     "add-people" -> AddPeopleScreen(
                                         vm = vm,
                                         conversationId = detailsId,
-                                        onBack = { navRoute = "details" },
+                                        onBack = { navRoute = addPeopleReturn },
                                         onDone = { picked ->
                                             // A group is a new thread, not the
                                             // conversation it was started from
@@ -1459,6 +1462,11 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                             detailsId = chatId
                                             chatSearchQuery = null
                                             navRoute = "details"
+                                        },
+                                        onAddPeople = {
+                                            detailsId = chatId
+                                            addPeopleReturn = "chat"
+                                            navRoute = "add-people"
                                         },
                                         onInitialDraftConsumed = { pendingShareBody = "" },
                                         onInitialMediaConsumed = { pendingShareMedia = emptyList() }
