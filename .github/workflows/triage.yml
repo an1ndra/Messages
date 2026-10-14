@@ -39,9 +39,9 @@ jobs:
         with:
           copilot-token: ${{ github.token }}
           github-token: ${{ github.token }}
-          model: ${{ vars.TRIAGE_MODEL }}
-          reasoning-effort: ${{ vars.TRIAGE_REASONING_EFFORT }}
-          dry-run: ${{ vars.TRIAGE_DRY_RUN }}
+          model: ${{ vars.TRIAGE_MODEL || 'gpt-5.6-luna' }}
+          reasoning-effort: ${{ vars.TRIAGE_REASONING_EFFORT || 'low' }}
+          dry-run: ${{ vars.TRIAGE_DRY_RUN || false }}
           kind: ${{ inputs.kind || (github.event.discussion && 'discussion' || 'issue') }}
           number: ${{ inputs.number || github.event.issue.number || github.event.discussion.number }}
         env:

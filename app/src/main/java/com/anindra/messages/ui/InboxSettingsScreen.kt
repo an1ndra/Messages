@@ -2,6 +2,7 @@ package com.anindra.messages.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -249,12 +250,22 @@ fun InboxSettingsScreen(
             title = { Text(stringResource(R.string.settings_pin_delay)) },
             text = {
                 Column {
+                    Text(
+                        stringResource(R.string.settings_choose_delay),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                     options.forEach { secs ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(vertical = 4.dp)
+                                .fillMaxWidth()
+                                .clickable {
+                                    delaySeconds = secs
+                                    vm.settings.delaySeconds = secs
+                                    delayDialog = false
+                                }
+                                .heightIn(min = A11y.MIN_TOUCH_DP.dp)
                         ) {
                             RadioButton(
                                 selected = delaySeconds == secs,
@@ -264,9 +275,9 @@ fun InboxSettingsScreen(
                                     delayDialog = false
                                 }
                             )
+                            Spacer(Modifier.width(8.dp))
                             Text(
-                                text = context.getString(R.string.settings_countdown_placeholder, secs),
-                                modifier = Modifier.padding(start = 8.dp)
+                                text = context.getString(R.string.settings_countdown_placeholder, secs)
                             )
                         }
                     }

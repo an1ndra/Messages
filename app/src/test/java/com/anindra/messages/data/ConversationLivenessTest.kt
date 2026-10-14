@@ -33,4 +33,25 @@ class ConversationLivenessTest {
     fun aBlankDraftDoesNotKeepItAlive() {
         assertFalse(ConversationLiveness.keepAlive(messageCount = 0, pendingScheduled = 0, draft = "   "))
     }
+
+    @Test
+    fun anEmptyGroupStaysAlive() {
+        // A group is a thread the user built on purpose. Without this, creating
+        // one and backing out before writing trashed it and it vanished from the
+        // conversation list.
+        assertTrue(
+            ConversationLiveness.keepAlive(
+                messageCount = 0, pendingScheduled = 0, draft = "", recipientCount = 2
+            )
+        )
+    }
+
+    @Test
+    fun anEmptyOneToOneIsStillTrashed() {
+        assertFalse(
+            ConversationLiveness.keepAlive(
+                messageCount = 0, pendingScheduled = 0, draft = "", recipientCount = 1
+            )
+        )
+    }
 }

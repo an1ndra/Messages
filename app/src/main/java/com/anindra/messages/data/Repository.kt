@@ -60,7 +60,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 27
+private const val DB_VERSION = 28
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -144,6 +144,7 @@ class Db(context: Context) :
                 sub_id INTEGER NOT NULL DEFAULT -1)"""
         )
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE conversations ADD COLUMN group_title_custom INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
         createConversationRecipients(db)
         createMessageProviderIds(db)
@@ -326,6 +327,12 @@ class Db(context: Context) :
         }
         if (oldVersion < 27) {
             healInflatedTimestamps(db)
+        }
+        if (oldVersion < 28) {
+            // A group name the user typed must survive, while the default name
+            // should grow when a member is added. Track which is which; existing
+            // groups default to "auto" (0).
+            db.execSQL("ALTER TABLE conversations ADD COLUMN group_title_custom INTEGER NOT NULL DEFAULT 0")
         }
     }
 
@@ -1034,16 +1041,17 @@ class Repository(private val context: Context) {
         }
 
     /**
-     * Gives a group a default name from its members, once. A title the user set
-     * is never overwritten, and a 1:1 conversation keeps its contact name.
+     * Gives a group its default name from its members. A name the user typed is
+     * left alone; an automatic one is recomputed so it grows when someone is
+     * added. A 1:1 conversation keeps its contact name.
      */
     private fun ensureGroupTitle(conversationId: Long) {
         val members = recipientsBlocking(conversationId)
         if (members.size <= 1) return
-        val current = db.readableDatabase.rawQuery(
-            "SELECT group_title FROM conversations WHERE id=?", arrayOf(conversationId.toString())
-        ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
-        if (!current.isNullOrBlank()) return
+        val custom = db.readableDatabase.rawQuery(
+            "SELECT group_title_custom FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) == 1 else false }
+        if (custom) return
         val names = members.map { contactNameFor(it) ?: it }.take(3)
         val title = when {
             names.size <= 1 -> names.first()
@@ -1139,7 +1147,12 @@ class Repository(private val context: Context) {
         val clean = title.trim()
         db.writableDatabase.update(
             "conversations",
-            ContentValues().apply { put("group_title", clean) },
+            ContentValues().apply {
+                put("group_title", clean)
+                // A typed name must survive a later add; a blank one hands the
+                // name back to the members.
+                put("group_title_custom", if (clean.isEmpty()) 0 else 1)
+            },
             "id=?", arrayOf(conversationId.toString())
         )
         if (clean.isEmpty()) ensureGroupTitle(conversationId)
@@ -1591,27 +1604,43 @@ class Repository(private val context: Context) {
 
     /** Moves a conversation to trash once it has nothing left to show: no
      *  non-deleted messages and no draft worth keeping. Otherwise a no-op, so it
-     *  is safe to call on every exit from a chat. */
+     *  is safe to call on every exit from a chat. A group is never trash this
+     *  way — it is a thread the user built deliberately. */
     fun trashConversationIfEmptySuspend(conversationId: Long) {
-        // Return the two values from the query lambda instead of capturing
-        // mutable locals: the capture hides the assignment from static analysis
-        // (CodeQL saw `remaining` as always 0 -> java/constant-comparison).
-        val (remaining, pending, draft) = db.readableDatabase.rawQuery(
+        // Return the values from the query lambda instead of capturing mutable
+        // locals: the capture hides the assignment from static analysis (CodeQL
+        // saw `remaining` as always 0 -> java/constant-comparison).
+        data class Liveness(
+            val remaining: Int,
+            val pending: Int,
+            val draft: String,
+            val recipients: Int
+        )
+        val liveness = db.readableDatabase.rawQuery(
             """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0),
                       (SELECT COUNT(*) FROM scheduled_messages WHERE conversation_id=?),
-                      draft
+                      draft,
+                      (SELECT COUNT(*) FROM conversation_recipients WHERE conversation_id=?)
                FROM conversations WHERE id=? AND deleted_at=0""",
-            arrayOf(conversationId.toString(), conversationId.toString(), conversationId.toString())
+            arrayOf(
+                conversationId.toString(), conversationId.toString(),
+                conversationId.toString(), conversationId.toString()
+            )
         ).use { c ->
             if (!c.moveToFirst()) return
-            Triple(c.getInt(0), c.getInt(1), c.getString(2) ?: "")
+            Liveness(c.getInt(0), c.getInt(1), c.getString(2) ?: "", c.getInt(3))
         }
         // A draft only keeps the chat around while drafts are actually surfaced;
         // a leftover column value from when the feature was on must not.
         // A queued message is content the user is waiting on. It lives in its own
         // table, so without counting it the chat looks empty the moment the draft
         // is cleared on scheduling and the conversation vanishes from the list.
-        if (ConversationLiveness.keepAlive(remaining, pending, draft)) return
+        // A group with members stays too: it was created on purpose and has not
+        // been written to yet, so an empty group must not vanish on the way out.
+        if (ConversationLiveness.keepAlive(
+                liveness.remaining, liveness.pending, liveness.draft, liveness.recipients
+            )
+        ) return
         db.writableDatabase.execSQL(
             "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
             arrayOf(System.currentTimeMillis().toString(), TrashReason.MANUAL, conversationId.toString())

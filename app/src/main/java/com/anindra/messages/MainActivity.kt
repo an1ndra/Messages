@@ -588,14 +588,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Starts a new group thread from [conversationId] with [addresses]. The
-     * conversation they were added from is left untouched, so a group started
-     * from a 1:1 does not inherit that history. [onReady] receives the new
-     * conversation id.
+     * Adds [addresses] to a conversation from the Add-people picker. People
+     * added to a group join that group; people added to a 1:1 start a new group
+     * thread, so the private history between the two stays put. [onReady]
+     * receives the group's conversation id.
      */
-    fun createGroup(conversationId: Long, addresses: List<String>, onReady: (Long) -> Unit) {
+    fun finishAddPeople(conversationId: Long, addresses: List<String>, onReady: (Long) -> Unit) {
         scope.launch(Dispatchers.IO) {
-            val id = repo.createGroupFrom(conversationId, addresses)
+            val id = if (repo.isGroup(conversationId)) {
+                repo.addParticipants(conversationId, addresses)
+                membershipRevision.value++
+                conversationId
+            } else {
+                repo.createGroupFrom(conversationId, addresses)
+            }
             withContext(Dispatchers.Main) { onReady(id) }
         }
     }
@@ -1115,6 +1121,9 @@ class MainActivity : FragmentActivity() {
                 // other way into a chat (new, scheduled, spam, intent).
                 var chatSearchQuery by remember { mutableStateOf<String?>(null) }
                 var detailsId by remember { mutableStateOf(-1L) }
+                // Where the add-people picker returns to. Opened from a chat it
+                // goes back to the chat; from contact details, to the details.
+                var addPeopleReturn by remember { mutableStateOf("details") }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
                 var defaultSmsChecked by remember { mutableStateOf(false) }
                 // Hoisted above the AnimatedContent so every settings screen keeps
@@ -1417,23 +1426,24 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         vm = vm,
                                         conversationId = detailsId,
                                         onBack = { navRoute = "chat" },
-                                        onAddPeople = { navRoute = "add-people" },
+                                        onAddPeople = { addPeopleReturn = "details"; navRoute = "add-people" },
                                         scrollState = contactDetailsScroll
                                     )
                                     "add-people" -> AddPeopleScreen(
                                         vm = vm,
                                         conversationId = detailsId,
-                                        onBack = { navRoute = "details" },
+                                        onBack = { navRoute = addPeopleReturn },
                                         onDone = { picked ->
-                                            // A group is a new thread, not the
-                                            // conversation it was started from
-                                            // — it must not carry that history.
-                                            // Stay on the details screen, now
-                                            // showing the new group, where its
-                                            // name can be edited.
-                                            vm.createGroup(detailsId, picked) { newId ->
-                                                if (newId > 0) detailsId = newId
-                                                navRoute = "details"
+                                            // People added to a group join it;
+                                            // people added to a 1:1 start a new
+                                            // group thread. Either way, land in
+                                            // that group's chat — back from there
+                                            // goes to the list, never the old 1:1.
+                                            vm.finishAddPeople(detailsId, picked) { id ->
+                                                if (id > 0) {
+                                                    chatId = id
+                                                    navRoute = "chat"
+                                                }
                                             }
                                         }
                                     )
@@ -1459,6 +1469,11 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                             detailsId = chatId
                                             chatSearchQuery = null
                                             navRoute = "details"
+                                        },
+                                        onAddPeople = {
+                                            detailsId = chatId
+                                            addPeopleReturn = "chat"
+                                            navRoute = "add-people"
                                         },
                                         onInitialDraftConsumed = { pendingShareBody = "" },
                                         onInitialMediaConsumed = { pendingShareMedia = emptyList() }
