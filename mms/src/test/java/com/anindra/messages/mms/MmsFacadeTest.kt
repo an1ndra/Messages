@@ -247,7 +247,7 @@ class MmsFacadeTest {
             store = store,
             transports = TransportRegistry(
                 listOf(acceptedTransport()),
-                TransportSelection(default = TransportChoice.DIRECT),
+                TransportSelection(default = TransportChoice.SYSTEM),
             ),
             fitter = RecordingFitter.fitting(ByteArray(64)),
             carrierProfiles = profileStoreOf(CarrierProfile.KEY_MAX_MESSAGE_SIZE to 300_000),
