@@ -75,7 +75,6 @@ fun ScheduledMessagesScreen(
     onBack: () -> Unit,
     onOpenChat: (conversationId: Long) -> Unit
 ) {
-    val context = LocalContext.current
     val scheduled by vm.scheduledMessages().collectAsState(initial = emptyList())
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }

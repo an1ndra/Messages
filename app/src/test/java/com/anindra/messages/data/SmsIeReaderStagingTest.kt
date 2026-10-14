@@ -185,6 +185,48 @@ class SmsIeReaderStagingTest {
     }
 
     @Test
+    fun anEntryNameCannotWriteOutsideTheStagingDirectory() {
+        // CodeQL flags entry.name reaching File(partsDir, ...) as a zip slip.
+        // The staging directory is a dedicated child of the work dir so an
+        // escaping write is observable at a known path.
+        val work = File(tmp, "entry-escape-${System.nanoTime()}").apply { mkdirs() }
+        val f = zip("entry-escape.zip") { z ->
+            z.putNextEntry(ZipEntry("messages.ndjson"))
+            z.write(ndjson(record("+15551230001", "one")).toByteArray())
+            z.closeEntry()
+            z.putNextEntry(ZipEntry("../../pwned.bin"))
+            z.write(ByteArray(8) { 0x41 })
+            z.closeEntry()
+        }
+        SmsIeStager.stage(f, work)!!.use { staged ->
+            assertTrue(
+                "nothing may be written above the staging root",
+                !File(work, "pwned.bin").exists() && !File(work.parentFile, "pwned.bin").exists()
+            )
+            assertEquals(
+                "the part is flattened into the staging dir, not dropped",
+                8, staged.partBytes("../../pwned.bin")?.size
+            )
+        }
+    }
+
+    @Test
+    fun aDotDotEntryNameIsRejected() {
+        val f = zip("dotdot.zip") { z ->
+            z.putNextEntry(ZipEntry("messages.ndjson"))
+            z.write(ndjson(record("+15551230001", "one")).toByteArray())
+            z.closeEntry()
+            z.putNextEntry(ZipEntry(".."))
+            z.write(ByteArray(4))
+            z.closeEntry()
+        }
+        SmsIeStager.stage(f, tmp)!!.use { staged ->
+            assertTrue("a bare .. must not resolve to a file", staged.wasSkipped(".."))
+            assertNull(staged.partBytes(".."))
+        }
+    }
+
+    @Test
     fun anArchiveWithNoMessageListIsRejected() {
         val f = zip("nolist.zip") { z ->
             z.putNextEntry(ZipEntry("data/PART_1.png"))

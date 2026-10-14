@@ -43,6 +43,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -603,6 +605,7 @@ fun ChatScreen(
     initialMedia: List<android.net.Uri> = emptyList(),
     onBack: () -> Unit,
     onOpenDetails: () -> Unit = {},
+    onAddPeople: () -> Unit = {},
     onInitialDraftConsumed: () -> Unit = {},
     onInitialMediaConsumed: () -> Unit = {}
 ) {
@@ -704,6 +707,9 @@ fun ChatScreen(
     var showEmoji by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var attachSheet by remember { mutableStateOf(false) }
+    // Picked media waits here until the user sends it, so a picture can be
+    // explained or dropped before it leaves — it is no longer sent on pick.
+    val pendingMedia = remember { mutableStateListOf<Uri>() }
 
     val selectedMessageIds = remember { mutableStateListOf<Long>() }
     var textCopyMessage by remember { mutableStateOf<Message?>(null) }
@@ -810,19 +816,39 @@ fun ChatScreen(
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            cameraFileUri?.let { vm.sendMediaMessage(conversationId, it) }
+            cameraFileUri?.let { pendingMedia.add(it) }
         }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        uri?.let { vm.sendMediaMessage(conversationId, it) }
+        ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        uris.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
     }
 
     fun leaveChat() {
         vm.saveDraftAndMaybeTrash(conversationId, draft.trim())
         onBack()
+    }
+
+    /** Sends the pictures waiting in the composer. The draft rides along as
+     *  the first picture's caption, which is how a text+photo message is sent. */
+    fun sendPendingMedia() {
+        if (pendingMedia.isEmpty()) return
+        val addr = convo?.address ?: ""
+        if (vm.isNumberBlocked(addr)) {
+            showBlockedDialog = true
+            return
+        }
+        if (addr.isBlank()) return
+        val caption = draft.trim()
+        pendingMedia.toList().forEachIndexed { index, uri ->
+            vm.sendMediaMessage(conversationId, uri, if (index == 0) caption else "")
+        }
+        pendingMedia.clear()
+        draft = ""
+        vm.saveDraft(conversationId, "")
+        showEmoji = false
     }
 
     fun toggleSelection(id: Long) {
@@ -1287,7 +1313,7 @@ fun ChatScreen(
                         Toast.makeText(context, context.getString(R.string.chat_number_unblocked), Toast.LENGTH_SHORT).show()
                     }
                 },
-                onAddPeople = { /* no-op: MMS group chat, stub */ },
+                onAddPeople = onAddPeople,
                 onSearch = { searchOpen = true; chatQuery = "" }
             )
             }
@@ -1330,6 +1356,45 @@ fun ChatScreen(
                         }
                     }
                 }
+                if (pendingMedia.isNotEmpty()) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        pendingMedia.forEach { uri ->
+                            Box(Modifier.size(72.dp)) {
+                                coil3.compose.AsyncImage(
+                                    model = uri,
+                                    contentDescription = stringResource(R.string.access_photo),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clip(RoundedCornerShape(12.dp))
+                                )
+                                Box(
+                                    Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(2.dp)
+                                        .size(22.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f))
+                                        .clickable { pendingMedia.remove(uri) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Close,
+                                        contentDescription = stringResource(R.string.common_close),
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 val chatAddress = convo?.address ?: ""
                 if (chatAddress.isBlank() || isPhoneNumber(chatAddress)) {
                     InputBar(
@@ -1339,24 +1404,29 @@ fun ChatScreen(
                         currentSimId = currentSimId,
                         onCycleSim = { cycleSim() },
                         onDraftChange = { draft = it },
+                        hasAttachments = pendingMedia.isNotEmpty(),
                         onSend = {
-                            val text = draft.trim()
-                            if (text.isNotEmpty()) {
-                                val addr = convo?.address ?: ""
-                                if (vm.isNumberBlocked(addr)) {
-                                    showBlockedDialog = true
-                                    return@InputBar
-                                }
-                                if (addr.isBlank()) return@InputBar
-                                if (vm.settings.delayedSendingEnabled) {
-                                    pendingSendText = text
-                                    sendCountdown = vm.settings.delaySeconds
-                                    sendAttempt++
-                                } else {
-                                    vm.send(conversationId, text, currentSimId)
-                                    vm.saveDraft(conversationId, "")
-                                    draft = ""
-                                    showEmoji = false
+                            if (pendingMedia.isNotEmpty()) {
+                                sendPendingMedia()
+                            } else {
+                                val text = draft.trim()
+                                if (text.isNotEmpty()) {
+                                    val addr = convo?.address ?: ""
+                                    if (vm.isNumberBlocked(addr)) {
+                                        showBlockedDialog = true
+                                        return@InputBar
+                                    }
+                                    if (addr.isBlank()) return@InputBar
+                                    if (vm.settings.delayedSendingEnabled) {
+                                        pendingSendText = text
+                                        sendCountdown = vm.settings.delaySeconds
+                                        sendAttempt++
+                                    } else {
+                                        vm.send(conversationId, text, currentSimId)
+                                        vm.saveDraft(conversationId, "")
+                                        draft = ""
+                                        showEmoji = false
+                                    }
                                 }
                             }
                         },
@@ -2709,6 +2779,7 @@ internal fun InputBar(
     onEmojiToggle: () -> Unit,
     onAttach: () -> Unit,
     showEmojiButton: Boolean = false,
+    hasAttachments: Boolean = false,
     sims: List<SimCard> = emptyList(),
     currentSimId: Int = -1,
     onCycleSim: () -> Unit = {}
@@ -2786,7 +2857,7 @@ internal fun InputBar(
             )
         }
         Spacer(Modifier.width(8.dp))
-        val canSend = draft.isNotBlank()
+        val canSend = draft.isNotBlank() || hasAttachments
         Box(
             Modifier
                 .size(48.dp)

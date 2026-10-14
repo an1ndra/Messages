@@ -41,6 +41,15 @@ class BudgetPolicyTest {
         val four = BudgetPolicy.attachmentBudget(307_200, 0, 4)
         assertTrue(four < one)
     }
+
+    @Test
+    fun aHugePartCountCannotOverflowTheTextShareToNegative() {
+        // Part cost used to be Int math before promotion, so a large part count
+        // overflowed negative and handed the attachment a bigger budget than the
+        // carrier cap allows.
+        val budget = BudgetPolicy.attachmentBudget(307_200, captionBytes = 0, partCount = Int.MAX_VALUE)
+        assertEquals(0L, budget)
+    }
 }
 
 class RawAttachmentFitterTest {

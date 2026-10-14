@@ -973,7 +973,7 @@ internal fun ImportRadioGroup(
     onSelect: (Int) -> Unit
 ) {
     Column(Modifier.selectableGroup()) {
-        options.forEachIndexed { index, (label, supporting) ->
+        options.forEachIndexed { index, (label, _) ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -1014,6 +1014,17 @@ fun SettingsRow(
 ) {
     val contentAlpha = if (enabled) 1f else 0.38f
     val corners = rowCorners(position)
+    // Corner radii are pixels with no text equivalent, so publish them the way
+    // the chat bubbles do (BubbleShape): a regression script can then assert a
+    // row's rounding from logcat instead of a screenshot.
+    LaunchedEffect(title, position) {
+        android.util.Log.d(
+            "SettingsRowShape",
+            "title=$title position=$position " +
+                "topStart=${corners.topStart.value} topEnd=${corners.topEnd.value} " +
+                "bottomStart=${corners.bottomStart.value} bottomEnd=${corners.bottomEnd.value}"
+        )
+    }
     Card(
         shape = RoundedCornerShape(
             topStart = corners.topStart,

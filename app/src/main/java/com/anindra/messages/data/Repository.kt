@@ -60,7 +60,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 26
+private const val DB_VERSION = 28
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -144,6 +144,7 @@ class Db(context: Context) :
                 sub_id INTEGER NOT NULL DEFAULT -1)"""
         )
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE conversations ADD COLUMN group_title_custom INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
         createConversationRecipients(db)
         createMessageProviderIds(db)
@@ -324,6 +325,44 @@ class Db(context: Context) :
         if (oldVersion < 26) {
             dropConversationAddressUnique(db)
         }
+        if (oldVersion < 27) {
+            healInflatedTimestamps(db)
+        }
+        if (oldVersion < 28) {
+            // A group name the user typed must survive, while the default name
+            // should grow when a member is added. Track which is which; existing
+            // groups default to "auto" (0).
+            db.execSQL("ALTER TABLE conversations ADD COLUMN group_title_custom INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    /**
+     * Repairs timestamps that were written in the wrong unit.
+     *
+     * Two directions, both from the provider being read without normalising:
+     * an MMS whose `date` was already milliseconds got scaled twice and landed
+     * in the year 58000, sorting above every real message forever (#317); and
+     * an SMS `date` in seconds was stored unscaled, so it read as 1970. The
+     * list orders by timestamp, so either one hides other conversations.
+     *
+     * Both tables are fixed in place rather than deriving the conversation value
+     * from its messages: a conversation with nothing left would yield NULL, and
+     * `timestamp` is NOT NULL -- that crash was caught on device, not guessed.
+     */
+    private fun healInflatedTimestamps(db: SQLiteDatabase) {
+        val floor = MmsSupport.timestampMillisecondsFloor()
+        // Order matters. Seconds are scaled up first, which would otherwise put
+        // them above the floor and have the very next statement divide them
+        // straight back -- leaving the table exactly as it was.
+        db.execSQL("UPDATE messages SET timestamp=timestamp*1000 WHERE timestamp<$floor")
+        db.execSQL("UPDATE conversations SET timestamp=timestamp*1000 WHERE timestamp<$floor")
+        // Milliseconds multiplied a second time, landing in the year 58000.
+        db.execSQL(
+            "UPDATE messages SET timestamp=timestamp/1000 WHERE timestamp>${floor * 1000}"
+        )
+        db.execSQL(
+            "UPDATE conversations SET timestamp=timestamp/1000 WHERE timestamp>${floor * 1000}"
+        )
     }
 
     /**
@@ -1002,16 +1041,17 @@ class Repository(private val context: Context) {
         }
 
     /**
-     * Gives a group a default name from its members, once. A title the user set
-     * is never overwritten, and a 1:1 conversation keeps its contact name.
+     * Gives a group its default name from its members. A name the user typed is
+     * left alone; an automatic one is recomputed so it grows when someone is
+     * added. A 1:1 conversation keeps its contact name.
      */
     private fun ensureGroupTitle(conversationId: Long) {
         val members = recipientsBlocking(conversationId)
         if (members.size <= 1) return
-        val current = db.readableDatabase.rawQuery(
-            "SELECT group_title FROM conversations WHERE id=?", arrayOf(conversationId.toString())
-        ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
-        if (!current.isNullOrBlank()) return
+        val custom = db.readableDatabase.rawQuery(
+            "SELECT group_title_custom FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) == 1 else false }
+        if (custom) return
         val names = members.map { contactNameFor(it) ?: it }.take(3)
         val title = when {
             names.size <= 1 -> names.first()
@@ -1107,7 +1147,12 @@ class Repository(private val context: Context) {
         val clean = title.trim()
         db.writableDatabase.update(
             "conversations",
-            ContentValues().apply { put("group_title", clean) },
+            ContentValues().apply {
+                put("group_title", clean)
+                // A typed name must survive a later add; a blank one hands the
+                // name back to the members.
+                put("group_title_custom", if (clean.isEmpty()) 0 else 1)
+            },
             "id=?", arrayOf(conversationId.toString())
         )
         if (clean.isEmpty()) ensureGroupTitle(conversationId)
@@ -1559,27 +1604,43 @@ class Repository(private val context: Context) {
 
     /** Moves a conversation to trash once it has nothing left to show: no
      *  non-deleted messages and no draft worth keeping. Otherwise a no-op, so it
-     *  is safe to call on every exit from a chat. */
+     *  is safe to call on every exit from a chat. A group is never trash this
+     *  way — it is a thread the user built deliberately. */
     fun trashConversationIfEmptySuspend(conversationId: Long) {
-        // Return the two values from the query lambda instead of capturing
-        // mutable locals: the capture hides the assignment from static analysis
-        // (CodeQL saw `remaining` as always 0 -> java/constant-comparison).
-        val (remaining, pending, draft) = db.readableDatabase.rawQuery(
+        // Return the values from the query lambda instead of capturing mutable
+        // locals: the capture hides the assignment from static analysis (CodeQL
+        // saw `remaining` as always 0 -> java/constant-comparison).
+        data class Liveness(
+            val remaining: Int,
+            val pending: Int,
+            val draft: String,
+            val recipients: Int
+        )
+        val liveness = db.readableDatabase.rawQuery(
             """SELECT (SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0),
                       (SELECT COUNT(*) FROM scheduled_messages WHERE conversation_id=?),
-                      draft
+                      draft,
+                      (SELECT COUNT(*) FROM conversation_recipients WHERE conversation_id=?)
                FROM conversations WHERE id=? AND deleted_at=0""",
-            arrayOf(conversationId.toString(), conversationId.toString(), conversationId.toString())
+            arrayOf(
+                conversationId.toString(), conversationId.toString(),
+                conversationId.toString(), conversationId.toString()
+            )
         ).use { c ->
             if (!c.moveToFirst()) return
-            Triple(c.getInt(0), c.getInt(1), c.getString(2) ?: "")
+            Liveness(c.getInt(0), c.getInt(1), c.getString(2) ?: "", c.getInt(3))
         }
         // A draft only keeps the chat around while drafts are actually surfaced;
         // a leftover column value from when the feature was on must not.
         // A queued message is content the user is waiting on. It lives in its own
         // table, so without counting it the chat looks empty the moment the draft
         // is cleared on scheduling and the conversation vanishes from the list.
-        if (ConversationLiveness.keepAlive(remaining, pending, draft)) return
+        // A group with members stays too: it was created on purpose and has not
+        // been written to yet, so an empty group must not vanish on the way out.
+        if (ConversationLiveness.keepAlive(
+                liveness.remaining, liveness.pending, liveness.draft, liveness.recipients
+            )
+        ) return
         db.writableDatabase.execSQL(
             "UPDATE conversations SET deleted_at=?,deleted_reason=? WHERE id=?",
             arrayOf(System.currentTimeMillis().toString(), TrashReason.MANUAL, conversationId.toString())
@@ -3169,17 +3230,14 @@ class Repository(private val context: Context) {
         found
     }
 
-    private val contactCache = HashMap<String, Pair<String?, Long>>()
-    private val CONTACT_CACHE_TTL = 5 * 60 * 1000L
+    private val contactCache = ContactNameCache()
 
-    fun contactNameFor(address: String): String? {
-        val now = System.currentTimeMillis()
-        contactCache[address]?.let { (name, ts) ->
-            if (now - ts < CONTACT_CACHE_TTL) return name
-        }
-        val resolved = lookupContactName(address)
-        contactCache[address] = resolved to now
-        return resolved
+    fun contactNameFor(address: String): String? =
+        contactCache.getOrResolve(address) { lookupContactName(it) }
+
+    /** Drops every cached contact name, so the next read re-queries Contacts. */
+    fun invalidateContactNames() {
+        contactCache.invalidate()
     }
 
     private fun lookupContactName(address: String): String? {
@@ -3470,6 +3528,54 @@ class Repository(private val context: Context) {
         providerObserver = null
     }
 
+    private var contactsObserver: android.database.ContentObserver? = null
+    private val contactRefreshRunnable = Runnable {
+        // The stored name is only rewritten from a fresh lookup, so the cache
+        // has to be dropped first or an edit within the TTL is invisible.
+        invalidateContactNames()
+        refreshContactNames()
+    }
+
+    /**
+     * Watches Contacts so a rename, addition or deletion shows in the list right
+     * away instead of waiting for a resume that clears the 5-minute refresh gate.
+     *
+     * Without this the app only re-resolved names on a resume more than five
+     * minutes after the previous one, so a contact edited while the app was in
+     * front (and the SMS provider untouched) kept its old name -- the reporter's
+     * "20 minutes to 2 hours" in #317.
+     */
+    fun observeContactChanges() {
+        if (contactsObserver != null) return
+        if (providerHandler == null) {
+            providerHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        }
+        val resolver = context.contentResolver
+        val observer = object : android.database.ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                scheduleContactRefresh()
+            }
+        }
+        runCatching {
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Contacts.CONTENT_URI, true, observer
+            )
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Data.CONTENT_URI, true, observer
+            )
+        }.onFailure {
+            Log.w("RepoSync", "could not observe contacts: ${it.message}")
+            return
+        }
+        contactsObserver = observer
+    }
+
+    private fun scheduleContactRefresh() {
+        val handler = providerHandler ?: return
+        handler.removeCallbacks(contactRefreshRunnable)
+        handler.postDelayed(contactRefreshRunnable, CONTACT_REFRESH_DEBOUNCE_MS)
+    }
+
     fun syncFromSystem() {
         if (syncRunning) return
         syncRunning = true
@@ -3617,7 +3723,7 @@ class Repository(private val context: Context) {
                                         db.writableDatabase.execSQL(
                                             """INSERT INTO messages(conversation_id,body,timestamp,is_me,status,sys_id,transport,sub_id)
                                                VALUES(?,?,?,?,?,?,?,?)""",
-                                            arrayOf<Any?>(cid, m.body, m.date, if (isMe) 1 else 0,
+                                            arrayOf<Any?>(cid, m.body, MmsSupport.milliseconds(m.date) ?: m.date * 1000, if (isMe) 1 else 0,
                                                 when (m.type) {
                                                     android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX -> "received"
                                                     android.provider.Telephony.Sms.MESSAGE_TYPE_FAILED -> "failed"
@@ -3727,7 +3833,7 @@ class Repository(private val context: Context) {
                         ).use { q ->
                             if (q.moveToFirst()) q.getString(0) to q.getString(1) else null
                         } ?: continue
-                        val (oldAddr, oldName) = row
+                        val (oldAddr, _) = row
                         if (AddressIdentity.samePerson(oldAddr, addr)) continue
                         db.writableDatabase.execSQL(
                             """UPDATE conversations
@@ -4244,6 +4350,12 @@ class Repository(private val context: Context) {
          * is debounced rather than run per notification.
          */
         const val PROVIDER_RESYNC_DEBOUNCE_MS = 2_000L
+
+        /**
+         * A single contact edit writes the name row and the phone row, each with
+         * its own notification, so the refresh is debounced to run once.
+         */
+        const val CONTACT_REFRESH_DEBOUNCE_MS = 500L
 
         /** Provider ids written back per transaction while mirroring a backup. */
         const val MIRROR_FLUSH_EVERY = 500

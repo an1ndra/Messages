@@ -132,4 +132,48 @@ class AppLockVerificationWiringTest {
             }
         }
     }
+
+    @Test
+    fun noActivityOrCredentialReportsNoScreenLock() {
+        assertEquals(
+            AppLockVerdict.NoScreenLock,
+            appLockVerdict(hasActivity = false, canAuthenticate = false, proofOk = false)
+        )
+        assertEquals(
+            AppLockVerdict.NoScreenLock,
+            appLockVerdict(hasActivity = true, canAuthenticate = false, proofOk = true)
+        )
+    }
+
+    @Test
+    fun onlyAProvenCipherIsVerified() {
+        assertEquals(
+            AppLockVerdict.Verified,
+            appLockVerdict(hasActivity = true, canAuthenticate = true, proofOk = true)
+        )
+        assertEquals(
+            "a cipher that fails its crypto operation is a hooked prompt, not a user",
+            AppLockVerdict.Rejected,
+            appLockVerdict(hasActivity = true, canAuthenticate = true, proofOk = false)
+        )
+    }
+
+    @Test
+    fun thePromptIsTiedToAnAuthenticatedCipher() {
+        // A bare success callback is a boolean UI-hooking tools can flip; the
+        // prompt must carry a CryptoObject and the result must be proven.
+        val helper = File(main, "java/com/anindra/messages/ui/AppLockVerification.kt").readText()
+        assertTrue(
+            "the prompt must be given a CryptoObject",
+            helper.contains("BiometricPrompt.CryptoObject(")
+        )
+        assertTrue(
+            "the authenticated cipher must run a real crypto operation",
+            helper.contains("MessageLockCrypto.proveAuth")
+        )
+        assertTrue(
+            "the CryptoObject must come from the auth-bound Keystore key",
+            helper.contains("MessageLockCrypto.newAuthCipher")
+        )
+    }
 }

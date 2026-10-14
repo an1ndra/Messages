@@ -59,7 +59,7 @@ class ContactDetailsWiringTest {
         )
         assertTrue(
             "MainActivity must pass onAddPeople to the details screen",
-            Regex("ContactDetailsScreen\\([\\s\\S]*?onAddPeople = \\{ navRoute = \"add-people\" \\}")
+            Regex("ContactDetailsScreen\\([\\s\\S]*?onAddPeople = \\{[^}]*navRoute = \"add-people\" \\}")
                 .containsMatchIn(main),
         )
     }
@@ -226,20 +226,20 @@ class ContactDetailsWiringTest {
     }
 
     @Test
-    fun addingPeopleStaysOnTheDetailsScreen() {
-        // It is a setup screen, not somewhere to read or write: bouncing the
-        // user into the chat made them think the group had been created and
-        // already had something in it. The screen then shows the new group,
-        // where its name can be edited.
+    fun creatingAGroupDropsYouIntoTheNewChat() {
+        // People added to a 1:1 start a new group thread. Either way the picker
+        // must open the group's chat -- not the details page, whose back would
+        // land in the old 1:1 -- so the user sees the group they just made and
+        // Back returns to the conversation list.
         assertTrue(
-            "completing add-people must start a new group and stay on details",
-            Regex("""vm\.createGroup\([\s\S]{0,300}?navRoute = "details"\s*\n""")
+            "completing add-people must open the group's chat",
+            Regex("""vm\.finishAddPeople\([\s\S]{0,300}?chatId = id[\s\S]{0,80}?navRoute = "chat"""")
                 .containsMatchIn(main),
         )
         assertFalse(
-            "no jump into the chat after adding people",
-            main.contains("""onDone = {
-                                                    chatId = detailsId"""),
+            "it must not stop on the details screen, whose back is the 1:1",
+            Regex("""vm\.finishAddPeople\([\s\S]{0,300}?navRoute = "details"""")
+                .containsMatchIn(main),
         )
     }
 

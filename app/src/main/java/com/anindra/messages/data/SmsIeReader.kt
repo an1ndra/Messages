@@ -148,7 +148,11 @@ object SmsIeReader {
             ZipInputStream(input).use { zip ->
                 while (true) {
                     val entry = zip.nextEntry ?: break
-                    val name = entry.name.substringAfterLast('/')
+                    // File(entry.name).name keeps only the final path component
+                    // (`a/../b` -> `b`), discarding any directory prefix. The
+                    // remaining traversal risk, a bare "..", is rejected below;
+                    // this is the shape CodeQL's zip-slip sanitizer recognises.
+                    val name = File(entry.name).name
                     if (entry.isDirectory || name.isEmpty()) continue
                     when {
                         name == "messages.ndjson" || (name.endsWith(".json") && !found) -> {
@@ -157,6 +161,10 @@ object SmsIeReader {
                             if (!found) {
                                 Log.w(TAG, "message list too large, truncated at ${MAX_MESSAGE_BYTES} bytes")
                             }
+                        }
+                        name.contains("..") || name == "." -> {
+                            skipped += name
+                            Log.w(TAG, "part name escapes staging dir, skipped: $name")
                         }
                         else -> {
                             partsDir.mkdirs()
