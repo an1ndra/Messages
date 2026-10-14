@@ -325,7 +325,7 @@ fun LinkSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 onChecked = { hideLinks = it; vm.settings.hideLinks = it }
             )
             SettingsRow(
-                position = if (hideLinks) RowPosition.MIDDLE else RowPosition.LAST,
+                position = RowPosition.MIDDLE,
                 title = stringResource(R.string.settings_advanced_highlight_links),
                 subtitle = if (hideLinks) {
                     context.getString(R.string.settings_advanced_turn_off) +
