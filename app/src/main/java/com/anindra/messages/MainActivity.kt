@@ -588,14 +588,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Starts a new group thread from [conversationId] with [addresses]. The
-     * conversation they were added from is left untouched, so a group started
-     * from a 1:1 does not inherit that history. [onReady] receives the new
-     * conversation id.
+     * Adds [addresses] to a conversation from the Add-people picker. People
+     * added to a group join that group; people added to a 1:1 start a new group
+     * thread, so the private history between the two stays put. [onReady]
+     * receives the group's conversation id.
      */
-    fun createGroup(conversationId: Long, addresses: List<String>, onReady: (Long) -> Unit) {
+    fun finishAddPeople(conversationId: Long, addresses: List<String>, onReady: (Long) -> Unit) {
         scope.launch(Dispatchers.IO) {
-            val id = repo.createGroupFrom(conversationId, addresses)
+            val id = if (repo.isGroup(conversationId)) {
+                repo.addParticipants(conversationId, addresses)
+                membershipRevision.value++
+                conversationId
+            } else {
+                repo.createGroupFrom(conversationId, addresses)
+            }
             withContext(Dispatchers.Main) { onReady(id) }
         }
     }
@@ -1428,15 +1434,14 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         conversationId = detailsId,
                                         onBack = { navRoute = addPeopleReturn },
                                         onDone = { picked ->
-                                            // A group is a new thread, not the
-                                            // conversation it was started from
-                                            // — it must not carry that history.
-                                            // Land in the new group's chat, ready
-                                            // to write; back from there goes to
-                                            // the list, never the old 1:1.
-                                            vm.createGroup(detailsId, picked) { newId ->
-                                                if (newId > 0) {
-                                                    chatId = newId
+                                            // People added to a group join it;
+                                            // people added to a 1:1 start a new
+                                            // group thread. Either way, land in
+                                            // that group's chat — back from there
+                                            // goes to the list, never the old 1:1.
+                                            vm.finishAddPeople(detailsId, picked) { id ->
+                                                if (id > 0) {
+                                                    chatId = id
                                                     navRoute = "chat"
                                                 }
                                             }

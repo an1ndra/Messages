@@ -227,18 +227,18 @@ class ContactDetailsWiringTest {
 
     @Test
     fun creatingAGroupDropsYouIntoTheNewChat() {
-        // A group is a new thread, not the 1:1 it was started from. Finishing
-        // the picker must open the new group's chat -- not the details page,
-        // whose back would land in the old 1:1 -- so the user sees the group
-        // they just made and Back returns to the conversation list.
+        // People added to a 1:1 start a new group thread. Either way the picker
+        // must open the group's chat -- not the details page, whose back would
+        // land in the old 1:1 -- so the user sees the group they just made and
+        // Back returns to the conversation list.
         assertTrue(
-            "completing add-people must open the new group's chat",
-            Regex("""vm\.createGroup\([\s\S]{0,300}?chatId = newId[\s\S]{0,80}?navRoute = "chat"""")
+            "completing add-people must open the group's chat",
+            Regex("""vm\.finishAddPeople\([\s\S]{0,300}?chatId = id[\s\S]{0,80}?navRoute = "chat"""")
                 .containsMatchIn(main),
         )
         assertFalse(
             "it must not stop on the details screen, whose back is the 1:1",
-            Regex("""vm\.createGroup\([\s\S]{0,300}?navRoute = "details"""")
+            Regex("""vm\.finishAddPeople\([\s\S]{0,300}?navRoute = "details"""")
                 .containsMatchIn(main),
         )
     }
