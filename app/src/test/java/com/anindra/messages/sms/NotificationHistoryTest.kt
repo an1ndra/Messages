@@ -31,6 +31,15 @@ class NotificationHistoryTest {
     }
 
     @Test
+    fun keepsAPictureLineWithBlankText() {
+        // A picture-only MMS has a blank body. Dropping it left the whole
+        // notification empty (issue #328).
+        val picture = NotificationLine("", 2L, false, isImage = true, imageUri = "content://mms/part/7")
+        val out = NotificationHistory.window(listOf(line(""), picture, line("   ")))
+        assertEquals(listOf(picture), out)
+    }
+
+    @Test
     fun aSingleMessageIsPassedThrough() {
         val out = NotificationHistory.window(listOf(line("only")))
         assertEquals(1, out.size)

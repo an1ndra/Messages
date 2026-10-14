@@ -53,6 +53,7 @@
     <string name="notif_body_private">Você tem uma nova mensagem</string>
     <string name="notif_action_delete">Excluir</string>
     <string name="notif_you">Você</string>
+    <string name="notif_photo">Foto</string>
     <string name="notif_send_fail_private">Não foi possível enviar a mensagem. Toque para tentar novamente.</string>
     <string name="notif_send_fail">Não foi possível enviar a mensagem para %s. Toque para tentar novamente.</string>
     <string name="notif_not_delivered">Mensagem não entregue</string>

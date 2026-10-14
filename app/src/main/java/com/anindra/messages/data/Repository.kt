@@ -1765,7 +1765,7 @@ class Repository(private val context: Context) {
         ).use { c -> if (c.moveToFirst()) unread = c.getInt(0) }
         val out = mutableListOf<com.anindra.messages.sms.NotificationLine>()
         db.readableDatabase.rawQuery(
-            "SELECT body,timestamp FROM messages WHERE conversation_id=? AND deleted_at=0" +
+            "SELECT body,timestamp,media_type,media_uri FROM messages WHERE conversation_id=? AND deleted_at=0" +
                 " AND is_me=0 ORDER BY timestamp DESC, id DESC LIMIT ?",
             arrayOf(
                 conversationId.toString(),
@@ -1776,9 +1776,11 @@ class Repository(private val context: Context) {
             while (c.moveToNext()) {
                 out.add(
                     com.anindra.messages.sms.NotificationLine(
-                        text = c.getString(0),
+                        text = c.getString(0) ?: "",
                         timestamp = c.getLong(1),
-                        fromMe = false
+                        fromMe = false,
+                        isImage = c.getString(2) == "image",
+                        imageUri = c.getString(3)?.takeIf { it.isNotEmpty() }
                     )
                 )
             }
@@ -3913,7 +3915,12 @@ class Repository(private val context: Context) {
                             refreshed.add(cid)
                             upsertParticipant(database, address, message.subId)
                             if (!message.isMe) imported.add(
-                                MmsSupport.InboundMms(address, message.content.body, message.timestamp)
+                                MmsSupport.InboundMms(
+                                    address,
+                                    message.content.body,
+                                    message.timestamp,
+                                    imageUri = message.content.imageId?.let { "content://mms/part/$it" }
+                                )
                             )
                             MmsTrace.i(
                                 TRACE,

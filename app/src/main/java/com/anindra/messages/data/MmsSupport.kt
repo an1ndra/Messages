@@ -27,7 +27,13 @@ object MmsSupport {
     data class Address(val type: Int, val value: String)
     data class Part(val id: Long, val mime: String, val text: String? = null)
     data class Content(val body: String, val imageId: Long?, val omittedParts: Int)
-    data class InboundMms(val address: String, val body: String, val timestamp: Long)
+    data class InboundMms(
+        val address: String,
+        val body: String,
+        val timestamp: Long,
+        /** The picture of a picture MMS, or null. A picture-only MMS has a blank [body]. */
+        val imageUri: String? = null
+    )
     /** [subscriptionId] is the line the announcement was filed under, or -1 when the
      *  provider does not record one. The downloaded message keeps it. */
     data class PendingDownload(val id: Long, val contentLocation: String?, val subscriptionId: Int = -1)
