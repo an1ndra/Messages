@@ -975,6 +975,7 @@ class MainActivity : FragmentActivity() {
         applySmsIeProbe(intent)
         applyBackupProbe(intent)
         applyBackupExportProbe(intent)
+        applyMmsRecheckProbe(intent)
         applyTransferLogProbe(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
@@ -1570,6 +1571,26 @@ onOpenAccessibility = { navRoute = "accessibility" },
         vm.openOrCreate(to, null) { id -> vm.sendMediaMessage(id, android.net.Uri.parse(media)) }
     }
 
+    /** Debug builds only: `--ei mms_recheck_probe <resultCode>` hands the MMS
+     *  downloader a synthetic completion result, so the no-data classification
+     *  and the deferred re-check can be asserted on an emulator, which has no
+     *  MMSC to produce a real one. */
+    private fun applyMmsRecheckProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val code = intent.getIntExtra("mms_recheck_probe", 0)
+        if (code == 0) return
+        com.anindra.messages.sms.MmsDownloader.onComplete(
+            this, "content://mms/$MMS_RECHECK_PROBE_ROW", code, 0, -1
+        )
+    }
+
+    private companion object {
+        /** A row id no real message uses, so the probe never touches one. */
+        const val MMS_RECHECK_PROBE_ROW = 2_147_483_000L
+    }
+
     /** Debug builds only: `--es sms_ie_probe <uri>` runs the sms-ie import so
      *  the end-to-end path can be asserted on an emulator (the SAF picker is
      *  not scriptable). */
@@ -1666,6 +1687,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
         applySmsIeProbe(intent)
         applyBackupProbe(intent)
         applyBackupExportProbe(intent)
+        applyMmsRecheckProbe(intent)
         applyTransferLogProbe(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {

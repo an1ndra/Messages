@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import com.anindra.messages.data.MmsProviderReader
+import com.anindra.messages.data.MmsRecheckScheduler
 import com.anindra.messages.data.MmsRetry
 import com.anindra.messages.data.MmsSupport
 import androidx.core.content.FileProvider
@@ -168,6 +169,16 @@ internal object MmsDownloader {
         // that produced no pending row never reached the download path at all.
         MmsTrace.i(TAG, "pending MMS notifications: ${rows.size}")
         MmsFacade.diagnostics.pendingSwept(rows.size)
+        if (rows.isEmpty()) {
+            // Nothing left to fetch, so a scheduled background re-check would
+            // only wake up to find the same empty provider.
+            MmsRecheckScheduler.cancel(context)
+            return
+        }
+        // A row whose automatic budget is spent gets a fresh one here: opening
+        // the app is the user asking again, and the condition that exhausted the
+        // budget (a transient carrier error, a data outage) may well be gone.
+        attempts.entries.removeAll { it.value.count >= MmsRetry.MAX_AUTO_ATTEMPTS }
         for (row in rows) request(context, row)
     }
 
@@ -283,6 +294,22 @@ internal object MmsDownloader {
             if (rowId > 0) MmsStaging.release(context, MmsStaging.nameFor(rowId))
             return
         }
+        if (outcome == MmsRetry.WAIT_FOR_DATA) {
+            // Mobile data is off. The message stays announced and eligible, the
+            // attempt is given back so repeated data outages cannot burn the
+            // automatic budget, and the deferred re-check is armed so it is still
+            // fetched if the app is never opened again.
+            val attempt = attempts.computeIfAbsent(key) { Attempt() }
+            attempt.count = (attempt.count - 1).coerceAtLeast(0)
+            attempt.lastAt = System.currentTimeMillis()
+            MmsTrace.i(
+                TAG,
+                "MMS $key has no data network (code $resultCode); budget preserved, re-check armed"
+            )
+            if (rowId > 0) MmsStaging.release(context, MmsStaging.nameFor(rowId))
+            MmsRecheckScheduler.start(context)
+            return
+        }
         val attempt = attempts[key] ?: return
         if (outcome == MmsRetry.AUTO_RETRY) {
             val delay = MmsRetry.delayFor(attempt.count)
@@ -293,6 +320,9 @@ internal object MmsDownloader {
                 MmsSupport.PendingDownload(id, attempt.location, attempt.subscriptionId),
                 delay,
             )
+            // The in-process handler dies with the process, so a transient
+            // failure also arms the deferred re-check for the closed-app case.
+            MmsRecheckScheduler.start(context)
         } else {
             // Manual retry: the user has to decide, so keep the row eligible but
             // stop the automatic loop.
