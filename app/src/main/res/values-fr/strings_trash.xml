@@ -10,7 +10,6 @@
     <string name="trash_tab_messages">Messages</string>
     <string name="trash_messages_empty">Aucun message supprimé</string>
     <string name="trash_messages_empty_message">Les messages que vous supprimez restent ici jusqu\'à leur suppression</string>
-
     <string name="trash_empty_is_empty">La corbeille est vide</string>
     <string name="trash_empty_message">Les conversations supprimées sont définitivement supprimées après 30 jours</string>
     <string name="trash_empty_confirm">Supprimer toutes les %d conversations de la corbeille ? Cela ne peut pas être annulé.</string>
