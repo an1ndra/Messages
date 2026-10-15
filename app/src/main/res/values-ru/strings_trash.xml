@@ -10,7 +10,6 @@
     <string name="trash_tab_messages">Сообщения</string>
     <string name="trash_messages_empty">Нет удалённых сообщений</string>
     <string name="trash_messages_empty_message">Удалённые сообщения хранятся здесь, пока вы их не удалите</string>
-
     <string name="trash_empty_is_empty">Корзина пуста</string>
     <string name="trash_empty_message">Удалённые переписки безвозвратно удаляются через 30 дней</string>
     <string name="trash_empty_confirm">Удалить все %d переписок из корзины? Это действие нельзя отменить.</string>

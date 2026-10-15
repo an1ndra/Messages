@@ -10,7 +10,6 @@
     <string name="trash_tab_messages">Mensajes</string>
     <string name="trash_messages_empty">No hay mensajes eliminados</string>
     <string name="trash_messages_empty_message">Los mensajes que elimines se guardan aquí hasta que los borres</string>
-
     <string name="trash_empty_is_empty">La papelera está vacía</string>
     <string name="trash_empty_message">Las conversaciones eliminadas se eliminan permanentemente después de 30 días</string>
     <string name="trash_empty_confirm">¿Eliminar todas las %d conversaciones de la papelera? Esta acción no se puede deshacer.</string>
