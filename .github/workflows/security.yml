@@ -59,7 +59,7 @@ jobs:
           LC_ALL: C
           TZ: UTC
 
-      - uses: github/codeql-action/analyze@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
+      - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           category: "/language:java-kotlin"
 
@@ -81,7 +81,7 @@ jobs:
             --sarif \
             --output "$GITHUB_WORKSPACE/semgrep.sarif"
 
-      - uses: github/codeql-action/upload-sarif@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -103,7 +103,7 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
           skip-dirs: build, .gradle, .git, app/build
 
-      - uses: github/codeql-action/upload-sarif@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           sarif_file: trivy-results.sarif
           category: trivy
@@ -163,7 +163,7 @@ jobs:
             --data "hash=$hash" -H "Authorization: ci-scan" > "$GITHUB_WORKSPACE/mobsf-report.json"
           python3 -c "import json;d=json.load(open('$GITHUB_WORKSPACE/mobsf-report.json'));print('security_score:', d.get('security_score', '?'))"
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mobsf-report
           path: |

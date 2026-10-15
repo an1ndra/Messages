@@ -1,0 +1,6 @@
+Fixes since 1.0.29:
+• Adding people to a group appends instead of creating a second group; you land in the new chat and can pick several pictures at once.
+• MMS: picture-only messages now notify, and the app no longer requests network permissions — MMS is platform-only.
+• Fixed the Delay picker clipping and the "Highlight links" corners in the new settings UI.
+• The legacy "Swipe actions" switch toggles again.
+• Contact names refresh as Contacts change; timestamps use milliseconds.
