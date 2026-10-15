@@ -17,6 +17,14 @@ object MmsRetry {
     const val MANUAL_RETRY = 2
     const val NO_RETRY = 3
 
+    /**
+     * The transfer could not run because there is no data network. Not a manual
+     * retry (there is no UI to retry one) and not the same as a transient error
+     * the carrier reported: this one clears itself the moment the user turns
+     * mobile data back on, so it must not spend the automatic budget.
+     */
+    const val WAIT_FOR_DATA = 4
+
     const val MAX_AUTO_ATTEMPTS = 3
     const val BASE_DELAY_MS = 30_000L
     const val MAX_DELAY_MS = 15 * 60_000L
@@ -31,6 +39,11 @@ object MmsRetry {
         // HTTP failure is worth another attempt.
         SmsManager.MMS_ERROR_HTTP_FAILURE ->
             if (httpStatus == HTTP_NOT_FOUND) NO_RETRY else AUTO_RETRY
+        // Data is off: a message that arrived now is not lost, it is simply not
+        // fetchable yet. Treating it as a manual retry dropped the state and
+        // left the row to whatever happened to sweep next.
+        SmsManager.MMS_ERROR_NO_DATA_NETWORK,
+        SmsManager.MMS_ERROR_DATA_DISABLED -> WAIT_FOR_DATA
         SmsManager.MMS_ERROR_MMS_DISABLED_BY_CARRIER,
         SmsManager.MMS_ERROR_INVALID_SUBSCRIPTION_ID,
         SmsManager.MMS_ERROR_INACTIVE_SUBSCRIPTION -> NO_RETRY
@@ -45,13 +58,20 @@ object MmsRetry {
     }
 
     /**
-     * Only transient failures are retried, only while the attempt budget lasts,
-     * and only once the backoff for [attempts] has elapsed. Downloading an
-     * already-retrieved MMS is a no-op, so this is safe to run unattended.
+     * Only transient failures and the no-data case are retried. Past the attempt
+     * budget a transient failure is not abandoned — it is retried on the longest
+     * cooldown, so a condition that later clears is still picked up. Before, the
+     * map entry stayed at the limit and the row was never fetched again until
+     * the process died.
      */
     fun shouldRetryNow(outcome: Int, attempts: Int, lastAttemptAt: Long, now: Long): Boolean {
-        if (outcome != AUTO_RETRY || attempts >= MAX_AUTO_ATTEMPTS) return false
+        if (outcome != AUTO_RETRY && outcome != WAIT_FOR_DATA) return false
         if (lastAttemptAt <= 0L) return true
-        return now - lastAttemptAt >= delayFor(attempts)
+        val delay = if (outcome == AUTO_RETRY && attempts >= MAX_AUTO_ATTEMPTS) {
+            MAX_DELAY_MS
+        } else {
+            delayFor(attempts)
+        }
+        return now - lastAttemptAt >= delay
     }
 }
