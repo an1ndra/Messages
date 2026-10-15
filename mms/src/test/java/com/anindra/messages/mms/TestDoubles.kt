@@ -106,7 +106,7 @@ class RecordingFitter(private val outcome: (FitRequest) -> FitOutcome) : Attachm
  * or persists the row itself -- a fake that hardcoded them would test the fake.
  */
 class ScriptedTransport(
-    override val id: String = TransportChoice.DIRECT.id,
+    override val id: String = TransportChoice.SYSTEM.id,
     private val available: Boolean = true,
     override val reportsThroughPendingIntent: Boolean = false,
     override val ownsNotificationRow: Boolean = false,

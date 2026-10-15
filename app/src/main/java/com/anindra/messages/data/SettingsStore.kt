@@ -196,14 +196,26 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_USE_NEW_UI, false)
         set(v) { prefs.edit().putBoolean(KEY_USE_NEW_UI, v).apply(); _revision.value++ }
 
-    /** Legacy surfaces still gate on these; they now read as always-on. */
+    /** Legacy chat surfaces still gate on this. */
     var draftsEnabled: Boolean
         get() = prefs.getBoolean(KEY_DRAFTS_ENABLED, true)
         set(v) { prefs.edit().putBoolean(KEY_DRAFTS_ENABLED, v).apply(); _revision.value++ }
 
+    /**
+     * The legacy master "swipe actions" switch.
+     *
+     * It is a view over the per-direction actions — the single source of truth —
+     * so the legacy and the new settings cannot disagree. Off turns both
+     * directions off; on restores the pre-per-direction pair, honouring the
+     * legacy reverse setting.
+     */
     var swipeActionsEnabled: Boolean
-        get() = true
-        set(v) { prefs.edit().putBoolean(KEY_SWIPE_ACTIONS_ENABLED, v).apply(); _revision.value++ }
+        get() = SwipeAction.anyEnabled(swipeLeftAction, swipeRightAction)
+        set(v) {
+            val (left, right) = SwipeAction.legacyPair(v, reverseSwipeEnabled)
+            swipeLeftAction = left
+            swipeRightAction = right
+        }
 
     var reverseSwipeEnabled: Boolean
         get() = prefs.getBoolean(KEY_REVERSE_SWIPE, false)

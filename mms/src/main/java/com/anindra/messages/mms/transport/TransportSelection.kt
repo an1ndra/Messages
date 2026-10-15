@@ -6,30 +6,26 @@ import com.anindra.messages.mms.spi.NotificationAcknowledger
 import com.anindra.messages.mms.spi.PlatformTransaction
 
 /**
- * Which of the shipped transports carries a message.
+ * A transport's stable name.
  *
- * A value type rather than a flag because a carrier behaving differently on one
- * path is a settings change, and a settings change needs a stored name, a
- * stable id for Diagnostics and a default that a carrier with no preference
- * falls back to. [id] is deliberately the same string a transport reports, so
- * the choice, the transport and the diagnostics line cannot name three different
- * things for one path.
+ * The id is deliberately the same string a transport reports, so the choice, the
+ * transport and the Diagnostics line cannot name three different things for one
+ * path. Only the platform path ships: the app opens no socket of its own, which
+ * is what keeps it free of the INTERNET permission.
  */
 enum class TransportChoice(val id: String) {
     /** `SmsManager.sendMultimediaMessage`: the platform owns the whole transaction. */
     SYSTEM("system"),
-
-    /** Our own MMSC HTTP client, over a network bound for MMS. */
-    DIRECT("direct-mmsc"),
     ;
 
     companion object {
         /**
-         * The platform path.
+         * The platform path, and the only one.
          *
-         * It is the default because it works for every carrier: the MMSC, the
-         * APN and the notification response all stay where the modem expects
-         * them. The direct path is the one that has to be asked for.
+         * The MMSC, the APN and the notification response all stay where the
+         * modem expects them, and the app itself opens no socket — which is what
+         * keeps it free of the INTERNET permission. A direct MMSC client used to
+         * exist here and was removed for exactly that reason.
          */
         val DEFAULT = SYSTEM
 
@@ -40,8 +36,8 @@ enum class TransportChoice(val id: String) {
 /**
  * The transport a subscription will use.
  *
- * A per-subscription pin wins over the global choice, because a dual-SIM device
- * routinely has two carriers on it and they do not agree about anything.
+ * A per-subscription pin wins over the global choice. One path ships today, so
+ * every subscription resolves to the platform transport.
  */
 data class TransportSelection(
     val default: TransportChoice = TransportChoice.DEFAULT,

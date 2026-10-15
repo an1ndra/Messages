@@ -4,7 +4,12 @@ package com.anindra.messages.sms
 data class NotificationLine(
     val text: String,
     val timestamp: Long,
-    val fromMe: Boolean
+    val fromMe: Boolean,
+    /** True when the message carries a picture. A picture-only MMS has a blank
+     *  body, so without this flag the line would look empty and be dropped. */
+    val isImage: Boolean = false,
+    /** Where the picture can be read from, when [isImage]. */
+    val imageUri: String? = null
 )
 
 /**
@@ -18,10 +23,11 @@ object NotificationHistory {
     const val MAX_LINES = 5
 
     /** The newest [MAX_LINES], oldest first, which is the order
-     *  MessagingStyle expects. Blank lines are dropped: the system renders an
-     *  empty line as an empty row. */
+     *  MessagingStyle expects. Blank text lines are dropped: the system renders an
+     *  empty line as an empty row. A picture line is kept even when its text is
+     *  blank, because the caller gives it a label and the image itself. */
     fun window(lines: List<NotificationLine>): List<NotificationLine> =
-        lines.filter { it.text.isNotBlank() }
+        lines.filter { it.text.isNotBlank() || it.isImage }
             .takeLast(MAX_LINES)
 
     /** How many of their messages to carry. Bounded by what is actually

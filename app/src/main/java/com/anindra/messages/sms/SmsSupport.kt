@@ -114,7 +114,9 @@ object NotificationHelper {
         app: com.anindra.messages.MessagesApplication,
         convoId: Long?,
         senderName: String,
-        fallbackText: String
+        fallbackText: String,
+        imageUri: String? = null,
+        privacyMode: Boolean = false
     ): NotificationCompat.Style {
         val hideLinks = app.repository.settings.hideLinks
         val person = Person.Builder().setName(senderName)
@@ -129,18 +131,41 @@ object NotificationHelper {
         val history = convoId
             ?.let { app.repository.notificationHistory(it, NotificationHistory.MAX_LINES) }
             .orEmpty()
+        // A picture-only MMS has a blank body: it gets a label instead of an
+        // empty row, and the picture itself rides along as message data.
+        val photoLabel = context.getString(R.string.notif_photo)
         val lines = NotificationHistory.window(
-            if (history.isEmpty()) listOf(NotificationLine(fallbackText, System.currentTimeMillis(), false))
-            else history.map {
+            if (history.isEmpty()) {
+                listOf(
+                    NotificationLine(
+                        fallbackText, System.currentTimeMillis(), false,
+                        isImage = imageUri != null, imageUri = imageUri
+                    )
+                )
+            } else history.map {
                 NotificationLine(
                     if (hideLinks) hideUrls(it.text) else it.text,
                     it.timestamp,
-                    fromMe = false
+                    fromMe = false,
+                    isImage = it.isImage,
+                    imageUri = it.imageUri
                 )
             }
         )
+        // Only the newest picture is prepared: copying every one would be work
+        // on a receiver thread for lines that sit below the visible one.
+        val newestImage = lines.lastOrNull { it.isImage }
         lines.forEach {
-            style.addMessage(it.text, it.timestamp, if (it.fromMe) me else person)
+            val text = if (it.text.isBlank() && it.isImage) photoLabel else it.text
+            val message = NotificationCompat.MessagingStyle.Message(
+                text, it.timestamp, if (it.fromMe) me else person
+            )
+            if (!privacyMode && it === newestImage && it.imageUri != null) {
+                NotificationImage.prepare(context, it.imageUri)?.let { uri ->
+                    message.setData(NotificationImage.MIME, uri)
+                }
+            }
+            style.addMessage(message)
         }
         return style
     }
@@ -202,7 +227,7 @@ object NotificationHelper {
         return true
     }
 
-    fun show(context: Context, from: String, body: String) {
+    fun show(context: Context, from: String, body: String, imageUri: String? = null) {
         // Skip notification if user is already reading this conversation
         if (NotificationPolicy.skipForOpenThread(
                 ForegroundTracker.isAppInForeground,
@@ -299,6 +324,9 @@ object NotificationHelper {
         val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
             privacyMode -> context.getString(R.string.notif_body_private)
+            // A picture-only MMS has no text; an empty text is what made the
+            // whole notification blank.
+            body.isBlank() && imageUri != null -> context.getString(R.string.notif_photo)
             app.repository.settings.hideLinks -> hideUrls(body)
             else -> body
         }
@@ -318,7 +346,7 @@ object NotificationHelper {
             // Launchers that render a count read this field.
             .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
             .setContentIntent(tap)
-            .setStyle(groupedStyle(context, app, convoId, senderName, text))
+            .setStyle(groupedStyle(context, app, convoId, senderName, text, imageUri, privacyMode))
         // A heads-up popup is a peek: on a locked screen the panel stays asleep.
         // Only a full-screen intent is treated as a user-initiated wake, so this
         // is what turns the screen on. Privacy mode suppresses it because the
