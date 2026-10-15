@@ -32,8 +32,6 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.okhttp)
-    implementation(libs.androidx.work.runtime)
 
     testImplementation("junit:junit:4.13.2")
 }

@@ -1,7 +1,9 @@
 package com.anindra.messages.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SwipeActionTest {
@@ -66,5 +68,25 @@ class SwipeActionTest {
         // OFF must be the only value that means "not swipeable".
         SwipeAction.entries.filter { it != SwipeAction.OFF }
             .forEach { assertNotEquals(SwipeAction.OFF, it) }
+    }
+
+    @Test
+    fun anyEnabledIsFalseOnlyWhenBothDirectionsAreOff() {
+        // This is the predicate behind SettingsStore.swipeActionsEnabled (#331).
+        assertFalse(SwipeAction.anyEnabled(SwipeAction.OFF, SwipeAction.OFF))
+        assertTrue(SwipeAction.anyEnabled(SwipeAction.ARCHIVE, SwipeAction.OFF))
+        assertTrue(SwipeAction.anyEnabled(SwipeAction.OFF, SwipeAction.DELETE))
+        assertTrue(SwipeAction.anyEnabled(SwipeAction.PIN, SwipeAction.BLOCK))
+    }
+
+    @Test
+    fun theMasterSwitchFollowsTheLegacyPairItWrites() {
+        // swipeActionsEnabled reads anyEnabled over the pair its setter writes.
+        val (offLeft, offRight) = SwipeAction.legacyPair(enabled = false, reverse = false)
+        assertFalse(SwipeAction.anyEnabled(offLeft, offRight))
+        for (reverse in listOf(false, true)) {
+            val (left, right) = SwipeAction.legacyPair(enabled = true, reverse = reverse)
+            assertTrue(SwipeAction.anyEnabled(left, right))
+        }
     }
 }

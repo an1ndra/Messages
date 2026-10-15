@@ -25,5 +25,12 @@ enum class SwipeAction(val storageValue: Int) {
             if (!enabled) return OFF to OFF
             return if (reverse) DELETE to ARCHIVE else ARCHIVE to DELETE
         }
+
+        /**
+         * Whether either direction is enabled — the master "swipe actions"
+         * switch the legacy settings screen drives.
+         */
+        fun anyEnabled(left: SwipeAction, right: SwipeAction): Boolean =
+            left != OFF || right != OFF
     }
 }

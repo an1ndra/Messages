@@ -53,6 +53,7 @@
     <string name="notif_body_private">У вас новое сообщение</string>
     <string name="notif_action_delete">Удалить</string>
     <string name="notif_you">Вы</string>
+    <string name="notif_photo">Фото</string>
     <string name="notif_send_fail_private">Не удалось отправить сообщение. Нажмите для повтора.</string>
     <string name="notif_send_fail">Не удалось отправить сообщение адресату %s. Нажмите для повтора.</string>
     <string name="notif_not_delivered">Сообщение не доставлено</string>
