@@ -47,8 +47,11 @@
     <string name="sim_default">Padrão</string>
     <string name="time_yesterday">Ontem</string>
     <string name="link_warning_confirm">Confirmar antes de abrir links externos</string>
-    <string name="notification_channel_title">Messages</string>
     <string name="notification_channel_desc">Notificações de mensagens novas</string>
+    <string name="notification_channel_direct_title">Mensagens diretas</string>
+    <string name="notification_channel_group_title">Mensagens de grupo</string>
+    <string name="notification_channel_unknown_title">Remetentes desconhecidos</string>
+    <string name="notification_channel_convo_desc">Notificações desta conversa</string>
     <string name="notif_title_private">Nova mensagem</string>
     <string name="notif_body_private">Você tem uma nova mensagem</string>
     <string name="notif_action_delete">Excluir</string>

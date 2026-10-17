@@ -7,6 +7,8 @@
     <string name="settings_pin_delete_permanently">完全に削除しますか？</string>
     <string name="settings_pin_delay">送信前の遅延</string>
     <string name="settings_pin_notification_sound">通知サウンド</string>
+    <string name="settings_notif_manage_channels">システム設定で管理</string>
+    <string name="settings_notif_manage_channels_subtitle">カテゴリごとの通知音、振動、優先度</string>
     <string name="settings_pin_sim_card">SIMカード</string>
     <string name="settings_import_backup">バックアップをインポート</string>
     <string name="settings_loading">メッセージを読み込み中</string>

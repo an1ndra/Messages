@@ -7,6 +7,8 @@
     <string name="settings_pin_delete_permanently">حذف نهائيًا؟</string>
     <string name="settings_pin_delay">التأخير قبل الإرسال</string>
     <string name="settings_pin_notification_sound">صوت الإشعار</string>
+    <string name="settings_notif_manage_channels">الإدارة في إعدادات النظام</string>
+    <string name="settings_notif_manage_channels_subtitle">الصوت والاهتزاز والأولوية لكل فئة</string>
     <string name="settings_pin_sim_card">شريحة SIM</string>
     <string name="settings_import_backup">استيراد نسخة احتياطية</string>
     <string name="settings_loading">جارٍ تحميل الرسائل</string>

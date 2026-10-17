@@ -799,6 +799,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch(Dispatchers.IO) { repo.setConversationNotificationsEnabled(conversationId, enabled) }
     }
 
+    fun conversationNotificationSoundFlow(conversationId: Long): Flow<String> =
+        repo.conversationNotificationSoundFlow(conversationId)
+
+    /** Empty [sound] clears the override back to the category/global tone. */
+    fun setConversationNotificationSound(conversationId: Long, sound: String, title: String) {
+        scope.launch(Dispatchers.IO) {
+            repo.setConversationNotificationSound(conversationId, sound)
+            com.anindra.messages.sms.NotificationHelper.refreshConversationChannel(
+                getApplication(), conversationId, title, sound
+            )
+        }
+    }
+
     fun conversationIdForAddress(address: String): Long? = repo.conversationIdForAddress(address)
 
     /** Stores the forwarded row in the target conversation *and* hands it to

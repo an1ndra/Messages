@@ -47,8 +47,11 @@
     <string name="sim_default">기본</string>
     <string name="time_yesterday">어제</string>
     <string name="link_warning_confirm">외부 링크 열기 전에 확인</string>
-    <string name="notification_channel_title">메시지</string>
     <string name="notification_channel_desc">새 메시지 알림</string>
+    <string name="notification_channel_direct_title">다이렉트 메시지</string>
+    <string name="notification_channel_group_title">그룹 메시지</string>
+    <string name="notification_channel_unknown_title">알 수 없는 발신자</string>
+    <string name="notification_channel_convo_desc">이 대화의 알림</string>
     <string name="notif_title_private">새 메시지</string>
     <string name="notif_body_private">새 메시지가 도착했습니다</string>
     <string name="notif_action_delete">삭제</string>
