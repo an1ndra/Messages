@@ -252,7 +252,7 @@ fun AdvancedSettingsScreen(
                     onChecked = {
                         receiveSound = it
                         vm.settings.receiveSoundEnabled = it
-                        NotificationHelper.ensureChannel(context)
+                        NotificationHelper.ensureChannels(context)
                     }
                 )
                 SettingsRow(

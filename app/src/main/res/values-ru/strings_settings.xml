@@ -7,6 +7,8 @@
     <string name="settings_pin_delete_permanently">Удалить безвозвратно?</string>
     <string name="settings_pin_delay">Задержка перед отправкой</string>
     <string name="settings_pin_notification_sound">Звук уведомлений</string>
+    <string name="settings_notif_manage_channels">Управление в настройках системы</string>
+    <string name="settings_notif_manage_channels_subtitle">Звук, вибрация и приоритет по категориям</string>
     <string name="settings_pin_sim_card">SIM-карта</string>
     <string name="settings_import_backup">Импорт резервной копии</string>
     <string name="settings_loading">Загрузка сообщений</string>

@@ -7,6 +7,8 @@
     <string name="settings_pin_delete_permanently">영구 삭제하시겠습니까?</string>
     <string name="settings_pin_delay">보내기 전 지연 시간</string>
     <string name="settings_pin_notification_sound">알림 소리</string>
+    <string name="settings_notif_manage_channels">시스템 설정에서 관리</string>
+    <string name="settings_notif_manage_channels_subtitle">카테고리별 소리, 진동 및 우선순위</string>
     <string name="settings_pin_sim_card">SIM 카드</string>
     <string name="settings_import_backup">백업 가져오기</string>
     <string name="settings_loading">메시지 로딩 중</string>

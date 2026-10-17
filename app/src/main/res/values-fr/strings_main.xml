@@ -47,8 +47,11 @@
     <string name="sim_default">Par défaut</string>
     <string name="time_yesterday">Hier</string>
     <string name="link_warning_confirm">Confirmer avant d\'ouvrir les liens externes</string>
-    <string name="notification_channel_title">Messages</string>
     <string name="notification_channel_desc">Notifications de nouveaux messages</string>
+    <string name="notification_channel_direct_title">Messages directs</string>
+    <string name="notification_channel_group_title">Messages de groupe</string>
+    <string name="notification_channel_unknown_title">Expéditeurs inconnus</string>
+    <string name="notification_channel_convo_desc">Notifications pour cette conversation</string>
     <string name="notif_title_private">Nouveau message</string>
     <string name="notif_body_private">Vous avez un nouveau message</string>
     <string name="notif_action_delete">Supprimer</string>

@@ -1,6 +1,9 @@
 package com.anindra.messages.ui
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,6 +44,8 @@ import com.anindra.messages.data.MmsVerdict
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimMmsCheck
 import com.anindra.messages.sms.NotificationHelper
+import com.anindra.messages.sms.NotificationCategory
+import com.anindra.messages.sms.NotificationChannels
 import com.anindra.messages.sms.SimMmsProbe
 
 private const val DAYS_TRASH = "trash"
@@ -61,6 +66,8 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
     var sound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
     var soundDialog by remember { mutableStateOf(false) }
+    var categoryDialog by remember { mutableStateOf<NotificationCategory?>(null) }
+    var pendingCategorySound by remember { mutableStateOf(SettingsStore.NOTIFY_SOUND_DEFAULT) }
     var actionReply by remember(revision) { mutableStateOf(vm.settings.notifActionReply) }
     var actionMarkRead by remember(revision) { mutableStateOf(vm.settings.notifActionMarkRead) }
     var actionDelete by remember(revision) { mutableStateOf(vm.settings.notifActionDelete) }
@@ -91,7 +98,7 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 onChecked = {
                     receiveSound = it
                     vm.settings.receiveSoundEnabled = it
-                    NotificationHelper.ensureChannel(context)
+                    NotificationHelper.ensureChannels(context)
                 }
             )
             SettingsRow(
@@ -101,6 +108,30 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                     ?: context.getString(R.string.settings_sound_default),
                 enabled = receiveSound,
                 onClick = { soundDialog = true }
+            )
+            NotificationCategory.entries.forEach { category ->
+                val key = NotificationCategory.keyOf(category)
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(NotificationChannels.titleRes(category)),
+                    subtitle = contactSoundLabel(context, vm.settings.notificationSoundFor(key)),
+                    enabled = receiveSound,
+                    onClick = {
+                        categoryDialog = category
+                        pendingCategorySound =
+                            if (vm.settings.hasNotificationSoundOverride(key)) {
+                                vm.settings.notificationSoundFor(key)
+                            } else {
+                                ""
+                            }
+                    }
+                )
+            }
+            SettingsRow(
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_notif_manage_channels),
+                subtitle = stringResource(R.string.settings_notif_manage_channels_subtitle),
+                onClick = { openSystemChannelSettings(context) }
             )
             SettingsRow(
                 position = RowPosition.MIDDLE,
@@ -155,12 +186,65 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
             confirmButton = {
                 TextButton(onClick = {
                     vm.settings.notificationSound = sound
-                    NotificationHelper.ensureChannel(context)
+                    NotificationHelper.ensureChannels(context)
                     soundDialog = false
                 }) { Text(stringResource(R.string.common_ok)) }
             },
             dismissButton = {
                 TextButton(onClick = { soundDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    categoryDialog?.let { category ->
+        val key = NotificationCategory.keyOf(category)
+        val categoryOptions = listOf(
+            "" to context.getString(R.string.contact_notification_sound_default)
+        ) + options
+        AlertDialog(
+            onDismissRequest = { categoryDialog = null },
+            title = { Text(stringResource(NotificationChannels.titleRes(category))) },
+            text = {
+                Column {
+                    categoryOptions.forEach { (value, label) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    pendingCategorySound = value
+                                    if (value.isNotEmpty()) {
+                                        NotificationHelper.previewNotificationSound(context, value)
+                                    }
+                                }
+                                .padding(vertical = 2.dp)
+                        ) {
+                            RadioButton(
+                                selected = pendingCategorySound == value,
+                                onClick = {
+                                    pendingCategorySound = value
+                                    if (value.isNotEmpty()) {
+                                        NotificationHelper.previewNotificationSound(context, value)
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.padding(start = 8.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.settings.setNotificationSoundFor(key, pendingCategorySound)
+                    NotificationHelper.ensureChannels(context)
+                    categoryDialog = null
+                }) { Text(stringResource(R.string.common_ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { categoryDialog = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             }
@@ -468,4 +552,12 @@ internal fun SettingsScaffold(
             Spacer(Modifier.height(SettingsLayout.GROUP_GAP))
         }
     }
+}
+
+/** Opens Android's own notification settings for this app, listing its channels. */
+private fun openSystemChannelSettings(context: android.content.Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    }
+    runCatching { context.startActivity(intent) }
 }

@@ -7,6 +7,8 @@
     <string name="settings_pin_delete_permanently">永久刪除？</string>
     <string name="settings_pin_delay">傳送前延遲</string>
     <string name="settings_pin_notification_sound">通知聲音</string>
+    <string name="settings_notif_manage_channels">在系統設定中管理</string>
+    <string name="settings_notif_manage_channels_subtitle">各類別的音效、震動與優先順序</string>
     <string name="settings_pin_sim_card">SIM 卡</string>
     <string name="settings_import_backup">匯入備份</string>
     <string name="settings_loading">正在載入訊息</string>
