@@ -190,12 +190,14 @@ jobs:
             echo "::error::APK signed with unexpected certificate (expected $expected)"
             exit 1
           fi
-          got_code="$("$BT/aapt" dump badging "$FILE" | sed -n 's/.*versionCode.\([0-9]*\).*/\1/p' | head -1)"
+          # Not sed: `.*versionCode.\([0-9]*\)` lets the capture match empty,
+          # so it returned a blank and the comparison failed on a good APK.
+          got_code="$("$BT/aapt" dump badging "$FILE" | grep -oE "versionCode='[0-9]+'" | head -1 | tr -dc '0-9')"
           if [ "$got_code" != "$CODE" ]; then
             echo "::error::APK versionCode is '$got_code' but build.gradle.kts says '$CODE'"
             exit 1
           fi
-          got_name="$("$BT/aapt" dump badging "$FILE" | sed -n 's/.*versionName.\([^ ]*\).*/\1/p' | head -1)"
+          got_name="$("$BT/aapt" dump badging "$FILE" | grep -oE "versionName='[^']+'" | head -1 | cut -d"'" -f2)"
           if [ "$got_name" != "$VERSION" ]; then
             echo "::error::APK versionName is '$got_name' but the tag says '$VERSION'"
             exit 1
