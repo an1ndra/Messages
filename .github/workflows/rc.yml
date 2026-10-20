@@ -41,6 +41,27 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
+      # A dispatch takes the tag as free text, and actions/checkout on a tag that
+      # does not exist fails with a bare git exit code. Check first so the run
+      # says what is wrong.
+      - name: Verify the RC tag exists
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${INPUT_TAG:-$REF_NAME}"
+          if ! printf '%s' "$TAG" | grep -qE '^v[0-9]+(\.[0-9]+)+-rc[0-9]+$'; then
+            echo "::error::'$TAG' is not an RC tag (expected v1.2.3-rc1)"
+            exit 1
+          fi
+          if ! curl -sf -o /dev/null -H "Authorization: Bearer $GH_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG"; then
+            echo "::error::tag $TAG does not exist - create it and push it first (git tag $TAG && git push origin $TAG)"
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -94,7 +115,7 @@ jobs:
             exit 1
           fi
           if curl -sf -o /dev/null -H "Authorization: Bearer $GH_TOKEN" \
-              "$GITHUB_API/repos/$GITHUB_REPOSITORY/releases/tags/v$NAME"; then
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/v$NAME"; then
             echo "::error::release v$NAME is already published - this RC would overwrite it"
             exit 1
           fi
