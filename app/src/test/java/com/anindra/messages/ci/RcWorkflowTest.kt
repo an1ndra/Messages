@@ -113,6 +113,27 @@ class RcWorkflowTest {
         )
     }
 
+    /**
+     * The versionCode readback used a capture-everything sed whose group could
+     * match empty, so it returned a blank and the run rejected a correctly built
+     * APK. The readback has to anchor on the quotes around the field.
+     */
+    @Test
+    fun theApkVersionIsReadBackWithoutTheEmptyCapture() {
+        assertTrue(
+            "versionCode must be read from the quoted field",
+            rc.contains("grep -oE \"versionCode='[0-9]+'\"")
+        )
+        assertTrue(
+            "versionName must be read from the quoted field",
+            rc.contains("grep -oE \"versionName='[^']+'\"")
+        )
+        assertFalse(
+            "the capture-everything sed reads as an empty versionCode",
+            rc.contains("s/.*versionCode.")
+        )
+    }
+
     /** The APK is public the moment the release exists; the scan must come first. */
     @Test
     fun theApkIsScannedBeforeItIsPublished() {
