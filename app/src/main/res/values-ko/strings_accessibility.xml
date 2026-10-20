@@ -28,4 +28,5 @@
     <!-- Motion -->
     <string name="a11y_reduce_motion_title">모션 줄이기</string>
     <string name="a11y_reduce_motion_desc">애니메이션과 전환 효과 끄기</string>
+    <string name="access_clear_selection">선택 해제</string>
 </resources>

@@ -28,4 +28,5 @@
     <!-- Motion -->
     <string name="a11y_reduce_motion_title">Меньше анимации</string>
     <string name="a11y_reduce_motion_desc">Отключить анимацию и переходы</string>
+    <string name="access_clear_selection">Снять выделение</string>
 </resources>

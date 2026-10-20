@@ -67,4 +67,7 @@
     <string name="crash_report_delete">हटाएं</string>
     <string name="crash_report_saved">Downloads/Messages में सहेजा गया</string>
     <string name="crash_report_clip_label">Messages क्रैश रिपोर्ट</string>
+    <string name="convo_moved_to_trash_count">%1$d संवाद कूड़े में ले जाए गए</string>
+    <string name="convo_archived_count">%1$d संवाद संग्रहीत किए गए</string>
+    <string name="sheet_multi_select">और चुनें</string>
 </resources>

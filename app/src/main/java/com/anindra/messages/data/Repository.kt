@@ -1958,6 +1958,18 @@ class Repository(private val context: Context) {
         id ?: matchConversationId(db.readableDatabase, address, activeOnly = true)
     }
 
+    /** Unread messages in one conversation, read synchronously for the
+     *  notification badge. Zero when the row is gone. */
+    fun unreadCountFor(conversationId: Long?): Int {
+        if (conversationId == null) return 0
+        var count = 0
+        db.readableDatabase.rawQuery(
+            "SELECT unread_count FROM conversations WHERE id=?",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) count = c.getInt(0) }
+        return count
+    }
+
     suspend fun getConversationNotificationsEnabled(conversationId: Long): Boolean = runOnIoAsync {
         var enabled = true
         db.readableDatabase.rawQuery(

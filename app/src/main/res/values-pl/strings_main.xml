@@ -67,4 +67,7 @@
     <string name="crash_report_delete">Usuń</string>
     <string name="crash_report_saved">Zapisano w Downloads/Messages</string>
     <string name="crash_report_clip_label">Raport awarii Messages</string>
+    <string name="convo_moved_to_trash_count">Przeniesiono %1$d rozmów do kosza</string>
+    <string name="convo_archived_count">Zarchiwizowano %1$d rozmów</string>
+    <string name="sheet_multi_select">Wybierz więcej</string>
 </resources>
