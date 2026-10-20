@@ -583,12 +583,16 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_choose_theme)) },
             text = {
                 Column {
-                    listOf(
-                        "light" to stringResource(R.string.settings_theme_light),
-                        "dark" to stringResource(R.string.settings_theme_dark),
-                        "amoled" to stringResource(R.string.settings_theme_amoled),
-                        "system" to stringResource(R.string.settings_theme_system)
-                    ).forEach { (value, label) ->
+                    val options = buildList {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                            add(SettingsStore.THEME_DYNAMIC to stringResource(R.string.settings_theme_dynamic))
+                        }
+                        add("light" to stringResource(R.string.settings_theme_light))
+                        add("dark" to stringResource(R.string.settings_theme_dark))
+                        add("amoled" to stringResource(R.string.settings_theme_amoled))
+                        add("system" to stringResource(R.string.settings_theme_system))
+                    }
+                    options.forEach { (value, label) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -1187,6 +1191,7 @@ private fun themeLabel(mode: String, context: android.content.Context) = when (m
     "light" -> context.getString(R.string.settings_theme_light)
     "dark" -> context.getString(R.string.settings_theme_dark)
     "amoled" -> context.getString(R.string.settings_theme_amoled)
+    "dynamic" -> context.getString(R.string.settings_theme_dynamic)
     else -> context.getString(R.string.settings_theme_system)
 }
 

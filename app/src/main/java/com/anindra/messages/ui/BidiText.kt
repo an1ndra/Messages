@@ -12,9 +12,18 @@ object BidiText {
 
     private const val NBSP = '\u00A0'
 
+    /** Digits of every script an SMS actually uses: ASCII, Arabic-Indic
+     *  (U+0660..0669) and Extended Arabic-Indic, which is what Persian bank
+     *  messages are written in. Java's `\d` is ASCII-only, so a Persian amount
+     *  was never recognised as a number and a word like "مانده" could be
+     *  reordered into the middle of it (#345). */
+    private const val DIGITS = "0-9\u0660-\u0669\u06F0-\u06F9"
+
     /** A run that starts and ends with a digit, with optional leading '+'/'('
-     *  and trailing ')', and any run of digits/separators between. */
-    private val NUMBER_RUN = Regex("""\+?\(?\d[\d\s()./$NBSP-]*\d\)?""")
+     *  and trailing ')', and any run of digits/separators between. The Arabic
+     *  thousands (U+066C) and decimal (U+066B) separators count as separators,
+     *  as does the Arabic comma, which some banks use as a thousands mark. */
+    private val NUMBER_RUN = Regex("""\+?\(?[$DIGITS][$DIGITS\s()./$NBSP,\u060C\u066B\u066C-]*[$DIGITS]\)?""")
 
     private fun needsIsolation(run: String): Boolean = run.any { !it.isDigit() }
 

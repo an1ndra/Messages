@@ -75,11 +75,12 @@ class AmoledThemeWiringTest {
     @Test
     fun bothSetThemeIntentAllowlistsAcceptAmoled() {
         val main = read("src/main/java/com/anindra/messages/MainActivity.kt")
-        val allowlists = Regex("\"dark\", \"light\", \"system\"(, \"amoled\")? ->").findAll(main).count()
+        val allowlists = Regex("""\"dark\", \"light\", \"system\"[^>]*->""").findAll(main).count()
         assertEquals("expected two set_theme allowlists in MainActivity", 2, allowlists)
         assertTrue(
             "the set_theme allowlists do not accept amoled, so --es set_theme amoled is ignored",
-            main.contains(""""dark", "light", "system", "amoled" ->""")
+            Regex("""\"dark\", \"light\", \"system\", \"amoled\"[^>]*->""")
+                .findAll(main).count() == 2
         )
     }
 
@@ -106,7 +107,7 @@ class AmoledThemeWiringTest {
         val report = read("src/main/java/com/anindra/messages/diagnostics/DiagnosticsReport.kt")
         assertTrue(
             "DiagnosticsReport should resolve the scheme through schemeFor()",
-            report.contains("schemeFor(mode")
+            Regex("schemeFor\\(\\s*mode").containsMatchIn(report)
         )
         assertTrue(
             "DiagnosticsReport must not select AmoledColors itself",
@@ -114,7 +115,7 @@ class AmoledThemeWiringTest {
         )
         assertTrue(
             "MessagesTheme should select the scheme through schemeFor()",
-            theme.contains("schemeFor(mode, a11y, darkTheme)")
+            Regex("schemeFor\\(\\s*mode,").containsMatchIn(theme)
         )
     }
 

@@ -1,10 +1,15 @@
 package com.anindra.messages.ui.theme
 
 import android.app.Activity
+import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -12,6 +17,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -266,8 +272,27 @@ val ChatMetaWeight: FontWeight = FontWeight.Medium
 internal fun themeIsDark(mode: String, systemIsDark: Boolean): Boolean = when (mode) {
     SettingsStore.THEME_DARK, SettingsStore.THEME_AMOLED -> true
     SettingsStore.THEME_LIGHT -> false
+    // "dynamic" and "system" both follow the device's night setting.
     else -> systemIsDark
 }
+
+/**
+ * The wallpaper-derived scheme Android 12+ can supply, or null where it does not
+ * exist (API < 31) or the user has not asked for it.
+ */
+internal fun dynamicSchemeOrNull(
+    context: Context,
+    mode: String,
+    darkTheme: Boolean
+): ColorScheme? {
+    if (mode != SettingsStore.THEME_DYNAMIC) return null
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
+    return dynamicSchemeApi31(context, darkTheme)
+}
+
+@RequiresApi(Build.VERSION_CODES.S)
+private fun dynamicSchemeApi31(context: Context, darkTheme: Boolean): ColorScheme =
+    if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
 
 /**
  * The scheme a mode resolves to. The single source of truth for theme
@@ -275,13 +300,21 @@ internal fun themeIsDark(mode: String, systemIsDark: Boolean): Boolean = when (m
  * so the colour it prints is the colour that was painted. Keeping a second copy
  * of this branch is how a theme ends up reported as black while rendering grey.
  */
-internal fun schemeFor(mode: String, a11y: A11yOptions, darkTheme: Boolean): ColorScheme = when {
+internal fun schemeFor(
+    mode: String,
+    a11y: A11yOptions,
+    darkTheme: Boolean,
+    dynamic: ColorScheme? = null
+): ColorScheme = when {
     // High contrast wins over AMOLED: it is an accessibility commitment, and
     // DarkHighContrastColors already sits on #000000, so the two agree on the
     // page colour and there is nothing to give up.
     a11y.highContrastEnabled && darkTheme -> DarkHighContrastColors
     a11y.highContrastEnabled -> LightHighContrastColors
     mode == SettingsStore.THEME_AMOLED -> AmoledColors
+    // A wallpaper scheme only replaces the seeded palettes; it never overrides
+    // the AMOLED or high-contrast branches above.
+    mode == SettingsStore.THEME_DYNAMIC && dynamic != null -> dynamic
     darkTheme -> DarkColors
     else -> LightColors
 }
@@ -309,7 +342,12 @@ fun MessagesTheme(
         messagesTypography(AppFonts.familyFor(font), bold = a11y.boldEnabled)
     }
 
-    val colorScheme = schemeFor(mode, a11y, darkTheme)
+    val colorScheme = schemeFor(
+        mode,
+        a11y,
+        darkTheme,
+        dynamicSchemeOrNull(LocalContext.current, mode, darkTheme)
+    )
 
     // App text scale stacks on top of the system font scale.
     val systemDensity = LocalDensity.current

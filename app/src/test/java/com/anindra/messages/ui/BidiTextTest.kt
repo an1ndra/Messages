@@ -62,6 +62,35 @@ class BidiTextTest {
     }
 
     @Test
+    fun isolatesPersianDigitsWithArabicSeparators() {
+        // #345: a Saman Bank balance is written in Extended Arabic-Indic digits
+        // with U+066C as the thousands separator. It has to be pinned LTR, or
+        // the word "مانده" of the following clause is reordered into the
+        // middle of the amount.
+        assertEquals(
+            "موجودی: ${lri}۱۲۳٬۴۵۶٬۷۸۹$pdi ریال",
+            BidiText.isolateNumberRuns("موجودی: ۱۲۳٬۴۵۶٬۷۸۹ ریال").text
+        )
+        assertEquals(
+            "مانده ${lri}۱٬۲۳۴٫۵۶$pdi",
+            BidiText.isolateNumberRuns("مانده ۱٬۲۳۴٫۵۶").text
+        )
+    }
+
+    @Test
+    fun isolatesArabicIndicDigitsToo() {
+        assertEquals(
+            "الرصيد ${lri}١٢٣٬٤٥٦$pdi",
+            BidiText.isolateNumberRuns("الرصيد ١٢٣٬٤٥٦").text
+        )
+    }
+
+    @Test
+    fun aPlainPersianDigitRunNeedsNoIsolate() {
+        assertEquals("كد ۱۲۳۴۵۶", BidiText.isolateNumberRuns("كد ۱۲۳۴۵۶").text)
+    }
+
+    @Test
     fun excludedRunInsideLinkIsUntouched() {
         val body = "see http://x.io/12 34 now"
         val link = 4..17

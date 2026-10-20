@@ -343,8 +343,9 @@ object NotificationHelper {
             .setContentText(text)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
-            // Launchers that render a count read this field.
-            .setNumber(BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
+            // Launchers that render a count read this field, and aggregate it
+            // across the app's live notifications.
+            .setNumber(BadgePolicy.badgeCount(app.repository.unreadCountFor(convoId)))
             .setContentIntent(tap)
             .setStyle(groupedStyle(context, app, convoId, senderName, text, imageUri, privacyMode))
         // A heads-up popup is a peek: on a locked screen the panel stays asleep.
