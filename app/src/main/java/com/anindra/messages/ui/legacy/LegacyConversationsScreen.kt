@@ -45,7 +45,6 @@ import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PushPin
-import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -130,6 +129,7 @@ import com.anindra.messages.ui.BidiText
 import com.anindra.messages.ui.phoneKey
 import com.anindra.messages.ui.RowSettings
 import com.anindra.messages.ui.SettingsLayout
+import com.anindra.messages.ui.ConversationHeader
 import com.anindra.messages.ui.SkeletonConversationRow
 import com.anindra.messages.ui.ProvideShimmer
 import com.anindra.messages.ui.LocalNowTick
@@ -414,7 +414,8 @@ fun ConversationsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .height(ConversationHeader.HEIGHT)
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (searching) {
@@ -629,7 +630,7 @@ fun ConversationsScreen(
                         }
                     }
                     SheetActionRow(
-                        Icons.Rounded.Checklist,
+                        Icons.Rounded.SelectAll,
                         stringResource(R.string.sheet_multi_select),
                         MaterialTheme.colorScheme.primary
                     ) {

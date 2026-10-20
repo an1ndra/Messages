@@ -69,5 +69,5 @@
     <string name="crash_report_clip_label">Messages 크래시 보고서</string>
     <string name="convo_moved_to_trash_count">%1$d개의 대화가 휴지통으로 이동되었습니다</string>
     <string name="convo_archived_count">%1$d개의 대화가 보관되었습니다</string>
-    <string name="sheet_multi_select">여러 개 선택</string>
+    <string name="sheet_multi_select">더 선택</string>
 </resources>

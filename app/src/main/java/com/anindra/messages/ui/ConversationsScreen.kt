@@ -50,7 +50,6 @@ import androidx.compose.material.icons.rounded.MarkEmailRead
 import androidx.compose.material.icons.rounded.MarkEmailUnread
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
-import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.Button
@@ -445,7 +444,8 @@ fun ConversationsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .height(ConversationHeader.HEIGHT)
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (searching) {
@@ -663,7 +663,7 @@ fun ConversationsScreen(
                         }
                     }
                     SheetActionRow(
-                        Icons.Rounded.Checklist,
+                        Icons.Rounded.SelectAll,
                         stringResource(R.string.sheet_multi_select),
                         MaterialTheme.colorScheme.primary
                     ) {

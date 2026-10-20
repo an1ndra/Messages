@@ -49,6 +49,11 @@ class ConversationListWiringTest {
                 "$path: Multi select must seed the selection with that conversation",
                 src.contains("selectedIds = setOf(sheetConvo.id)")
             )
+            assertTrue(
+                "$path: Multi select must use the dotted-square select-all icon",
+                Regex("Icons\\.Rounded\\.SelectAll,\\s*\\n\\s*stringResource\\(R\\.string\\.sheet_multi_select\\)")
+                    .containsMatchIn(src)
+            )
         }
     }
 
@@ -65,6 +70,23 @@ class ConversationListWiringTest {
                 assertTrue("${dir.name} has no sheet_multi_select", value != null)
                 assertTrue("${dir.name} ships a blank sheet_multi_select", !value.isNullOrBlank())
             }
+    }
+
+    @Test
+    fun startingASelectionDoesNotMoveTheList() {
+        // The title row and the selection bar must be the same height, or every
+        // row jumps when the bar replaces the title (it did).
+        val bar = read("java/com/anindra/messages/ui/ConversationSelectionBar.kt")
+        assertTrue(
+            "the selection bar must use the shared header height",
+            bar.contains(".height(ConversationHeader.HEIGHT)")
+        )
+        screens.forEach { path ->
+            assertTrue(
+                "$path: the title row must use the shared header height",
+                read(path).contains(".height(ConversationHeader.HEIGHT)")
+            )
+        }
     }
 
     @Test
