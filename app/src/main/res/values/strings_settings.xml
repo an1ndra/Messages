@@ -161,4 +161,5 @@
     <string name="settings_scheduled_manage_title">Manage scheduled messages</string>
     <string name="settings_search_hint">Search settings</string>
     <string name="settings_search_none">No settings match</string>
+    <string name="settings_theme_dynamic">Dynamic</string>
 </resources>

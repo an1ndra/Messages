@@ -40,6 +40,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
@@ -127,6 +129,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.derivedStateOf
@@ -135,6 +138,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -154,6 +158,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.WindowInsets
@@ -628,6 +633,19 @@ fun ChatScreen(
         vmContacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
     }
     val listState = rememberLazyListState()
+    // #348: pinch scales the message text and lets the bubbles re-lay out.
+    // Remembered per conversation for as long as the chat (or its saved state)
+    // lives, then back to 1x for the next chat.
+    var zoom by rememberSaveable(conversationId) {
+        mutableFloatStateOf(ChatZoom.fontScale(vm.debugChatZoom.takeIf { it > 0f } ?: ChatZoom.DEFAULT))
+    }
+    val zoomState = rememberTransformableState { zoomChange, _, _ ->
+        zoom = ChatZoom.apply(zoom, zoomChange)
+    }
+    val baseDensity = LocalDensity.current
+    val zoomedDensity = remember(baseDensity, zoom) {
+        Density(baseDensity.density, baseDensity.fontScale * ChatZoom.fontScale(zoom))
+    }
     // Progressive loading: latest chunk first, shimmer while older messages queue
     var pageLimit by remember(conversationId) { mutableIntStateOf(INITIAL_CHUNK) }
     var messagesLoaded by remember(conversationId) { mutableStateOf(false) }
@@ -1455,9 +1473,10 @@ fun ChatScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             val revealed = remember { mutableStateListOf<Long>() }
+            CompositionLocalProvider(LocalDensity provides zoomedDensity) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().transformable(zoomState),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
@@ -1543,6 +1562,7 @@ fun ChatScreen(
                         )
                     }
                 }
+            }
             }
             // Back to the newest message, offered only once the view has left
             // it: after opening a search hit, or after reading back.

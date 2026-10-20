@@ -67,4 +67,6 @@
     <string name="crash_report_delete">Excluir</string>
     <string name="crash_report_saved">Salvo em Downloads/Messages</string>
     <string name="crash_report_clip_label">Relatório de falha do Messages</string>
+    <string name="convo_moved_to_trash_count">%1$d conversas movidas para a lixeira</string>
+    <string name="convo_archived_count">%1$d conversas arquivadas</string>
 </resources>
