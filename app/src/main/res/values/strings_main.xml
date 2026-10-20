@@ -69,4 +69,5 @@
     <string name="crash_report_clip_label">Messages crash report</string>
     <string name="convo_moved_to_trash_count">%1$d conversations moved to trash</string>
     <string name="convo_archived_count">%1$d conversations archived</string>
+    <string name="sheet_multi_select">Select more</string>
 </resources>
