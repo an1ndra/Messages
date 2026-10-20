@@ -3,12 +3,13 @@ package com.anindra.messages.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.SelectAll
+import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +40,8 @@ fun ConversationSelectionBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
+                .height(ConversationHeader.HEIGHT)
+                .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onClear) {
@@ -71,7 +73,7 @@ fun ConversationSelectionBar(
             }
             IconButton(onClick = onSelectAll) {
                 Icon(
-                    Icons.Rounded.SelectAll,
+                    Icons.Rounded.Checklist,
                     contentDescription = stringResource(R.string.chat_select_all)
                 )
             }

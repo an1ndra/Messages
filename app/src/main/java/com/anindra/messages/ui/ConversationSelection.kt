@@ -4,6 +4,12 @@ package com.anindra.messages.ui
  * Selection rules for the conversation list's multi-select mode (#340). Kept out
  * of the composable so the set arithmetic is unit tested.
  */
+/** Height of the inbox header. The title row and the selection bar share it, so
+ *  starting a selection does not push the list down (the rows visibly jumped). */
+object ConversationHeader {
+    val HEIGHT = androidx.compose.ui.unit.Dp(56f)
+}
+
 object ConversationSelection {
 
     fun isActive(selected: Set<Long>): Boolean = selected.isNotEmpty()
