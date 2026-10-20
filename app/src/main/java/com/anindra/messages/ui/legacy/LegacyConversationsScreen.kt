@@ -45,6 +45,7 @@ import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -128,6 +129,7 @@ import com.anindra.messages.ui.BidiText
 import com.anindra.messages.ui.phoneKey
 import com.anindra.messages.ui.RowSettings
 import com.anindra.messages.ui.SettingsLayout
+import com.anindra.messages.ui.ConversationHeader
 import com.anindra.messages.ui.SkeletonConversationRow
 import com.anindra.messages.ui.ProvideShimmer
 import com.anindra.messages.ui.LocalNowTick
@@ -406,18 +408,14 @@ fun ConversationsScreen(
                     onSelectAll = {
                         selectedIds = com.anindra.messages.ui.ConversationSelection
                             .selectAll(displayed.map { it.id })
-                    },
-                    onOptions = if (selectedIds.size == 1) {
-                        { sheetConvoId = selectedIds.first(); selectedIds = emptySet() }
-                    } else {
-                        null
                     }
                 )
             } else {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .height(ConversationHeader.HEIGHT)
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (searching) {
@@ -579,7 +577,7 @@ fun ConversationsScreen(
                                 },
                                 onDelete = { moveToTrash(convo) },
                                 onArchive = { archiveWithUndo(convo) },
-                                onLongClick = { toggleSelection(convo) }
+                                onLongClick = { sheetConvoId = convo.id }
                             )
                         }
                         item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
@@ -630,6 +628,14 @@ fun ConversationsScreen(
                         SheetActionRow(Icons.Rounded.Archive, stringResource(R.string.sheet_archive), MaterialTheme.colorScheme.primary) {
                             sheetConvoId = -1L; archiveWithUndo(sheetConvo)
                         }
+                    }
+                    SheetActionRow(
+                        Icons.Rounded.SelectAll,
+                        stringResource(R.string.sheet_multi_select),
+                        MaterialTheme.colorScheme.primary
+                    ) {
+                        sheetConvoId = -1L
+                        selectedIds = setOf(sheetConvo.id)
                     }
                     SheetActionRow(Icons.Rounded.Delete, stringResource(R.string.sheet_delete), MaterialTheme.colorScheme.error) {
                         sheetConvoId = -1L; moveToTrash(sheetConvo)

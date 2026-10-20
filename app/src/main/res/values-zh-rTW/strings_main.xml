@@ -65,4 +65,5 @@
     <string name="crash_report_clip_label">Messages 當機報告</string>
     <string name="convo_moved_to_trash_count">%1$d 個對話已移至垃圾桶</string>
     <string name="convo_archived_count">%1$d 個對話已封存</string>
+    <string name="sheet_multi_select">選擇更多</string>
 </resources>
