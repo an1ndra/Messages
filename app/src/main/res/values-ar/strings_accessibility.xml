@@ -28,4 +28,5 @@
     <!-- Motion -->
     <string name="a11y_reduce_motion_title">تقليل الحركة</string>
     <string name="a11y_reduce_motion_desc">تعطيل الرسوم المتحركة والانتقالات</string>
+    <string name="access_clear_selection">إلغاء التحديد</string>
 </resources>

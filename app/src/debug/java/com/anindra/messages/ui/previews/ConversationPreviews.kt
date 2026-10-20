@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.anindra.messages.data.SwipeAction
 import com.anindra.messages.ui.ChangeAffordance
 import com.anindra.messages.ui.ConversationRow
+import com.anindra.messages.ui.ConversationSelectionBar
 import com.anindra.messages.ui.ExpressiveTab
 import com.anindra.messages.ui.ExpressiveTabs
 import com.anindra.messages.ui.SheetActionRow
@@ -99,6 +100,44 @@ private fun ConversationRowsPreview() {
             workProfile = false,
             showArchived = false,
             onClick = {}
+        )
+    }
+}
+
+/** The multi-select bar and the selected/unselected rows it drives (#340). */
+@PreviewLightDark
+@Preview(name = "Conversation selection", showBackground = true, widthDp = 380)
+@Composable
+private fun ConversationSelectionPreview() {
+    Stage {
+        ConversationSelectionBar(
+            selectedCount = 2,
+            archivingEnabled = true,
+            onClear = {},
+            onDelete = {},
+            onArchive = {},
+            onSelectAll = {},
+            onOptions = null
+        )
+        ConversationRow(
+            context = androidx.compose.ui.platform.LocalContext.current,
+            settings = fullRowSettings,
+            convo = sampleConversation(5, "Priya Raman", "Are we still on for tomorrow?", unreadCount = 2),
+            workProfile = false,
+            showArchived = false,
+            onClick = {},
+            selectionMode = true,
+            selected = true
+        )
+        ConversationRow(
+            context = androidx.compose.ui.platform.LocalContext.current,
+            settings = fullRowSettings,
+            convo = sampleConversation(6, "+15551239999", "Ok sounds good 👍"),
+            workProfile = false,
+            showArchived = false,
+            onClick = {},
+            selectionMode = true,
+            selected = false
         )
     }
 }

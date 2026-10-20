@@ -80,4 +80,18 @@ class NotificationDeleteActionTest {
     fun theActionLabelIsATranslatableString() {
         assertTrue(strings.contains("name=\"notif_action_delete\""))
     }
+
+    @Test
+    fun deletingTheLastMessagePrunesTheEmptyConversation() {
+        // #341: the empty-chat prune only ran on chat exit, so a conversation
+        // emptied from its notification stayed in the inbox as a blank row.
+        assertTrue(
+            "the receiver must prune a conversation it just emptied",
+            receiver.contains("trashConversationIfEmptySuspend")
+        )
+        assertTrue(
+            "pruning must not run under the open chat",
+            receiver.contains("repo.viewedConversationId")
+        )
+    }
 }

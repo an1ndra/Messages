@@ -28,4 +28,5 @@
     <!-- Motion -->
     <string name="a11y_reduce_motion_title">Ogranicz animacje</string>
     <string name="a11y_reduce_motion_desc">Wyłącz animacje i przejścia</string>
+    <string name="access_clear_selection">Wyczyść zaznaczenie</string>
 </resources>

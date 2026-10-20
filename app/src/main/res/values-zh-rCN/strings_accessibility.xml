@@ -28,4 +28,5 @@
     <!-- Motion -->
     <string name="a11y_reduce_motion_title">减少动态效果</string>
     <string name="a11y_reduce_motion_desc">停用动画和转场</string>
+    <string name="access_clear_selection">取消选择</string>
 </resources>

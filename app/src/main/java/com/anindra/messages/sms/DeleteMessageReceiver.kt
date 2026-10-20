@@ -13,6 +13,11 @@ import kotlinx.coroutines.launch
 /**
  * Trashes the newest incoming message in a conversation from its notification
  * (#285). Deleting means moving to Trash, so it stays recoverable there.
+ *
+ * When that was the last live message the conversation has nothing left to
+ * show, so it goes the same way (#341). Leaving it behind is what put an empty
+ * row with no content in the inbox, because the empty-chat prune otherwise only
+ * runs when a chat is exited — and a notification delete never opens one.
  */
 class DeleteMessageReceiver : BroadcastReceiver() {
 
@@ -29,6 +34,12 @@ class DeleteMessageReceiver : BroadcastReceiver() {
                 val messageId = convoId?.let { repo.latestReceivedMessageIdSuspend(it) }
                 if (messageId != null) {
                     repo.deleteMessageSuspend(messageId)
+                    // Skip the chat the user is looking at: deleting a row under
+                    // the open screen would pull the conversation out from under
+                    // it, and the exit path prunes it anyway.
+                    if (convoId != null && convoId != repo.viewedConversationId) {
+                        repo.trashConversationIfEmptySuspend(convoId)
+                    }
                     try {
                         NotificationManagerCompat.from(context).cancel(notifId)
                     } catch (_: SecurityException) {

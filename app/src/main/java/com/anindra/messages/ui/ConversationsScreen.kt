@@ -43,11 +43,17 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MarkEmailRead
 import androidx.compose.material.icons.rounded.MarkEmailUnread
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -208,6 +214,10 @@ fun ConversationsScreen(
     val loaded = minSkeletonShown && (syncDone || !readSmsAllowed)
     var sheetConvoId by remember { mutableLongStateOf(-1L) }
     val sheetConvo = conversations.find { it.id == sheetConvoId }
+    // #340: long-press starts a multi-conversation selection so several threads
+    // can be deleted in one go, like the message-level selection inside a chat.
+    var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    val selectionActive = ConversationSelection.isActive(selectedIds)
     var permanentDeleteTarget by remember { mutableStateOf<Conversation?>(null) }
     // Recompute row-level settings whenever any setting changes (SettingsStore is a
     // singleton, so keying on the object would freeze these at first composition).
@@ -247,14 +257,17 @@ fun ConversationsScreen(
             if (scrolling) userScrolledAway = !(index == 0 && offset == 0)
         }
     }
-    BackHandler(enabled = searching) {
+    BackHandler(enabled = selectionActive) {
+        selectedIds = emptySet()
+    }
+    BackHandler(enabled = !selectionActive && searching) {
         searching = false
         query = ""
     }
-    BackHandler(enabled = !searching && showArchived) {
+    BackHandler(enabled = !selectionActive && !searching && showArchived) {
         showArchived = false
     }
-    BackHandler(enabled = !searching && !showArchived) {
+    BackHandler(enabled = !selectionActive && !searching && !showArchived) {
         val now = System.currentTimeMillis()
         if (now - lastBackExitAt < 2000) {
             (context as? Activity)?.finish()
@@ -357,6 +370,51 @@ fun ConversationsScreen(
         unreadSeeded = true
     }
 
+    fun toggleSelection(convo: Conversation) {
+        selectedIds = ConversationSelection.toggle(selectedIds, convo.id)
+    }
+
+    /** Bulk delete is always recoverable: it moves to Trash with one undo for
+     *  the whole batch. Permanent deletion stays a per-conversation choice,
+     *  because its confirmation dialog names the single thread it will erase. */
+    fun trashSelection() {
+        val ids = ConversationSelection.trashTargets(selectedIds, displayed.map { it.id })
+        if (ids.isEmpty()) return
+        selectedIds = emptySet()
+        ids.forEach { vm.deleteConversation(it) }
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.convo_moved_to_trash_count, ids.size),
+                actionLabel = context.getString(R.string.action_undo),
+                duration = SnackbarDuration.Long
+            )
+            if (result == SnackbarResult.ActionPerformed) ids.forEach { vm.restoreFromTrash(it) }
+        }
+    }
+
+    fun archiveSelection() {
+        val ids = ConversationSelection.trashTargets(selectedIds, displayed.map { it.id })
+        if (ids.isEmpty()) return
+        selectedIds = emptySet()
+        ids.forEach { vm.archiveConversation(it) }
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.convo_archived_count, ids.size),
+                actionLabel = context.getString(R.string.action_undo),
+                duration = SnackbarDuration.Long
+            )
+            if (result == SnackbarResult.ActionPerformed) ids.forEach { vm.unarchiveConversation(it) }
+        }
+    }
+
+    // A search, an archive-view switch or a delete can remove rows from under
+    // the selection; the bar must only ever count rows that exist on screen.
+    LaunchedEffect(displayed) {
+        if (selectionActive) {
+            selectedIds = ConversationSelection.prune(selectedIds, displayed.map { it.id })
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -368,6 +426,23 @@ fun ConversationsScreen(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
 
+            if (selectionActive) {
+                ConversationSelectionBar(
+                    selectedCount = selectedIds.size,
+                    archivingEnabled = rowSettings.archivingEnabled,
+                    onClear = { selectedIds = emptySet() },
+                    onDelete = { trashSelection() },
+                    onArchive = { archiveSelection() },
+                    onSelectAll = {
+                        selectedIds = ConversationSelection.selectAll(displayed.map { it.id })
+                    },
+                    onOptions = if (selectedIds.size == 1) {
+                        { sheetConvoId = selectedIds.first(); selectedIds = emptySet() }
+                    } else {
+                        null
+                    }
+                )
+            } else {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -426,6 +501,7 @@ fun ConversationsScreen(
                         }
                     }
                 }
+            }
             }
 
             syncProgress?.let { progress ->
@@ -514,22 +590,28 @@ fun ConversationsScreen(
                                     )
                                 ),
                                 settings = rowSettings,
-                                swipeEnabled = rowSettings.swipeEnabled && !showArchived,
+                                swipeEnabled = rowSettings.swipeEnabled && !showArchived && !selectionActive,
                                 convo = convo,
                                 workProfile = workNums.contains(phoneKey(convo.address)),
                                 showArchived = showArchived,
+                                selected = convo.id in selectedIds,
+                                selectionMode = selectionActive,
                                 onClick = {
-                                    onOpenConversation(
-                                        convo.id,
-                                        if (searching) ConversationList.handoffQuery(convo, query) else ""
-                                    )
+                                    if (selectionActive) {
+                                        toggleSelection(convo)
+                                    } else {
+                                        onOpenConversation(
+                                            convo.id,
+                                            if (searching) ConversationList.handoffQuery(convo, query) else ""
+                                        )
+                                    }
                                 },
                                 onDelete = { moveToTrash(convo) },
                                 onArchive = { archiveWithUndo(convo) },
                                 onToggleRead = { markReadWithUndo(convo) },
                                 onTogglePin = { pinWithUndo(convo) },
                                 onBlock = { blockWithUndo(convo) },
-                                onLongClick = { sheetConvoId = convo.id }
+                                onLongClick = { toggleSelection(convo) }
                             )
                         }
                         item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
@@ -621,10 +703,12 @@ internal fun SwipeableConversationItem(
     onTogglePin: () -> Unit = {},
     onBlock: () -> Unit = {},
     onLongClick: () -> Unit = {},
+    selected: Boolean = false,
+    selectionMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     if (swipeEnabled) {
-        SwipeConversationItem(context, settings, convo, workProfile, onClick, onDelete, onArchive, onToggleRead, onTogglePin, onBlock, onLongClick, modifier)
+        SwipeConversationItem(context, settings, convo, workProfile, onClick, onDelete, onArchive, onToggleRead, onTogglePin, onBlock, onLongClick, modifier, selected, selectionMode)
     } else {
         ConversationRow(
             modifier = modifier,
@@ -636,7 +720,9 @@ internal fun SwipeableConversationItem(
             onClick = onClick,
             onDelete = onDelete,
             onArchive = onArchive,
-            onLongClick = onLongClick
+            onLongClick = onLongClick,
+            selected = selected,
+            selectionMode = selectionMode
         )
     }
 }
@@ -655,7 +741,9 @@ internal fun SwipeConversationItem(
     onTogglePin: () -> Unit,
     onBlock: () -> Unit,
     onLongClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    selectionMode: Boolean = false
 ) {
     var dismissStateRef: SwipeToDismissBoxState? = null
     val dismissState = rememberSwipeToDismissBoxState(
@@ -719,7 +807,9 @@ internal fun SwipeConversationItem(
             onClick = onClick,
             onDelete = onDelete,
             onArchive = onArchive,
-            onLongClick = onLongClick
+            onLongClick = onLongClick,
+            selected = selected,
+            selectionMode = selectionMode
         )
     }
 
@@ -917,7 +1007,9 @@ internal fun ConversationRow(
     onClick: () -> Unit,
     onDelete: () -> Unit = {},
     onArchive: () -> Unit = {},
-    onLongClick: () -> Unit = {}
+    onLongClick: () -> Unit = {},
+    selected: Boolean = false,
+    selectionMode: Boolean = false
 ) {
     val now = LocalNowTick.current
     val senderLabel = ContactDetails.listLabel(
@@ -943,13 +1035,15 @@ internal fun ConversationRow(
         previewLabel,
         formatListTime(convo.timestamp, now, context),
         if (convo.unreadCount > 0) context.getString(R.string.access_unread, convo.unreadCount) else null,
-        if (convo.pinned && settings.pinnedEnabled) context.getString(R.string.access_pinned) else null
+        if (convo.pinned && settings.pinnedEnabled) context.getString(R.string.access_pinned) else null,
+        if (selectionMode && selected) context.getString(R.string.contact_selected) else null
     )
     Box(modifier = modifier.fillMaxWidth()) {
-        val pinnedTint = if (convo.pinned && settings.pinnedEnabled) {
-            MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
-        } else {
-            MaterialTheme.colorScheme.background
+        val pinnedTint = when {
+            selected && selectionMode -> MaterialTheme.colorScheme.surfaceContainerHighest
+            convo.pinned && settings.pinnedEnabled ->
+                MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
+            else -> MaterialTheme.colorScheme.background
         }
 
         Row(
@@ -1032,6 +1126,16 @@ internal fun ConversationRow(
                 )
                 Spacer(Modifier.height(6.dp))
                 if (convo.unreadCount > 0) UnreadBadge(convo.unreadCount) else Spacer(Modifier.height(20.dp))
+            }
+            if (selectionMode) {
+                Spacer(Modifier.width(12.dp))
+                Icon(
+                    imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (selected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }

@@ -67,4 +67,6 @@
     <string name="crash_report_delete">Supprimer</string>
     <string name="crash_report_saved">Enregistré dans Downloads/Messages</string>
     <string name="crash_report_clip_label">Rapport d\'incident de Messages</string>
+    <string name="convo_moved_to_trash_count">%1$d conversations déplacées dans la corbeille</string>
+    <string name="convo_archived_count">%1$d conversations archivées</string>
 </resources>
