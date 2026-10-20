@@ -3,6 +3,7 @@ package com.anindra.messages.ci
 import com.anindra.messages.i18n.LocaleCatalog
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -76,6 +77,60 @@ class RcWorkflowTest {
         assertTrue(
             "an already-published release must never be republished as an RC",
             rc.contains("releases/tags/v\$NAME") && rc.contains("is already published")
+        )
+    }
+
+    /**
+     * `GITHUB_API` is not a variable GitHub sets, so `set -u` aborted the step
+     * with "unbound variable" before the published-release check could run — the
+     * lookup killed the run instead of answering it.
+     */
+    @Test
+    fun theApiUrlComesFromTheVariableGithubActuallySets() {
+        assertTrue(
+            "rc.yml must use ${'$'}GITHUB_API_URL",
+            rc.contains("${'$'}GITHUB_API_URL/repos/")
+        )
+        assertFalse(
+            "rc.yml still uses an undefined ${'$'}GITHUB_API",
+            rc.contains("${'$'}GITHUB_API/")
+        )
+    }
+
+    /** A tag typed into the dispatch form has to be checked before checkout. */
+    @Test
+    fun aMissingTagIsReportedBeforeCheckout() {
+        val verify = rc.indexOf("Verify the RC tag exists")
+        val checkout = rc.indexOf("- name: Checkout")
+        assertTrue("the tag check is missing", verify >= 0)
+        assertTrue(
+            "the tag must be verified before it is checked out",
+            verify < checkout
+        )
+        assertTrue(
+            "the failure must say what to do",
+            rc.contains("does not exist - create it and push it first")
+        )
+    }
+
+    /**
+     * The versionCode readback used a capture-everything sed whose group could
+     * match empty, so it returned a blank and the run rejected a correctly built
+     * APK. The readback has to anchor on the quotes around the field.
+     */
+    @Test
+    fun theApkVersionIsReadBackWithoutTheEmptyCapture() {
+        assertTrue(
+            "versionCode must be read from the quoted field",
+            rc.contains("grep -oE \"versionCode='[0-9]+'\"")
+        )
+        assertTrue(
+            "versionName must be read from the quoted field",
+            rc.contains("grep -oE \"versionName='[^']+'\"")
+        )
+        assertFalse(
+            "the capture-everything sed reads as an empty versionCode",
+            rc.contains("s/.*versionCode.")
         )
     }
 

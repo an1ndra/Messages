@@ -44,6 +44,16 @@ class MmsRetryTest {
     }
 
     @Test
+    fun classifiesAMissingDataNetworkAsWaitForData() {
+        assertEquals(
+            MmsRetry.WAIT_FOR_DATA, MmsRetry.classify(SmsManager.MMS_ERROR_NO_DATA_NETWORK)
+        )
+        assertEquals(
+            MmsRetry.WAIT_FOR_DATA, MmsRetry.classify(SmsManager.MMS_ERROR_DATA_DISABLED)
+        )
+    }
+
+    @Test
     fun reportsSuccessOnlyForResultOk() {
         assertEquals(MmsRetry.SUCCEEDED, MmsRetry.classify(Activity.RESULT_OK))
         // An unknown code must not be optimistically retried forever.
@@ -83,11 +93,32 @@ class MmsRetryTest {
     }
 
     @Test
-    fun stopsAfterTheAttemptBudget() {
+    fun pastTheBudgetATransientFailureRetriesOnTheLongestCooldown() {
         val now = 1_700_000_000_000L
+        // Still inside the longest cooldown: not yet.
         assertFalse(
             MmsRetry.shouldRetryNow(
-                MmsRetry.AUTO_RETRY, MmsRetry.MAX_AUTO_ATTEMPTS, now - 10_000_000L, now
+                MmsRetry.AUTO_RETRY, MmsRetry.MAX_AUTO_ATTEMPTS, now - 1_000L, now
+            )
+        )
+        // Once it has elapsed the row is attempted again rather than abandoned
+        // for the life of the process, which is what the old rule did.
+        assertTrue(
+            MmsRetry.shouldRetryNow(
+                MmsRetry.AUTO_RETRY, MmsRetry.MAX_AUTO_ATTEMPTS, now - MmsRetry.MAX_DELAY_MS, now
+            )
+        )
+    }
+
+    @Test
+    fun waitForDataIsRetriedAndIsNotGatedByTheAttemptBudget() {
+        val now = 1_700_000_000_000L
+        assertTrue(MmsRetry.shouldRetryNow(MmsRetry.WAIT_FOR_DATA, 0, now - 1L, now))
+        // Even at the limit the no-data outcome is not abandoned: the user can
+        // still turn data back on.
+        assertTrue(
+            MmsRetry.shouldRetryNow(
+                MmsRetry.WAIT_FOR_DATA, MmsRetry.MAX_AUTO_ATTEMPTS, now - MmsRetry.MAX_DELAY_MS, now
             )
         )
     }

@@ -160,4 +160,5 @@
     <string name="settings_scheduled_manage_title">إدارة الرسائل المجدولة</string>
     <string name="settings_search_hint">البحث في الإعدادات</string>
     <string name="settings_search_none">لا توجد إعدادات مطابقة</string>
+    <string name="settings_theme_dynamic">ديناميكي</string>
 </resources>

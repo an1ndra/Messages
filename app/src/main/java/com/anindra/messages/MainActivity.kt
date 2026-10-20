@@ -220,6 +220,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setTheme(mode: String) { themeMode = mode }
 
+    /** Script hook (--ef chat_zoom 1.8): the zoom a chat opens at. 0 means "no
+     *  override", so ordinary launches keep the user's setting. A real pinch is
+     *  two-finger touch, which adb cannot inject. */
+    var debugChatZoom: Float = 0f
+
     private val _themeState = androidx.compose.runtime.mutableStateOf(settings.themeMode)
 
     var fontFamily: String
@@ -975,6 +980,7 @@ class MainActivity : FragmentActivity() {
         applySmsIeProbe(intent)
         applyBackupProbe(intent)
         applyBackupExportProbe(intent)
+        applyMmsRecheckProbe(intent)
         applyTransferLogProbe(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
@@ -1003,10 +1009,11 @@ class MainActivity : FragmentActivity() {
 
         val appLockEnabled = bootVm.settings.appLockEnabled
 
-        // Script hooks: --es set_theme dark|light|system|amoled, --ez open_settings true, --ez privacy_mode true|false
+        // Script hooks: --es set_theme dark|light|system|amoled|dynamic, --ez open_settings true, --ez privacy_mode true|false
         when (intent.getStringExtra("set_theme")) {
-            "dark", "light", "system", "amoled" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
+            "dark", "light", "system", "amoled", "dynamic" -> bootVm.themeMode = intent.getStringExtra("set_theme")!!
         }
+        intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { bootVm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, bootVm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
@@ -1570,6 +1577,26 @@ onOpenAccessibility = { navRoute = "accessibility" },
         vm.openOrCreate(to, null) { id -> vm.sendMediaMessage(id, android.net.Uri.parse(media)) }
     }
 
+    /** Debug builds only: `--ei mms_recheck_probe <resultCode>` hands the MMS
+     *  downloader a synthetic completion result, so the no-data classification
+     *  and the deferred re-check can be asserted on an emulator, which has no
+     *  MMSC to produce a real one. */
+    private fun applyMmsRecheckProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val code = intent.getIntExtra("mms_recheck_probe", 0)
+        if (code == 0) return
+        com.anindra.messages.sms.MmsDownloader.onComplete(
+            this, "content://mms/$MMS_RECHECK_PROBE_ROW", code, 0, -1
+        )
+    }
+
+    private companion object {
+        /** A row id no real message uses, so the probe never touches one. */
+        const val MMS_RECHECK_PROBE_ROW = 2_147_483_000L
+    }
+
     /** Debug builds only: `--es sms_ie_probe <uri>` runs the sms-ie import so
      *  the end-to-end path can be asserted on an emulator (the SAF picker is
      *  not scriptable). */
@@ -1666,11 +1693,13 @@ onOpenAccessibility = { navRoute = "accessibility" },
         applySmsIeProbe(intent)
         applyBackupProbe(intent)
         applyBackupExportProbe(intent)
+        applyMmsRecheckProbe(intent)
         applyTransferLogProbe(intent)
         val vm = androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java]
         when (intent.getStringExtra("set_theme")) {
-            "dark", "light", "system", "amoled" -> vm.themeMode = intent.getStringExtra("set_theme")!!
+            "dark", "light", "system", "amoled", "dynamic" -> vm.themeMode = intent.getStringExtra("set_theme")!!
         }
+        intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { vm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, vm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {

@@ -28,4 +28,5 @@
     <!-- Motion -->
     <string name="a11y_reduce_motion_title">Reduzir movimento</string>
     <string name="a11y_reduce_motion_desc">Desativar animações e transições</string>
+    <string name="access_clear_selection">Limpar seleção</string>
 </resources>

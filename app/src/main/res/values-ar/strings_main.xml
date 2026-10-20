@@ -67,4 +67,7 @@
     <string name="crash_report_delete">حذف</string>
     <string name="crash_report_saved">تم الحفظ في Downloads/Messages</string>
     <string name="crash_report_clip_label">تقرير أعطال تطبيق Messages</string>
+    <string name="convo_moved_to_trash_count">تم نقل %1$d محادثات إلى سلة المحذوفات</string>
+    <string name="convo_archived_count">تمت أرشفة %1$d محادثات</string>
+    <string name="sheet_multi_select">تحديد المزيد</string>
 </resources>

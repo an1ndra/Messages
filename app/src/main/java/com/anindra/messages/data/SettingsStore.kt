@@ -20,6 +20,7 @@ class SettingsStore(context: Context) {
         const val THEME_LIGHT = "light"
         const val THEME_DARK = "dark"
         const val THEME_AMOLED = "amoled"
+        const val THEME_DYNAMIC = "dynamic"
 
         const val KEY_THEME = "theme_mode"
         const val KEY_NOTIFICATIONS = "notifications_enabled"
