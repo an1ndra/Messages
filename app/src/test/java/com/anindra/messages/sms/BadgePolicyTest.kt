@@ -6,12 +6,13 @@ import org.junit.Test
 
 class BadgePolicyTest {
     @Test
-    fun oneNotificationContributesExactlyOneToTheBadge() {
-        // Launchers sum these across active notifications, so every value must
-        // be 1 - a per-conversation total renders as nonsense once there is more
-        // than one active notification.
+    fun aNotificationCarriesItsOwnUnreadCount() {
+        // #345: launchers sum these across the app's live notifications, so the
+        // icon badge is the unread *message* total - the number the inbox shows.
+        // A flat 1 counted unread conversations instead.
         assertEquals(1, BadgePolicy.PER_NOTIFICATION)
-        assertEquals(1, BadgePolicy.badgeCount(BadgePolicy.PER_NOTIFICATION))
+        assertEquals(5, BadgePolicy.badgeCount(5))
+        assertEquals(1, BadgePolicy.badgeCount(1))
     }
 
     @Test

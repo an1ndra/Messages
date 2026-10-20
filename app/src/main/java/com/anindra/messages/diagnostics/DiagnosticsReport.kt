@@ -558,7 +558,15 @@ object DiagnosticsReport {
             locale = Locale.getDefault().toString(),
             timeZone = TimeZone.getDefault().id,
             themeMode = settings.themeMode,
-            resolvedBackground = resolvedBackgroundHex(settings.themeMode, systemIsDark()),
+            resolvedBackground = resolvedBackgroundHex(
+                settings.themeMode,
+                systemIsDark(),
+                // The same wallpaper scheme the app renders through, so a
+                // dynamic build reports the colour it actually paints.
+                com.anindra.messages.ui.theme.dynamicSchemeOrNull(
+                    context, settings.themeMode, themeIsDark(settings.themeMode, systemIsDark())
+                )
+            ),
             notificationsEnabled = settings.notificationsEnabled,
             fontFamily = settings.fontFamily,
             sendSound = settings.sendSoundEnabled,
@@ -605,8 +613,14 @@ internal fun phoneCountForSdk(sdkInt: Int, activeModemCount: Int?, maxSubscripti
  * after the theme itself stopped selecting it, which is exactly the failure
  * the regression script exists to catch.
  */
-internal fun resolvedBackgroundHex(mode: String, systemIsDark: Boolean): String {
-    val color = schemeFor(mode, A11yOptions.DISABLED, themeIsDark(mode, systemIsDark)).background
+internal fun resolvedBackgroundHex(
+    mode: String,
+    systemIsDark: Boolean,
+    dynamic: androidx.compose.material3.ColorScheme? = null
+): String {
+    val color = schemeFor(
+        mode, A11yOptions.DISABLED, themeIsDark(mode, systemIsDark), dynamic
+    ).background
     // Compose's Color channels are Floats in 0..1, not the packed ARGB Int, so
     // each has to be scaled and rounded before it can be formatted as hex.
     fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
