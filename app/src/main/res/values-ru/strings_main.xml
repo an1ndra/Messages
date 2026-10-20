@@ -69,4 +69,5 @@
     <string name="crash_report_clip_label">Отчёт о сбое Messages</string>
     <string name="convo_moved_to_trash_count">%1$d переписок перемещено в корзину</string>
     <string name="convo_archived_count">%1$d переписок заархивировано</string>
+    <string name="sheet_multi_select">Множественный выбор</string>
 </resources>

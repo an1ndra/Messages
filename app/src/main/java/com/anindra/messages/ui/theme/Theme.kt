@@ -253,6 +253,12 @@ val ColorScheme.incomingBubble: Color get() = surfaceContainerHighest   // GM gr
 val ColorScheme.chatBar: Color
     get() = if (background.luminance() < 0.5f) surfaceContainerLow else background
 val ColorScheme.inputPill: Color get() = surfaceContainerHigh           // text field pill
+// The "Start chat" pill. Container and content are defined as a pair here so
+// the FAB and Diagnostics cannot disagree: primary on secondaryContainer is not
+// a pair Material defines, and a wallpaper palette can make both almost the
+// same darkness, which painted the pill black.
+val ColorScheme.startChatContainer: Color get() = secondaryContainer
+val ColorScheme.startChatContent: Color get() = onSecondaryContainer
 val ColorScheme.selectedBubble: Color
     get() = if (background.luminance() < 0.5f) Color(0xFF9CC0FF) else Color(0xFF1A46A0)
 val ColorScheme.onSelectedBubble: Color

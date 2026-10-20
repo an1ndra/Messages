@@ -31,6 +31,8 @@ import com.anindra.messages.data.TransferLogStore
 import com.anindra.messages.data.TransferOperation
 import com.anindra.messages.ui.theme.A11yOptions
 import com.anindra.messages.ui.theme.schemeFor
+import com.anindra.messages.ui.theme.startChatContainer
+import com.anindra.messages.ui.theme.startChatContent
 import com.anindra.messages.ui.theme.themeIsDark
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -57,6 +59,8 @@ data class AppDetails(
      * colour makes that visible without a screenshot.
      */
     val resolvedBackground: String = "",
+    /** The "Start chat" pill's content on its container, as "#RRGGBB on #RRGGBB". */
+    val resolvedStartChat: String = "",
     val notificationsEnabled: Boolean,
     val fontFamily: String = "",
     val sendSound: Boolean = false,
@@ -218,6 +222,7 @@ object DiagnosticsReport {
             appendLine("Time zone: ${data.appDetails.timeZone}")
             appendLine("Theme mode: ${data.appDetails.themeMode}")
             appendLine("Resolved page colour: ${data.appDetails.resolvedBackground}")
+            appendLine("Resolved Start chat colours: ${data.appDetails.resolvedStartChat}")
             appendLine("Font: ${data.appDetails.fontFamily}")
             appendLine("Accessibility mode: ${data.appDetails.accessibilityMode}")
             if (data.appDetails.accessibilityMode) {
@@ -567,6 +572,13 @@ object DiagnosticsReport {
                     context, settings.themeMode, themeIsDark(settings.themeMode, systemIsDark())
                 )
             ),
+            resolvedStartChat = resolvedStartChatHex(
+                settings.themeMode,
+                systemIsDark(),
+                com.anindra.messages.ui.theme.dynamicSchemeOrNull(
+                    context, settings.themeMode, themeIsDark(settings.themeMode, systemIsDark())
+                )
+            ),
             notificationsEnabled = settings.notificationsEnabled,
             fontFamily = settings.fontFamily,
             sendSound = settings.sendSoundEnabled,
@@ -625,6 +637,27 @@ internal fun resolvedBackgroundHex(
     // each has to be scaled and rounded before it can be formatted as hex.
     fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
     return "#%02X%02X%02X".format(channel(color.red), channel(color.green), channel(color.blue))
+}
+
+/**
+ * The "Start chat" pill's content and container as "#RRGGBB on #RRGGBB", read
+ * through the same [startChatContent]/[startChatContainer] pair the FAB paints
+ * with. A wallpaper palette can hand back a dark container and a dark primary,
+ * which is legible in no screenshot-free way except by checking the pair's
+ * contrast here.
+ */
+internal fun resolvedStartChatHex(
+    mode: String,
+    systemIsDark: Boolean,
+    dynamic: androidx.compose.material3.ColorScheme? = null
+): String {
+    val scheme = schemeFor(
+        mode, A11yOptions.DISABLED, themeIsDark(mode, systemIsDark), dynamic
+    )
+    fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
+    fun hex(c: androidx.compose.ui.graphics.Color) =
+        "#%02X%02X%02X".format(channel(c.red), channel(c.green), channel(c.blue))
+    return "${hex(scheme.startChatContent)} on ${hex(scheme.startChatContainer)}"
 }
 
 /** The device's night setting, read without a Context. */
