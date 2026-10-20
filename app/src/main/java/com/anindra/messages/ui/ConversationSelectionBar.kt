@@ -9,7 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -73,7 +73,7 @@ fun ConversationSelectionBar(
             }
             IconButton(onClick = onSelectAll) {
                 Icon(
-                    Icons.Rounded.Checklist,
+                    Icons.Rounded.SelectAll,
                     contentDescription = stringResource(R.string.chat_select_all)
                 )
             }
