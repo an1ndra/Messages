@@ -50,6 +50,8 @@ import androidx.compose.material.icons.rounded.MarkEmailRead
 import androidx.compose.material.icons.rounded.MarkEmailUnread
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -124,6 +126,8 @@ import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.Motion
 import com.anindra.messages.ui.theme.motionSpring
 import com.anindra.messages.ui.theme.motionTween
+import com.anindra.messages.ui.theme.startChatContainer
+import com.anindra.messages.ui.theme.startChatContent
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
@@ -435,11 +439,6 @@ fun ConversationsScreen(
                     onArchive = { archiveSelection() },
                     onSelectAll = {
                         selectedIds = ConversationSelection.selectAll(displayed.map { it.id })
-                    },
-                    onOptions = if (selectedIds.size == 1) {
-                        { sheetConvoId = selectedIds.first(); selectedIds = emptySet() }
-                    } else {
-                        null
                     }
                 )
             } else {
@@ -611,7 +610,7 @@ fun ConversationsScreen(
                                 onToggleRead = { markReadWithUndo(convo) },
                                 onTogglePin = { pinWithUndo(convo) },
                                 onBlock = { blockWithUndo(convo) },
-                                onLongClick = { toggleSelection(convo) }
+                                onLongClick = { sheetConvoId = convo.id }
                             )
                         }
                         item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
@@ -662,6 +661,14 @@ fun ConversationsScreen(
                         SheetActionRow(Icons.Rounded.Archive, stringResource(R.string.sheet_archive), MaterialTheme.colorScheme.primary) {
                             sheetConvoId = -1L; archiveWithUndo(sheetConvo)
                         }
+                    }
+                    SheetActionRow(
+                        Icons.Rounded.Checklist,
+                        stringResource(R.string.sheet_multi_select),
+                        MaterialTheme.colorScheme.primary
+                    ) {
+                        sheetConvoId = -1L
+                        selectedIds = setOf(sheetConvo.id)
                     }
                     SheetActionRow(Icons.Rounded.Delete, stringResource(R.string.sheet_delete), MaterialTheme.colorScheme.error) {
                         sheetConvoId = -1L; moveToTrash(sheetConvo)
@@ -1204,19 +1211,23 @@ internal fun StartChatFab(
             )
             .onSizeChanged { if (naturalWidthPx <= 0) naturalWidthPx = it.width }
             .clip(RoundedCornerShape(16.dp))
-            .background(cs.secondaryContainer)
+            .background(cs.startChatContainer)
             .clickable(onClick = onClick)
             .semantics { contentDescription = context.getString(R.string.access_start_chat) },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Spacer(Modifier.width(16.dp))
-        Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null, tint = cs.primary)
+        Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null, tint = cs.startChatContent)
         if (p > 0.01f) {
             Spacer(Modifier.width(8.dp))
             Text(
                 stringResource(R.string.access_start_chat),
                 style = MaterialTheme.typography.labelLarge,
-                color = cs.primary,
+                // The pill is a secondary container, so its content has to be
+                // the matching "on" role: primary on secondaryContainer is not a
+                // pair Material defines, and a wallpaper palette can make the
+                // two nearly the same darkness (the FAB read as black).
+                color = cs.startChatContent,
                 maxLines = 1,
                 softWrap = false
             )

@@ -116,8 +116,7 @@ private fun ConversationSelectionPreview() {
             onClear = {},
             onDelete = {},
             onArchive = {},
-            onSelectAll = {},
-            onOptions = null
+            onSelectAll = {}
         )
         ConversationRow(
             context = androidx.compose.ui.platform.LocalContext.current,
