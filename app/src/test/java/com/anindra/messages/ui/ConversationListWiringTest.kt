@@ -73,6 +73,23 @@ class ConversationListWiringTest {
     }
 
     @Test
+    fun theBarAndTheSheetShareTheSelectAllGlyph() {
+        // Both "add to the selection" entry points use the dotted-square
+        // select-all icon, so one glyph means one idea.
+        val bar = read("java/com/anindra/messages/ui/ConversationSelectionBar.kt")
+        assertTrue(
+            "the bar's select-all action must use the SelectAll glyph",
+            bar.contains("Icons.Rounded.SelectAll")
+        )
+        screens.forEach { path ->
+            assertTrue(
+                "$path: the sheet's Select more row must use the SelectAll glyph",
+                read(path).contains("Icons.Rounded.SelectAll")
+            )
+        }
+    }
+
+    @Test
     fun startingASelectionDoesNotMoveTheList() {
         // The title row and the selection bar must be the same height, or every
         // row jumps when the bar replaces the title (it did).
