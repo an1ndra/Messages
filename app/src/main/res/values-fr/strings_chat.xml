@@ -91,4 +91,5 @@
     <string name="chat_search_next">Correspondance suivante</string>
     <string name="chat_search_counter">%1$d sur %2$d</string>
     <string name="chat_scroll_to_latest">Défiler jusqu\'au dernier message</string>
+    <string name="access_zoom_reset">Zoom %1$d%%, touchez pour réinitialiser</string>
 </resources>

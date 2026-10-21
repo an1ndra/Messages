@@ -1564,6 +1564,32 @@ fun ChatScreen(
                 }
             }
             }
+            // The pinch has no other feedback, so a pill says where the zoom is
+            // and gives one tap back to 100% (a second pinch to undo is the
+            // "takes too much work" part).
+            if (!ChatZoom.isDefault(zoom)) {
+                Surface(
+                    onClick = { zoom = ChatZoom.DEFAULT },
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(end = 12.dp, top = 8.dp)
+                        .semantics {
+                            contentDescription = context.getString(
+                                R.string.access_zoom_reset, ChatZoom.percent(zoom)
+                            )
+                        }
+                ) {
+                    Text(
+                        text = "${ChatZoom.percent(zoom)}%",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+
             // Back to the newest message, offered only once the view has left
             // it: after opening a search hit, or after reading back.
             val showJumpToLatest by remember {

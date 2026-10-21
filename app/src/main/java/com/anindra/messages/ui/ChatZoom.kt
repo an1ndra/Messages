@@ -10,8 +10,8 @@ package com.anindra.messages.ui
  */
 object ChatZoom {
     const val DEFAULT = 1f
-    const val MIN = 0.8f
-    const val MAX = 2f
+    const val MIN = 0.7f
+    const val MAX = 2.5f
 
     /** The next zoom for a pinch of [zoomChange], clamped to [MIN]..[MAX]. */
     fun apply(current: Float, zoomChange: Float): Float =
@@ -21,4 +21,7 @@ object ChatZoom {
     fun fontScale(zoom: Float): Float = zoom.coerceIn(MIN, MAX)
 
     fun isDefault(zoom: Float): Boolean = kotlin.math.abs(zoom - DEFAULT) < 0.01f
+
+    /** The zoom as the percentage the indicator shows ("150"). */
+    fun percent(zoom: Float): Int = Math.round(fontScale(zoom) * 100f)
 }
