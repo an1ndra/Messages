@@ -60,7 +60,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 28
+private const val DB_VERSION = 29
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -131,7 +131,8 @@ class Db(context: Context) :
         db.execSQL(
             """CREATE TABLE conversation_notifications(
                 conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
-                notifications_enabled INTEGER NOT NULL DEFAULT 1)"""
+                notifications_enabled INTEGER NOT NULL DEFAULT 1,
+                sound TEXT NOT NULL DEFAULT '')"""
         )
         db.execSQL(
             """CREATE TABLE participants(
@@ -334,6 +335,11 @@ class Db(context: Context) :
             // groups default to "auto" (0).
             db.execSQL("ALTER TABLE conversations ADD COLUMN group_title_custom INTEGER NOT NULL DEFAULT 0")
         }
+        if (oldVersion < 29) {
+            // Per-conversation notification sound; empty means inherit the
+            // category/global sound, which is what every existing row wants.
+            db.execSQL("ALTER TABLE conversation_notifications ADD COLUMN sound TEXT NOT NULL DEFAULT ''")
+        }
     }
 
     /**
@@ -448,7 +454,8 @@ class Db(context: Context) :
         db.execSQL(
             """CREATE TABLE IF NOT EXISTS conversation_notifications(
                 conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
-                notifications_enabled INTEGER NOT NULL DEFAULT 1)"""
+                notifications_enabled INTEGER NOT NULL DEFAULT 1,
+                sound TEXT NOT NULL DEFAULT '')"""
         )
         // The ALTER/INDEX healing below only needs to run once per install; running
         // it on every DB open rebuilds the unique index over the whole messages
@@ -2005,14 +2012,60 @@ class Repository(private val context: Context) {
     }
 
     fun setConversationNotificationsEnabled(conversationId: Long, enabled: Boolean) {
-        val cv = ContentValues().apply {
-            put("conversation_id", conversationId)
-            put("notifications_enabled", if (enabled) 1 else 0)
-        }
-        db.writableDatabase.insertWithOnConflict(
-            "conversation_notifications", null, cv, SQLiteDatabase.CONFLICT_REPLACE
+        // INSERT OR IGNORE + UPDATE rather than REPLACE: a REPLACE would reset
+        // the row's `sound` to its default, wiping a per-conversation tone.
+        ensureConversationNotificationRow(conversationId)
+        db.writableDatabase.update(
+            "conversation_notifications",
+            ContentValues().apply { put("notifications_enabled", if (enabled) 1 else 0) },
+            "conversation_id=?",
+            arrayOf(conversationId.toString())
         )
         notifyChanged()
+    }
+
+    /** The stored per-conversation sound, or "" when it inherits the category sound. */
+    fun getConversationNotificationSoundBlocking(conversationId: Long): String = runOnIo {
+        var sound = ""
+        db.readableDatabase.rawQuery(
+            "SELECT sound FROM conversation_notifications WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { c ->
+            if (c.moveToFirst() && !c.isNull(0)) sound = c.getString(0) ?: ""
+        }
+        sound
+    }
+
+    fun conversationNotificationSoundFlow(conversationId: Long): Flow<String> = observe {
+        var sound = ""
+        db.readableDatabase.rawQuery(
+            "SELECT sound FROM conversation_notifications WHERE conversation_id=?",
+            arrayOf(conversationId.toString())
+        ).use { c ->
+            if (c.moveToFirst() && !c.isNull(0)) sound = c.getString(0) ?: ""
+        }
+        sound
+    }
+
+    /** Empty [sound] clears the override back to the category/global tone. */
+    fun setConversationNotificationSound(conversationId: Long, sound: String) {
+        ensureConversationNotificationRow(conversationId)
+        db.writableDatabase.update(
+            "conversation_notifications",
+            ContentValues().apply { put("sound", sound) },
+            "conversation_id=?",
+            arrayOf(conversationId.toString())
+        )
+        notifyChanged()
+    }
+
+    /** Creates the row with defaults if it is missing, leaving an existing one alone. */
+    private fun ensureConversationNotificationRow(conversationId: Long) {
+        db.writableDatabase.insertWithOnConflict(
+            "conversation_notifications", null,
+            ContentValues().apply { put("conversation_id", conversationId) },
+            SQLiteDatabase.CONFLICT_IGNORE
+        )
     }
 
     fun blockedNumbers(): Flow<List<BlockedNumber>> = observe {
@@ -3161,15 +3214,28 @@ class Repository(private val context: Context) {
                 // notification settings are then left at their default, which is
                 // what a fresh conversation gets anyway.
                 if (backupHasTable(backup, "conversation_notifications")) {
+                    // A per-conversation sound only exists from schema v29; an
+                    // older backup has the table without the column, so the
+                    // select has to adapt rather than assume it.
+                    val hasSound = backupHasColumn(backup, "conversation_notifications", "sound")
+                    val columns = if (hasSound) "conversation_id,notifications_enabled,sound"
+                    else "conversation_id,notifications_enabled"
                     backup.rawQuery(
-                        "SELECT conversation_id,notifications_enabled FROM conversation_notifications", null
+                        "SELECT $columns FROM conversation_notifications", null
                     ).use { c ->
                         while (c.moveToNext()) {
                             val tId = convoMap[c.getLong(0)] ?: continue
-                            target.execSQL(
-                                "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled) VALUES(?,?)",
-                                arrayOf<Any?>(tId, c.getInt(1))
-                            )
+                            if (hasSound) {
+                                target.execSQL(
+                                    "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled,sound) VALUES(?,?,?)",
+                                    arrayOf<Any?>(tId, c.getInt(1), c.getString(2) ?: "")
+                                )
+                            } else {
+                                target.execSQL(
+                                    "INSERT OR IGNORE INTO conversation_notifications(conversation_id,notifications_enabled) VALUES(?,?)",
+                                    arrayOf<Any?>(tId, c.getInt(1))
+                                )
+                            }
                         }
                     }
                 } else {
@@ -3194,6 +3260,17 @@ class Repository(private val context: Context) {
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
                 arrayOf(name)
             ).use { it.moveToFirst() }
+        }.getOrDefault(false)
+
+    /** True when the incoming backup's table has the named column. */
+    private fun backupHasColumn(backup: SQLiteDatabase, table: String, column: String): Boolean =
+        runCatching {
+            backup.rawQuery("PRAGMA table_info($table)", null).use { c ->
+                while (c.moveToNext()) {
+                    if (c.getString(1) == column) return@runCatching true
+                }
+                false
+            }
         }.getOrDefault(false)
 
     private fun isValidSqliteFile(file: File): Boolean {

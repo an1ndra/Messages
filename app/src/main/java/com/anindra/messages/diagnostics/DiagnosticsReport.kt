@@ -83,6 +83,12 @@ data class AppDetails(
     val fullScreenIntentGranted: Boolean = false,
     val channelImportance: Int = 0,
     val channelImportanceLabel: String = "",
+    /**
+     * Every channel this app has created, as "id=importance". Read from the
+     * NotificationManager rather than re-derived, so the list cannot claim a
+     * channel the poster did not actually make.
+     */
+    val channels: List<String> = emptyList(),
     val keyguardLocked: Boolean = false,
     val wakeEligible: Boolean = false
 )
@@ -235,6 +241,12 @@ object DiagnosticsReport {
             appendLine("Notifications enabled: ${data.appDetails.notificationsEnabled}")
             appendLine("Full-screen intent: ${if (data.appDetails.fullScreenIntentGranted) "granted" else "denied"}")
             appendLine("Channel importance: ${data.appDetails.channelImportanceLabel}")
+            if (data.appDetails.channels.isEmpty()) {
+                appendLine("Channels: none created yet")
+            } else {
+                appendLine("Channels:")
+                data.appDetails.channels.forEach { appendLine("  $it") }
+            }
             appendLine("Keyguard locked: ${if (data.appDetails.keyguardLocked) "yes" else "no"}")
             appendLine("Wake screen for new messages: ${if (data.appDetails.wakeEligible) "will wake" else "headsup only"}")
             if (!data.appDetails.fullScreenIntentGranted) {
@@ -596,6 +608,8 @@ object DiagnosticsReport {
             fullScreenIntentGranted = fullScreenIntentGranted(context),
             channelImportance = NotificationHelper.channelImportance(context),
             channelImportanceLabel = importanceLabel(NotificationHelper.channelImportance(context)),
+            channels = NotificationHelper.createdChannels(context)
+                .map { "${it.first}=${importanceLabel(it.second)}" },
             keyguardLocked = context.getSystemService(KeyguardManager::class.java)
                 ?.isKeyguardLocked == true,
             wakeEligible = NotificationHelper.shouldWake(

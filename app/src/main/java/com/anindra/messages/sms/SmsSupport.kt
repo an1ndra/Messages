@@ -20,34 +20,26 @@ import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.hideUrls
 
 object NotificationHelper {
-    // NotificationChannel sound is immutable after creation, so each distinct
-    // sound (and the silent case) gets its own channel id. Changing the setting
-    // creates a fresh channel with the right tone; the stale variants are deleted.
-    private const val CHANNEL_PREFIX = "messages"
-    private val CHANNEL_VARIANTS = listOf(
-        "${CHANNEL_PREFIX}_default",
-        "${CHANNEL_PREFIX}_app",
-        "${CHANNEL_PREFIX}_dragon",
-        "${CHANNEL_PREFIX}_uf09",
-        "${CHANNEL_PREFIX}_uf062",
-        "${CHANNEL_PREFIX}_silent",
-        CHANNEL_PREFIX,
-    )
-
     private var previewPlayer: android.media.MediaPlayer? = null
 
-    private fun channelId(context: Context): String {
-        val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        val s = app.repository.settings
-        if (!s.receiveSoundEnabled) return "${CHANNEL_PREFIX}_silent"
-        return when (s.notificationSound) {
-            SettingsStore.NOTIFY_SOUND_APP -> "${CHANNEL_PREFIX}_app"
-            SettingsStore.NOTIFY_SOUND_DRAGON -> "${CHANNEL_PREFIX}_dragon"
-            SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 -> "${CHANNEL_PREFIX}_uf09"
-            SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 -> "${CHANNEL_PREFIX}_uf062"
-            else -> "${CHANNEL_PREFIX}_default"
-        }
-    }
+    /**
+     * The channel a message posts to: a conversation's own channel when it has a
+     * sound override, otherwise its category's. Single source of truth for the
+     * poster and Diagnostics, so they cannot disagree.
+     */
+    internal fun channelIdFor(
+        category: NotificationCategory,
+        selection: String,
+        soundOn: Boolean,
+        conversationId: Long?,
+        overrideSound: String
+    ): String =
+        NotificationChannels.forMessage(
+            category, selection, soundOn, conversationId, overrideSound
+        )
+
+    private fun defaultSoundUri(): Uri? =
+        android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
 
     /** Uri for a picker selection, or null when "Default (system)" is chosen. */
     private fun soundUriFor(context: Context, selection: String): Uri? =
@@ -59,10 +51,15 @@ object NotificationHelper {
             else -> null
         }
 
-    /** The user-selected receive sound, or the system default when "Default" is picked. */
-    private fun selectedSoundUri(context: Context): Uri? =
-        soundUriFor(context, (context.applicationContext as com.anindra.messages.MessagesApplication)
-            .repository.settings.notificationSound)
+    /**
+     * The sound a channel plays for [selection]. When receive sound is off a
+     * bundled silent clip is used rather than null: Android demotes sound-less
+     * channels below IMPORTANCE_HIGH and never heads-up them, while a silent
+     * tone keeps the popup working.
+     */
+    private fun channelSoundUri(context: Context, selection: String, soundOn: Boolean): Uri? =
+        if (!soundOn) resourceUri(context, R.raw.silent)
+        else soundUriFor(context, selection) ?: defaultSoundUri()
 
     private fun resourceUri(context: Context, resId: Int): Uri =
         Uri.parse("android.resource://${context.packageName}/$resId")
@@ -170,31 +167,85 @@ object NotificationHelper {
         return style
     }
 
-    fun ensureChannel(context: Context) {
+    /**
+     * (Re)creates the per-category channels. Distinct channels are what put
+     * sound/vibration/importance knobs in system settings per category; the app
+     * can only set their defaults, and the user owns them afterwards.
+     *
+     * Safe to call on every post and reflects live setting changes (the sound
+     * must be set EXPLICITLY, or an update leaves a legacy custom tone in
+     * place). The single pre-category channels are deleted so the list does not
+     * double up.
+     */
+    fun ensureChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        val soundOn = app.repository.settings.receiveSoundEnabled
-        val id = channelId(context)
-        recoverDemotedChannel(nm, id)
-        nm.createNotificationChannel(
-            NotificationChannel(
-                id, context.getString(R.string.notification_channel_title), NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = context.getString(R.string.notification_channel_desc)
-                if (soundOn) {
+        val settings = app.repository.settings
+        val soundOn = settings.receiveSoundEnabled
+        NotificationCategory.entries.forEach { category ->
+            val selection = settings.notificationSoundFor(NotificationCategory.keyOf(category))
+            val id = NotificationChannels.forCategory(category, selection, soundOn)
+            recoverDemotedChannel(nm, id)
+            nm.createNotificationChannel(
+                NotificationChannel(
+                    id,
+                    context.getString(NotificationChannels.titleRes(category)),
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = context.getString(R.string.notification_channel_desc)
                     setSound(
-                        selectedSoundUri(context)
-                            ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION),
+                        channelSoundUri(context, selection, soundOn),
                         android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT
                     )
-                } else {
-                    setSound(resourceUri(context, R.raw.silent), android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT)
                 }
+            )
+            // A channel's sound is fixed once it exists, so the previous
+            // selection's channel is switched away from, not edited.
+            NotificationChannels.categoryVariants(category)
+                .filter { it != id }
+                .forEach { nm.deleteNotificationChannel(it) }
+        }
+        NotificationChannels.LEGACY_VARIANTS.forEach { nm.deleteNotificationChannel(it) }
+    }
+
+    /**
+     * Creates (or refreshes) the channel for a conversation that carries its own
+     * sound, titled after the sender. The title is the sender because the system
+     * settings list shows it next to the app's other channels. An empty [sound]
+     * clears the override and removes the channel.
+     *
+     * Changing the sound has to delete first: an existing channel will not take
+     * a new tone.
+     */
+    fun refreshConversationChannel(
+        context: Context,
+        conversationId: Long,
+        title: String,
+        sound: String
+    ) {
+        if (sound.isEmpty()) {
+            deleteConversationChannel(context, conversationId)
+            return
+        }
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val id = NotificationChannels.forConversation(conversationId)
+        val desired = channelSoundUri(context, sound, app.repository.settings.receiveSoundEnabled)
+        nm.getNotificationChannel(id)?.let { existing ->
+            if (existing.sound != desired) nm.deleteNotificationChannel(id)
+        }
+        nm.createNotificationChannel(
+            NotificationChannel(id, title, NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.notification_channel_convo_desc)
+                setSound(desired, android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT)
             }
         )
-        // Drop the channels for the other selections so the system settings list
-        // stays a single "Messages" entry.
-        CHANNEL_VARIANTS.filter { it != id }.forEach { nm.deleteNotificationChannel(it) }
+    }
+
+    /** Deletes a conversation's own channel when its override is cleared. */
+    fun deleteConversationChannel(context: Context, conversationId: Long) {
+        context.getSystemService(NotificationManager::class.java)
+            ?.deleteNotificationChannel(NotificationChannels.forConversation(conversationId))
     }
 
     /**
@@ -210,12 +261,32 @@ object NotificationHelper {
         nm.deleteNotificationChannel(id)
     }
 
-    /** The live importance of the active channel, for Diagnostics and tests. */
-    internal fun channelImportance(context: Context): Int =
+    /** Live importance of a specific channel, or IMPORTANCE_NONE when absent. */
+    internal fun channelImportanceFor(context: Context, channelId: String): Int =
         context.getSystemService(NotificationManager::class.java)
-            ?.getNotificationChannel(channelId(context))
+            ?.getNotificationChannel(channelId)
             ?.importance
             ?: NotificationManager.IMPORTANCE_NONE
+
+    /** The direct channel's importance, the representative for wake eligibility. */
+    internal fun channelImportance(context: Context): Int {
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val settings = app.repository.settings
+        val id = NotificationChannels.forCategory(
+            NotificationCategory.DIRECT,
+            settings.notificationSoundFor(NotificationCategory.keyOf(NotificationCategory.DIRECT)),
+            settings.receiveSoundEnabled
+        )
+        return channelImportanceFor(context, id)
+    }
+
+    /** Every channel this app has created, id to importance, for Diagnostics. */
+    internal fun createdChannels(context: Context): List<Pair<String, Int>> =
+        context.getSystemService(NotificationManager::class.java)
+            ?.notificationChannels
+            ?.map { it.id to it.importance }
+            ?.sortedBy { it.first }
+            .orEmpty()
 
     private fun canPost(context: Context): Boolean {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
@@ -235,14 +306,33 @@ object NotificationHelper {
             )
         ) return
 
-        // create the channel before any early-return: notify() with an unknown
+        // create the channels before any early-return: notify() with an unknown
         // channel id is a silent no-op, so the first-ever post must have it ready
-        ensureChannel(context)
+        ensureChannels(context)
         if (!canPost(context)) return
 
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val convoId = app.repository.conversationIdForAddress(from)
         if (convoId != null && !app.repository.getConversationNotificationsEnabledBlocking(convoId)) return
+
+        val replyable = com.anindra.messages.data.AddressIdentity.isReplyable(from)
+        val contactName = app.repository.contactNameFor(from)
+        val category = NotificationCategory.resolve(
+            isGroup = convoId != null && app.repository.recipientCountBlocking(convoId) > 1,
+            knownContact = contactName != null,
+            replyable = replyable
+        )
+        val overrideSound = convoId
+            ?.let { app.repository.getConversationNotificationSoundBlocking(it) }
+            .orEmpty()
+        val settings = app.repository.settings
+        val categorySelection = settings.notificationSoundFor(NotificationCategory.keyOf(category))
+        val channelId = channelIdFor(
+            category, categorySelection, settings.receiveSoundEnabled, convoId, overrideSound
+        )
+        if (convoId != null && overrideSound.isNotEmpty()) {
+            refreshConversationChannel(context, convoId, contactName ?: from, overrideSound)
+        }
 
         // stable per-conversation id: hashCode collisions between different
         // senders would otherwise overwrite each other's PendingIntents and
@@ -283,7 +373,7 @@ object NotificationHelper {
         val remoteInput = RemoteInput.Builder("quick_reply").setLabel("Reply").build()
 
         // Alphanumeric sender IDs cannot receive replies, so no reply action.
-        val replyAction = if (com.anindra.messages.data.AddressIdentity.isReplyable(from)) {
+        val replyAction = if (replyable) {
             NotificationCompat.Action.Builder(
                 R.drawable.ic_reply, "Reply", replyIntent
             ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
@@ -337,7 +427,7 @@ object NotificationHelper {
         // it groups the notification under "silent", which suppresses the
         // heads-up popup; the receive-sound-off case is handled by the channel
         // playing the bundled silent clip instead.
-        val builder = NotificationCompat.Builder(context, channelId(context))
+        val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_message)
             .setContentTitle(title)
             .setContentText(text)
@@ -404,11 +494,28 @@ object NotificationHelper {
 
     /** Posted when an outgoing SMS/MMS fails to hand off to the radio. */
     fun showSendFailed(context: Context, to: String) {
-        ensureChannel(context)
+        ensureChannels(context)
         if (!canPost(context)) return
 
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        val failId = (app.repository.conversationIdForAddress(to) ?: to.hashCode().toLong()).toInt()
+        val convoId = app.repository.conversationIdForAddress(to)
+        val category = NotificationCategory.resolve(
+            isGroup = convoId != null && app.repository.recipientCountBlocking(convoId) > 1,
+            knownContact = app.repository.contactNameFor(to) != null,
+            replyable = com.anindra.messages.data.AddressIdentity.isReplyable(to)
+        )
+        val overrideSound = convoId
+            ?.let { app.repository.getConversationNotificationSoundBlocking(it) }
+            .orEmpty()
+        val settings = app.repository.settings
+        val channelId = channelIdFor(
+            category,
+            settings.notificationSoundFor(NotificationCategory.keyOf(category)),
+            settings.receiveSoundEnabled,
+            convoId,
+            overrideSound
+        )
+        val failId = (convoId ?: to.hashCode().toLong()).toInt()
 
         // "failed" tag decouples failure notifications from incoming-message ids
         val tapIntent = Intent(context, MainActivity::class.java)
@@ -426,7 +533,7 @@ object NotificationHelper {
         val failText = if (privacyMode) context.getString(R.string.notif_send_fail_private)
             else String.format(context.getString(R.string.notif_send_fail), to)
 
-        val notif = NotificationCompat.Builder(context, channelId(context))
+        val notif = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_message)
             .setContentTitle(context.getString(R.string.notif_not_delivered))
             .setContentText(failText)
