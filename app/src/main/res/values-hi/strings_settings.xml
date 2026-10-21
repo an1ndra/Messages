@@ -7,6 +7,8 @@
     <string name="settings_pin_delete_permanently">स्थायी रूप से हटाएं?</string>
     <string name="settings_pin_delay">भेजने से पहले देरी</string>
     <string name="settings_pin_notification_sound">सूचना ध्वनि</string>
+    <string name="settings_notif_manage_channels">सिस्टम सेटिंग में प्रबंधित करें</string>
+    <string name="settings_notif_manage_channels_subtitle">प्रति श्रेणी ध्वनि, कंपन और प्राथमिकता</string>
     <string name="settings_pin_sim_card">SIM कार्ड</string>
     <string name="settings_import_backup">बैकअप आयात करें</string>
     <string name="settings_loading">संदेश लोड हो रहे हैं</string>

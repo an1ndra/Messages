@@ -7,6 +7,8 @@
     <string name="settings_pin_delete_permanently">Immer löschen?</string>
     <string name="settings_pin_delay">Verzögerung vor dem Senden</string>
     <string name="settings_pin_notification_sound">Benachrichtigungston</string>
+    <string name="settings_notif_manage_channels">In den Systemeinstellungen verwalten</string>
+    <string name="settings_notif_manage_channels_subtitle">Ton, Vibration und Priorität pro Kategorie</string>
     <string name="settings_pin_sim_card">SIM-Karte</string>
     <string name="settings_import_backup">Sicherung importieren</string>
     <string name="settings_loading">Nachrichten werden geladen</string>

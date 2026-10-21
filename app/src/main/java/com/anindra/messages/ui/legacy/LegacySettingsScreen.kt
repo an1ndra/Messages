@@ -658,7 +658,7 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     vm.settings.notificationSound = notificationSound
-                    NotificationHelper.ensureChannel(context)
+                    NotificationHelper.ensureChannels(context)
                     soundDialog = false
                 }) { Text(stringResource(R.string.common_ok)) }
             },

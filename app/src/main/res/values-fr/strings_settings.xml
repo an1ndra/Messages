@@ -7,6 +7,8 @@
     <string name="settings_pin_delete_permanently">Supprimer définitivement ?</string>
     <string name="settings_pin_delay">Délai avant l\'envoi</string>
     <string name="settings_pin_notification_sound">Son de notification</string>
+    <string name="settings_notif_manage_channels">Gérer dans les paramètres système</string>
+    <string name="settings_notif_manage_channels_subtitle">Son, vibration et priorité par catégorie</string>
     <string name="settings_pin_sim_card">Carte SIM</string>
     <string name="settings_import_backup">Importer une sauvegarde</string>
     <string name="settings_loading">Chargement des messages</string>
