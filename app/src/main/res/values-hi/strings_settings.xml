@@ -163,4 +163,6 @@
     <string name="settings_search_hint">सेटिंग खोजें</string>
     <string name="settings_search_none">कोई सेटिंग मेल नहीं खाती</string>
     <string name="settings_theme_dynamic">डायनामिक</string>
+    <string name="settings_avatar_theme_title">अवतार के लिए थीम रंग</string>
+    <string name="settings_avatar_theme_subtitle">प्रत्येक संपर्क के रंग के बजाय थीम के कंटेनर रंग में अवतार दिखाएँ</string>
 </resources>

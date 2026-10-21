@@ -2902,28 +2902,24 @@ internal fun InputBar(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        Spacer(Modifier.width(8.dp))
-        val canSend = draft.isNotBlank() || hasAttachments
-        Box(
-            Modifier
-                .size(48.dp)
-                .background(
-                    if (canSend) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
-                    CircleShape
+        // Nothing to send means no send button, like Google Messages: a faded
+        // button reads as a control that is broken rather than as "nothing to
+        // send yet" (#347).
+        if (draft.isNotBlank() || hasAttachments) {
+            Spacer(Modifier.width(8.dp))
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    .combinedClickable(onClick = onSend, onLongClick = onSchedule),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.Send, stringResource(R.string.icon_send),
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(20.dp)
                 )
-                .combinedClickable(
-                    enabled = canSend,
-                    onClick = onSend,
-                    onLongClick = onSchedule
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.AutoMirrored.Rounded.Send, stringResource(R.string.icon_send),
-                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (canSend) 1f else 0.38f),
-                modifier = Modifier.size(20.dp)
-            )
+            }
         }
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import com.anindra.messages.data.SettingsStore
+import com.anindra.messages.ui.LocalThemedAvatars
 
 /**
  * Material 3 color system (m3.material.io/styles/color/system).
@@ -254,11 +255,12 @@ val ColorScheme.chatBar: Color
     get() = if (background.luminance() < 0.5f) surfaceContainerLow else background
 val ColorScheme.inputPill: Color get() = surfaceContainerHigh           // text field pill
 // The "Start chat" pill. Container and content are defined as a pair here so
-// the FAB and Diagnostics cannot disagree: primary on secondaryContainer is not
-// a pair Material defines, and a wallpaper palette can make both almost the
-// same darkness, which painted the pill black.
-val ColorScheme.startChatContainer: Color get() = secondaryContainer
-val ColorScheme.startChatContent: Color get() = onSecondaryContainer
+// the FAB and Diagnostics cannot disagree, and it is Material's FAB pair
+// (primaryContainer/onPrimaryContainer): secondaryContainer read as a dark slab
+// against a wallpaper palette, and Google Messages paints the pill in the
+// primary container too.
+val ColorScheme.startChatContainer: Color get() = primaryContainer
+val ColorScheme.startChatContent: Color get() = onPrimaryContainer
 val ColorScheme.selectedBubble: Color
     get() = if (background.luminance() < 0.5f) Color(0xFF9CC0FF) else Color(0xFF1A46A0)
 val ColorScheme.onSelectedBubble: Color
@@ -327,9 +329,10 @@ internal fun schemeFor(
 
 @Composable
 fun MessagesTheme(
-    mode: String = "system",   // system | light | dark | amoled
+    mode: String = "system",   // system | light | dark | amoled | dynamic
     font: String = SettingsStore.FONT_SYSTEM,
     a11y: A11yOptions = A11yOptions.DISABLED,
+    themedAvatars: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val darkTheme = themeIsDark(mode, isSystemInDarkTheme())
@@ -364,7 +367,8 @@ fun MessagesTheme(
     CompositionLocalProvider(
         LocalDensity provides scaledDensity,
         LocalReduceMotion provides a11y.reduceMotionEnabled,
-        LocalLargeTouchTargets provides a11y.largeTouchTargetsEnabled
+        LocalLargeTouchTargets provides a11y.largeTouchTargetsEnabled,
+        LocalThemedAvatars provides themedAvatars
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

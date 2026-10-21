@@ -163,4 +163,6 @@
     <string name="settings_search_hint">Поиск по настройкам</string>
     <string name="settings_search_none">Нет подходящих настроек</string>
     <string name="settings_theme_dynamic">Динамическая</string>
+    <string name="settings_avatar_theme_title">Цвета темы для аватаров</string>
+    <string name="settings_avatar_theme_subtitle">Рисовать аватары цветом контейнера темы вместо цвета для каждого контакта</string>
 </resources>

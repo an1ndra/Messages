@@ -163,4 +163,6 @@
     <string name="settings_search_hint">搜索设置</string>
     <string name="settings_search_none">没有匹配��设置</string>
     <string name="settings_theme_dynamic">动态</string>
+    <string name="settings_avatar_theme_title">头像使用主题配色</string>
+    <string name="settings_avatar_theme_subtitle">使用主题的容器颜色绘制联系人头像，而不是每个联系人的独立颜色</string>
 </resources>

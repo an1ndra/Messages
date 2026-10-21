@@ -163,4 +163,6 @@
     <string name="settings_search_hint">설정 검색</string>
     <string name="settings_search_none">일치하는 설정 없음</string>
     <string name="settings_theme_dynamic">다이내믹</string>
+    <string name="settings_avatar_theme_title">아바타에 테마 색상 사용</string>
+    <string name="settings_avatar_theme_subtitle">연락처별 색상 대신 테마의 컨테이너 색상으로 아바타를 표시합니다</string>
 </resources>

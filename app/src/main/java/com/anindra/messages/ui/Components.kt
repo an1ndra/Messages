@@ -85,6 +85,11 @@ fun PersonAvatar(
     backgroundColor: Color? = null,
     tint: Color? = null
 ) {
+    val themed = LocalThemedAvatars.current
+    val fill = backgroundColor
+        ?: if (themed) MaterialTheme.colorScheme.primaryContainer else avatarColor(key)
+    val glyphTint = tint
+        ?: if (themed) MaterialTheme.colorScheme.onPrimaryContainer else Color.White
     val context = LocalContext.current
     val photoUri by produceState<String?>(initialValue = photoUriCache.get(key), key) {
         val hit = photoUriCache.get(key)
@@ -96,7 +101,7 @@ fun PersonAvatar(
     Box(
         modifier = modifier
             .size(size)
-            .background(backgroundColor ?: avatarColor(key), CircleShape),
+            .background(fill, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         val uri = photoUri
@@ -111,7 +116,7 @@ fun PersonAvatar(
             Icon(
                 painter = painterResource(R.drawable.ic_person_placeholder),
                 contentDescription = null,
-                tint = tint ?: Color.Unspecified,
+                tint = tint ?: if (themed) glyphTint else Color.Unspecified,
                 modifier = Modifier.size(size * 0.62f)
             )
         }
@@ -304,3 +309,5 @@ fun SkeletonConversationRow() {
         }
     }
 }
+
+val LocalThemedAvatars = androidx.compose.runtime.staticCompositionLocalOf { false }

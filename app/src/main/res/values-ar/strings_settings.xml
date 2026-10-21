@@ -163,4 +163,6 @@
     <string name="settings_search_hint">البحث في الإعدادات</string>
     <string name="settings_search_none">لا توجد إعدادات مطابقة</string>
     <string name="settings_theme_dynamic">ديناميكي</string>
+    <string name="settings_avatar_theme_title">ألوان السمة للصور الرمزية</string>
+    <string name="settings_avatar_theme_subtitle">ارسم صور جهات الاتصال بلون الحاوية في السمة بدلاً من لون لكل جهة</string>
 </resources>
