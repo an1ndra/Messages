@@ -163,4 +163,6 @@
     <string name="settings_search_hint">搜尋設定</string>
     <string name="settings_search_none">沒有相符的設定</string>
     <string name="settings_theme_dynamic">動態</string>
+    <string name="settings_avatar_theme_title">大頭貼使用主題配色</string>
+    <string name="settings_avatar_theme_subtitle">使用主題的容器顏色繪製聯絡人大頭貼，而不是每位聯絡人的獨立顏色</string>
 </resources>

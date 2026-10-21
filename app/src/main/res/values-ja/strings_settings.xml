@@ -163,4 +163,6 @@
     <string name="settings_search_hint">設定を検索</string>
     <string name="settings_search_none">一致する設定がありません</string>
     <string name="settings_theme_dynamic">ダイナミック</string>
+    <string name="settings_avatar_theme_title">アバターにテーマの色</string>
+    <string name="settings_avatar_theme_subtitle">連絡先ごとの色ではなくテーマのコンテナ色でアバターを描画します</string>
 </resources>

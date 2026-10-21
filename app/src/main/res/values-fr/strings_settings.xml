@@ -163,4 +163,6 @@
     <string name="settings_search_hint">Paramètres de recherche</string>
     <string name="settings_search_none">Aucun paramètre ne correspond</string>
     <string name="settings_theme_dynamic">Dynamique</string>
+    <string name="settings_avatar_theme_title">Couleurs du thème pour les avatars</string>
+    <string name="settings_avatar_theme_subtitle">Dessine les avatars avec la couleur de conteneur du thème au lieu d\'une couleur par contact</string>
 </resources>

@@ -163,4 +163,6 @@
     <string name="settings_search_hint">Szukaj w ustawieniach</string>
     <string name="settings_search_none">Żadne ustawienie nie pasuje</string>
     <string name="settings_theme_dynamic">Dynamiczny</string>
+    <string name="settings_avatar_theme_title">Kolory motywu dla awatarów</string>
+    <string name="settings_avatar_theme_subtitle">Rysuj awatary kolorem kontenera motywu zamiast koloru dla każdego kontaktu</string>
 </resources>

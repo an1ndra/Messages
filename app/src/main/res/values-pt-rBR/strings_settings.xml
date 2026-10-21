@@ -163,4 +163,6 @@
     <string name="settings_search_hint">Buscar nas configurações</string>
     <string name="settings_search_none">Nenhuma configuração corresponde</string>
     <string name="settings_theme_dynamic">Dinâmico</string>
+    <string name="settings_avatar_theme_title">Cores do tema para avatares</string>
+    <string name="settings_avatar_theme_subtitle">Desenha os avatares com a cor de contêiner do tema em vez de uma por contato</string>
 </resources>

@@ -48,8 +48,8 @@ class PendingMediaWiringTest {
             chat.contains("hasAttachments = pendingMedia.isNotEmpty()"),
         )
         assertTrue(
-            "the send button must enable for an attachment with no text",
-            chat.contains("val canSend = draft.isNotBlank() || hasAttachments"),
+            "the send button must appear for an attachment with no text",
+            chat.contains("if (draft.isNotBlank() || hasAttachments) {"),
         )
     }
 

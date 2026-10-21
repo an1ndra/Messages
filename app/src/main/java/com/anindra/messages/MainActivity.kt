@@ -1083,7 +1083,12 @@ class MainActivity : FragmentActivity() {
 
             if (!appUnlocked) {
                 if (lockNotAvailable) {
-                    MessagesTheme(mode = vm.themeMode, font = vm.fontFamily, a11y = vm.a11y) {
+                    MessagesTheme(
+            mode = vm.themeMode,
+            font = vm.fontFamily,
+            a11y = vm.a11y,
+            themedAvatars = vm.settings.avatarThemeColors
+        ) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
@@ -1134,7 +1139,12 @@ class MainActivity : FragmentActivity() {
                 return@setContent
             }
 
-            MessagesTheme(mode = vm.themeMode, font = vm.fontFamily, a11y = vm.a11y) {
+            MessagesTheme(
+            mode = vm.themeMode,
+            font = vm.fontFamily,
+            a11y = vm.a11y,
+            themedAvatars = vm.settings.avatarThemeColors
+        ) {
                 var chatId by remember { mutableStateOf(-1L) }
                 // The home-list query that opened the chat, so the chat can
                 // highlight and scroll to the matching message. Null for every

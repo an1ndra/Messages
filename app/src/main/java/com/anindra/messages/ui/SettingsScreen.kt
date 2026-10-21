@@ -263,6 +263,17 @@ fun SettingsScreen(
                     subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
                 )
+                var themedAvatars by remember { mutableStateOf(vm.settings.avatarThemeColors) }
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_avatar_theme_title),
+                    subtitle = stringResource(R.string.settings_avatar_theme_subtitle),
+                    checked = themedAvatars,
+                    onChecked = {
+                        themedAvatars = it
+                        vm.settings.avatarThemeColors = it
+                    }
+                )
                 val selectedSub = sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }
                 val currentSimLabel = if (selectedSub == null) {
                     context.getString(R.string.sim_default)
