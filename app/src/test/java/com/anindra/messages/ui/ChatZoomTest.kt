@@ -14,6 +14,22 @@ class ChatZoomTest {
     }
 
     @Test
+    fun theIndicatorReportsThePercentageActuallyRendered() {
+        assertEquals(100, ChatZoom.percent(1f))
+        assertEquals(150, ChatZoom.percent(1.5f))
+        assertEquals(70, ChatZoom.percent(0.1f))
+        assertEquals(250, ChatZoom.percent(9f))
+    }
+
+    @Test
+    fun theRangeIsWideEnoughToBeUseful() {
+        // The first cut stopped at 2x, which testers found cramped next to
+        // Google Messages.
+        assertTrue(ChatZoom.MAX >= 2.5f)
+        assertTrue(ChatZoom.MIN <= 0.8f)
+    }
+
+    @Test
     fun itCannotShrinkBelowTheFloorOrGrowPastTheCeiling() {
         assertEquals(ChatZoom.MIN, ChatZoom.apply(1f, 0.1f), 0.001f)
         assertEquals(ChatZoom.MAX, ChatZoom.apply(1f, 10f), 0.001f)

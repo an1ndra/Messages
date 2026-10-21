@@ -46,4 +46,12 @@ class ZoomWiringTest {
     fun theZoomIsRememberedPerConversation() {
         assertTrue(chat.contains("rememberSaveable(conversationId)"))
     }
+
+    @Test
+    fun theCurrentZoomIsShownAndCanBeResetInOneTap() {
+        // Without this the only way back to 100% was pinching the other way.
+        assertTrue(chat.contains("ChatZoom.isDefault(zoom)"))
+        assertTrue(chat.contains("onClick = { zoom = ChatZoom.DEFAULT }"))
+        assertTrue(chat.contains("R.string.access_zoom_reset"))
+    }
 }

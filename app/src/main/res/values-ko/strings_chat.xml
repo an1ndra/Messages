@@ -95,4 +95,5 @@
     <string name="chat_search_next">다음 일치</string>
     <string name="chat_search_counter">%1$d/%2$d</string>
     <string name="chat_scroll_to_latest">최신 메시지로 이동</string>
+    <string name="access_zoom_reset">확대 %1$d%%, 탭하여 초기화</string>
 </resources>
