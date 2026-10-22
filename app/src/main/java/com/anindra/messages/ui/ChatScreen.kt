@@ -42,6 +42,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
@@ -68,6 +70,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -140,6 +143,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -148,6 +152,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -196,10 +202,12 @@ import com.anindra.messages.ui.theme.selectedBubble
 import java.io.File
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -219,6 +227,10 @@ private const val LOAD_EARLIER_STEP = 200
  *  bounded window around the previous index, so a LOAD_EARLIER_STEP prepend
  *  pushes that key out of the window and the view drifts up the thread. */
 private class PrependAnchor(val key: Any, val offset: Int)
+
+/** The visible rows in the shape [ChatZoom.anchorAt] takes. */
+private fun LazyListState.zoomItems(): List<ChatZoom.Item> =
+    layoutInfo.visibleItemsInfo.map { ChatZoom.Item(it.index, it.offset, it.size) }
 
 /** Partial-text copy (#231). The message text is shown in a dialog inside a
  *  SelectionContainer: the system handles and the Copy/Share toolbar then work
@@ -633,18 +645,61 @@ fun ChatScreen(
         vmContacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
     }
     val listState = rememberLazyListState()
-    // #348: pinch scales the message text and lets the bubbles re-lay out.
-    // Remembered per conversation for as long as the chat (or its saved state)
-    // lives, then back to 1x for the next chat.
+    // #348: pinch scales the message text and lets the bubbles re-lay out. The
+    // zoom is remembered per conversation, in settings, so it survives leaving
+    // the chat and an app restart.
     var zoom by rememberSaveable(conversationId) {
-        mutableFloatStateOf(ChatZoom.fontScale(vm.debugChatZoom.takeIf { it > 0f } ?: ChatZoom.DEFAULT))
-    }
-    val zoomState = rememberTransformableState { zoomChange, _, _ ->
-        zoom = ChatZoom.apply(zoom, zoomChange)
+        mutableFloatStateOf(
+            ChatZoom.fontScale(
+                vm.debugChatZoom.takeIf { it > 0f } ?: vm.settings.chatZoomFor(conversationId)
+            )
+        )
     }
     val baseDensity = LocalDensity.current
     val zoomedDensity = remember(baseDensity, zoom) {
         Density(baseDensity.density, baseDensity.fontScale * ChatZoom.fontScale(zoom))
+    }
+    // A transformable only reports the scale factor, so the finger position comes
+    // from a pass-through observer: it reads the two-finger centroid in the
+    // initial pass without consuming, leaving single-finger scrolling alone.
+    var pinchY by remember { mutableStateOf(Float.NaN) }
+    var anchorJob by remember { mutableStateOf<Job?>(null) }
+    // Every row changes height when the scale changes, and the list keeps its
+    // scroll offset, so the message under the fingers slides away. Re-anchor it:
+    // note the row under the touch point, then scroll back so that same point of
+    // that row is back under it once the new layout is in place.
+    fun zoomAnchored(target: Float, y: Float) {
+        if (target == zoom) return
+        val anchor = ChatZoom.anchorAt(y, listState.zoomItems())
+        zoom = target
+        if (anchor == null) return
+        anchorJob?.cancel()
+        anchorJob = scope.launch {
+            withFrameNanos { }
+            val item = listState.layoutInfo.visibleItemsInfo
+                .firstOrNull { it.index == anchor.index } ?: return@launch
+            listState.scrollBy(
+                ChatZoom.anchorScroll(
+                    y, anchor, ChatZoom.Item(item.index, item.offset, item.size)
+                )
+            )
+        }
+    }
+    val zoomState = rememberTransformableState { zoomChange, _, _ ->
+        if (zoomChange != 1f) {
+            val y = pinchY.takeUnless { it.isNaN() }
+                ?: (listState.layoutInfo.viewportSize.height / 2f)
+            zoomAnchored(ChatZoom.apply(zoom, zoomChange), y)
+        }
+    }
+    LaunchedEffect(conversationId) {
+        snapshotFlow { zoom }.collectLatest { value ->
+            delay(400)
+            vm.settings.setChatZoomFor(conversationId, ChatZoom.fontScale(value))
+        }
+    }
+    DisposableEffect(conversationId) {
+        onDispose { vm.settings.setChatZoomFor(conversationId, ChatZoom.fontScale(zoom)) }
     }
     // Progressive loading: latest chunk first, shimmer while older messages queue
     var pageLimit by remember(conversationId) { mutableIntStateOf(INITIAL_CHUNK) }
@@ -1476,7 +1531,29 @@ fun ChatScreen(
             CompositionLocalProvider(LocalDensity provides zoomedDensity) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().transformable(zoomState),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val pressed = event.changes.filter { it.pressed }
+                                pinchY = if (pressed.size >= 2) {
+                                    pressed.map { it.position.y }.average().toFloat()
+                                } else {
+                                    Float.NaN
+                                }
+                            }
+                        }
+                    }
+                    .pointerInput(conversationId) {
+                        detectTapGestures(
+                            onDoubleTap = { offset ->
+                                zoomAnchored(ChatZoom.doubleTapTarget(zoom), offset.y)
+                            }
+                        )
+                    }
+                    .transformable(zoomState),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {

@@ -80,6 +80,7 @@ class SettingsStore(context: Context) {
         const val FONT_FIGTREE = "figtree"
         const val FONT_POPPINS = "poppins"
         const val KEY_BLOCKED_KEYWORDS = "blocked_keywords"
+        const val KEY_CHAT_ZOOM_PREFIX = "chat_zoom_"
         const val KEY_BACKUP_TREE_URI = "backup_tree_uri"
         const val KEY_PERIODIC_BACKUP = "periodic_backup_enabled"
         const val KEY_PERIODIC_BACKUP_INTERVAL = "periodic_backup_interval"
@@ -101,6 +102,9 @@ class SettingsStore(context: Context) {
         const val DEFAULTS_SIM_SUBSCRIPTION_ID = -1
         const val DEFAULTS_EMOJI_BUTTON = false
         const val DEFAULTS_UNREAD_AT_TOP = false
+
+        /** Per-conversation key holding that chat's zoom (#348). */
+        fun chatZoomKey(conversationId: Long): String = "$KEY_CHAT_ZOOM_PREFIX$conversationId"
     }
 
     var themeMode: String
@@ -442,6 +446,15 @@ class SettingsStore(context: Context) {
     var lastBackupDetail: String
         get() = prefs.getString(KEY_LAST_BACKUP_DETAIL, "") ?: ""
         set(v) { prefs.edit().putString(KEY_LAST_BACKUP_DETAIL, v).apply(); _revision.value++ }
+
+    /** The zoom the chat with [conversationId] was last left at (#348), so a
+     *  pinch survives leaving the chat and an app restart. */
+    fun chatZoomFor(conversationId: Long): Float =
+        prefs.getFloat(chatZoomKey(conversationId), 1f)
+
+    fun setChatZoomFor(conversationId: Long, zoom: Float) {
+        prefs.edit().putFloat(chatZoomKey(conversationId), zoom).apply()
+    }
 
     /** True when [body] contains any blocked keyword (case-insensitive). */
     fun isKeywordBlocked(body: String): Boolean = KeywordFilter.isBlocked(body, blockedKeywords)
