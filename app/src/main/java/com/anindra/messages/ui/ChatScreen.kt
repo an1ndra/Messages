@@ -2902,24 +2902,25 @@ internal fun InputBar(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        // Nothing to send means no send button, like Google Messages: a faded
-        // button reads as a control that is broken rather than as "nothing to
-        // send yet" (#347).
-        if (draft.isNotBlank() || hasAttachments) {
-            Spacer(Modifier.width(8.dp))
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .combinedClickable(onClick = onSend, onLongClick = onSchedule),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.Send, stringResource(R.string.icon_send),
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+        // The send circle is always drawn, as it was before #347: hiding it made
+        // the field jump about and left the bar looking unfinished. It is only
+        // inert while there is nothing to send, so an empty tap cannot fire.
+        val ready = canSend(draft, hasAttachments)
+        val sendLabel = stringResource(R.string.icon_send)
+        Spacer(Modifier.width(8.dp))
+        Box(
+            Modifier
+                .size(48.dp)
+                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                .combinedClickable(enabled = ready, onClick = onSend, onLongClick = onSchedule)
+                .semantics { contentDescription = sendLabel },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.AutoMirrored.Rounded.Send, null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
