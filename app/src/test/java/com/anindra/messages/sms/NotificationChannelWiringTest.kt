@@ -32,12 +32,12 @@ class NotificationChannelWiringTest {
             s.contains("NotificationChannels.forMessage")
         )
         assertTrue(
-            "poster never reads the per-conversation sound",
-            s.contains("getConversationNotificationSoundBlocking")
+            "the poster never resolves the conversation's channel inputs",
+            s.contains("conversationChannelTargetBlocking")
         )
         assertTrue(
-            "group detection never reads the recipient count",
-            s.contains("recipientCountBlocking")
+            "a conversation does not always post on its own channel",
+            s.contains("ensureConversationChannel(context, target, category")
         )
     }
 
@@ -93,6 +93,40 @@ class NotificationChannelWiringTest {
     }
 
     @Test
+    fun everyConversationOwnsAChannelCreatedAndReconciledInOnePlace() {
+        val s = src("sms/SmsSupport.kt")
+        assertTrue("no conversation channel builder", s.contains("internal fun ensureConversationChannel("))
+        assertTrue("the channel is not titled with the shared chat label", s.contains("channelLabel(target)"))
+        assertTrue("the label is not delegated to ContactDetails", s.contains("ContactDetails.listLabel"))
+        assertTrue("the category is re-derived outside the shared decision", s.contains("internal fun categoryFor("))
+        assertTrue("stale tone variants of a conversation are never deleted", s.contains("NotificationChannels.conversationVariants("))
+    }
+
+    @Test
+    fun theLaunchSyncAndSettingsReconciliationAreWired() {
+        assertTrue(
+            "nothing creates conversation channels at launch",
+            read("java/com/anindra/messages/MessagesApplication.kt")
+                .contains("syncConversationChannels")
+        )
+        val settings = read("java/com/anindra/messages/ui/AdvancedSubScreens.kt")
+        assertTrue("changing the sound does not reconcile conversation channels", settings.contains("reconcileAsync("))
+        assertTrue(
+            "a permanently deleted conversation keeps its channel",
+            read("java/com/anindra/messages/MainActivity.kt")
+                .contains("deleteConversationChannels")
+        )
+        val repo = src("data/Repository.kt")
+        assertTrue(repo.contains("fun conversationChannelTargetBlocking("))
+        assertTrue(repo.contains("fun recentConversationChannelTargetsBlocking("))
+        assertTrue(repo.contains("fun liveConversationIdsBlocking("))
+        assertTrue(
+            "emptying the trash leaves channels behind",
+            read("java/com/anindra/messages/MainActivity.kt").contains("pruneConversationChannels")
+        )
+    }
+
+    @Test
     fun diagnosticsListsEveryCreatedChannel() {
         val report = src("diagnostics/DiagnosticsReport.kt")
         assertTrue(report.contains("NotificationHelper.createdChannels(context)"))
@@ -103,7 +137,7 @@ class NotificationChannelWiringTest {
     fun theViewModelCanSetAPerConversationSound() {
         val activity = read("java/com/anindra/messages/MainActivity.kt")
         assertTrue(activity.contains("fun setConversationNotificationSound("))
-        assertTrue(activity.contains("refreshConversationChannel"))
+        assertTrue(activity.contains("syncNotificationChannels"))
     }
 
     @Test

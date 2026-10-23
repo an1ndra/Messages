@@ -89,6 +89,15 @@ data class AppDetails(
      * channel the poster did not actually make.
      */
     val channels: List<String> = emptyList(),
+    /**
+     * Bubble readiness (#354), read back from the platform: the channels whose
+     * live settings allow bubbles, and the conversation shortcuts the shortcut
+     * service actually holds. A notification cannot float without both, so the
+     * reason a bubble is missing is visible here instead of guessed at.
+     */
+    val bubblesEnabled: Boolean = false,
+    val bubbleChannels: List<String> = emptyList(),
+    val bubbleShortcuts: List<String> = emptyList(),
     val keyguardLocked: Boolean = false,
     val wakeEligible: Boolean = false
 )
@@ -246,6 +255,17 @@ object DiagnosticsReport {
             } else {
                 appendLine("Channels:")
                 data.appDetails.channels.forEach { appendLine("  $it") }
+            }
+            appendLine("Bubbles enabled: ${if (data.appDetails.bubblesEnabled) "yes" else "no"}")
+            if (data.appDetails.bubbleChannels.isEmpty()) {
+                appendLine("Bubbles: no channel allows them")
+            } else {
+                appendLine("Bubbles: allowed by ${data.appDetails.bubbleChannels.joinToString()}")
+            }
+            if (data.appDetails.bubbleShortcuts.isEmpty()) {
+                appendLine("Bubble shortcuts: none published")
+            } else {
+                appendLine("Bubble shortcuts: ${data.appDetails.bubbleShortcuts.joinToString()}")
             }
             appendLine("Keyguard locked: ${if (data.appDetails.keyguardLocked) "yes" else "no"}")
             appendLine("Wake screen for new messages: ${if (data.appDetails.wakeEligible) "will wake" else "headsup only"}")
@@ -610,6 +630,9 @@ object DiagnosticsReport {
             channelImportanceLabel = importanceLabel(NotificationHelper.channelImportance(context)),
             channels = NotificationHelper.createdChannels(context)
                 .map { "${it.first}=${importanceLabel(it.second)}" },
+            bubblesEnabled = NotificationHelper.bubblesAllowed(context),
+            bubbleChannels = NotificationHelper.bubbleChannels(context),
+            bubbleShortcuts = com.anindra.messages.sms.NotificationBubble.publishedShortcutIds(context),
             keyguardLocked = context.getSystemService(KeyguardManager::class.java)
                 ?.isKeyguardLocked == true,
             wakeEligible = NotificationHelper.shouldWake(
