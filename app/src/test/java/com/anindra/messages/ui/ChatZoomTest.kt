@@ -50,4 +50,48 @@ class ChatZoomTest {
         assertTrue(ChatZoom.isDefault(ChatZoom.DEFAULT))
         assertFalse(ChatZoom.isDefault(1.4f))
     }
+
+    @Test
+    fun theAnchorIsTheRowUnderTheFinger() {
+        val items = listOf(
+            ChatZoom.Item(0, 0, 100),
+            ChatZoom.Item(1, 100, 200),
+            ChatZoom.Item(2, 300, 50)
+        )
+        assertEquals(ChatZoom.Anchor(1, 0.25f), ChatZoom.anchorAt(150f, items))
+        assertEquals(ChatZoom.Anchor(0, 0f), ChatZoom.anchorAt(0f, items))
+        assertEquals(null, ChatZoom.anchorAt(10f, emptyList()))
+    }
+
+    @Test
+    fun aFingerInTheGapBetweenBubblesPicksTheNearestRow() {
+        val items = listOf(ChatZoom.Item(0, 0, 100), ChatZoom.Item(2, 400, 50))
+        assertEquals(2, ChatZoom.anchorAt(380f, items)?.index)
+        assertEquals(0, ChatZoom.anchorAt(120f, items)?.index)
+    }
+
+    @Test
+    fun theAnchoredPointStaysUnderTheFingerAcrossAScaleChange() {
+        // Finger a quarter of the way down a row that starts at y=200 and is 400
+        // tall, i.e. 300px from the top of the viewport.
+        val finger = 300f
+        val anchor = ChatZoom.anchorAt(finger, listOf(ChatZoom.Item(7, 200, 400)))!!
+        assertEquals(ChatZoom.Anchor(7, 0.25f), anchor)
+
+        // The row re-laid out at 800px tall after the pinch.
+        val delta = ChatZoom.anchorScroll(finger, anchor, ChatZoom.Item(7, 200, 800))
+        val offsetAfter = 200 - delta
+        assertEquals(finger, offsetAfter + anchor.fraction * 800f, 0.01f)
+
+        // Nothing moved, nothing to correct.
+        assertEquals(0f, ChatZoom.anchorScroll(finger, anchor, ChatZoom.Item(7, 200, 400)), 0.01f)
+    }
+
+    @Test
+    fun oneDoubleTapZoomsInAndTheNextComesBack() {
+        assertEquals(ChatZoom.DOUBLE_TAP, ChatZoom.doubleTapTarget(ChatZoom.DEFAULT), 0.001f)
+        assertEquals(ChatZoom.DEFAULT, ChatZoom.doubleTapTarget(ChatZoom.DOUBLE_TAP), 0.001f)
+        assertEquals(ChatZoom.DEFAULT, ChatZoom.doubleTapTarget(ChatZoom.MAX), 0.001f)
+        assertTrue(ChatZoom.DOUBLE_TAP <= ChatZoom.MAX)
+    }
 }

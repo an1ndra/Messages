@@ -2059,6 +2059,51 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
+    /**
+     * One conversation's notification-channel inputs, or null when the row is
+     * gone or trashed. Reads in a single query because the launch sync resolves
+     * up to a hundred of these.
+     */
+    fun conversationChannelTargetBlocking(conversationId: Long): ConversationChannelTarget? {
+        var out: ConversationChannelTarget? = null
+        db.readableDatabase.rawQuery(
+            "$CHANNEL_TARGET_SELECT WHERE c.deleted_at=0 AND c.id=?",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) out = readChannelTarget(c) }
+        return out
+    }
+
+    /** The most recent conversations, newest first, for the launch-time channel sync. */
+    fun recentConversationChannelTargetsBlocking(limit: Int): List<ConversationChannelTarget> {
+        val out = mutableListOf<ConversationChannelTarget>()
+        db.readableDatabase.rawQuery(
+            "$CHANNEL_TARGET_SELECT WHERE c.deleted_at=0 ORDER BY c.timestamp DESC LIMIT $limit",
+            null
+        ).use { c -> while (c.moveToNext()) out.add(readChannelTarget(c)) }
+        return out
+    }
+
+    /** Conversations that still exist, so channels of deleted ones can be pruned. */
+    fun liveConversationIdsBlocking(): Set<Long> {
+        val out = mutableSetOf<Long>()
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM conversations WHERE deleted_at=0", null
+        ).use { c -> while (c.moveToNext()) out.add(c.getLong(0)) }
+        return out
+    }
+
+    private fun readChannelTarget(c: android.database.Cursor): ConversationChannelTarget =
+        ConversationChannelTarget(
+            conversationId = c.getLong(0),
+            address = c.getString(1),
+            name = c.getString(2),
+            display = c.getString(3),
+            groupTitle = c.getString(4).orEmpty(),
+            recipients = c.getInt(5),
+            overrideSound = c.getString(6).orEmpty()
+        )
+
+
     /** Creates the row with defaults if it is missing, leaving an existing one alone. */
     private fun ensureConversationNotificationRow(conversationId: Long) {
         db.writableDatabase.insertWithOnConflict(
@@ -4468,3 +4513,17 @@ class Repository(private val context: Context) {
             }.filter { it.second > 0 }.toMap()
     }
 }
+
+/**
+ * The projection every channel decision reads (see
+ * [Repository.conversationChannelTargetBlocking]). One definition so adding a
+ * column cannot leave one caller behind.
+ */
+private const val CHANNEL_TARGET_SELECT =
+    """SELECT c.id, c.address, c.name,
+       COALESCE(p.display_destination, c.address), c.group_title,
+       (SELECT count(*) FROM conversation_recipients r WHERE r.conversation_id=c.id),
+       COALESCE(n.sound, '')
+       FROM conversations c
+       LEFT JOIN participants p ON p.normalized_destination = c.address
+       LEFT JOIN conversation_notifications n ON n.conversation_id = c.id"""

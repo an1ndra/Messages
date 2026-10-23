@@ -85,7 +85,12 @@ object NotificationChannels {
     fun categoryVariants(category: NotificationCategory): List<String> =
         categoryPrefix(category).let { p -> SOUND_SUFFIXES.map { "${p}_$it" } }
 
-    /** The channel a conversation posts to: its own when it has a sound override. */
+    /**
+     * The channel a conversation posts to: every conversation owns one (#339),
+     * so the category channel is only the fallback for a sender with no
+     * conversation row yet. The inherited tone is the override when there is
+     * one, else the category's.
+     */
     fun forMessage(
         category: NotificationCategory,
         selection: String,
@@ -93,10 +98,37 @@ object NotificationChannels {
         conversationId: Long?,
         overrideSound: String
     ): String =
-        if (conversationId != null && overrideSound.isNotEmpty()) forConversation(conversationId)
-        else forCategory(category, selection, soundOn)
+        if (conversationId != null) {
+            forConversation(conversationId, overrideSound.ifEmpty { selection }, soundOn)
+        } else {
+            forCategory(category, selection, soundOn)
+        }
 
-    fun forConversation(conversationId: Long): String = "${PREFIX}_convo_$conversationId"
+    fun conversationPrefix(conversationId: Long): String = "${PREFIX}_convo_$conversationId"
+
+    /**
+     * A conversation's channel id. The sound is part of the id because a
+     * channel's tone cannot be changed once created, so changing it has to move
+     * to a fresh id and delete the old one.
+     */
+    fun forConversation(conversationId: Long, sound: String, soundOn: Boolean): String =
+        "${conversationPrefix(conversationId)}_${soundSuffix(sound, soundOn)}"
+
+    /** Every id one conversation could own, so the stale ones can be deleted. */
+    fun conversationVariants(conversationId: Long): List<String> =
+        conversationPrefix(conversationId).let { p -> SOUND_SUFFIXES.map { "${p}_$it" } }
+
+    /**
+     * The conversation a channel id belongs to, or null for a category or
+     * legacy channel. Used to reconcile and prune channels against the database,
+     * so the id is the only thing that has to round-trip.
+     */
+    fun conversationIdOf(channelId: String): Long? =
+        Regex("^${PREFIX}_convo_(\\d+)_[a-z0-9]+$")
+            .find(channelId)
+            ?.groupValues
+            ?.get(1)
+            ?.toLongOrNull()
 
     /** The system-settings display name for a category channel. */
     fun titleRes(category: NotificationCategory): Int = when (category) {
