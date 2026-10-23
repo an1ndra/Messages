@@ -19,11 +19,21 @@ object BidiText {
      *  reordered into the middle of it (#345). */
     private const val DIGITS = "0-9\u0660-\u0669\u06F0-\u06F9"
 
-    /** A run that starts and ends with a digit, with optional leading '+'/'('
-     *  and trailing ')', and any run of digits/separators between. The Arabic
-     *  thousands (U+066C) and decimal (U+066B) separators count as separators,
-     *  as does the Arabic comma, which some banks use as a thousands mark. */
-    private val NUMBER_RUN = Regex("""\+?\(?[$DIGITS][$DIGITS\s()./$NBSP,\u060C\u066B\u066C-]*[$DIGITS]\)?""")
+    /** A run that starts and ends with a digit, with an optional leading
+     *  '-'/'+'/'(' and trailing ')', and any run of digits/separators between.
+     *  The Arabic thousands (U+066C) and decimal (U+066B) separators count as
+     *  separators, as does the Arabic comma, which some banks use as a
+     *  thousands mark.
+     *
+     *  ':' and '_' are separators too (#345). Without ':' a Mellat stamp like
+     *  "1405/07/30 - 16:59" matched only as far as the hour, leaving ":59"
+     *  outside the isolate to be reordered — which is why the hour and minute
+     *  ended up on opposite sides of the date. '_' is the same bug for
+     *  Pasargad ("07/30_04:00").
+     *
+     *  Whitespace is horizontal only: a line break ends a run, so one message's
+     *  amount is never isolated together with the next line's timestamp. */
+    private val NUMBER_RUN = Regex("""[-+]?\(?[$DIGITS][$DIGITS \t()./$NBSP,_:\u060C\u066B\u066C-]*[$DIGITS]\)?""")
 
     private fun needsIsolation(run: String): Boolean = run.any { !it.isDigit() }
 

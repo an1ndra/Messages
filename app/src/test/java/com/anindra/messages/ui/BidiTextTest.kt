@@ -91,6 +91,40 @@ class BidiTextTest {
     }
 
     @Test
+    fun aBankTimestampStaysInOnePiece() {
+        // #345 follow-up: a Mellat stamp is "1405/07/30 - 16:59". ':59' used to
+        // fall outside the isolate, so the minutes reordered away from the hour
+        // and the colon came adrift.
+        assertEquals(
+            "بانک ملت\n${lri}1405/07/30 - 16:59$pdi",
+            BidiText.isolateNumberRuns("بانک ملت\n1405/07/30 - 16:59").text
+        )
+        // The same stamp in Persian digits, and one written without spaces.
+        assertEquals(
+            "بانک ملت\n${lri}۱۴۰۵/۰۷/۳۰ - ۱۶:۵۹$pdi",
+            BidiText.isolateNumberRuns("بانک ملت\n۱۴۰۵/۰۷/۳۰ - ۱۶:۵۹").text
+        )
+        assertEquals(
+            "بانک ملت\n${lri}05/07/30-04:05$pdi",
+            BidiText.isolateNumberRuns("بانک ملت\n05/07/30-04:05").text
+        )
+    }
+
+    @Test
+    fun aPasargadTimestampAndNegativeAmountStayWhole() {
+        // Underscore-separated stamp, and a leading '-' that belongs to the
+        // amount rather than to the Persian text around it.
+        assertEquals(
+            "شماره حساب ${lri}07/30_04:00$pdi",
+            BidiText.isolateNumberRuns("شماره حساب 07/30_04:00").text
+        )
+        assertEquals(
+            "واریز ${lri}-500,000$pdi",
+            BidiText.isolateNumberRuns("واریز -500,000").text
+        )
+    }
+
+    @Test
     fun excludedRunInsideLinkIsUntouched() {
         val body = "see http://x.io/12 34 now"
         val link = 4..17
