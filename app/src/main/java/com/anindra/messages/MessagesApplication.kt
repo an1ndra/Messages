@@ -34,6 +34,10 @@ class MessagesApplication : Application() {
         )
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             repository.migrateParticipants()
+            // Every conversation owns a notification channel (#339); give the
+            // recent ones theirs now, so system settings lists them before a
+            // message arrives, and prune the channels of deleted chats.
+            com.anindra.messages.sms.NotificationHelper.syncConversationChannels(this@MessagesApplication)
             val s = repository.settings
             if (BackupHealth.isRetryDue(s.periodicBackupEnabled, s.lastBackupAt, s.lastBackupOk)) {
                 PeriodicBackupScheduler.enqueueRetry(this@MessagesApplication)

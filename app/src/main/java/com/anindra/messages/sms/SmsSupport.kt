@@ -16,16 +16,21 @@ import androidx.core.app.RemoteInput
 import androidx.core.graphics.drawable.IconCompat
 import com.anindra.messages.MainActivity
 import com.anindra.messages.R
+import com.anindra.messages.data.ConversationChannelTarget
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.hideUrls
+import kotlinx.coroutines.launch
 
 object NotificationHelper {
     private var previewPlayer: android.media.MediaPlayer? = null
 
+    /** How many recent conversations get a channel at launch, so the settings list stays readable. */
+    private const val CHANNEL_SYNC_LIMIT = 100
+
     /**
-     * The channel a message posts to: a conversation's own channel when it has a
-     * sound override, otherwise its category's. Single source of truth for the
-     * poster and Diagnostics, so they cannot disagree.
+     * The channel a message posts to: a conversation's own channel whenever there
+     * is one, otherwise its category's. Single source of truth for the poster and
+     * Diagnostics, so they cannot disagree.
      */
     internal fun channelIdFor(
         category: NotificationCategory,
@@ -209,43 +214,129 @@ object NotificationHelper {
     }
 
     /**
-     * Creates (or refreshes) the channel for a conversation that carries its own
-     * sound, titled after the sender. The title is the sender because the system
-     * settings list shows it next to the app's other channels. An empty [sound]
-     * clears the override and removes the channel.
+     * Creates or refreshes a conversation's channel (#339) and returns its id.
+     * Every conversation owns one, titled after the chat, because a per-chat row
+     * in system settings is the only way Android offers per-chat sound,
+     * vibration and importance.
      *
-     * Changing the sound has to delete first: an existing channel will not take
-     * a new tone.
+     * The id carries the tone, so changing it lands on a fresh id and the
+     * conversation's other variants are deleted: an existing channel will not
+     * take a new sound.
      */
-    fun refreshConversationChannel(
+    internal fun ensureConversationChannel(
         context: Context,
-        conversationId: Long,
-        title: String,
-        sound: String
-    ) {
-        if (sound.isEmpty()) {
-            deleteConversationChannel(context, conversationId)
-            return
-        }
-        val nm = context.getSystemService(NotificationManager::class.java) ?: return
+        target: ConversationChannelTarget,
+        category: NotificationCategory,
+        soundOn: Boolean
+    ): String {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        val id = NotificationChannels.forConversation(conversationId)
-        val desired = channelSoundUri(context, sound, app.repository.settings.receiveSoundEnabled)
-        nm.getNotificationChannel(id)?.let { existing ->
-            if (existing.sound != desired) nm.deleteNotificationChannel(id)
+        val selection = app.repository.settings.notificationSoundFor(NotificationCategory.keyOf(category))
+        val sound = target.overrideSound.ifEmpty { selection }
+        val id = channelIdFor(category, selection, soundOn, target.conversationId, target.overrideSound)
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return id
+        val label = channelLabel(target)
+        val desired = channelSoundUri(context, sound, soundOn)
+        val existing = nm.getNotificationChannel(id)
+        if (existing != null && existing.sound == desired && existing.name == label) return id
+        if (existing == null) {
+            // A fresh tone (or the first post): the previous variant is stale.
+            // Checking the desired id first keeps a launch sync to one binder
+            // read per conversation instead of six writes.
+            NotificationChannels.conversationVariants(target.conversationId)
+                .filter { it != id }
+                .forEach { nm.deleteNotificationChannel(it) }
+        } else if (existing.sound != desired) {
+            nm.deleteNotificationChannel(id)
         }
         nm.createNotificationChannel(
-            NotificationChannel(id, title, NotificationManager.IMPORTANCE_HIGH).apply {
+            NotificationChannel(id, label, NotificationManager.IMPORTANCE_HIGH).apply {
                 description = context.getString(R.string.notification_channel_convo_desc)
                 setSound(desired, android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT)
             }
         )
+        return id
     }
 
-    /** Deletes a conversation's own channel when its override is cleared. */
-    fun deleteConversationChannel(context: Context, conversationId: Long) {
+    /** The row Android shows in system settings for a conversation. */
+    internal fun channelLabel(target: ConversationChannelTarget): String =
+        com.anindra.messages.ui.ContactDetails.listLabel(
+            target.groupTitle, target.name, target.address, target.display
+        )
+
+    /**
+     * The category a conversation belongs to. One decision shared by the poster
+     * and both channel syncs, so a chat cannot inherit two different tones.
+     */
+    internal fun categoryFor(target: ConversationChannelTarget): NotificationCategory =
+        NotificationCategory.resolve(
+            isGroup = target.recipients > 1,
+            knownContact = com.anindra.messages.ui.ContactDetails.isKnown(
+                target.name, target.address
+            ),
+            replyable = com.anindra.messages.data.AddressIdentity.isReplyable(target.address)
+        )
+
+    /** Deletes every tone variant of a conversation's channel. */
+    fun deleteConversationChannels(context: Context, conversationId: Long) {
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return
+        NotificationChannels.conversationVariants(conversationId)
+            .forEach { nm.deleteNotificationChannel(it) }
+    }
+
+    /**
+     * Gives the most recent conversations their channel at launch, so system
+     * settings lists chats nothing has arrived in yet, and prunes the channels
+     * of conversations that are gone.
+     */
+    fun syncConversationChannels(context: Context) {
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val repo = app.repository
+        val soundOn = repo.settings.receiveSoundEnabled
+        repo.recentConversationChannelTargetsBlocking(CHANNEL_SYNC_LIMIT).forEach { target ->
+            ensureConversationChannel(context, target, categoryFor(target), soundOn)
+        }
+        pruneConversationChannels(context)
+    }
+
+    /** Drops the channels of conversations that no longer exist. */
+    fun pruneConversationChannels(context: Context) {
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val live = app.repository.liveConversationIdsBlocking()
         context.getSystemService(NotificationManager::class.java)
-            ?.deleteNotificationChannel(NotificationChannels.forConversation(conversationId))
+            ?.notificationChannels
+            ?.mapNotNull { NotificationChannels.conversationIdOf(it.id) }
+            ?.distinct()
+            ?.filter { it !in live }
+            ?.forEach { deleteConversationChannels(context, it) }
+    }
+
+    /**
+     * Recreates the channels that already exist after a sound or receive-sound
+     * change, and drops any whose conversation is gone. Only conversations that
+     * own a channel are touched, so a long history does not dump hundreds of
+     * rows into system settings at once.
+     */
+    fun syncNotificationChannels(context: Context) {
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val repo = app.repository
+        val soundOn = repo.settings.receiveSoundEnabled
+        context.getSystemService(NotificationManager::class.java)
+            ?.notificationChannels
+            ?.mapNotNull { NotificationChannels.conversationIdOf(it.id) }
+            ?.distinct()
+            ?.forEach { conversationId ->
+                val target = repo.conversationChannelTargetBlocking(conversationId)
+                if (target == null) deleteConversationChannels(context, conversationId)
+                else ensureConversationChannel(context, target, categoryFor(target), soundOn)
+            }
+    }
+
+    /** Runs [syncNotificationChannels] off the main thread, for settings rows. */
+    fun reconcileAsync(context: Context) {
+        val app = context.applicationContext
+        kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
+        ).launch { syncNotificationChannels(app) }
     }
 
     /**
@@ -260,6 +351,19 @@ object NotificationHelper {
         if (existing.importance >= NotificationManager.IMPORTANCE_DEFAULT) return
         nm.deleteNotificationChannel(id)
     }
+
+    /** Whether the user has allowed bubbles for the app, read from the platform. */
+    internal fun bubblesAllowed(context: Context): Boolean =
+        context.getSystemService(NotificationManager::class.java)?.areBubblesAllowed() == true
+
+    /** Channel ids whose live settings allow bubbles, for Diagnostics. */
+    internal fun bubbleChannels(context: Context): List<String> =
+        context.getSystemService(NotificationManager::class.java)
+            ?.notificationChannels
+            ?.filter { it.canBubble() }
+            ?.map { it.id }
+            ?.sorted()
+            .orEmpty()
 
     /** Live importance of a specific channel, or IMPORTANCE_NONE when absent. */
     internal fun channelImportanceFor(context: Context, channelId: String): Int =
@@ -317,21 +421,24 @@ object NotificationHelper {
 
         val replyable = com.anindra.messages.data.AddressIdentity.isReplyable(from)
         val contactName = app.repository.contactNameFor(from)
-        val category = NotificationCategory.resolve(
-            isGroup = convoId != null && app.repository.recipientCountBlocking(convoId) > 1,
-            knownContact = contactName != null,
-            replyable = replyable
-        )
-        val overrideSound = convoId
-            ?.let { app.repository.getConversationNotificationSoundBlocking(it) }
-            .orEmpty()
         val settings = app.repository.settings
-        val categorySelection = settings.notificationSoundFor(NotificationCategory.keyOf(category))
-        val channelId = channelIdFor(
-            category, categorySelection, settings.receiveSoundEnabled, convoId, overrideSound
-        )
-        if (convoId != null && overrideSound.isNotEmpty()) {
-            refreshConversationChannel(context, convoId, contactName ?: from, overrideSound)
+        // A conversation always posts on its own channel (#339); the category
+        // channel is only the fallback for a sender with no conversation row.
+        val target = convoId?.let { app.repository.conversationChannelTargetBlocking(it) }
+        val category = target?.let { categoryFor(it) }
+            ?: NotificationCategory.resolve(
+                isGroup = false, knownContact = contactName != null, replyable = replyable
+            )
+        val channelId = if (target != null) {
+            ensureConversationChannel(context, target, category, settings.receiveSoundEnabled)
+        } else {
+            channelIdFor(
+                category,
+                settings.notificationSoundFor(NotificationCategory.keyOf(category)),
+                settings.receiveSoundEnabled,
+                null,
+                ""
+            )
         }
 
         // stable per-conversation id: hashCode collisions between different
@@ -421,6 +528,13 @@ object NotificationHelper {
             else -> body
         }
 
+        // A conversation bubble needs a published long-lived shortcut; when one
+        // cannot be published (shortcut updates are rate limited) the same
+        // notification still posts, just without a bubble.
+        val bubbleConversationId = convoId?.takeIf { NotificationBubble.shouldAttach(it, replyable) }
+        val bubbleReady = bubbleConversationId != null &&
+            NotificationBubble.ensureShortcut(context, bubbleConversationId, from, senderName)
+
         // The channel carries the selected tone; the platform plays the channel
         // sound. The per-notification sound is kept in sync so status dumps and
         // any channel-less fallback agree. Note: never setSilent(true) here —
@@ -438,6 +552,19 @@ object NotificationHelper {
             .setNumber(BadgePolicy.badgeCount(app.repository.unreadCountFor(convoId)))
             .setContentIntent(tap)
             .setStyle(groupedStyle(context, app, convoId, senderName, text, imageUri, privacyMode))
+        if (bubbleConversationId != null && bubbleReady) {
+            try {
+                builder.setShortcutId(NotificationBubble.shortcutId(bubbleConversationId))
+                builder.addPerson(
+                    Person.Builder().setName(senderName).setKey(from).setImportant(true).build()
+                )
+                builder.setBubbleMetadata(
+                    NotificationBubble.metadata(context, from, bubbleConversationId, reqCode + 4000)
+                )
+            } catch (e: Exception) {
+                android.util.Log.w("NotificationBubble", "attach conversation $bubbleConversationId: $e")
+            }
+        }
         // A heads-up popup is a peek: on a locked screen the panel stays asleep.
         // Only a full-screen intent is treated as a user-initiated wake, so this
         // is what turns the screen on. Privacy mode suppresses it because the
@@ -499,22 +626,26 @@ object NotificationHelper {
 
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val convoId = app.repository.conversationIdForAddress(to)
-        val category = NotificationCategory.resolve(
-            isGroup = convoId != null && app.repository.recipientCountBlocking(convoId) > 1,
-            knownContact = app.repository.contactNameFor(to) != null,
-            replyable = com.anindra.messages.data.AddressIdentity.isReplyable(to)
-        )
-        val overrideSound = convoId
-            ?.let { app.repository.getConversationNotificationSoundBlocking(it) }
-            .orEmpty()
         val settings = app.repository.settings
-        val channelId = channelIdFor(
-            category,
-            settings.notificationSoundFor(NotificationCategory.keyOf(category)),
-            settings.receiveSoundEnabled,
-            convoId,
-            overrideSound
-        )
+        // A failure belongs to the same conversation channel its messages use.
+        val target = convoId?.let { app.repository.conversationChannelTargetBlocking(it) }
+        val category = target?.let { categoryFor(it) }
+            ?: NotificationCategory.resolve(
+                isGroup = false,
+                knownContact = app.repository.contactNameFor(to) != null,
+                replyable = com.anindra.messages.data.AddressIdentity.isReplyable(to)
+            )
+        val channelId = if (target != null) {
+            ensureConversationChannel(context, target, category, settings.receiveSoundEnabled)
+        } else {
+            channelIdFor(
+                category,
+                settings.notificationSoundFor(NotificationCategory.keyOf(category)),
+                settings.receiveSoundEnabled,
+                null,
+                ""
+            )
+        }
         val failId = (convoId ?: to.hashCode().toLong()).toInt()
 
         // "failed" tag decouples failure notifications from incoming-message ids
@@ -553,6 +684,10 @@ object NotificationHelper {
         conversationId: Long?,
         address: String? = null
     ) {
+        // Cancelling a notification cancels its bubble, and reading the thread
+        // is exactly what opens a bubble. A live bubble host owns the
+        // notification and dismisses it when the bubble closes.
+        if (BubbleHost.holds(conversationId)) return
         val ids = BadgePolicy.idsToDismiss(conversationId, address?.hashCode()) ?: return
         val nm = NotificationManagerCompat.from(context)
         nm.cancel(ids.first)

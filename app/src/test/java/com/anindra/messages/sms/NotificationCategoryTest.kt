@@ -65,20 +65,50 @@ class NotificationCategoryTest {
             "messages_direct_silent",
             NotificationChannels.forCategory(NotificationCategory.DIRECT, "universfield_09", false)
         )
-        assertEquals("messages_convo_42", NotificationChannels.forConversation(42))
+        assertEquals(
+            "messages_convo_42_default",
+            NotificationChannels.forConversation(42, "default", true)
+        )
+        assertEquals(
+            "messages_convo_42_silent",
+            NotificationChannels.forConversation(42, "default", false)
+        )
     }
 
     @Test
-    fun aConversationOverrideWinsOverTheCategoryChannel() {
+    fun everyConversationOwnsAChannelEvenWithoutASoundOverride() {
+        // The category channel is only the fallback for a sender with no
+        // conversation row, so a chat without its own tone still gets a row.
         assertEquals(
-            "messages_convo_7",
+            "messages_convo_7_default",
+            NotificationChannels.forMessage(NotificationCategory.GROUP, "default", true, 7, "")
+        )
+        assertEquals(
+            "messages_convo_7_dragon",
             NotificationChannels.forMessage(
                 NotificationCategory.GROUP, "default", true, 7, "dragon_studio"
             )
         )
         assertEquals(
             "messages_group_default",
-            NotificationChannels.forMessage(NotificationCategory.GROUP, "default", true, 7, "")
+            NotificationChannels.forMessage(NotificationCategory.GROUP, "default", true, null, "")
+        )
+    }
+
+    @Test
+    fun conversationChannelIdsRoundTripAndListTheirVariants() {
+        assertEquals(
+            42L, NotificationChannels.conversationIdOf("messages_convo_42_default")
+        )
+        assertEquals(
+            42L, NotificationChannels.conversationIdOf("messages_convo_42_silent")
+        )
+        assertEquals(null, NotificationChannels.conversationIdOf("messages_group_default"))
+        assertEquals(null, NotificationChannels.conversationIdOf("messages"))
+        assertEquals(6, NotificationChannels.conversationVariants(42).size)
+        assertTrue(
+            NotificationChannels.forConversation(42, "default", true) in
+                NotificationChannels.conversationVariants(42)
         )
     }
 
@@ -101,7 +131,7 @@ class NotificationCategoryTest {
         // channel, or a delete-then-recreate would delete the live one.
         val live = NotificationCategory.entries
             .flatMap { NotificationChannels.categoryVariants(it) }
-            .toSet() + NotificationChannels.forConversation(1)
+            .toSet() + NotificationChannels.forConversation(1, "default", true)
         NotificationChannels.LEGACY_VARIANTS.forEach {
             assertTrue("legacy $it collides with a live channel id", it !in live)
             assertTrue("legacy $it is not a messages_* id", it.startsWith("messages"))
