@@ -592,6 +592,30 @@ private fun InputBarPreview() {
 }
 
 @PreviewLightDark
+@Preview(name = "Compose input bar, empty", showBackground = true, widthDp = 380)
+@Composable
+private fun InputBarEmptyPreview() {
+    MessagesTheme(mode = "system") {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            InputBar(
+                draft = "",
+                placeholder = "Text message",
+                onDraftChange = {},
+                onSend = {},
+                onSchedule = {},
+                onEmojiToggle = {},
+                onAttach = {},
+                showEmojiButton = true
+            )
+        }
+    }
+}
+
+@PreviewLightDark
 @Preview(name = "Attach sheet", showBackground = true, widthDp = 380, heightDp = 640)
 @Composable
 private fun AttachSheetPreview() {

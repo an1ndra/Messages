@@ -6,8 +6,8 @@ import java.io.File
 
 /**
  * Appearance follow-ups from the #347 feedback: avatars can follow the theme,
- * the redesigned interface is the default, and the send button only exists when
- * there is something to send.
+ * the redesigned interface is the default, and the send circle is permanent but
+ * only live when there is something to send.
  */
 class AppearanceOptionsTest {
 
@@ -62,11 +62,23 @@ class AppearanceOptionsTest {
     }
 
     @Test
-    fun theSendButtonOnlyExistsWhenThereIsSomethingToSend() {
+    fun theSendButtonIsAlwaysOnScreenAndOnlyLiveWithSomethingToSend() {
         val chat = read("src/main/java/com/anindra/messages/ui/ChatScreen.kt")
         assertTrue(
-            "the send button must be gated on content or an attachment",
-            chat.contains("if (draft.isNotBlank() || hasAttachments) {")
+            "the send button must not be hidden inside a content check",
+            !chat.contains("if (draft.isNotBlank() || hasAttachments) {")
+        )
+        assertTrue(
+            "the input bar must draw the send circle unconditionally",
+            chat.contains("val ready = canSend(draft, hasAttachments)")
+        )
+        assertTrue(
+            "an empty composer must not be able to fire a send",
+            chat.contains(".combinedClickable(enabled = ready, onClick = onSend, onLongClick = onSchedule)")
+        )
+        assertTrue(
+            "the circle keeps its full primary fill even when idle",
+            chat.contains(".background(MaterialTheme.colorScheme.primary, CircleShape)")
         )
     }
 
