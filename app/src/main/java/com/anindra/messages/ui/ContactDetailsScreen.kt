@@ -526,7 +526,7 @@ onBack: () -> Unit,
             },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.setConversationNotificationSound(conversationId, pendingSound, groupTitle)
+                    vm.setConversationNotificationSound(conversationId, pendingSound)
                     soundDialog = false
                 }) { Text(stringResource(R.string.common_ok)) }
             },

@@ -48,10 +48,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Messages">
 
+        <!-- allowEmbedded + resizeableActivity are what let a conversation
+             notification float as a bubble (#354); without both the platform
+             falls back to a plain notification. -->
         <activity
             android:name=".MainActivity"
+            android:allowEmbedded="true"
             android:exported="true"
             android:launchMode="singleTop"
+            android:resizeableActivity="true"
             android:taskAffinity=""
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

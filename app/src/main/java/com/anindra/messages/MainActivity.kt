@@ -322,15 +322,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deleteConversation(id: Long) = scope.launch {
-        if (settings.permanentDeleteEnabled) repo.deleteConversationSuspend(id)
-        else repo.trashConversationSuspend(id)
+        if (settings.permanentDeleteEnabled) {
+            repo.deleteConversationSuspend(id)
+            com.anindra.messages.sms.NotificationHelper.deleteConversationChannels(
+                getApplication(), id
+            )
+        } else {
+            repo.trashConversationSuspend(id)
+        }
     }
 
     fun restoreFromTrash(id: Long) = scope.launch { repo.restoreFromTrashSuspend(id) }
 
-    fun deleteForever(id: Long) = scope.launch { repo.deleteConversationSuspend(id) }
+    fun deleteForever(id: Long) = scope.launch {
+        repo.deleteConversationSuspend(id)
+        com.anindra.messages.sms.NotificationHelper.deleteConversationChannels(getApplication(), id)
+    }
 
-    fun emptyTrash() = scope.launch { repo.emptyTrashSuspend() }
+    fun emptyTrash() = scope.launch {
+        repo.emptyTrashSuspend()
+        com.anindra.messages.sms.NotificationHelper.pruneConversationChannels(getApplication())
+    }
 
     fun trashedConversations(): Flow<List<Conversation>> = repo.trashedConversations()
 
@@ -807,13 +819,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun conversationNotificationSoundFlow(conversationId: Long): Flow<String> =
         repo.conversationNotificationSoundFlow(conversationId)
 
-    /** Empty [sound] clears the override back to the category/global tone. */
-    fun setConversationNotificationSound(conversationId: Long, sound: String, title: String) {
+    /** Empty [sound] clears the override back to the inherited tone. */
+    fun setConversationNotificationSound(conversationId: Long, sound: String) {
         scope.launch(Dispatchers.IO) {
             repo.setConversationNotificationSound(conversationId, sound)
-            com.anindra.messages.sms.NotificationHelper.refreshConversationChannel(
-                getApplication(), conversationId, title, sound
-            )
+            com.anindra.messages.sms.NotificationHelper.syncNotificationChannels(getApplication())
         }
     }
 
@@ -985,6 +995,14 @@ class MainActivity : FragmentActivity() {
     private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
     private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
 
+    /** The conversation this activity is showing inside a notification bubble, if any. */
+    private var bubbleConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
+
+    private fun isBubbleLaunch(intent: Intent?): Boolean =
+        intent?.getBooleanExtra(
+            com.anindra.messages.sms.NotificationBubble.EXTRA_OPEN_IN_BUBBLE, false
+        ) == true
+
     private var lastResumeTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -1031,10 +1049,15 @@ class MainActivity : FragmentActivity() {
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
-                this@MainActivity, null, it
-            )
+            // The bubble's own notification is the bubble: dismissing it here
+            // would close the window this activity was launched into.
+            if (!isBubbleLaunch(intent)) {
+                com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+                    this@MainActivity, null, it
+                )
+            }
         }
+        if (isBubbleLaunch(intent)) navRoute = "opening"
         applyShareIntent(intent)
 
         val defaultSmsLauncher = registerForActivityResult(
@@ -1208,6 +1231,12 @@ class MainActivity : FragmentActivity() {
                     chatSearchQuery = null
                     navRoute = if (id > 0) "chat" else "list"
                     pendingOpenAddress = null
+                    // Keep the bubble's notification alive while this window
+                    // hosts it; the chat's own dismissal is deferred.
+                    if (id > 0 && isBubbleLaunch(intent)) {
+                        bubbleConversationId = id
+                        com.anindra.messages.sms.BubbleHost.enter(id)
+                    }
                 }
 
                 if (showDefaultSmsDialog) {
@@ -1262,7 +1291,13 @@ class MainActivity : FragmentActivity() {
                 }
 
                 // Single back dispatcher for all routes; child screen BackHandlers win.
-                androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
+                // A bubble hosts only the chat, so its root hands back to the
+                // system, which collapses the bubble instead of showing the list.
+                val bubbleMode = isBubbleLaunch(intent)
+                androidx.activity.compose.BackHandler(
+                    enabled = if (bubbleMode) navRoute != "chat" && navRoute != "opening"
+                    else navRoute != "list"
+                ) {
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "add-people" -> navRoute = "details"
@@ -1486,7 +1521,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         onBack = {
                                             pendingShareBody = ""
                                             pendingShareMedia = emptyList()
-                                            navRoute = "list"
+                                            if (bubbleMode) finish() else navRoute = "list"
                                         },
                                         // Leaving for contact details consumes the
                                         // search handoff. ChatScreen lives inside
@@ -1574,6 +1609,22 @@ onOpenAccessibility = { navRoute = "accessibility" },
     override fun onPause() {
         com.anindra.messages.sms.ForegroundTracker.setAppForeground(false)
         super.onPause()
+    }
+
+    /**
+     * A bubble's notification outlives its host while the bubble is open, so the
+     * deferred dismissal happens here: closing the bubble dismisses the
+     * notification the chat had already tried to cancel. A configuration change
+     * destroys without finishing and the recreated activity registers again,
+     * which is why only a real finish releases it.
+     */
+    override fun onDestroy() {
+        val bubbleId = bubbleConversationId
+        if (bubbleId != null && isFinishing) {
+            com.anindra.messages.sms.BubbleHost.leave(bubbleId)
+            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(this, bubbleId)
+        }
+        super.onDestroy()
     }
 
     /** Debug builds only: `--ez fake_dual_sim true` makes the app see two fake
@@ -1727,10 +1778,13 @@ onOpenAccessibility = { navRoute = "accessibility" },
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
-                this@MainActivity, null, it
-            )
+            if (!isBubbleLaunch(intent)) {
+                com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+                    this@MainActivity, null, it
+                )
+            }
         }
+        if (isBubbleLaunch(intent)) navRoute = "opening"
         applyShareIntent(intent)
     }
 

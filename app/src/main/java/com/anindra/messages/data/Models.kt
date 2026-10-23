@@ -74,3 +74,22 @@ data class ScheduledMessage(
     val conversationId: Long,
     val subId: Int = -1
 )
+
+/**
+ * Everything a conversation's notification channel is built from (#339),
+ * resolved in one query so the poster, the launch-time channel sync and the
+ * settings reconciliation can never title or tone a channel differently.
+ *
+ * [display] is the locale-formatted address and [recipients] the member count;
+ * together with [name] they are what [com.anindra.messages.ui.ContactDetails]
+ * needs to label the chat and [NotificationCategory] to inherit a tone.
+ */
+data class ConversationChannelTarget(
+    val conversationId: Long,
+    val address: String,
+    val name: String,
+    val display: String,
+    val groupTitle: String,
+    val recipients: Int,
+    val overrideSound: String
+)

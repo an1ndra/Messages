@@ -99,6 +99,7 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                     receiveSound = it
                     vm.settings.receiveSoundEnabled = it
                     NotificationHelper.ensureChannels(context)
+                    NotificationHelper.reconcileAsync(context)
                 }
             )
             SettingsRow(
@@ -168,7 +169,13 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                     options.forEach { (value, label) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    sound = value
+                                    NotificationHelper.previewNotificationSound(context, value)
+                                }
+                                .padding(vertical = 2.dp)
                         ) {
                             RadioButton(
                                 selected = sound == value,
@@ -187,6 +194,7 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 TextButton(onClick = {
                     vm.settings.notificationSound = sound
                     NotificationHelper.ensureChannels(context)
+                    NotificationHelper.reconcileAsync(context)
                     soundDialog = false
                 }) { Text(stringResource(R.string.common_ok)) }
             },
@@ -240,6 +248,7 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 TextButton(onClick = {
                     vm.settings.setNotificationSoundFor(key, pendingCategorySound)
                     NotificationHelper.ensureChannels(context)
+                    NotificationHelper.reconcileAsync(context)
                     categoryDialog = null
                 }) { Text(stringResource(R.string.common_ok)) }
             },
