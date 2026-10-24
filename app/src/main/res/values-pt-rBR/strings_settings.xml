@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">Saiba quando uma mensagem SMS é entregue</string>
     <string name="settings_mark_read_title">Marcar todas como lidas</string>
     <string name="settings_mark_read_subtitle">Limpar badges de não lidas para todas as conversas</string>
+    <string name="settings_mark_read_confirm_title">Marcar todas como lidas?</string>
+    <string name="settings_mark_read_confirm_message">Os badges de não lidas serão limpos em todas as conversas. Não é possível desfazer.</string>
     <string name="settings_theme_title">Escolher tema</string>
     <string name="settings_archiving_title">Arquivamento</string>
     <string name="settings_archiving_subtitle">Permitir arquivar conversas</string>
@@ -163,6 +165,4 @@
     <string name="settings_search_hint">Buscar nas configurações</string>
     <string name="settings_search_none">Nenhuma configuração corresponde</string>
     <string name="settings_theme_dynamic">Dinâmico</string>
-    <string name="settings_avatar_theme_title">Cores do tema para avatares</string>
-    <string name="settings_avatar_theme_subtitle">Desenha os avatares com a cor de contêiner do tema em vez de uma por contato</string>
 </resources>

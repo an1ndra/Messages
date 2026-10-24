@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">追蹤 SMS 訊息是否已成功送達</string>
     <string name="settings_mark_read_title">全部標記為已讀</string>
     <string name="settings_mark_read_subtitle">清除所有對話的未讀徽章</string>
+    <string name="settings_mark_read_confirm_title">全部標記為已讀？</string>
+    <string name="settings_mark_read_confirm_message">所有對話的未讀徽章都將被清除。此操作無法復原。</string>
     <string name="settings_theme_title">選擇主題</string>
     <string name="settings_archiving_title">封存</string>
     <string name="settings_archiving_subtitle">允許封存對話</string>
@@ -163,6 +165,4 @@
     <string name="settings_search_hint">搜尋設定</string>
     <string name="settings_search_none">沒有相符的設定</string>
     <string name="settings_theme_dynamic">動態</string>
-    <string name="settings_avatar_theme_title">大頭貼使用主題配色</string>
-    <string name="settings_avatar_theme_subtitle">使用主題的容器顏色繪製聯絡人大頭貼，而不是每位聯絡人的獨立顏色</string>
 </resources>

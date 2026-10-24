@@ -50,7 +50,6 @@ object SettingsSearch {
             R.string.settings_mark_read_title)
         card(Route.SETTINGS, 1,
             R.string.settings_theme_title,
-            R.string.settings_avatar_theme_title,
             R.string.settings_pin_sim_card,
             R.string.settings_sim_indicator)
         card(Route.SETTINGS, 2,

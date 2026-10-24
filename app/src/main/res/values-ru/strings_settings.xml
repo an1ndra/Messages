@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">Узнавать, когда SMS-сообщение доставлено</string>
     <string name="settings_mark_read_title">Отметить все как прочитанные</string>
     <string name="settings_mark_read_subtitle">Убрать значки непрочитанных для всех переписок</string>
+    <string name="settings_mark_read_confirm_title">Отметить все как прочитанные?</string>
+    <string name="settings_mark_read_confirm_message">Значки непрочитанных будут убраны во всех переписках. Это действие нельзя отменить.</string>
     <string name="settings_theme_title">Выбрать тему</string>
     <string name="settings_archiving_title">Архивирование</string>
     <string name="settings_archiving_subtitle">Разрешить архивирование переписок</string>
@@ -163,6 +165,4 @@
     <string name="settings_search_hint">Поиск по настройкам</string>
     <string name="settings_search_none">Нет подходящих настроек</string>
     <string name="settings_theme_dynamic">Динамическая</string>
-    <string name="settings_avatar_theme_title">Цвета темы для аватаров</string>
-    <string name="settings_avatar_theme_subtitle">Рисовать аватары цветом контейнера темы вместо цвета для каждого контакта</string>
 </resources>
