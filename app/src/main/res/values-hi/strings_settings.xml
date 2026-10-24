@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">जानें कि SMS संदेश कब वितरित हुआ</string>
     <string name="settings_mark_read_title">सभी को पढ़े के रूप में चिह्नित करें</string>
     <string name="settings_mark_read_subtitle">प्रत्येक संवाद के लिए अपढ़े बैज साफ़ करें</string>
+    <string name="settings_mark_read_confirm_title">सभी को पढ़े के रूप में चिह्नित करें?</string>
+    <string name="settings_mark_read_confirm_message">सभी संवादों के अपढ़े बैज साफ़ हो जाएंगे। इसे पूर्ववत नहीं किया जा सकता।</string>
     <string name="settings_theme_title">थीम चुनें</string>
     <string name="settings_archiving_title">आर्काइव</string>
     <string name="settings_archiving_subtitle">संवाद संग्रहीत करने की अनुमति दें</string>
@@ -163,6 +165,4 @@
     <string name="settings_search_hint">सेटिंग खोजें</string>
     <string name="settings_search_none">कोई सेटिंग मेल नहीं खाती</string>
     <string name="settings_theme_dynamic">डायनामिक</string>
-    <string name="settings_avatar_theme_title">अवतार के लिए थीम रंग</string>
-    <string name="settings_avatar_theme_subtitle">प्रत्येक संपर्क के रंग के बजाय थीम के कंटेनर रंग में अवतार दिखाएँ</string>
 </resources>

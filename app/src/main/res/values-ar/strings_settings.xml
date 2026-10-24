@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">معرفة متى يتم تسليم رسالة SMS</string>
     <string name="settings_mark_read_title">وضع علامة على الكل كمقروء</string>
     <string name="settings_mark_read_subtitle">إزالة علامات الرسائل غير المقروءة لجميع المحادثات</string>
+    <string name="settings_mark_read_confirm_title">وضع علامة على الكل كمقروء؟</string>
+    <string name="settings_mark_read_confirm_message">ستتم إزالة علامات غير المقروء من جميع المحادثات. لا يمكن التراجع عن ذلك.</string>
     <string name="settings_theme_title">اختيار المظهر</string>
     <string name="settings_archiving_title">الأرشفة</string>
     <string name="settings_archiving_subtitle">السماح بأرشفة المحادثات</string>
@@ -163,6 +165,4 @@
     <string name="settings_search_hint">البحث في الإعدادات</string>
     <string name="settings_search_none">لا توجد إعدادات مطابقة</string>
     <string name="settings_theme_dynamic">ديناميكي</string>
-    <string name="settings_avatar_theme_title">ألوان السمة للصور الرمزية</string>
-    <string name="settings_avatar_theme_subtitle">ارسم صور جهات الاتصال بلون الحاوية في السمة بدلاً من لون لكل جهة</string>
 </resources>

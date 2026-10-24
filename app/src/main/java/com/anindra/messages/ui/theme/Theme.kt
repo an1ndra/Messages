@@ -285,6 +285,19 @@ internal fun themeIsDark(mode: String, systemIsDark: Boolean): Boolean = when (m
 }
 
 /**
+ * Whether avatars are drawn in the theme's container colour instead of the fixed
+ * per-contact palette. Exactly one mode wants that: the dynamic (wallpaper)
+ * theme, where the palette would be the only thing on screen not derived from
+ * the wallpaper. Every other mode keeps the Google-Messages look.
+ *
+ * One function because the theme paints the avatars through it and Diagnostics
+ * reports through it: a second copy of the branch is how a report starts
+ * disagreeing with what was drawn.
+ */
+internal fun avatarsFollowTheme(mode: String): Boolean =
+    mode == SettingsStore.THEME_DYNAMIC
+
+/**
  * The wallpaper-derived scheme Android 12+ can supply, or null where it does not
  * exist (API < 31) or the user has not asked for it.
  */
@@ -332,7 +345,6 @@ fun MessagesTheme(
     mode: String = "system",   // system | light | dark | amoled | dynamic
     font: String = SettingsStore.FONT_SYSTEM,
     a11y: A11yOptions = A11yOptions.DISABLED,
-    themedAvatars: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val darkTheme = themeIsDark(mode, isSystemInDarkTheme())
@@ -368,7 +380,7 @@ fun MessagesTheme(
         LocalDensity provides scaledDensity,
         LocalReduceMotion provides a11y.reduceMotionEnabled,
         LocalLargeTouchTargets provides a11y.largeTouchTargetsEnabled,
-        LocalThemedAvatars provides themedAvatars
+        LocalThemedAvatars provides avatarsFollowTheme(mode)
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

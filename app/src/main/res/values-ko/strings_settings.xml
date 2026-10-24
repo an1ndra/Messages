@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">SMS 메시지가 전달된 시기를 확인하세요</string>
     <string name="settings_mark_read_title">모두 읽음으로 표시</string>
     <string name="settings_mark_read_subtitle">모든 대화의 안 읽음 배지 제거</string>
+    <string name="settings_mark_read_confirm_title">모두 읽음으로 표시할까요?</string>
+    <string name="settings_mark_read_confirm_message">모든 대화의 안 읽음 배지가 제거됩니다. 되돌릴 수 없습니다.</string>
     <string name="settings_theme_title">테마 선택</string>
     <string name="settings_archiving_title">보관</string>
     <string name="settings_archiving_subtitle">대화 보관 허용</string>
@@ -163,6 +165,4 @@
     <string name="settings_search_hint">설정 검색</string>
     <string name="settings_search_none">일치하는 설정 없음</string>
     <string name="settings_theme_dynamic">다이내믹</string>
-    <string name="settings_avatar_theme_title">아바타에 테마 색상 사용</string>
-    <string name="settings_avatar_theme_subtitle">연락처별 색상 대신 테마의 컨테이너 색상으로 아바타를 표시합니다</string>
 </resources>

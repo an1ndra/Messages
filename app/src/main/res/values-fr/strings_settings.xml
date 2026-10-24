@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">Savoir quand un message SMS est livré</string>
     <string name="settings_mark_read_title">Tout marquer comme lu</string>
     <string name="settings_mark_read_subtitle">Effacer les badges de non-lu pour chaque conversation</string>
+    <string name="settings_mark_read_confirm_title">Tout marquer comme lu ?</string>
+    <string name="settings_mark_read_confirm_message">Les badges de non-lu seront effacés pour toutes les conversations. Cette action est irréversible.</string>
     <string name="settings_theme_title">Thème</string>
     <string name="settings_archiving_title">Archivage</string>
     <string name="settings_archiving_subtitle">Autoriser l\'archivage des conversations</string>
@@ -163,6 +165,4 @@
     <string name="settings_search_hint">Paramètres de recherche</string>
     <string name="settings_search_none">Aucun paramètre ne correspond</string>
     <string name="settings_theme_dynamic">Dynamique</string>
-    <string name="settings_avatar_theme_title">Couleurs du thème pour les avatars</string>
-    <string name="settings_avatar_theme_subtitle">Dessine les avatars avec la couleur de conteneur du thème au lieu d\'une couleur par contact</string>
 </resources>
