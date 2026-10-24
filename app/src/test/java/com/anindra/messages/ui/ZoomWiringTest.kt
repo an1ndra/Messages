@@ -21,9 +21,31 @@ class ZoomWiringTest {
     }
 
     @Test
-    fun theMessageListCarriesATransformableGesture() {
-        assertTrue(chat.contains("rememberTransformableState"))
-        assertTrue(chat.contains(".transformable(zoomState)"))
+    fun thePinchIsTakenBeforeTheListCanEatIt() {
+        // #348: `Modifier.transformable` lost the gesture to the lazy list's own
+        // scroll: its drag consumed the pointers first, which cancels a
+        // transform gesture for the whole touch sequence. A real pinch starts
+        // with one finger landing before the other, so that was the common case
+        // and the chat only zoomed when both fingers landed on the same frame.
+        assertTrue(chat.contains("suspend fun PointerInputScope.pinchToZoom()"))
+        assertTrue(chat.contains("awaitPointerEvent(PointerEventPass.Initial)"))
+        assertTrue(
+            "the two-finger changes have to be consumed, or the list scrolls out from under the pinch",
+            chat.contains("event.changes.forEach { it.consume() }")
+        )
+        assertTrue(
+            "the transformable modifier is the thing that lost the gesture",
+            !chat.contains("rememberTransformableState")
+        )
+    }
+
+    @Test
+    fun thePinchBaselineIsRememberedOutsideTheRestartableHandler() {
+        // Compose restarts a pointerInput block when its lambda changes, and this
+        // chat recomposes on every zoom step, so the start spread has to live in
+        // a remembered object (see ChatZoomTest).
+        assertTrue(chat.contains("remember(conversationId) { ChatZoom.Pinch() }"))
+        assertTrue(chat.contains("pinch.zoomFor(spread)"))
     }
 
     @Test
