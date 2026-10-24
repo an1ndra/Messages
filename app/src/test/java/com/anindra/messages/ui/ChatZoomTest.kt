@@ -94,4 +94,46 @@ class ChatZoomTest {
         assertEquals(ChatZoom.DEFAULT, ChatZoom.doubleTapTarget(ChatZoom.MAX), 0.001f)
         assertTrue(ChatZoom.DOUBLE_TAP <= ChatZoom.MAX)
     }
+
+    @Test
+    fun theSpreadIsTheDistanceBetweenTheFingers() {
+        assertEquals(5f, ChatZoom.spread(3f, 4f), 0.001f)
+        assertEquals(0f, ChatZoom.spread(0f, 0f), 0.001f)
+    }
+
+    @Test
+    fun aPinchIsMeasuredFromTheSpreadTheGestureStartedAt() {
+        // Finger distance doubles -> the text doubles. Measured from the moment
+        // the second finger landed, so no part of the pinch is thrown away by a
+        // touch-slop gate (#348).
+        assertEquals(2f, ChatZoom.pinch(1f, 200f, 400f), 0.001f)
+        assertEquals(1.5f, ChatZoom.pinch(1f, 200f, 300f), 0.001f)
+        assertEquals(0.7f, ChatZoom.pinch(1f, 300f, 210f), 0.001f)
+        // ...and then the usual bounds.
+        assertEquals(ChatZoom.MAX, ChatZoom.pinch(1f, 200f, 900f), 0.001f)
+        assertEquals(ChatZoom.MIN, ChatZoom.pinch(1f, 400f, 40f), 0.001f)
+        // A pinch that starts from an already zoomed chat multiplies that zoom.
+        assertEquals(2.4f, ChatZoom.pinch(1.2f, 100f, 200f), 0.001f)
+        assertEquals(ChatZoom.MAX, ChatZoom.pinch(1.5f, 100f, 200f), 0.001f)
+    }
+
+    @Test
+    fun thePinchBaselineOutlivesTheGestureHandler() {
+        // Compose restarts the pointerInput block whenever its lambda changes,
+        // and the chat recomposes on every zoom step, so the baseline must live
+        // outside it: keeping it in the block turned a 3.3x pinch into 1.9x.
+        val pinch = ChatZoom.Pinch()
+        assertFalse(pinch.tracking)
+
+        pinch.begin(240f, 1f)
+        assertTrue(pinch.tracking)
+        assertEquals(1.25f, pinch.zoomFor(300f), 0.001f)
+        // A restart re-reads the same object: same baseline, more zoom.
+        assertEquals(1.5f, pinch.zoomFor(360f), 0.001f)
+        assertEquals(2.5f, pinch.zoomFor(800f), 0.001f)
+
+        pinch.clear()
+        assertFalse(pinch.tracking)
+        assertEquals(ChatZoom.DEFAULT, pinch.zoomFor(800f), 0.001f)
+    }
 }

@@ -40,8 +40,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.DragInteraction
@@ -105,6 +103,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
@@ -153,6 +152,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -163,6 +163,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
@@ -175,6 +176,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.anindra.messages.AppViewModel
+import kotlin.math.abs
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
@@ -311,6 +313,18 @@ internal fun ChatBubble(
         searchQuery = if (isLockedAndHidden) null else searchQuery,
         searchHighlightAlpha = searchHighlightAlpha
     )
+    // One style: the direction the text is painted with is the one the
+    // BubbleDirection diagnostic reports, so a regression script reading the
+    // log cannot agree with a broken paint.
+    val bodyStyle = MaterialTheme.typography.bodyLarge.merge(
+        TextStyle(
+            color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface,
+            textDirection = BidiText.direction(displayBody).toTextDirection()
+        )
+    )
+    LaunchedEffect(msg.id, bodyStyle.textDirection) {
+        android.util.Log.d("BubbleDirection", "id=${msg.id} dir=${bodyStyle.textDirection}")
+    }
 
     if (senderName != null && !msg.isMe) {
         Row(
@@ -400,9 +414,7 @@ internal fun ChatBubble(
                             ) {
                                 Text(
                                     text = bodyText,
-                                    style = MaterialTheme.typography.bodyLarge.merge(
-                                        TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
-                                    ),
+                                    style = bodyStyle,
                                     modifier = Modifier
                                         .padding(horizontal = 14.dp, vertical = 8.dp)
                                         .semantics {
@@ -425,9 +437,7 @@ internal fun ChatBubble(
                     ) {
                         Text(
                             text = bodyText,
-                            style = MaterialTheme.typography.bodyLarge.merge(
-                                TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
-                            ),
+                            style = bodyStyle,
                             modifier = Modifier
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
                                 .semantics {
@@ -659,11 +669,10 @@ fun ChatScreen(
     val zoomedDensity = remember(baseDensity, zoom) {
         Density(baseDensity.density, baseDensity.fontScale * ChatZoom.fontScale(zoom))
     }
-    // A transformable only reports the scale factor, so the finger position comes
-    // from a pass-through observer: it reads the two-finger centroid in the
-    // initial pass without consuming, leaving single-finger scrolling alone.
-    var pinchY by remember { mutableStateOf(Float.NaN) }
     var anchorJob by remember { mutableStateOf<Job?>(null) }
+    // Held outside the gesture handler: Compose restarts a `pointerInput` block
+    // whenever its lambda changes, and this chat recomposes on every zoom step.
+    val pinch = remember(conversationId) { ChatZoom.Pinch() }
     // Every row changes height when the scale changes, and the list keeps its
     // scroll offset, so the message under the fingers slides away. Re-anchor it:
     // note the row under the touch point, then scroll back so that same point of
@@ -685,11 +694,39 @@ fun ChatScreen(
             )
         }
     }
-    val zoomState = rememberTransformableState { zoomChange, _, _ ->
-        if (zoomChange != 1f) {
-            val y = pinchY.takeUnless { it.isNaN() }
-                ?: (listState.layoutInfo.viewportSize.height / 2f)
-            zoomAnchored(ChatZoom.apply(zoom, zoomChange), y)
+    // The pinch is handled here rather than with `Modifier.transformable`: a
+    // lazy list's own scroll gesture gets pointer events first and consumes the
+    // drag, which cancels a transform gesture for the whole touch sequence. A
+    // real pinch almost always starts with one finger landing before the other,
+    // so that cancellation was the norm and the chat only zoomed when both
+    // fingers landed on the same frame (#348).
+    //
+    // So: watch in the Initial pass, measure the finger spread from the moment
+    // the second finger lands (no zoom is lost to a slop gate), and consume the
+    // two-finger events so the list cannot scroll out from under the gesture.
+    // Single-finger events are left alone, and a two-finger drag that does not
+    // change the spread is not consumed either, so it still scrolls.
+    suspend fun PointerInputScope.pinchToZoom() {
+        val slop = viewConfiguration.touchSlop
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                val pressed = event.changes.filter { it.pressed }
+                if (pressed.size != 2) {
+                    pinch.clear()
+                    continue
+                }
+                val a = pressed[0].position
+                val b = pressed[1].position
+                val spread = ChatZoom.spread(b.x - a.x, b.y - a.y)
+                if (!pinch.tracking) {
+                    pinch.begin(spread, zoom)
+                    continue
+                }
+                if (abs(spread - pinch.startSpread) < slop) continue
+                zoomAnchored(pinch.zoomFor(spread), (a.y + b.y) / 2f)
+                event.changes.forEach { it.consume() }
+            }
         }
     }
     LaunchedEffect(conversationId) {
@@ -1533,27 +1570,14 @@ fun ChatScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent(PointerEventPass.Initial)
-                                val pressed = event.changes.filter { it.pressed }
-                                pinchY = if (pressed.size >= 2) {
-                                    pressed.map { it.position.y }.average().toFloat()
-                                } else {
-                                    Float.NaN
-                                }
-                            }
-                        }
-                    }
+                    .pointerInput(conversationId) { pinchToZoom() }
                     .pointerInput(conversationId) {
                         detectTapGestures(
                             onDoubleTap = { offset ->
                                 zoomAnchored(ChatZoom.doubleTapTarget(zoom), offset.y)
                             }
                         )
-                    }
-                    .transformable(zoomState),
+                    },
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
@@ -2394,6 +2418,10 @@ fun openUrl(context: android.content.Context, url: String) {
     }
 }
 
+/** The base direction a piece of text is laid out in, in Compose terms. */
+internal fun BidiText.Direction.toTextDirection(): TextDirection =
+    if (this == BidiText.Direction.RTL) TextDirection.Rtl else TextDirection.Ltr
+
 @Composable
 private fun rememberLinkedText(
     body: String,
@@ -2911,6 +2939,17 @@ internal fun InputBar(
         modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Typing a Persian/Arabic word should flip the field, so the caret and
+        // every following line sit on the right (#362). First strong character
+        // only: a message's own direction is decided differently (see
+        // BidiText.direction), but flipping the caret mid-word would be worse
+        // than the message's final alignment being imperfect.
+        val draftStyle = LocalTextStyle.current.copy(
+            textDirection = BidiText.firstStrongDirection(draft).toTextDirection()
+        )
+        LaunchedEffect(draftStyle.textDirection) {
+            android.util.Log.d("ComposerDirection", "dir=${draftStyle.textDirection}")
+        }
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.inputPill,
@@ -2932,6 +2971,7 @@ internal fun InputBar(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Default,
                     capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
                 ),
+                textStyle = draftStyle,
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (SimSwitcher.shouldShowSwitch(sims.size)) {
