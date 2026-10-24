@@ -110,6 +110,7 @@ fun SettingsScreen(
     else context.getString(R.string.settings_scheduled_count, scheduledAll.size)
 
     var themeDialog by remember { mutableStateOf(false) }
+    var markReadDialog by remember { mutableStateOf(false) }
     var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
     val notificationSoundOptions = listOf(
         SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
@@ -248,31 +249,13 @@ fun SettingsScreen(
                 SettingsRow(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_mark_read_title),
-                    onClick = {
-                        vm.markAllRead()
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.settings_mark_read),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    onClick = { markReadDialog = true }
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_theme_title),
                     subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
-                )
-                var themedAvatars by remember { mutableStateOf(vm.settings.avatarThemeColors) }
-                SettingsRow(
-                    position = RowPosition.MIDDLE,
-                    title = stringResource(R.string.settings_avatar_theme_title),
-                    subtitle = stringResource(R.string.settings_avatar_theme_subtitle),
-                    checked = themedAvatars,
-                    onChecked = {
-                        themedAvatars = it
-                        vm.settings.avatarThemeColors = it
-                    }
                 )
                 val selectedSub = sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }
                 val currentSimLabel = if (selectedSub == null) {
@@ -434,6 +417,30 @@ fun SettingsScreen(
 
 
 
+
+    if (markReadDialog) {
+        AlertDialog(
+            onDismissRequest = { markReadDialog = false },
+            title = { Text(stringResource(R.string.settings_mark_read_confirm_title)) },
+            text = { Text(stringResource(R.string.settings_mark_read_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    markReadDialog = false
+                    vm.markAllRead()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_mark_read),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }) { Text(stringResource(R.string.settings_mark_read_title)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { markReadDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
 
     if (soundDialog) {
         AlertDialog(

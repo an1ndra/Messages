@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">Find out when an SMS message is delivered</string>
     <string name="settings_mark_read_title">Mark all as read</string>
     <string name="settings_mark_read_subtitle">Clear unread badges for every conversation</string>
+    <string name="settings_mark_read_confirm_title">Mark all as read?</string>
+    <string name="settings_mark_read_confirm_message">Unread badges will be cleared on every conversation. This can’t be undone.</string>
     <string name="settings_theme_title">Choose theme</string>
     <string name="settings_archiving_title">Archiving</string>
     <string name="settings_archiving_subtitle">Allow archiving conversations</string>
@@ -164,6 +166,4 @@
     <string name="settings_search_hint">Search settings</string>
     <string name="settings_search_none">No settings match</string>
     <string name="settings_theme_dynamic">Dynamic</string>
-    <string name="settings_avatar_theme_title">Theme colours for avatars</string>
-    <string name="settings_avatar_theme_subtitle">Draw contact avatars in the theme\'s container colour instead of a colour per contact</string>
 </resources>

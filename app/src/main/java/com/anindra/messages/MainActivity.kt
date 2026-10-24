@@ -1110,7 +1110,6 @@ class MainActivity : FragmentActivity() {
             mode = vm.themeMode,
             font = vm.fontFamily,
             a11y = vm.a11y,
-            themedAvatars = vm.settings.avatarThemeColors
         ) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
@@ -1166,7 +1165,6 @@ class MainActivity : FragmentActivity() {
             mode = vm.themeMode,
             font = vm.fontFamily,
             a11y = vm.a11y,
-            themedAvatars = vm.settings.avatarThemeColors
         ) {
                 var chatId by remember { mutableStateOf(-1L) }
                 // The home-list query that opened the chat, so the chat can
