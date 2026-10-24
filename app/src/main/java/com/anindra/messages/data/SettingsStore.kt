@@ -23,7 +23,6 @@ class SettingsStore(context: Context) {
         const val THEME_DYNAMIC = "dynamic"
 
         const val KEY_THEME = "theme_mode"
-        const val KEY_AVATAR_THEME_COLORS = "avatar_theme_colors"
         const val KEY_NOTIFICATIONS = "notifications_enabled"
         const val KEY_SOUNDS = "message_sounds_enabled"
         const val KEY_DELIVERY_REPORTS = "delivery_reports_enabled"
@@ -202,12 +201,6 @@ class SettingsStore(context: Context) {
     var useNewUi: Boolean
         get() = prefs.getBoolean(KEY_USE_NEW_UI, true)
         set(v) { prefs.edit().putBoolean(KEY_USE_NEW_UI, v).apply(); _revision.value++ }
-
-    /** Draw contact avatars in the theme's container colour instead of the
-     *  fixed per-contact palette (#347). */
-    var avatarThemeColors: Boolean
-        get() = prefs.getBoolean(KEY_AVATAR_THEME_COLORS, false)
-        set(v) { prefs.edit().putBoolean(KEY_AVATAR_THEME_COLORS, v).apply(); _revision.value++ }
 
     /** Legacy chat surfaces still gate on this. */
     var draftsEnabled: Boolean

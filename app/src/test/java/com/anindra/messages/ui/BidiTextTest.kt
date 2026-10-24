@@ -54,7 +54,7 @@ class BidiTextTest {
 
     @Test
     fun remapShiftsStyledRangeOverIsolates() {
-        val body = "کد 482 913 end"
+        val body = "کد 482 913 تمام"
         val otp = body.indexOf("482")..body.indexOf("913") + 2
         val iso = BidiText.isolateNumberRuns(body)
         val mapped = iso.remap(otp)

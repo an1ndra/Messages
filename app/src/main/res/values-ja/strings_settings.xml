@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">SMSメッセージが配信されたかどうかを確認</string>
     <string name="settings_mark_read_title">すべて既読にする</string>
     <string name="settings_mark_read_subtitle">すべての会話の未読バッジを消去</string>
+    <string name="settings_mark_read_confirm_title">すべて既読にしますか？</string>
+    <string name="settings_mark_read_confirm_message">すべての会話の未読バッジが消去されます。この操作は取り消せません。</string>
     <string name="settings_theme_title">テーマを選択</string>
     <string name="settings_archiving_title">アーカイブ</string>
     <string name="settings_archiving_subtitle">会話のアーカイブを許可</string>
@@ -163,6 +165,4 @@
     <string name="settings_search_hint">設定を検索</string>
     <string name="settings_search_none">一致する設定がありません</string>
     <string name="settings_theme_dynamic">ダイナミック</string>
-    <string name="settings_avatar_theme_title">アバターにテーマの色</string>
-    <string name="settings_avatar_theme_subtitle">連絡先ごとの色ではなくテーマのコンテナ色でアバターを描画します</string>
 </resources>

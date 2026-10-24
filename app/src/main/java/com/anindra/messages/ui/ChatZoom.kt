@@ -2,6 +2,7 @@ package com.anindra.messages.ui
 
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * Pinch-to-zoom on the conversation view (#348).
@@ -25,6 +26,56 @@ object ChatZoom {
     /** The next zoom for a pinch of [zoomChange], clamped to [MIN]..[MAX]. */
     fun apply(current: Float, zoomChange: Float): Float =
         (current * zoomChange).coerceIn(MIN, MAX)
+
+    /** How far apart the two fingers are, the quantity a pinch is measured by. */
+    fun spread(dx: Float, dy: Float): Float = sqrt(dx * dx + dy * dy)
+
+    /**
+     * The zoom for fingers that have gone from [startSpread] to [spread] since
+     * the gesture began at [startZoom].
+     *
+     * Measured from the distance the fingers had when the second one landed,
+     * not from the first frame that beats the touch slop. Compose's own
+     * `transformable` starts counting after the slop, so the first part of every
+     * pinch was discarded and a wide pinch only moved the text a few percent —
+     * the "it barely zooms" half of #348.
+     */
+    fun pinch(startZoom: Float, startSpread: Float, spread: Float): Float =
+        apply(startZoom, spread / startSpread.coerceAtLeast(1f))
+
+    /**
+     * Where one pinch began: the finger spread and the zoom when the second
+     * finger landed.
+     *
+     * This has to outlive the `pointerInput` block. Compose restarts that block
+     * whenever its lambda instance changes, and this chat recomposes on every
+     * zoom step, so state kept inside the block was forgotten every other
+     * frame: a 3.3x pinch measured 1.9x, and its second half restarted the
+     * gesture from wherever the fingers already were (#348).
+     */
+    class Pinch {
+        var startSpread = 0f
+            private set
+        var startZoom = DEFAULT
+            private set
+
+        val tracking: Boolean get() = startSpread > 0f
+
+        fun begin(spread: Float, zoom: Float) {
+            startSpread = spread
+            startZoom = zoom
+        }
+
+        fun clear() {
+            startSpread = 0f
+            startZoom = DEFAULT
+        }
+
+        /** The zoom for fingers now [spread] apart, from the same baseline;
+         *  the default when no gesture is in progress. */
+        fun zoomFor(spread: Float): Float =
+            if (tracking) pinch(startZoom, startSpread, spread) else DEFAULT
+    }
 
     /** The font-scale multiplier the message list renders at. */
     fun fontScale(zoom: Float): Float = zoom.coerceIn(MIN, MAX)

@@ -37,6 +37,8 @@
     <string name="settings_delivery_reports_subtitle">Dowiedz się, kiedy wiadomość SMS została dostarczona</string>
     <string name="settings_mark_read_title">Oznacz wszystkie jako przeczytane</string>
     <string name="settings_mark_read_subtitle">Usuń odznaki nieprzeczytanych dla każdej rozmowy</string>
+    <string name="settings_mark_read_confirm_title">Oznaczyć wszystkie jako przeczytane?</string>
+    <string name="settings_mark_read_confirm_message">Odznaki nieprzeczytanych zostaną usunięte ze wszystkich rozmów. Tej operacji nie można cofnąć.</string>
     <string name="settings_theme_title">Wybierz motyw</string>
     <string name="settings_archiving_title">Archiwizacja</string>
     <string name="settings_archiving_subtitle">Zezwól na archiwizowanie rozmów</string>
@@ -163,6 +165,4 @@
     <string name="settings_search_hint">Szukaj w ustawieniach</string>
     <string name="settings_search_none">Żadne ustawienie nie pasuje</string>
     <string name="settings_theme_dynamic">Dynamiczny</string>
-    <string name="settings_avatar_theme_title">Kolory motywu dla awatarów</string>
-    <string name="settings_avatar_theme_subtitle">Rysuj awatary kolorem kontenera motywu zamiast koloru dla każdego kontaktu</string>
 </resources>

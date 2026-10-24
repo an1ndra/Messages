@@ -238,6 +238,10 @@ object DiagnosticsReport {
             appendLine("Theme mode: ${data.appDetails.themeMode}")
             appendLine("Resolved page colour: ${data.appDetails.resolvedBackground}")
             appendLine("Resolved Start chat colours: ${data.appDetails.resolvedStartChat}")
+            // The rule is the same for every theme, so this line is the same for
+            // every theme: it states the rule rather than reporting a per-mode
+            // value that would make two identical builds look different.
+            appendLine("Avatar fill: theme colour under Dynamic, per-contact palette otherwise")
             appendLine("Font: ${data.appDetails.fontFamily}")
             appendLine("Accessibility mode: ${data.appDetails.accessibilityMode}")
             if (data.appDetails.accessibilityMode) {

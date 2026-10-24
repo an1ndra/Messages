@@ -126,6 +126,7 @@ fun SettingsScreen(
     val revision by vm.settings.revision.collectAsState()
 
     var themeDialog by remember { mutableStateOf(false) }
+    var markReadDialog by remember { mutableStateOf(false) }
     var notifications by remember(revision) { mutableStateOf(vm.settings.notificationsEnabled) }
     var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
     var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
@@ -372,10 +373,7 @@ fun SettingsScreen(
                 SettingsRow(
                     title = stringResource(R.string.settings_mark_read_title),
                     subtitle = stringResource(R.string.settings_mark_read_subtitle),
-                    onClick = {
-                        vm.markAllRead()
-                        Toast.makeText(context, context.getString(R.string.settings_mark_read), Toast.LENGTH_SHORT).show()
-                    }
+                    onClick = { markReadDialog = true }
                 )
             }
 
@@ -386,16 +384,6 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_theme_title),
                     subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
-                )
-                var themedAvatars by remember { mutableStateOf(vm.settings.avatarThemeColors) }
-                SettingsRow(
-                    title = stringResource(R.string.settings_avatar_theme_title),
-                    subtitle = stringResource(R.string.settings_avatar_theme_subtitle),
-                    checked = themedAvatars,
-                    onChecked = {
-                        themedAvatars = it
-                        vm.settings.avatarThemeColors = it
-                    }
                 )
                 val selectedSub = sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }
                 val currentSimLabel = if (selectedSub == null) {
@@ -625,6 +613,30 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { themeDialog = false }) { Text(stringResource(R.string.common_cancel)) }
+            }
+        )
+    }
+
+    if (markReadDialog) {
+        AlertDialog(
+            onDismissRequest = { markReadDialog = false },
+            title = { Text(stringResource(R.string.settings_mark_read_confirm_title)) },
+            text = { Text(stringResource(R.string.settings_mark_read_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    markReadDialog = false
+                    vm.markAllRead()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_mark_read),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }) { Text(stringResource(R.string.settings_mark_read_title)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { markReadDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
