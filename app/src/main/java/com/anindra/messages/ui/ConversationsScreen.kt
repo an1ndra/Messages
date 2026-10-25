@@ -88,7 +88,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -133,6 +132,9 @@ import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.data.ConversationList
 import com.anindra.messages.data.SwipeAction
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -172,7 +174,6 @@ fun ConversationsScreen(
     var query by remember { mutableStateOf("") }
     var showArchived by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var lastBackExitAt by remember { mutableLongStateOf(0L) }
     val syncDone by vm.initialSyncDone.collectAsState()
@@ -280,6 +281,41 @@ fun ConversationsScreen(
         }
     }
 
+    // #374: one snackbar, LIFO. Queuing showSnackbar per swipe showed the oldest
+    // action's Undo and restored the wrong chat; only the newest entry is shown,
+    // and closing the snackbar closes the whole undo window.
+    val undoStack = remember { UndoStack<UndoEntry>() }
+    val undoRequests = remember { Channel<Unit>(Channel.CONFLATED) }
+    val undoLabel = context.getString(R.string.action_undo)
+    LaunchedEffect(undoRequests) {
+        var showing: Job? = null
+        while (true) {
+            undoRequests.receive()
+            showing?.cancelAndJoin()
+            val entry = undoStack.peek() ?: continue
+            showing = launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = entry.message,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Long
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    undoStack.pop()
+                    entry.undo()
+                    // Reveal the next entry so repeated Undo keeps walking back.
+                    undoRequests.trySend(Unit)
+                } else {
+                    undoStack.clear()
+                }
+            }
+        }
+    }
+
+    fun showUndo(message: String, undo: () -> Unit) {
+        undoStack.push(UndoEntry(message, undo))
+        undoRequests.trySend(Unit)
+    }
+
     fun moveToTrash(convo: Conversation) {
         if (vm.settings.permanentDeleteEnabled) {
             if (vm.settings.permanentDeleteWarn) {
@@ -290,59 +326,33 @@ fun ConversationsScreen(
             return
         }
         vm.deleteConversation(convo.id)
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.convo_moved_to_trash),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) vm.restoreFromTrash(convo.id)
-        }
+        showUndo(context.getString(R.string.convo_moved_to_trash)) { vm.restoreFromTrash(convo.id) }
     }
 
     fun archiveWithUndo(convo: Conversation) {
         vm.archiveConversation(convo.id)
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.convo_archived),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) vm.unarchiveConversation(convo.id)
-        }
-    }
-
-    /** Snackbar helper so every swipe action is recoverable, like archive/delete. */
-    fun withUndo(messageRes: Int, undo: suspend () -> Unit) {
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(messageRes),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) undo()
-        }
+        showUndo(context.getString(R.string.convo_archived)) { vm.unarchiveConversation(convo.id) }
     }
 
     fun markReadWithUndo(convo: Conversation) {
         val wasUnread = convo.unreadCount > 0
         if (wasUnread) vm.markRead(convo.id) else vm.markUnread(convo.id)
-        withUndo(
-            if (wasUnread) R.string.convo_marked_read else R.string.convo_marked_unread
+        showUndo(
+            context.getString(if (wasUnread) R.string.convo_marked_read else R.string.convo_marked_unread)
         ) { vm.setRead(convo.id, !wasUnread) }
     }
 
     fun pinWithUndo(convo: Conversation) {
         val wasPinned = convo.pinned
         if (wasPinned) vm.unpin(convo.id) else vm.togglePin(convo.id)
-        withUndo(
-            if (wasPinned) R.string.convo_unpinned else R.string.convo_pinned
+        showUndo(
+            context.getString(if (wasPinned) R.string.convo_unpinned else R.string.convo_pinned)
         ) { vm.setPinned(convo.id, !wasPinned) }
     }
 
     fun blockWithUndo(convo: Conversation) {
         vm.blockNumber(convo.address)
-        withUndo(R.string.convo_blocked) { vm.unblockNumber(convo.address) }
+        showUndo(context.getString(R.string.convo_blocked)) { vm.unblockNumber(convo.address) }
     }
 
     val showArchiving = vm.settings.archivingEnabled
@@ -385,13 +395,8 @@ fun ConversationsScreen(
         if (ids.isEmpty()) return
         selectedIds = emptySet()
         ids.forEach { vm.deleteConversation(it) }
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.convo_moved_to_trash_count, ids.size),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) ids.forEach { vm.restoreFromTrash(it) }
+        showUndo(context.getString(R.string.convo_moved_to_trash_count, ids.size)) {
+            ids.forEach { vm.restoreFromTrash(it) }
         }
     }
 
@@ -400,13 +405,8 @@ fun ConversationsScreen(
         if (ids.isEmpty()) return
         selectedIds = emptySet()
         ids.forEach { vm.archiveConversation(it) }
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.convo_archived_count, ids.size),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) ids.forEach { vm.unarchiveConversation(it) }
+        showUndo(context.getString(R.string.convo_archived_count, ids.size)) {
+            ids.forEach { vm.unarchiveConversation(it) }
         }
     }
 
@@ -1237,3 +1237,5 @@ internal fun StartChatFab(
 }
 
 
+/** One recoverable inbox action; [message] is what the snackbar says it did. */
+private class UndoEntry(val message: String, val undo: () -> Unit)
