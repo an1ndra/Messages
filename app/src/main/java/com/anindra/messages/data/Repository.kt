@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.RandomAccessFile
+import com.anindra.messages.sms.NotificationHelper
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
@@ -2141,6 +2142,14 @@ class Repository(private val context: Context) {
         invalidateBlockCache(number)
         setConversationBlockedForAddress(number, blocked = true)
         notifyChanged()
+        // The launcher badge sums the numbers of the app's live notifications,
+        // and a thread that moves to Spam & blocked keeps its unread number
+        // forever otherwise: the messages it counted stay unread there, and
+        // the ones that follow are never posted. Cancelling at block time is
+        // the only place the count can drop (#345).
+        NotificationHelper.clearBlockedConversationNotifications(
+            context, blockedConversationIds(number), number
+        )
     }
 
     fun unblockNumber(number: String) {
@@ -2163,6 +2172,18 @@ class Repository(private val context: Context) {
             "UPDATE conversations SET blocked=?,blocked_at=? WHERE address=?",
             arrayOf<Any?>(flag, blockedAt, number)
         )
+    }
+
+    /** Conversation ids matching [number] in either spelling — the same two the
+     *  block flag above covers, so notification and flag never disagree. */
+    private fun blockedConversationIds(number: String): List<Long> {
+        val out = mutableListOf<Long>()
+        for (address in LinkedHashSet(listOf(canonical(number).ifEmpty { number }, number))) {
+            db.readableDatabase.rawQuery("SELECT id FROM conversations WHERE address=?", arrayOf(address)).use { c ->
+                while (c.moveToNext()) out.add(c.getLong(0))
+            }
+        }
+        return out.distinct()
     }
 
     fun scheduledMessages(): Flow<List<ScheduledMessage>> = observe {

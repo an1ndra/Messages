@@ -19,4 +19,18 @@ object BadgePolicy {
         val id = conversationId?.toInt() ?: addressHash ?: return null
         return id to id
     }
+
+    /** Notification ids to cancel when a sender moves to Spam & blocked. The
+     *  launcher badge sums the numbers of live notifications, and cancelling
+     *  is the only way a blocked sender's count can drop: the messages that
+     *  raised it stay unread in the blocked folder, and the messages that
+     *  follow a block are never posted (#345). Entry per conversation id,
+     *  plus the address-hash id [idsToDismiss] falls back to when the sender
+     *  had no conversation row, duplicates removed. */
+    fun idsToDismissOnBlock(conversationIds: List<Long>, address: String?): List<Int> {
+        val ids = LinkedHashSet<Int>()
+        conversationIds.forEach { idsToDismiss(it, null)?.let { p -> ids += p.first } }
+        if (address != null) idsToDismiss(null, address.hashCode())?.let { ids += it.first }
+        return ids.toList()
+    }
 }
