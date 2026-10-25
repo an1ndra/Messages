@@ -254,13 +254,26 @@ val ColorScheme.incomingBubble: Color get() = surfaceContainerHighest   // GM gr
 val ColorScheme.chatBar: Color
     get() = if (background.luminance() < 0.5f) surfaceContainerLow else background
 val ColorScheme.inputPill: Color get() = surfaceContainerHigh           // text field pill
-// The "Start chat" pill. Container and content are defined as a pair here so
-// the FAB and Diagnostics cannot disagree, and it is Material's FAB pair
-// (primaryContainer/onPrimaryContainer): secondaryContainer read as a dark slab
-// against a wallpaper palette, and Google Messages paints the pill in the
-// primary container too.
-val ColorScheme.startChatContainer: Color get() = primaryContainer
-val ColorScheme.startChatContent: Color get() = onPrimaryContainer
+
+private const val START_CHAT_MIN_CONTRAST = 3f
+
+/** WCAG relative-contrast ratio between two opaque colours. */
+internal fun contrastRatio(a: Color, b: Color): Float {
+    val la = a.luminance()
+    val lb = b.luminance()
+    return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
+}
+
+// The "Start chat" pill: the v1.0.30 design paints the secondary container
+// behind primary-coloured content. A wallpaper palette can hand back a dim
+// primary, so the content drops to onSecondaryContainer when that pair falls
+// under the readable floor. Container and content are defined once here so the
+// FAB and Diagnostics cannot disagree.
+val ColorScheme.startChatContainer: Color get() = secondaryContainer
+val ColorScheme.startChatContent: Color
+    get() = if (contrastRatio(primary, secondaryContainer) >= START_CHAT_MIN_CONTRAST) primary
+            else onSecondaryContainer
+
 val ColorScheme.selectedBubble: Color
     get() = if (background.luminance() < 0.5f) Color(0xFF9CC0FF) else Color(0xFF1A46A0)
 val ColorScheme.onSelectedBubble: Color
