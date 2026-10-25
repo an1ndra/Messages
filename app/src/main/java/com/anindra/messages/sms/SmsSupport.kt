@@ -694,6 +694,29 @@ object NotificationHelper {
         nm.cancel("failed", ids.second)
     }
 
+    /** A sender moving to Spam & blocked must drop out of the launcher badge:
+     *  the badge sums the numbers of the app's live notifications, and this
+     *  sender's notification keeps its unread number until it is cancelled —
+     *  the messages it covered stay unread in the blocked folder, and the
+     *  ones that follow a block are never posted to replace it (#345). A
+     *  notification a live bubble host owns is left alone, like above. */
+    fun clearBlockedConversationNotifications(
+        context: Context,
+        conversationIds: List<Long>,
+        address: String
+    ) {
+        // One of the entries can be the address-hash id show() posts when the
+        // sender had no conversation row; a held bubble is always identified
+        // by its conversation id.
+        val held = conversationIds.filter { BubbleHost.holds(it) }.map { it.toInt() }.toSet()
+        val nm = NotificationManagerCompat.from(context)
+        for (id in BadgePolicy.idsToDismissOnBlock(conversationIds, address)) {
+            if (id in held) continue
+            nm.cancel(id)
+            nm.cancel("failed", id)
+        }
+    }
+
     fun playSentSound(context: Context) = playSound(context)
 
     private fun playSound(context: Context) {
