@@ -62,8 +62,34 @@ class BidiTextTest {
     }
 
     @Test
-    fun isolatesPersianDigitsWithArabicSeparators() {
-        // #345: a Saman Bank balance is written in Extended Arabic-Indic digits
+    fun isolatesAPersianLineBalanceWrittenInAsciiDigits() {
+        // #345 screenshot: a Saman withdrawal renders the balance as
+        // "78,556 مانده ,010" on 1.0.30 - the label lands inside the amount.
+        // ASCII digits with ASCII commas are the same single run as the
+        // Persian-digit form above, and the label must stay outside it on
+        // either side.
+        assertEquals(
+            "مانده ${lri}78,556,010$pdi",
+            BidiText.isolateNumberRuns("مانده 78,556,010").text
+        )
+        assertEquals(
+            "${lri}78,556,010$pdi مانده",
+            BidiText.isolateNumberRuns("78,556,010 مانده").text
+        )
+        // The full body the issue photographed: one line of RTL prose, one
+        // balance line, then the stamp - each number contiguous.
+        assertEquals(
+            "بانک سامان\nبرداشت مبلغ\nخرید کالا\nمانده ${lri}78,556,010$pdi\n" +
+                "بانک سامان\n${lri}1405/7/28$pdi",
+            BidiText.isolateNumberRuns(
+                "بانک سامان\nبرداشت مبلغ\nخرید کالا\nمانده 78,556,010\n" +
+                    "بانک سامان\n1405/7/28"
+            ).text
+        )
+    }
+
+    @Test
+    fun isolatesPersianDigitsWithArabicSeparators() {        // #345: a Saman Bank balance is written in Extended Arabic-Indic digits
         // with U+066C as the thousands separator. It has to be pinned LTR, or
         // the word "مانده" of the following clause is reordered into the
         // middle of the amount.
