@@ -103,6 +103,30 @@ class NotificationChannelWiringTest {
     }
 
     @Test
+    fun channelsAreCreatedAfterTheImportThatFillsTheDatabase() {
+        // #339 follow-up: on a fresh install the launch sync ran before
+        // syncFromSystem() and the database was still empty, so the imported
+        // history got no channels until each chat's first new message. The
+        // sync has to sit *after* every bulk import.
+        val app = read("java/com/anindra/messages/MessagesApplication.kt")
+        val imported = app.indexOf("repository.syncFromSystem()")
+        val synced = app.indexOf("syncConversationChannels")
+        assertTrue("no launch channel sync", synced >= 0)
+        assertTrue("the launch sync only knows the pre-import database", synced > imported)
+
+        val activity = read("java/com/anindra/messages/MainActivity.kt")
+        val requery = activity.indexOf("repo.requeryFromSystem()")
+        assertTrue("the first-run import is gone", requery >= 0)
+        val afterRequery = activity.indexOf("syncConversationChannelsAsync", requery)
+        assertTrue("the first-run import leaves its chats without channels", afterRequery > requery)
+
+        assertTrue(
+            "a restored/imported database never syncs its channels",
+            Regex("syncChannelsAfterBulkImport\\(\\)").findAll(activity).count() >= 3
+        )
+    }
+
+    @Test
     fun theLaunchSyncAndSettingsReconciliationAreWired() {
         assertTrue(
             "nothing creates conversation channels at launch",
