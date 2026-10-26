@@ -151,6 +151,45 @@ class BidiTextTest {
     }
 
     @Test
+    fun aMaskedCardNumberStaysOneRun() {
+        // #345 follow-up: a Pasargad card transfer carries masked card numbers -
+        // digits around Latin 'x' masks. The letters are strong LTR, so while
+        // they stayed outside the number run the digits reordered around them
+        // and only read correctly once selected.
+        assertEquals(
+            "کارت مبدا:\n${lri}5022-29xx-xxxx-9227$pdi\nکارت مقصد:",
+            BidiText.isolateNumberRuns("کارت مبدا:\n5022-29xx-xxxx-9227\nکارت مقصد:").text
+        )
+        // Star masks are the same shape.
+        assertEquals(
+            "کارت مقصد:\n${lri}6104-33**-****-8284$pdi\nمانده:",
+            BidiText.isolateNumberRuns("کارت مقصد:\n6104-33**-****-8284\nمانده:").text
+        )
+    }
+
+    @Test
+    fun thePasargadCardTransferBodyStaysContiguous() {
+        // The reporter's photographed body, verbatim: both card masks and the
+        // timestamp stay one contiguous block each. The bare account/amount
+        // digits ("مبلغ:00000000") have no separator inside, so a run isolate
+        // would change nothing - they stay plain, like every pure digit run.
+        assertEquals(
+            "کارت مبدا:\n${lri}5022-29xx-xxxx-9227$pdi\n" +
+                "کارت مقصد:\n${lri}6104-33xx-xxxx-8284$pdi\n" +
+                "نام دریافت کننده: \n" +
+                "مبلغ:00000000 ریال\n" +
+                "تاریخ انتقال:${lri}22:20:51 1405/08/03$pdi",
+            BidiText.isolateNumberRuns(
+                "کارت مبدا:\n5022-29xx-xxxx-9227\n" +
+                    "کارت مقصد:\n6104-33xx-xxxx-8284\n" +
+                    "نام دریافت کننده: \n" +
+                    "مبلغ:00000000 ریال\n" +
+                    "تاریخ انتقال:22:20:51 1405/08/03"
+            ).text
+        )
+    }
+
+    @Test
     fun aLineOfOnlyEmojiIsPinnedLtrAndEmojiDoNotVote() {
         // #362 follow-up: an emoji line in a Persian message is a line with no
         // strong character, so it gets the same LTR pin as a bare amount.
