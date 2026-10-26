@@ -412,7 +412,13 @@ object NotificationHelper {
         return true
     }
 
-    fun show(context: Context, from: String, body: String, imageUri: String? = null) {
+    fun show(
+        context: Context,
+        from: String,
+        body: String,
+        imageUri: String? = null,
+        silentRepost: Boolean = false
+    ) {
         // Skip notification if user is already reading this conversation
         if (NotificationPolicy.skipForOpenThread(
                 ForegroundTracker.isAppInForeground,
@@ -550,13 +556,16 @@ object NotificationHelper {
         // any channel-less fallback agree. Note: never setSilent(true) here —
         // it groups the notification under "silent", which suppresses the
         // heads-up popup; the receive-sound-off case is handled by the channel
-        // playing the bundled silent clip instead.
+        // playing the bundled silent clip instead. The boot re-post is the one
+        // exception: hours can have passed since the message arrived, so it
+        // must re-appear without alerting (the badge still reads the number).
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_message)
             .setContentTitle(title)
             .setContentText(text)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
+            .setSilent(silentRepost)
             // Launchers that render a count read this field, and aggregate it
             // across the app's live notifications.
             .setNumber(BadgePolicy.badgeCount(app.repository.unreadCountFor(convoId)))
@@ -578,8 +587,9 @@ object NotificationHelper {
         // A heads-up popup is a peek: on a locked screen the panel stays asleep.
         // Only a full-screen intent is treated as a user-initiated wake, so this
         // is what turns the screen on. Privacy mode suppresses it because the
-        // trampoline would otherwise surface content over the keyguard.
-        if (shouldWake(app.repository.settings, keyguardLocked(context))) {
+        // trampoline would otherwise surface content over the keyguard. A boot
+        // re-post wakes nobody — the message is old news by then.
+        if (!silentRepost && shouldWake(app.repository.settings, keyguardLocked(context))) {
             builder.setFullScreenIntent(fullScreenIntent(context, reqCode), true)
         }
 
@@ -590,6 +600,19 @@ object NotificationHelper {
         try {
             NotificationManagerCompat.from(context).notify(notifId, builder.build())
         } catch (_: SecurityException) {
+        }
+    }
+
+    /** Re-materialise the notifications unread conversations should have: a
+     *  boot and an app update wipe the shade, and the launcher badge sums the
+     *  numbers of the app's live notifications, so unread messages that
+     *  survived in the database lost their badge with them (#345). One silent
+     *  re-post per unread conversation — [show]'s own guards still decide:
+     *  blocked senders, muted conversations and POST_NOTIFICATIONS all opt out. */
+    fun repostUnread(context: Context) {
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        for ((address, body) in app.repository.unreadForRepostBlocking()) {
+            show(context, address, body, silentRepost = true)
         }
     }
 
