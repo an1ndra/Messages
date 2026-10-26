@@ -3,7 +3,9 @@ package com.anindra.messages
 import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
+import android.content.Intent
 import com.anindra.messages.data.BackupHealth
+import com.anindra.messages.data.LockSession
 import com.anindra.messages.data.PhoneNumberUtils
 import com.anindra.messages.data.PeriodicBackupScheduler
 import com.anindra.messages.data.Repository
@@ -22,6 +24,20 @@ class MessagesApplication : Application() {
         com.anindra.messages.crash.CrashReporter.install(this)
         PhoneNumberUtils.init(this)
         repository = Repository(this)
+        // An unlocked app-lock session ends with the screen (#354 follow-up):
+        // the phone is out of the owner's hands again, which is the same moment
+        // the device lock re-arms.
+        registerReceiver(
+            object : android.content.BroadcastReceiver() {
+                override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                    if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                        LockSession.lock()
+                        android.util.Log.d("LockSession", "unlocked=false reason=screen_off")
+                    }
+                }
+            },
+            android.content.IntentFilter(Intent.ACTION_SCREEN_OFF)
+        )
         // Repair a restore that died mid-swap before anything opens the database.
         // Synchronous and before the first Activity, so the recovery cannot race
         // a reader that is about to open (and recreate) the live file.
