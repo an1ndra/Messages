@@ -33,6 +33,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Mostrar um botão Marcar como lida na notificação</string>
     <string name="settings_notif_action_delete_title">Ação Excluir</string>
     <string name="settings_notif_action_delete_subtitle">Mostrar um botão Excluir na notificação</string>
+    <string name="settings_bubble_back_closes_title">Fechar a bolha com Voltar</string>
+    <string name="settings_bubble_back_closes_subtitle">Desativado: Voltar retorna à lista de conversas e mantém a bolha aberta</string>
     <string name="settings_delivery_reports_title">Relatórios de entrega</string>
     <string name="settings_delivery_reports_subtitle">Saiba quando uma mensagem SMS é entregue</string>
     <string name="settings_mark_read_title">Marcar todas como lidas</string>

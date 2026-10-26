@@ -90,7 +90,8 @@ object SettingsSearch {
             R.string.settings_receive_sound_title,
             R.string.settings_notif_action_reply_title,
             R.string.settings_notif_action_mark_read_title,
-            R.string.settings_notif_action_delete_title)
+            R.string.settings_notif_action_delete_title,
+            R.string.settings_bubble_back_closes_title)
         card(Route.ADVANCED, 11,
             R.string.settings_font_title,
             R.string.settings_advanced_emoji_button)

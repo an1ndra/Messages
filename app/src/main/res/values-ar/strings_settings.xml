@@ -33,6 +33,8 @@
     <string name="settings_notif_action_mark_read_subtitle">إظهار زر وضع علامة كمقروء في الإشعار</string>
     <string name="settings_notif_action_delete_title">إجراء الحذف</string>
     <string name="settings_notif_action_delete_subtitle">إظهار زر الحذف في الإشعار</string>
+    <string name="settings_bubble_back_closes_title">إغلاق الفقاعة بزر الرجوع</string>
+    <string name="settings_bubble_back_closes_subtitle">عند الإيقاف: يعيد زر الرجوع إلى قائمة المحادثات ويُبقي الفقاعة مفتوحة</string>
     <string name="settings_delivery_reports_title">تقارير التسليم</string>
     <string name="settings_delivery_reports_subtitle">معرفة متى يتم تسليم رسالة SMS</string>
     <string name="settings_mark_read_title">وضع علامة على الكل كمقروء</string>

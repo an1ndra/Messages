@@ -33,6 +33,8 @@
     <string name="settings_notif_action_mark_read_subtitle">通知に既読にするボタンを表示</string>
     <string name="settings_notif_action_delete_title">削除アクション</string>
     <string name="settings_notif_action_delete_subtitle">通知に削除ボタンを表示</string>
+    <string name="settings_bubble_back_closes_title">戻るでバブルを閉じる</string>
+    <string name="settings_bubble_back_closes_subtitle">オフ: 戻るでチャット一覧に戻り、バブルは開いたままになります</string>
     <string name="settings_delivery_reports_title">配信レポート</string>
     <string name="settings_delivery_reports_subtitle">SMSメッセージが配信されたかどうかを確認</string>
     <string name="settings_mark_read_title">すべて既読にする</string>

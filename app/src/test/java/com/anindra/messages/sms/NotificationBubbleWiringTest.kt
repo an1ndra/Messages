@@ -66,7 +66,12 @@ class NotificationBubbleWiringTest {
         assertTrue("the activity ignores the bubble launch", activity.contains("isBubbleLaunch"))
         assertTrue("the bubble never registers its conversation", activity.contains("BubbleHost.enter("))
         assertTrue("the bubble never releases its conversation", activity.contains("BubbleHost.leave("))
-        assertTrue("the bubble's chat clears its notification anyway", activity.contains("if (bubbleMode) finish()"))
+        // The bubble's own Back path, which is what releases the notification:
+        // it only finishes when the "Close bubble with Back" setting is on.
+        assertTrue(
+            "the bubble's Back no longer decides through the shared rule",
+            activity.contains("bubbleBackAction(bubbleMode, vm.settings.bubbleBackCloses)")
+        )
     }
 
     @Test

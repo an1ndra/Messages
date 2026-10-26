@@ -33,6 +33,8 @@
     <string name="settings_notif_action_mark_read_subtitle">알림에 읽음으로 표시 버튼 표시</string>
     <string name="settings_notif_action_delete_title">삭제 작업</string>
     <string name="settings_notif_action_delete_subtitle">알림에 삭제 버튼 표시</string>
+    <string name="settings_bubble_back_closes_title">뒤로 가기로 버블 닫기</string>
+    <string name="settings_bubble_back_closes_subtitle">꺼짐: 뒤로 가기를 누르면 채팅 목록으로 돌아가고 버블은 열린 상태로 유지됩니다</string>
     <string name="settings_delivery_reports_title">전달 보고서</string>
     <string name="settings_delivery_reports_subtitle">SMS 메시지가 전달된 시기를 확인하세요</string>
     <string name="settings_mark_read_title">모두 읽음으로 표시</string>

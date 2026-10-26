@@ -33,6 +33,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Show a mark-as-read button on the notification</string>
     <string name="settings_notif_action_delete_title">Delete action</string>
     <string name="settings_notif_action_delete_subtitle">Show a delete button on the notification</string>
+    <string name="settings_bubble_back_closes_title">Close bubble with Back</string>
+    <string name="settings_bubble_back_closes_subtitle">Off: Back returns to the chat list and leaves the bubble open</string>
     <string name="settings_delivery_reports_title">Delivery reports</string>
     <string name="settings_delivery_reports_subtitle">Find out when an SMS message is delivered</string>
     <string name="settings_mark_read_title">Mark all as read</string>

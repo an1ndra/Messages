@@ -33,6 +33,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Mostrar un botón de marcar como leído en la notificación</string>
     <string name="settings_notif_action_delete_title">Acción de eliminar</string>
     <string name="settings_notif_action_delete_subtitle">Mostrar un botón de eliminar en la notificación</string>
+    <string name="settings_bubble_back_closes_title">Cerrar la burbuja con Atrás</string>
+    <string name="settings_bubble_back_closes_subtitle">Desactivado: Atrás vuelve a la lista de chats y deja la burbuja abierta</string>
     <string name="settings_delivery_reports_title">Informes de entrega</string>
     <string name="settings_delivery_reports_subtitle">Conoce cuándo se entrega un mensaje SMS</string>
     <string name="settings_mark_read_title">Marcar todas como leídas</string>
