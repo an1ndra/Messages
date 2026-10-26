@@ -1073,6 +1073,7 @@ class MainActivity : FragmentActivity() {
         }
         intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { bootVm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, bootVm)
+        applyLockSessionProbe(intent)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
@@ -1093,11 +1094,22 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             val vm: AppViewModel = viewModel()
-            var appUnlocked by remember { mutableStateOf(!appLockEnabled) }
+            // One prompt per unlocked session, not one per activity (#354
+            // follow-up): opening a bubble, sharing a text or rotating the
+            // screen used to ask for a fingerprint again.
+            var appUnlocked by remember {
+                mutableStateOf(!appLockEnabled || com.anindra.messages.data.LockSession.isUnlocked())
+            }
             var lockNotAvailable by remember { mutableStateOf(false) }
 
             if (appLockEnabled && !appUnlocked) {
                 LaunchedEffect(Unit) {
+                    if (com.anindra.messages.data.LockSession.isUnlocked()) {
+                        android.util.Log.d("LockSession", "prompt=skipped")
+                        appUnlocked = true
+                        return@LaunchedEffect
+                    }
+                    android.util.Log.d("LockSession", "prompt=shown")
                     val biometricManager = BiometricManager.from(this@MainActivity)
                     val canAuth = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                     if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
@@ -1106,6 +1118,8 @@ class MainActivity : FragmentActivity() {
                             object : BiometricPrompt.AuthenticationCallback() {
                                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                                     result.cryptoObject
+                                    com.anindra.messages.data.LockSession.unlock()
+                                    android.util.Log.d("LockSession", "unlocked=true")
                                     runOnUiThread { appUnlocked = true }
                                 }
                                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -1790,6 +1804,31 @@ onOpenAccessibility = { navRoute = "accessibility" },
         vm.dumpTransferLog { entries -> vm.logTransferEntries(entries) }
     }
 
+    /**
+     * Debug builds only: `--es lock_session_probe unlock|lock|query` drives the
+     * app-lock session, so a script can assert its lifetime without a real
+     * biometric prompt (an emulator has no enrolled fingerprint).
+     */
+    private fun applyLockSessionProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        when (intent.getStringExtra("lock_session_probe")) {
+            "unlock" -> {
+                com.anindra.messages.data.LockSession.unlock()
+                android.util.Log.d("LockSessionProbe", "unlocked=true")
+            }
+            "lock" -> {
+                com.anindra.messages.data.LockSession.lock()
+                android.util.Log.d("LockSessionProbe", "unlocked=false")
+            }
+            "query" -> android.util.Log.d(
+                "LockSessionProbe",
+                "unlocked=${com.anindra.messages.data.LockSession.isUnlocked()}"
+            )
+        }
+    }
+
     private fun applyPrivacyModeProbe(intent: Intent, vm: AppViewModel) {
         if (intent.hasExtra("privacy_mode")) {
             (application as com.anindra.messages.MessagesApplication).repository.settings.privacyModeEnabled =
@@ -1813,6 +1852,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
         }
         intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { vm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, vm)
+        applyLockSessionProbe(intent)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it

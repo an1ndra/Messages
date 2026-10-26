@@ -82,6 +82,11 @@ class NavTransitionDepthTest {
 
     private companion object {
         /** `when` branches on these are theme/intent modes, not navigation routes. */
-        val NON_ROUTE_WHEN_KEYS = setOf("dark", "light", "system", "amoled", "dynamic")
+        // Theme modes, and the app-lock session probe's verbs (#354 follow-up):
+        // intent extras, not screens, so they must not need a routeDepth.
+        val NON_ROUTE_WHEN_KEYS = setOf(
+            "dark", "light", "system", "amoled", "dynamic",
+            "unlock", "lock", "query"
+        )
     }
 }
