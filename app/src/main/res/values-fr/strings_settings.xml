@@ -33,6 +33,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Afficher un bouton \"Marquer comme lu\" sur la notification</string>
     <string name="settings_notif_action_delete_title">Action \"Supprimer\"</string>
     <string name="settings_notif_action_delete_subtitle">Afficher un bouton \"Supprimer\" sur la notification</string>
+    <string name="settings_bubble_back_closes_title">Fermer la bulle avec Retour</string>
+    <string name="settings_bubble_back_closes_subtitle">Désactivé : Retour revient à la liste des conversations et laisse la bulle ouverte</string>
     <string name="settings_delivery_reports_title">Rapports de livraison</string>
     <string name="settings_delivery_reports_subtitle">Savoir quand un message SMS est livré</string>
     <string name="settings_mark_read_title">Tout marquer comme lu</string>

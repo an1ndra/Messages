@@ -33,6 +33,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Als-gelesen-markieren-Schaltfläche in der Benachrichtigung anzeigen</string>
     <string name="settings_notif_action_delete_title">Löschen-Aktion</string>
     <string name="settings_notif_action_delete_subtitle">Löschen-Schaltfläche in der Benachrichtigung anzeigen</string>
+    <string name="settings_bubble_back_closes_title">Blase mit Zurück schließen</string>
+    <string name="settings_bubble_back_closes_subtitle">Aus: Zurück führt zur Chatliste und lässt die Blase geöffnet</string>
     <string name="settings_delivery_reports_title">Zustellungsberichte</string>
     <string name="settings_delivery_reports_subtitle">Erfahren, wann eine SMS-Nachricht zugestellt wurde</string>
     <string name="settings_mark_read_title">Alle als gelesen markieren</string>
