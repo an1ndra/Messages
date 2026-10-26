@@ -44,6 +44,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -421,8 +422,14 @@ fun SettingsScreen(
     if (markReadDialog) {
         AlertDialog(
             onDismissRequest = { markReadDialog = false },
-            title = { Text(stringResource(R.string.settings_mark_read_confirm_title)) },
-            text = { Text(stringResource(R.string.settings_mark_read_confirm_message)) },
+            title = {
+                val title = stringResource(R.string.settings_mark_read_confirm_title)
+                Text(title, style = directionalStyle(LocalTextStyle.current, title))
+            },
+            text = {
+                val message = stringResource(R.string.settings_mark_read_confirm_message)
+                Text(message, style = directionalStyle(LocalTextStyle.current, message))
+            },
             confirmButton = {
                 TextButton(onClick = {
                     markReadDialog = false

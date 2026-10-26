@@ -39,6 +39,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -84,6 +85,7 @@ import com.anindra.messages.ui.A11y
 import com.anindra.messages.ui.formatPhoneNumber
 import com.anindra.messages.ui.formatDateTime
 import com.anindra.messages.ui.is24HourFormat
+import com.anindra.messages.ui.directionalStyle
 import com.anindra.messages.ui.BackupLocation
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.focusRequester
@@ -620,8 +622,14 @@ fun SettingsScreen(
     if (markReadDialog) {
         AlertDialog(
             onDismissRequest = { markReadDialog = false },
-            title = { Text(stringResource(R.string.settings_mark_read_confirm_title)) },
-            text = { Text(stringResource(R.string.settings_mark_read_confirm_message)) },
+            title = {
+                val title = stringResource(R.string.settings_mark_read_confirm_title)
+                Text(title, style = directionalStyle(LocalTextStyle.current, title))
+            },
+            text = {
+                val message = stringResource(R.string.settings_mark_read_confirm_message)
+                Text(message, style = directionalStyle(LocalTextStyle.current, message))
+            },
             confirmButton = {
                 TextButton(onClick = {
                     markReadDialog = false
