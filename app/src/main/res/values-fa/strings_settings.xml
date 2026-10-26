@@ -51,6 +51,8 @@
     <string name="settings_notif_action_mark_read_subtitle">نمایش دکمه خوانده‌شدن روی اعلان</string>
     <string name="settings_notif_action_delete_title">کنش حذف</string>
     <string name="settings_notif_action_delete_subtitle">نمایش دکمه حذف روی اعلان</string>
+    <string name="settings_bubble_back_closes_title">بستن حباب با دکمه بازگشت</string>
+    <string name="settings_bubble_back_closes_subtitle">خاموش: دکمه بازگشت به فهرست گفتگوها برمی‌گردد و حباب باز می‌ماند</string>
     <string name="settings_delivery_reports_title">گزارش‌های تحویل</string>
     <string name="settings_delivery_reports_subtitle">بفهمید پیامک چه زمانی تحویل داده می‌شود</string>
     <string name="settings_mark_read_title">علامت‌گذاری همه به‌عنوان خوانده‌شده</string>
