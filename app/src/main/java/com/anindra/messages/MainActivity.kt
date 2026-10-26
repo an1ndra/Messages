@@ -708,6 +708,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      *  message count before the atomic file swap. */
     val importLoading = androidx.compose.runtime.mutableStateOf<Int?>(null)
 
+    /** A restore or an sms-ie import can add hundreds of chats in one go, and
+     *  every chat owns a channel (#339). They are created from the imported
+     *  rows here rather than waiting for each chat's first new message. */
+    private fun syncChannelsAfterBulkImport() {
+        scope.launch(Dispatchers.IO) {
+            NotificationHelper.syncConversationChannels(getApplication())
+        }
+    }
+
     fun importDatabase(
         uri: Uri,
         pin: String?,
@@ -725,6 +734,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } catch (e: Exception) {
                 com.anindra.messages.data.Repository.ImportResult.Error("Import error: ${e.message}")
+            }
+            if (result is com.anindra.messages.data.Repository.ImportResult.Success) {
+                syncChannelsAfterBulkImport()
             }
             importLoading.value = null
             refreshTransferLog()
@@ -753,6 +765,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         "Import error: ${e.message ?: e.javaClass.simpleName}"
                     )
                 }
+            }
+            if (result is com.anindra.messages.data.Repository.ImportResult.Success) {
+                syncChannelsAfterBulkImport()
             }
             importLoading.value = null
             refreshTransferLog()
@@ -1581,6 +1596,11 @@ onOpenAccessibility = { navRoute = "accessibility" },
             repo.needsInitialImport
         ) {
             repo.requeryFromSystem()
+            // A fresh install imports the whole history right here — SMS access
+            // only exists from this point on — so the channels for those chats
+            // have to be created from the imported rows, not at
+            // Application.onCreate where the database was still empty (#339).
+            com.anindra.messages.sms.NotificationHelper.syncConversationChannelsAsync(this)
         }
         val now = System.currentTimeMillis()
         if (now - lastResumeTime > 5 * 60_000L) {

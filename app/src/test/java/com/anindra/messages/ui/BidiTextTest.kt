@@ -151,10 +151,47 @@ class BidiTextTest {
     }
 
     @Test
+    fun aLineOfOnlyEmojiIsPinnedLtrAndEmojiDoNotVote() {
+        // #362 follow-up: an emoji line in a Persian message is a line with no
+        // strong character, so it gets the same LTR pin as a bare amount.
+        val body = "کد تخفیف را ثبت کن\n🎁🎁"
+        val iso = BidiText.isolateNumberRuns(body)
+        assertEquals(BidiText.Direction.RTL, iso.direction)
+        assertEquals("کد تخفیف را ثبت کن\n${lri}🎁🎁$pdi", iso.text)
+        assertEquals(1, iso.ltrLines)
+    }
+
+    @Test
     fun excludedRunInsideLinkIsUntouched() {
         val body = "see http://x.io/12 34 now"
         val link = 4..17
         val iso = BidiText.isolateNumberRuns(body, listOf(link))
         assertEquals(body, iso.text)
+    }
+
+    @Test
+    fun aLineOfOnlyNumbersOrLinksIsPinnedLtr() {
+        // #362 follow-up: inside a Persian message, a line that is nothing but a
+        // link (or a bare amount, or "@handle #123") must still read left to
+        // right — base RTL would otherwise put it on the wrong edge.
+        val body = "کد ورود به صرافی تبدیل:\n85904\n\n@tabdeal.org #85904\nلغو11"
+        val out = BidiText.isolateNumberRuns(body).text
+        assertEquals(
+            "کد ورود به صرافی تبدیل:\n${lri}85904$pdi\n\n${lri}@tabdeal.org #85904$pdi\nلغو11",
+            out
+        )
+        assertEquals(2, BidiText.isolateNumberRuns(body).ltrLines)
+    }
+
+    @Test
+    fun aBareLinkLineInAPersianBroadcastIsPinnedLtr() {
+        val body = "📣ارسال تپسی‌شاپ رایگان شد\nبه مدت محدود\nl.tpshp.co/3lDXoA\nلغو 11r.eu/t"
+        val iso = BidiText.isolateNumberRuns(body)
+        assertEquals(BidiText.Direction.RTL, iso.direction)
+        assertEquals("📣ارسال تپسی‌شاپ رایگان شد\nبه مدت محدود\n${lri}l.tpshp.co/3lDXoA$pdi\nلغو 11r.eu/t", iso.text)
+        assertEquals(1, iso.ltrLines)
+        // The link's digits stay where they are: the line isolate already pins
+        // the whole line, and a second isolate inside it would nest for nothing.
+        assertEquals("لغو 11r.eu/t", iso.text.substringAfterLast('\n'))
     }
 }

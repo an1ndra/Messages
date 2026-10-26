@@ -2481,6 +2481,10 @@ private fun styledBody(
     onLinkClick: ((String) -> Unit)?
 ): AnnotatedString {
     val iso = BidiText.isolateNumberRuns(body, urls.keys.toList())
+    android.util.Log.d(
+        "BubbleBidi",
+        "dir=${if (iso.direction == BidiText.Direction.RTL) "Rtl" else "Ltr"} ltrLines=${iso.ltrLines}"
+    )
     val out = AnnotatedString.Builder(iso.text)
     urls.forEach { (original, url) ->
         val range = iso.remap(original)

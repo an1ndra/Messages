@@ -68,6 +68,55 @@ class BidiTextDirectionTest {
     }
 
     @Test
+    fun emojiNeverVote() {
+        // #362 follow-up: Character.getDirectionality(char) reports a lone
+        // surrogate as LTR, so 📣 at the end of a Persian message was the last
+        // "strong" character and flipped the whole bubble. Flags are two
+        // regional indicators, which Unicode really does class as L.
+        assertEquals(Direction.RTL, BidiText.direction("ارسال رایگان شد 📣"))
+        assertEquals(Direction.RTL, BidiText.direction("📣 ارسال رایگان شد"))
+        assertEquals(Direction.RTL, BidiText.direction("🎁 1 گیگ اینترنت هدیه با پرداخت هر قبض خدماتی! 🎁👇"))
+        assertEquals(Direction.RTL, BidiText.direction("سلام ❤️"))
+        assertEquals(Direction.RTL, BidiText.direction("سلام 🇮🇷🇺🇸"))
+        // ...and the inverse: emoji do not make an English message Persian.
+        assertEquals(Direction.LTR, BidiText.direction("hello 📣"))
+        // Nothing strong at all is still LTR.
+        assertEquals(Direction.LTR, BidiText.direction("📣🎁🇮🇷"))
+        // The composer has the same trap, since a draft can start on an emoji.
+        assertEquals(Direction.RTL, BidiText.firstStrongDirection("📣 سلام"))
+        assertEquals(Direction.LTR, BidiText.firstStrongDirection("📣 hello"))
+    }
+
+    @Test
+    fun linksDoNotVoteForTheMessage() {
+        // #362 follow-up: a Persian broadcast whose last line is a bare link.
+        // The link's Latin letters are strong, so without filtering the last
+        // strong character is inside the link and the whole bubble went LTR.
+        assertEquals(
+            Direction.RTL,
+            BidiText.direction("📣ارسال تپسی‌شاپ رایگان شد\nبه مدت محدود\nl.tpshp.co/3lDXoA\nلغو 11r.eu/t")
+        )
+        assertEquals(
+            Direction.RTL,
+            BidiText.direction("🎁 1 گیگ اینترنت هدیه\nhttps://zbl.io/RogeAbne")
+        )
+        // ...as does a message that is nothing but a link.
+        assertEquals(Direction.LTR, BidiText.direction("https://zbl.io/RogeAbne"))
+        assertEquals(Direction.LTR, BidiText.direction("l.tpshp.co/3lDXoA"))
+        // A dotted abbreviation is not a link and still votes.
+        assertEquals(Direction.RTL, BidiText.direction("e.g سلام"))
+    }
+
+    @Test
+    fun linksAreFoundInBothShapesAnSmsCarries() {
+        fun found(s: String) = BidiText.linkRanges(s).map { s.substring(it) }
+        assertEquals(listOf("https://zbl.io/RogeAbne"), found("https://zbl.io/RogeAbne"))
+        assertEquals(listOf("11r.eu/t"), found("لغو 11r.eu/t"))
+        assertEquals(listOf("@tabdeal.org"), found("@tabdeal.org #85904"))
+        assertEquals(emptyList<String>(), found("e.g. fine"))
+    }
+
+    @Test
     fun composerFollowsTheFirstStrongCharacterOnly() {
         assertEquals(Direction.LTR, BidiText.firstStrongDirection(""))
         assertEquals(Direction.LTR, BidiText.firstStrongDirection("123"))
