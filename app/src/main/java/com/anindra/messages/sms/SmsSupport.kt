@@ -331,6 +331,16 @@ object NotificationHelper {
             }
     }
 
+    /** Runs [syncConversationChannels] off the main thread, for the paths that
+     *  have just added conversations in bulk: the first-run import and a
+     *  restore both land rows after the launch sync has already run. */
+    fun syncConversationChannelsAsync(context: Context) {
+        val app = context.applicationContext
+        kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
+        ).launch { syncConversationChannels(app) }
+    }
+
     /** Runs [syncNotificationChannels] off the main thread, for settings rows. */
     fun reconcileAsync(context: Context) {
         val app = context.applicationContext
