@@ -38,6 +38,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -311,3 +313,15 @@ fun SkeletonConversationRow() {
 }
 
 val LocalThemedAvatars = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** The style dialog copy paints with: the string's own strong direction on top
+ *  of the slot's provided style. A Persian-locale device runs every window RTL
+ *  while this app's strings are English (no values-fa yet), and an English
+ *  sentence in an RTL paragraph parks its trailing "?" or "." at the visual
+ *  start (#345). Logs DialogBidi so the regression scripts can assert the
+ *  direction — the paint order itself is invisible to a uiautomator dump. */
+internal fun directionalStyle(base: TextStyle, text: String): TextStyle {
+    val direction = BidiText.direction(text)
+    android.util.Log.d("DialogBidi", "dir=${direction.toTextDirection()} len=${text.length}")
+    return base.copy(textDirection = direction.toTextDirection())
+}

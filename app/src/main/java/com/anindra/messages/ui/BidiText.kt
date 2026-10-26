@@ -34,9 +34,15 @@ object BidiText {
      *  ended up on opposite sides of the date. '_' is the same bug for
      *  Pasargad ("07/30_04:00").
      *
+     *  'x'/'X' and '*' belong in a run as well: a masked card number
+     *  ("5022-29xx-xxxx-9227") is digits around Latin letters, whose strong
+     *  LTR direction used to split the number into runs that Unicode then
+     *  reordered — the sender's own card digits came out jumbled, while the
+     *  same text read correctly once selected (#345 follow-up).
+     *
      *  Whitespace is horizontal only: a line break ends a run, so one message's
      *  amount is never isolated together with the next line's timestamp. */
-    private val NUMBER_RUN = Regex("""[-+]?\(?[$DIGITS][$DIGITS \t()./$NBSP,_:\u060C\u066B\u066C-]*[$DIGITS]\)?""")
+    private val NUMBER_RUN = Regex("""[-+]?\(?[$DIGITS][$DIGITS \t()./$NBSP,_:\u060C\u066B\u066CxX*-]*[$DIGITS]\)?""")
 
     /** A link, in the two shapes an SMS actually carries: with a scheme or
      *  "www.", or bare like "11r.eu/t" and "l.tpshp.co/3lDXoA". Latin letters
