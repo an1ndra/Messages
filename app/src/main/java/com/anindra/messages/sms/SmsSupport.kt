@@ -118,11 +118,12 @@ object NotificationHelper {
         senderName: String,
         fallbackText: String,
         imageUri: String? = null,
-        privacyMode: Boolean = false
+        privacyMode: Boolean = false,
+        senderIcon: IconCompat? = null
     ): NotificationCompat.Style {
         val hideLinks = app.repository.settings.hideLinks
         val person = Person.Builder().setName(senderName)
-            .setIcon(IconCompat.createWithResource(context, R.drawable.ic_stat_message))
+            .setIcon(senderIcon ?: IconCompat.createWithResource(context, R.drawable.ic_stat_message))
             .build()
         val me = Person.Builder().setName(context.getString(R.string.notif_you))
             .setIcon(IconCompat.createWithResource(context, R.drawable.ic_stat_message))
@@ -528,6 +529,10 @@ object NotificationHelper {
         ).build()
 
         val senderName = app.repository.contactNameFor(from) ?: from
+        // The person's own picture in the panel and in the bubble (#354
+        // follow-up); privacy mode keeps the identity out of the shade's
+        // large-icon slot as well.
+        val avatar = if (privacyMode) null else ConversationAvatar.forAddress(context, from)
         val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
             privacyMode -> context.getString(R.string.notif_body_private)
@@ -561,12 +566,20 @@ object NotificationHelper {
             // across the app's live notifications.
             .setNumber(BadgePolicy.badgeCount(app.repository.unreadCountFor(convoId)))
             .setContentIntent(tap)
-            .setStyle(groupedStyle(context, app, convoId, senderName, text, imageUri, privacyMode))
+            .setStyle(
+                groupedStyle(
+                    context, app, convoId, senderName, text, imageUri, privacyMode,
+                    senderIcon = avatar?.icon
+                )
+            )
+        avatar?.let { builder.setLargeIcon(it.bitmap) }
         if (bubbleConversationId != null && bubbleReady) {
             try {
                 builder.setShortcutId(NotificationBubble.shortcutId(bubbleConversationId))
                 builder.addPerson(
-                    Person.Builder().setName(senderName).setKey(from).setImportant(true).build()
+                    Person.Builder().setName(senderName).setKey(from).setImportant(true)
+                        .setIcon(avatar?.icon)
+                        .build()
                 )
                 builder.setBubbleMetadata(
                     NotificationBubble.metadata(context, from, bubbleConversationId, reqCode + 4000)
