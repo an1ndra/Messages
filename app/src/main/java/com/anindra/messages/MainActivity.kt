@@ -1249,6 +1249,13 @@ class MainActivity : FragmentActivity() {
                     if (id > 0 && isBubbleLaunch(intent)) {
                         bubbleConversationId = id
                         com.anindra.messages.sms.BubbleHost.enter(id)
+                    } else {
+                        // A full-screen open by address must retire that
+                        // conversation's floating bubble too: cancelling by
+                        // address hash never reaches the bubble's
+                        // conversation-id notification.
+                        com.anindra.messages.sms.NotificationHelper
+                            .retireBubbleForFullChat(this@MainActivity, id)
                     }
                 }
 
@@ -1341,6 +1348,8 @@ class MainActivity : FragmentActivity() {
                         onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
+                            com.anindra.messages.sms.NotificationHelper
+                                .retireBubbleForFullChat(this@MainActivity, id)
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
@@ -1352,6 +1361,8 @@ class MainActivity : FragmentActivity() {
                         onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
+                            com.anindra.messages.sms.NotificationHelper
+                                .retireBubbleForFullChat(this@MainActivity, id)
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
