@@ -26,6 +26,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.anindra.messages.ui.theme.Motion
 import com.anindra.messages.R
 import com.anindra.messages.ui.theme.LocalReduceMotion
+import com.anindra.messages.ui.theme.avatarFill
+import com.anindra.messages.ui.theme.avatarOnFill
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
@@ -89,9 +91,9 @@ fun PersonAvatar(
 ) {
     val themed = LocalThemedAvatars.current
     val fill = backgroundColor
-        ?: if (themed) MaterialTheme.colorScheme.primaryContainer else avatarColor(key)
+        ?: if (themed) MaterialTheme.colorScheme.avatarFill(avatarColor(key)) else avatarColor(key)
     val glyphTint = tint
-        ?: if (themed) MaterialTheme.colorScheme.onPrimaryContainer else Color.White
+        ?: if (themed) MaterialTheme.colorScheme.avatarOnFill(avatarColor(key)) else Color.White
     val context = LocalContext.current
     val photoUri by produceState<String?>(initialValue = photoUriCache.get(key), key) {
         val hit = photoUriCache.get(key)

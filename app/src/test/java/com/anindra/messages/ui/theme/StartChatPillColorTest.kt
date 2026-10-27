@@ -5,14 +5,14 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import com.anindra.messages.data.SettingsStore
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The "Start chat" pill must look like v1.0.30 again: primary-coloured content
- * on the secondary container. The later Material FAB pair (primaryContainer /
- * onPrimaryContainer) painted the dark pill in a different blue, which is what
- * this pins down.
+ * The "Start chat" pill is an accent surface (#347): the theme's primary fills
+ * the pill and onPrimary reads on it, in every seeded theme and under the
+ * wallpaper scheme alike, matching Google Messages.
  */
 class StartChatPillColorTest {
 
@@ -23,56 +23,53 @@ class StartChatPillColorTest {
     )
 
     @Test
-    fun everySeededThemeUsesTheV130Pair() {
+    fun everySeededThemeUsesTheAccentPair() {
         schemes.forEach { (name, scheme) ->
             assertEquals(
-                "$name: the pill container must be the secondary container",
-                scheme.secondaryContainer,
+                "$name: the pill container must be the accent",
+                scheme.primary,
                 scheme.startChatContainer
             )
             assertEquals(
-                "$name: the pill content must be primary, as in v1.0.30",
-                scheme.primary,
+                "$name: the pill content must be the matching on-colour",
+                scheme.onPrimary,
                 scheme.startChatContent
             )
         }
     }
 
     @Test
-    fun highContrastAlsoKeepsTheV130Pair() {
+    fun highContrastAlsoWalksThroughTheAccentPair() {
         listOf(true, false).forEach { dark ->
             val scheme = schemeFor(
                 SettingsStore.THEME_SYSTEM,
                 A11yOptions(enabled = true, highContrast = true),
                 darkTheme = dark
             )
-            assertEquals(scheme.secondaryContainer, scheme.startChatContainer)
-            assertEquals(scheme.primary, scheme.startChatContent)
+            assertEquals(scheme.primary, scheme.startChatContainer)
+            assertEquals(scheme.onPrimary, scheme.startChatContent)
         }
     }
 
     @Test
-    fun aDimWallpaperPrimaryFallsBackToTheOnContainerRole() {
-        // The AVD's wallpaper palette hands back exactly this kind of pair:
-        // primary #6E7488 on secondaryContainer #2A4174 is 2.14:1, a blob.
+    fun aWallpaperPaletteLetsThePillFollowTheAccent() {
         val wallpaper = lightColorScheme(
             primary = Color(0xFF6E7488),
             onPrimary = Color(0xFFFFFFFF),
             secondaryContainer = Color(0xFF2A4174),
             onSecondaryContainer = Color(0xFFDCE2F9)
         )
-        assertEquals(wallpaper.secondaryContainer, wallpaper.startChatContainer)
-        assertEquals(wallpaper.onSecondaryContainer, wallpaper.startChatContent)
-        assertTrue(
-            "the fallback pair must stay readable",
-            contrastRatio(wallpaper.startChatContent, wallpaper.startChatContainer) >= 3f
-        )
+        assertEquals(wallpaper.primary, wallpaper.startChatContainer)
+        assertEquals(wallpaper.onPrimary, wallpaper.startChatContent)
+        // the previous secondary-container surface is exactly what is left behind
+        assertNotEquals(wallpaper.secondaryContainer, wallpaper.startChatContainer)
     }
 
     @Test
     fun everyResolvedPairStaysReadable() {
         val wallpaper = darkColorScheme(
             primary = Color(0xFF2A4174),
+            onPrimary = Color(0xFFFFFFFF),
             secondaryContainer = Color(0xFF6E7488),
             onSecondaryContainer = Color(0xFF141B2C)
         )
