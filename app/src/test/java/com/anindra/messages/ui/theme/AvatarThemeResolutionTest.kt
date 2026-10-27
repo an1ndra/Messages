@@ -69,7 +69,7 @@ class AvatarThemeResolutionTest {
         assertTrue(
             "the report must state the rule",
             diagnostics.contains(
-                "\"Avatar fill: theme colour under Dynamic, per-contact palette otherwise\""
+                "\"Avatar fill: harmonized per-contact colour under Dynamic, palette otherwise\""
             )
         )
         assertTrue(

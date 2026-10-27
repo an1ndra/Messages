@@ -3023,15 +3023,29 @@ internal fun InputBar(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        // The send circle is always drawn, as it was before #347: hiding it made
-        // the field jump about and left the bar looking unfinished. It is only
-        // inert while there is nothing to send, so an empty tap cannot fire.
+        // GM behavior (#347): the send circle disappears while there is nothing
+        // to send, instead of sitting there faded. It shrinks and fades out in
+        // place so the field and bar keep their layout, and only the inert
+        // empty-state tap is impossible — combinedClickable stays gated on
+        // [ready], so an invisible mid-animation tap cannot fire a send either.
         val ready = canSend(draft, hasAttachments)
         val sendLabel = stringResource(R.string.icon_send)
+        val sendReduceMotion = LocalReduceMotion.current
+        val present by animateFloatAsState(
+            targetValue = if (ready) 1f else 0f,
+            animationSpec = motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
+            label = "sendPresence"
+        )
         Spacer(Modifier.width(8.dp))
         Box(
             Modifier
                 .size(48.dp)
+                .graphicsLayer {
+                    alpha = present
+                    val scale = 0.5f + 0.5f * present
+                    scaleX = scale
+                    scaleY = scale
+                }
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
                 .combinedClickable(enabled = ready, onClick = onSend, onLongClick = onSchedule)
                 .semantics { contentDescription = sendLabel },

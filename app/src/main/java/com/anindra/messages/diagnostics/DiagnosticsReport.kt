@@ -241,7 +241,7 @@ object DiagnosticsReport {
             // The rule is the same for every theme, so this line is the same for
             // every theme: it states the rule rather than reporting a per-mode
             // value that would make two identical builds look different.
-            appendLine("Avatar fill: theme colour under Dynamic, per-contact palette otherwise")
+            appendLine("Avatar fill: harmonized per-contact colour under Dynamic, palette otherwise")
             appendLine("Font: ${data.appDetails.fontFamily}")
             appendLine("Accessibility mode: ${data.appDetails.accessibilityMode}")
             if (data.appDetails.accessibilityMode) {
