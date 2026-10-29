@@ -3040,69 +3040,27 @@ internal fun InputBar(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        // GM behavior (#347): the send circle disappears while there is nothing
-        // to send, instead of sitting there faded. It shrinks and fades out in
-        // place so the field and bar keep their layout, and only the inert
-        // empty-state tap is impossible — combinedClickable stays gated on
-        // [ready], so an invisible mid-animation tap cannot fire a send either.
+        // The send circle is always there, dimmed while there is nothing to
+        // send, and inert until then — combinedClickable is gated on [ready], so
+        // an empty tap cannot fire and holding it schedules nothing. Round 2 of
+        // #347 hid it instead; the row then looked unfinished on an empty chat.
         val ready = canSend(draft, hasAttachments)
         val sendLabel = stringResource(R.string.icon_send)
-        val scheduleLabel = stringResource(R.string.chat_schedule)
         val sendReduceMotion = LocalReduceMotion.current
         val present by animateFloatAsState(
-            targetValue = if (ready) 1f else 0f,
+            targetValue = if (ready) 1f else 0.38f,
             animationSpec = motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
             label = "sendPresence"
         )
-        // Scheduling used to be reachable only by long-pressing Send, which
-        // nobody discovers (#386). A clock beside it is the UI the report was
-        // looking for; long-press keeps working as a shortcut.
-        if (schedulingEnabled) {
-            // A fixed slot keeps the bar from shifting, but the control itself is
-            // only composed while there is something to schedule: an alpha-0
-            // button still reaches the accessibility tree, so a screen reader
-            // would announce a Schedule button that cannot act.
-            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = ready,
-                    enter = fadeIn(motionTween(sendReduceMotion, Motion.DURATION_SHORT4)) +
-                        scaleIn(
-                            motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
-                            initialScale = 0.5f
-                        ),
-                    exit = fadeOut(motionTween(sendReduceMotion, Motion.DURATION_SHORT4)) +
-                        scaleOut(
-                            motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
-                            targetScale = 0.5f
-                        )
-                ) {
-                    Box(
-                        Modifier
-                            .size(40.dp)
-                            .combinedClickable(onClick = onSchedule)
-                            .semantics { contentDescription = scheduleLabel },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.Schedule, null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-            }
-        }
         Spacer(Modifier.width(8.dp))
         Box(
             Modifier
                 .size(48.dp)
-                .graphicsLayer {
-                    alpha = present
-                    val scale = 0.5f + 0.5f * present
-                    scaleX = scale
-                    scaleY = scale
-                }
+                .graphicsLayer { alpha = present }
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
+                // Holding Send is the only way in, as it was before #386: the
+                // reporter was told where scheduling lives instead of being
+                // given another button in the row.
                 .combinedClickable(
                     enabled = ready,
                     onClick = onSend,
