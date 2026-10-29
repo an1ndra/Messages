@@ -192,6 +192,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.Motion
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.unit.IntSize
 import com.anindra.messages.ui.theme.motionSpring
 import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.ui.theme.chatBar
@@ -1597,7 +1599,15 @@ fun ChatScreen(
                     val isLastMessage = idx == lastSentRow
                     val isRevealed = msg.id in revealed
 
-                    Column(Modifier.fillMaxWidth()) {
+                    // Bubbles glide into place on send/receive and when an older
+                    // page is prepended, instead of the list jumping a row.
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .animateItem(
+                                placementSpec = motionSpring<IntOffset>(LocalReduceMotion.current)
+                            )
+                    ) {
                         if (groupStart) {
                             Box(
                                 Modifier.fillMaxWidth().padding(top = 30.dp, bottom = 18.dp),
@@ -2957,7 +2967,12 @@ internal fun InputBar(
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.inputPill,
-            modifier = Modifier.weight(1f)
+            // A new line makes the pill taller; ease that instead of snapping.
+            modifier = Modifier
+                .weight(1f)
+                .animateContentSize(
+                    animationSpec = motionSpring<IntSize>(LocalReduceMotion.current)
+                )
         ) {
             TextField(
                 value = draft,
