@@ -58,6 +58,17 @@ class ComposerAttachDotTest {
     }
 
     @Test
+    fun theDotSitsOnTheRingNotOutsideIt() {
+        // Measured off GM: the dot's centre is 0.99·r from the ring's centre, so
+        // it overlaps the ring. An outward offset puts it just past the ring,
+        // where it reads as a separate speck.
+        assertTrue(
+            "the dot must be nudged inward to land on the ring",
+            Regex("""\.offset\(x = \(-1\)\.dp, y = 1\.dp\)""").containsMatchIn(chat)
+        )
+    }
+
+    @Test
     fun theRingReadsAsBroken() {
         assertTrue(
             "the dot needs a ring of field colour, or it floats on the icon instead of cutting it",
