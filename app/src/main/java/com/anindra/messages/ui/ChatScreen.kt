@@ -2997,7 +2997,9 @@ internal fun InputBar(
                             Box(
                                 Modifier
                                     .align(Alignment.TopEnd)
-                                    .offset(x = 1.dp, y = (-1).dp)
+                                    // Sits *on* the ring, not outside it: GM's
+                                    // dot centre is 0.99·r from the ring centre.
+                                    .offset(x = (-1).dp, y = 1.dp)
                                     // GM's dot measures ~5dp across; the 8dp box
                                     // is the cut-out ring plus that dot.
                                     .size(8.dp)
