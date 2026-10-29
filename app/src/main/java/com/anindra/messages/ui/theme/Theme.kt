@@ -284,6 +284,14 @@ val ColorScheme.onSelectedBubble: Color get() = onPrimary
 val ChatMetaWeight: FontWeight = FontWeight.Medium
 
 /**
+ * The badge Google Messages draws on the composer's attach button: a #76D1FF
+ * dot sitting on the "+" ring's top-right, overlapping it so the ring reads as
+ * broken there. Measured off the running app; it is the one colour in the
+ * composer that is not a scheme role, so it lives here with the seeds.
+ */
+val ComposerAttachDot: Color = Color(0xFF76D1FF)
+
+/**
  * Whether a theme mode renders as a dark scheme.
  *
  * AMOLED counts as dark: it is a dark scheme that simply starts from true
