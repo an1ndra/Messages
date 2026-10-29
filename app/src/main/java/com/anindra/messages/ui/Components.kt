@@ -26,8 +26,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.anindra.messages.ui.theme.Motion
 import com.anindra.messages.R
 import com.anindra.messages.ui.theme.LocalReduceMotion
-import com.anindra.messages.ui.theme.avatarFill
-import com.anindra.messages.ui.theme.avatarOnFill
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
@@ -38,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -74,6 +73,16 @@ private val avatarColors = listOf(
 
 val GoogleBlue = Color(0xFF1A73E8)
 
+// Google Messages paints the same bright palette on both schemes and only
+// flips the silhouette ink: white on the light scheme, a near-black on the dark
+// one (measured #FFFFFF and #202124 off the running app). Tinting the fills
+// toward the theme — what #347 round 2 did under Dynamic — desaturates them into
+// mud on a muted wallpaper palette, so the fills stay fixed.
+private val avatarGlyphInkDark = Color(0xFF202124)
+
+internal fun avatarGlyphInk(cs: androidx.compose.material3.ColorScheme): Color =
+    if (cs.background.luminance() < 0.5f) avatarGlyphInkDark else Color.White
+
 fun avatarColor(key: String): Color {
     var h = 0
     for (c in key) h = h * 31 + c.code
@@ -89,11 +98,8 @@ fun PersonAvatar(
     backgroundColor: Color? = null,
     tint: Color? = null
 ) {
-    val themed = LocalThemedAvatars.current
-    val fill = backgroundColor
-        ?: if (themed) MaterialTheme.colorScheme.avatarFill(avatarColor(key)) else avatarColor(key)
-    val glyphTint = tint
-        ?: if (themed) MaterialTheme.colorScheme.avatarOnFill(avatarColor(key)) else Color.White
+    val fill = backgroundColor ?: avatarColor(key)
+    val glyphTint = tint ?: avatarGlyphInk(MaterialTheme.colorScheme)
     val context = LocalContext.current
     val photoUri by produceState<String?>(initialValue = photoUriCache.get(key), key) {
         val hit = photoUriCache.get(key)
@@ -120,7 +126,7 @@ fun PersonAvatar(
             Icon(
                 painter = painterResource(R.drawable.ic_person_placeholder),
                 contentDescription = null,
-                tint = tint ?: if (themed) glyphTint else Color.Unspecified,
+                tint = glyphTint,
                 modifier = Modifier.size(size * 0.62f)
             )
         }
@@ -313,8 +319,6 @@ fun SkeletonConversationRow() {
         }
     }
 }
-
-val LocalThemedAvatars = androidx.compose.runtime.staticCompositionLocalOf { false }
 
 /** The style dialog copy paints with: the string's own strong direction on top
  *  of the slot's provided style. A Persian-locale device runs every window RTL

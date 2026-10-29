@@ -36,6 +36,7 @@
     <string name="settings_delivery_reports_title">डिलीवरी रिपोर्ट</string>
     <string name="settings_delivery_reports_subtitle">जानें कि SMS संदेश कब वितरित हुआ</string>
     <string name="settings_mark_read_title">सभी को पढ़े के रूप में चिह्नित करें</string>
+    <string name="settings_bubbles_title">बबल</string>
     <string name="settings_mark_read_subtitle">प्रत्येक संवाद के लिए अपढ़े बैज साफ़ करें</string>
     <string name="settings_mark_read_confirm_title">सभी को पढ़े के रूप में चिह्नित करें?</string>
     <string name="settings_mark_read_confirm_message">सभी संवादों के अपढ़े बैज साफ़ हो जाएंगे। इसे पूर्ववत नहीं किया जा सकता।</string>

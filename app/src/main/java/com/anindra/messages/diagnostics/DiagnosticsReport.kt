@@ -61,6 +61,8 @@ data class AppDetails(
     val resolvedBackground: String = "",
     /** The "Start chat" pill's content on its container, as "#RRGGBB on #RRGGBB". */
     val resolvedStartChat: String = "",
+    /** The silhouette ink an avatar resolves to under the current scheme. */
+    val resolvedAvatarInk: String = "",
     val notificationsEnabled: Boolean,
     val fontFamily: String = "",
     val sendSound: Boolean = false,
@@ -241,7 +243,7 @@ object DiagnosticsReport {
             // The rule is the same for every theme, so this line is the same for
             // every theme: it states the rule rather than reporting a per-mode
             // value that would make two identical builds look different.
-            appendLine("Avatar fill: harmonized per-contact colour under Dynamic, palette otherwise")
+            appendLine("Avatar ink: ${data.appDetails.resolvedAvatarInk} on the fixed GM palette")
             appendLine("Font: ${data.appDetails.fontFamily}")
             appendLine("Accessibility mode: ${data.appDetails.accessibilityMode}")
             if (data.appDetails.accessibilityMode) {
@@ -615,6 +617,13 @@ object DiagnosticsReport {
                     context, settings.themeMode, themeIsDark(settings.themeMode, systemIsDark())
                 )
             ),
+            resolvedAvatarInk = resolvedAvatarInkHex(
+                settings.themeMode,
+                systemIsDark(),
+                com.anindra.messages.ui.theme.dynamicSchemeOrNull(
+                    context, settings.themeMode, themeIsDark(settings.themeMode, systemIsDark())
+                )
+            ),
             notificationsEnabled = settings.notificationsEnabled,
             fontFamily = settings.fontFamily,
             sendSound = settings.sendSoundEnabled,
@@ -699,6 +708,25 @@ internal fun resolvedStartChatHex(
     fun hex(c: androidx.compose.ui.graphics.Color) =
         "#%02X%02X%02X".format(channel(c.red), channel(c.green), channel(c.blue))
     return "${hex(scheme.startChatContent)} on ${hex(scheme.startChatContainer)}"
+}
+
+/**
+ * The silhouette ink an avatar paints with, resolved through the same
+ * [com.anindra.messages.ui.avatarGlyphInk] the avatar itself uses — a second
+ * copy of the night-mode branch here is how a report starts disagreeing with
+ * what was drawn.
+ */
+internal fun resolvedAvatarInkHex(
+    mode: String,
+    systemIsDark: Boolean,
+    dynamic: androidx.compose.material3.ColorScheme? = null
+): String {
+    val scheme = schemeFor(
+        mode, A11yOptions.DISABLED, themeIsDark(mode, systemIsDark), dynamic
+    )
+    val ink = com.anindra.messages.ui.avatarGlyphInk(scheme)
+    fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
+    return "#%02X%02X%02X".format(channel(ink.red), channel(ink.green), channel(ink.blue))
 }
 
 /** The device's night setting, read without a Context. */

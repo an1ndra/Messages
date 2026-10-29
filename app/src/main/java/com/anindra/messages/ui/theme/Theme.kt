@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import com.anindra.messages.data.SettingsStore
-import com.anindra.messages.ui.LocalThemedAvatars
 
 /**
  * Material 3 color system (m3.material.io/styles/color/system).
@@ -262,14 +261,17 @@ internal fun contrastRatio(a: Color, b: Color): Float {
     return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
 }
 
-// The "Start chat" pill is an accent surface (#347): an accent fill with the
-// matching on-colour, exactly like Google Messages — principally under the
-// wallpaper theme the pill and the page's floating action button draw from the
-// same accent, and the previous secondary-container surface read as a grey
-// mismatch next to it. Container and content are defined once here so the FAB
-// and Diagnostics cannot disagree.
-val ColorScheme.startChatContainer: Color get() = primary
-val ColorScheme.startChatContent: Color get() = onPrimary
+// The "Start chat" pill is the tinted accent container (#347), measured off
+// Google Messages on both schemes: #D3E3FD with #0842A0 content in the light
+// theme, #0842A0 with #D3E3FD content in the dark one. That is the scheme's
+// primaryContainer and whichever of its content roles reads on it — a solid
+// primary fill (round 2) turned into a dead grey slab under a wallpaper
+// palette, and secondaryContainer (round 1) was never the surface GM paints.
+// Defined once here so the FAB, the legacy screen and Diagnostics cannot
+// disagree.
+val ColorScheme.startChatContainer: Color get() = primaryContainer
+val ColorScheme.startChatContent: Color
+    get() = if (primaryContainer.luminance() < 0.5f) onPrimaryContainer else primary
 
 // Selected messages sit inside the accent the theme (seeded or wallpaper)
 // supplies: the bubble fills with primary and its content reads onPrimary.
@@ -293,97 +295,6 @@ internal fun themeIsDark(mode: String, systemIsDark: Boolean): Boolean = when (m
     SettingsStore.THEME_LIGHT -> false
     // "dynamic" and "system" both follow the device's night setting.
     else -> systemIsDark
-}
-
-/**
- * Whether avatars are drawn from the theme instead of the fixed per-contact
- * palette. Exactly one mode wants that: the dynamic (wallpaper) theme, where
- * the palette would be the only thing on screen not derived from the
- * wallpaper. Every other mode keeps the Google-Messages look.
- *
- * One function because the theme paints the avatars through it and Diagnostics
- * reports through it: a second copy of the branch is how a report starts
- * disagreeing with what was drawn.
- */
-internal fun avatarsFollowTheme(mode: String): Boolean =
-    mode == SettingsStore.THEME_DYNAMIC
-
-// ─────────── Per-contact avatars under the wallpaper scheme (#347) ───────────
-
-private fun luminanceToHsl(c: Color): FloatArray {
-    val r = c.red
-    val g = c.green
-    val b = c.blue
-    val max = maxOf(r, g, b)
-    val min = minOf(r, g, b)
-    val l = (max + min) / 2f
-    if (max == min) return floatArrayOf(0f, 0f, l)
-    val d = max - min
-    val s = if (l > 0.5f) d / (2f - max - min) else d / (max + min)
-    val h = when (max) {
-        r -> (g - b) / d + (if (g < b) 6f else 0f)
-        g -> (b - r) / d + 2f
-        else -> (r - g) / d + 4f
-    } * 60f / 360f
-    return floatArrayOf(h, s, l)
-}
-
-private fun hslToColor(h: Float, s: Float, l: Float): Color {
-    if (s == 0f) return Color(l, l, l)
-    fun f(t: Float): Float {
-        var x = t
-        if (x < 0f) x += 1f
-        if (x > 1f) x -= 1f
-        val q = if (l < 0.5f) l * (1f + s) else l + s - l * s
-        val p = 2f * l - q
-        return when {
-            x < 1f / 6f -> p + (q - p) * 6f * x
-            x < 1f / 2f -> q
-            x < 2f / 3f -> p + (q - p) * (2f / 3f - x) * 6f
-            else -> p
-        }
-    }
-    return Color(f(h + 1f / 3f), f(h), f(h - 1f / 3f))
-}
-
-internal fun hueOf(c: Color): Float = luminanceToHsl(c)[0]
-internal fun saturationOf(c: Color): Float = luminanceToHsl(c)[1]
-internal fun lightnessOf(c: Color): Float = luminanceToHsl(c)[2]
-
-/**
- * Material harmonization: shift [source]'s hue 25% of the way toward [target]'s
- * hue, closer than M3's standard 10% so a wallpaper's tint is visible on the
- * avatar chips, while keeping the source's saturation and lightness so each
- * contact keeps its own tonal identity.
- */
-internal fun harmonizeWith(source: Color, target: Color): Color {
-    val sh = hueOf(source)
-    val th = hueOf(target)
-    var delta = th - sh
-    if (delta > 0.5f) delta -= 1f
-    if (delta < -0.5f) delta += 1f
-    var h = sh + delta * 0.25f
-    // A greyscale target carries no hue to pull toward; keep the source's own.
-    if (saturationOf(target) < 0.05f) h = sh
-    return hslToColor((h + 1f) % 1f, saturationOf(source), lightnessOf(source))
-}
-
-/**
- * The fill a themed avatar uses: the contact's palette hue harmonized into the
- * active scheme (#347), so contacts stay distinct from each other while every
- * one of them belongs to the wallpaper palette instead of floating over it.
- */
-internal fun ColorScheme.avatarFill(source: Color): Color =
-    harmonizeWith(source, primary)
-
-/** The glyph colour that survives on [avatarFill] in either night mode. */
-internal fun ColorScheme.avatarOnFill(source: Color): Color {
-    val fill = avatarFill(source)
-    return if (contrastRatio(Color.Black, fill) >= contrastRatio(Color.White, fill)) {
-        Color.Black
-    } else {
-        Color.White
-    }
 }
 
 /**
@@ -468,8 +379,7 @@ fun MessagesTheme(
     CompositionLocalProvider(
         LocalDensity provides scaledDensity,
         LocalReduceMotion provides a11y.reduceMotionEnabled,
-        LocalLargeTouchTargets provides a11y.largeTouchTargetsEnabled,
-        LocalThemedAvatars provides avatarsFollowTheme(mode)
+        LocalLargeTouchTargets provides a11y.largeTouchTargetsEnabled
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
