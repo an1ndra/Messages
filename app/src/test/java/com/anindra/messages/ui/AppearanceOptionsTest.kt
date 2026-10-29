@@ -31,7 +31,7 @@ class AppearanceOptionsTest {
     }
 
     @Test
-    fun theSendButtonDisappearsWhenEmptyButKeepsItsFootprint() {
+    fun theSendButtonIsAlwaysThereButInertUntilThereIsSomethingToSend() {
         val chat = read("src/main/java/com/anindra/messages/ui/ChatScreen.kt")
         assertTrue(
             "the send button must not be hidden inside a content check",
@@ -46,15 +46,15 @@ class AppearanceOptionsTest {
             Regex("""combinedClickable\(\s*enabled = ready,\s*onClick = onSend,""").containsMatchIn(chat)
         )
         assertTrue(
-            "the idle state must animate away, not sit there faded",
-            chat.contains("targetValue = if (ready) 1f else 0f")
+            "the button stays on screen and dims instead of vanishing",
+            chat.contains("targetValue = if (ready) 1f else 0.38f")
         )
         assertTrue(
             "the animation must keep the layout footprint (graphicsLayer, not size removal)",
             Regex("""\.graphicsLayer\s*\{""").containsMatchIn(chat)
         )
         assertTrue(
-            "reduce motion must skip the shrink-and-fade",
+            "reduce motion must skip the dimming animation",
             chat.contains("motionTween(sendReduceMotion, Motion.DURATION_SHORT4)")
         )
     }
