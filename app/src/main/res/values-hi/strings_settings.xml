@@ -132,7 +132,6 @@
     <string name="settings_import_source_sms_ie_title">SMS आयात/निर्यात (.zip, .json)</string>
     <string name="settings_import_quik_title">QUIK (QKSMS) बैकअप</string>
     <string name="settings_pinch_zoom_title">टेक्स्ट ज़ूम के लिए पिंच करें</string>
-    <string name="settings_pinch_zoom_subtitle">बातचीत का टेक्स्ट आकार बदलने के लिए पिंच करें; ज़ूम हर बातचीत के लिए याद रहता है</string>
     <string name="settings_import_sms_ie_failed">वह बैकअप फ़ाइल नहीं पढ़ी जा सकी</string>
     <string name="settings_import_failed">आयात विफल: %s</string>
     <string name="settings_merge_title">मौजूदा संदेशों के साथ मर्ज करें</string>

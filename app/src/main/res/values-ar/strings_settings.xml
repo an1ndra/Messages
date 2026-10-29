@@ -132,7 +132,6 @@
     <string name="settings_import_source_sms_ie_title">استيراد/تصدير SMS (.zip, .json)</string>
     <string name="settings_import_quik_title">نسخة QUIK (QKSMS) الاحتياطية</string>
     <string name="settings_pinch_zoom_title">تكبير نص المحادثة بالقرص</string>
-    <string name="settings_pinch_zoom_subtitle">اقرص المحادثة لتغيير حجم نصها؛ يُحفظ التكبير لكل محادثة</string>
     <string name="settings_import_sms_ie_failed">تعذر قراءة ملف النسخة الاحتياطية</string>
     <string name="settings_import_failed">فشل الاستيراد: %s</string>
     <string name="settings_merge_title">الدمج مع الرسائل الحالية</string>

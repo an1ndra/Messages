@@ -122,13 +122,6 @@ fun InboxSettingsScreen(
 
             SettingsGroup {
                 SettingsRow(
-                    position = RowPosition.MIDDLE,
-                    title = stringResource(R.string.settings_pinch_zoom_title),
-                    subtitle = stringResource(R.string.settings_pinch_zoom_subtitle),
-                    checked = vm.settings.pinchZoomEnabled,
-                    onChecked = { vm.settings.pinchZoomEnabled = it }
-                )
-                SettingsRow(
                     position = RowPosition.FIRST,
                     title = stringResource(R.string.settings_archiving_title),
                     checked = archiving,
@@ -161,6 +154,12 @@ fun InboxSettingsScreen(
                     title = stringResource(R.string.settings_unread_top_title),
                     checked = unreadAtTop,
                     onChecked = { unreadAtTop = it; vm.settings.unreadAtTopEnabled = it }
+                )
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_pinch_zoom_title),
+                    checked = vm.settings.pinchZoomEnabled,
+                    onChecked = { vm.settings.pinchZoomEnabled = it }
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,
