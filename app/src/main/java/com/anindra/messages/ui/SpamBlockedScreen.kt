@@ -241,6 +241,7 @@ internal fun ConversationsTab(
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .animateItem()
                     .semantics(mergeDescendants = true) {
                         contentDescription = A11y.describe(
                             sender, blockedLabel, formatListTime(convo.timestamp, now, context)
@@ -315,6 +316,7 @@ internal fun MessagesTab(
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .animateItem()
                     .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

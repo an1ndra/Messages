@@ -130,6 +130,9 @@
     <string name="settings_import_source_title">選擇要匯入的備份</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">簡訊匯入/匯出 (.zip, .json)</string>
+    <string name="settings_import_quik_title">QUIK（QKSMS）備份</string>
+    <string name="settings_pinch_zoom_title">雙指縮放文字</string>
+    <string name="settings_pinch_zoom_subtitle">雙指縮放對話中的文字大小；縮放比例按對話記住</string>
     <string name="settings_import_sms_ie_failed">無法讀取該備份檔案</string>
     <string name="settings_import_failed">匯入失敗：%s</string>
     <string name="settings_merge_title">與現有訊息合併</string>

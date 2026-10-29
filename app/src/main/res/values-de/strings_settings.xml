@@ -130,6 +130,9 @@
     <string name="settings_import_source_title">Zu importierende Sicherung auswählen</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">SMS-Import/-Export (.zip, .json)</string>
+    <string name="settings_import_quik_title">QUIK-Sicherung (QKSMS)</string>
+    <string name="settings_pinch_zoom_title">Text per Pinch zoomen</string>
+    <string name="settings_pinch_zoom_subtitle">Unterhaltung zusammenziehen, um die Textgröße zu ändern; der Zoom bleibt je Unterhaltung erhalten</string>
     <string name="settings_import_sms_ie_failed">Diese Sicherungsdatei konnte nicht gelesen werden</string>
     <string name="settings_import_failed">Import fehlgeschlagen: %s</string>
     <string name="settings_merge_title">Mit vorhandenen Nachrichten zusammenführen</string>

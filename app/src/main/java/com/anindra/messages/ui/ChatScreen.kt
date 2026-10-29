@@ -676,6 +676,7 @@ fun ChatScreen(
     // Held outside the gesture handler: Compose restarts a `pointerInput` block
     // whenever its lambda changes, and this chat recomposes on every zoom step.
     val pinch = remember(conversationId) { ChatZoom.Pinch() }
+    val pinchZoomEnabled = vm.settings.pinchZoomEnabled
     // Every row changes height when the scale changes, and the list keeps its
     // scroll offset, so the message under the fingers slides away. Re-anchor it:
     // note the row under the touch point, then scroll back so that same point of
@@ -1574,7 +1575,11 @@ fun ChatScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(conversationId) { pinchToZoom() }
+                    // Off means the handler is not installed, so two fingers
+                    // scroll the list instead of being captured by the zoom.
+                    .pointerInput(conversationId, pinchZoomEnabled) {
+                        if (pinchZoomEnabled) pinchToZoom()
+                    }
                     .pointerInput(conversationId) {
                         detectTapGestures(
                             onDoubleTap = { offset ->

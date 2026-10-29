@@ -130,6 +130,9 @@
     <string name="settings_import_source_title">가져올 백업 선택</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">SMS 가져오기/내보내기 (.zip, .json)</string>
+    <string name="settings_import_quik_title">QUIK(QKSMS) 백업</string>
+    <string name="settings_pinch_zoom_title">핀치로 텍스트 확대</string>
+    <string name="settings_pinch_zoom_subtitle">대화를 핀치하여 글자 크기를 변경합니다. 확대 비율은 대화별로 저장됩니다</string>
     <string name="settings_import_sms_ie_failed">해당 백업 파일을 읽을 수 없습니다</string>
     <string name="settings_import_failed">가져오기 실패: %s</string>
     <string name="settings_merge_title">기존 메시지와 병합</string>
