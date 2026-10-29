@@ -43,7 +43,7 @@ class AppearanceOptionsTest {
         )
         assertTrue(
             "an empty composer must not be able to fire a send",
-            chat.contains(".combinedClickable(enabled = ready, onClick = onSend, onLongClick = onSchedule)")
+            Regex("""combinedClickable\(\s*enabled = ready,\s*onClick = onSend,""").containsMatchIn(chat)
         )
         assertTrue(
             "the idle state must animate away, not sit there faded",
