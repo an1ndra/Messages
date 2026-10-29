@@ -130,6 +130,9 @@
     <string name="settings_import_source_title">Выберите резервную копию для импорта</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">Импорт/экспорт SMS (.zip, .json)</string>
+    <string name="settings_import_quik_title">Резервная копия QUIK (QKSMS)</string>
+    <string name="settings_pinch_zoom_title">Масштаб текста щипком</string>
+    <string name="settings_pinch_zoom_subtitle">Сведите два пальца в беседе, чтобы изменить размер текста; масштаб запоминается для каждой беседы</string>
     <string name="settings_import_sms_ie_failed">Не удалось прочитать файл резервной копии</string>
     <string name="settings_import_failed">Ошибка импорта: %s</string>
     <string name="settings_merge_title">Объединить с существующими сообщениями</string>

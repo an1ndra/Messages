@@ -60,6 +60,7 @@ class SettingsStore(context: Context) {
         const val KEY_FORWARDING_ENABLED = "forwarding_enabled"
         const val KEY_UNREAD_AT_TOP_ENABLED = "unread_at_top_enabled"
         const val KEY_SCHEDULED_MESSAGES_ENABLED = "scheduled_messages_enabled"
+        const val KEY_PINCH_ZOOM = "pinch_zoom_enabled"
         const val KEY_DELAYED_SENDING_ENABLED = "delayed_sending_enabled"
         const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_HIGHLIGHT_LINKS = "highlight_links"
@@ -261,6 +262,15 @@ class SettingsStore(context: Context) {
     var unreadAtTopEnabled: Boolean
         get() = prefs.getBoolean(KEY_UNREAD_AT_TOP_ENABLED, DEFAULTS_UNREAD_AT_TOP)
         set(v) { prefs.edit().putBoolean(KEY_UNREAD_AT_TOP_ENABLED, v).apply(); _revision.value++ }
+
+    /**
+     * Whether pinching a chat scales its text (#348). On by default, and
+     * off means the gesture is not installed at all, so a two-finger drag
+     * scrolls like any other drag.
+     */
+    var pinchZoomEnabled: Boolean
+        get() = prefs.getBoolean(KEY_PINCH_ZOOM, true)
+        set(v) { prefs.edit().putBoolean(KEY_PINCH_ZOOM, v).apply(); _revision.value++ }
 
     var scheduledMessagesEnabled: Boolean
         get() = prefs.getBoolean(KEY_SCHEDULED_MESSAGES_ENABLED, true)

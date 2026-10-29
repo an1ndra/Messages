@@ -107,7 +107,7 @@ fun TransferLogScreen(
             // Newest first: the run a user just performed is the one they are
             // here to check, and it should not sit below twenty old ones.
             items(entries.asReversed()) { entry ->
-                TransferEntryCard(entry)
+                Column(Modifier.animateItem()) { TransferEntryCard(entry) }
             }
             item { Spacer(Modifier.height(SettingsLayout.GROUP_GAP)) }
         }

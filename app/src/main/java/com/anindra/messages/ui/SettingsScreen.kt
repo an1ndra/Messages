@@ -93,7 +93,7 @@ import com.anindra.messages.ui.theme.LocalLargeTouchTargets
 private enum class PinDialogMode { SET, ENTER }
 
 /** Which backup format the picked file belongs to. */
-private enum class ImportSource { OWN_BACKUP, SMS_IE }
+private enum class ImportSource { OWN_BACKUP, SMS_IE, QUIK }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -201,6 +201,18 @@ fun SettingsScreen(
         uri?.let {
             pendingImportUri = it
             pendingImportSource = ImportSource.SMS_IE
+            importModeDialog = true
+        }
+    }
+
+    // QUIK's backup is its own entry and its own picker: the file is plain JSON
+    // and nothing about the sms-ie flow applies to it.
+    val quikLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            pendingImportUri = it
+            pendingImportSource = ImportSource.QUIK
             importModeDialog = true
         }
     }
@@ -584,6 +596,8 @@ fun SettingsScreen(
                 importLauncher.launch(
                     arrayOf("application/octet-stream", "application/x-sqlite3")
                 )
+            } else if (source == ImportSource.QUIK) {
+                quikLauncher.launch(arrayOf("application/json", "*/*"))
             } else {
                 smsIeLauncher.launch(
                     arrayOf(
@@ -602,11 +616,20 @@ fun SettingsScreen(
                 ImportRadioGroup(
                     options = listOf(
                         stringResource(R.string.settings_import_source_own_title) to "",
-                        stringResource(R.string.settings_import_source_sms_ie_title) to ""
+                        stringResource(R.string.settings_import_source_sms_ie_title) to "",
+                        stringResource(R.string.settings_import_quik_title) to ""
                     ),
-                    selectedIndex = if (source == ImportSource.OWN_BACKUP) 0 else 1,
+                    selectedIndex = when (source) {
+                        ImportSource.OWN_BACKUP -> 0
+                        ImportSource.SMS_IE -> 1
+                        ImportSource.QUIK -> 2
+                    },
                     onSelect = {
-                        source = if (it == 0) ImportSource.OWN_BACKUP else ImportSource.SMS_IE
+                        source = when (it) {
+                            0 -> ImportSource.OWN_BACKUP
+                            1 -> ImportSource.SMS_IE
+                            else -> ImportSource.QUIK
+                        }
                     }
                 )
             },
@@ -630,6 +653,10 @@ fun SettingsScreen(
         }
         fun applyImport() {
             val target = uri ?: return
+            if (pendingImportSource == ImportSource.QUIK) {
+                vm.importQuik(target, mode, showImportResult)
+                return
+            }
             if (pendingImportSource == ImportSource.SMS_IE) {
                 // The real ImportResult carries the reason; the old Int callback
                 // discarded it and showed one generic failure for every cause.

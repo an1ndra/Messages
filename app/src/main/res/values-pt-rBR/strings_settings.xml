@@ -130,6 +130,9 @@
     <string name="settings_import_source_title">Escolha o backup a importar</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">Importar/exportar SMS (.zip, .json)</string>
+    <string name="settings_import_quik_title">Backup do QUIK (QKSMS)</string>
+    <string name="settings_pinch_zoom_title">Pinçar para ampliar o texto</string>
+    <string name="settings_pinch_zoom_subtitle">Faça o gesto de pinça em uma conversa para mudar o tamanho do texto; o zoom é lembrado por conversa</string>
     <string name="settings_import_sms_ie_failed">Não foi possível ler esse arquivo de backup</string>
     <string name="settings_import_failed">Falha na importação: %s</string>
     <string name="settings_merge_title">Mesclar com mensagens existentes</string>

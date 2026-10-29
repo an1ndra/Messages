@@ -163,6 +163,7 @@ fun TrashScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
                     ) {
                         items(conversations, key = { it.id }) { convo ->
+                            Column(Modifier.animateItem()) {
                             TrashRow(
                                 convo = convo,
                                 onRestore = { vm.restoreFromTrash(convo.id) },
@@ -171,6 +172,7 @@ fun TrashScreen(
                                     showDeleteForeverDialog = true
                                 }
                             )
+                            }
                         }
                     }
                 }
@@ -187,6 +189,7 @@ fun TrashScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
                     ) {
                         items(messages, key = { it.id }) { msg ->
+                            Column(Modifier.animateItem()) {
                             TrashMessageRow(
                                 msg = msg,
                                 onRestore = { vm.restoreMessage(msg.id) },
@@ -195,6 +198,7 @@ fun TrashScreen(
                                     showDeleteForeverDialog = true
                                 }
                             )
+                            }
                         }
                     }
                 }

@@ -750,6 +750,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      *  The full [Repository.ImportResult] is passed through rather than a
      *  count: collapsing it to an Int is what made "wrong PIN" and "unreadable
      *  file" both surface as one generic toast. */
+    fun importQuik(
+        uri: Uri,
+        mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
+        onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit
+    ) {
+        importLoading.value = 0
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    repo.importQuikFrom(getApplication(), uri, mode)
+                }.getOrElse { e ->
+                    com.anindra.messages.data.Repository.ImportResult.Error(
+                        "Import error: ${e.message ?: e.javaClass.simpleName}"
+                    )
+                }
+            }
+            onResult(result)
+        }
+    }
+
     fun importSmsIe(
         uri: Uri,
         mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
