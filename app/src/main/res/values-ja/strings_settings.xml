@@ -37,6 +37,7 @@
     <string name="settings_delivery_reports_subtitle">SMSメッセージが配信されたかどうかを確認</string>
     <string name="settings_mark_read_title">すべて既読にする</string>
     <string name="settings_bubbles_title">バブル</string>
+    <string name="contact_bubble_conversation">バブルで表示</string>
     <string name="settings_mark_read_subtitle">すべての会話の未読バッジを消去</string>
     <string name="settings_mark_read_confirm_title">すべて既読にしますか？</string>
     <string name="settings_mark_read_confirm_message">すべての会話の未読バッジが消去されます。この操作は取り消せません。</string>

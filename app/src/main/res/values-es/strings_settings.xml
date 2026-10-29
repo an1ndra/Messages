@@ -37,6 +37,7 @@
     <string name="settings_delivery_reports_subtitle">Conoce cuándo se entrega un mensaje SMS</string>
     <string name="settings_mark_read_title">Marcar todas como leídas</string>
     <string name="settings_bubbles_title">Burbujas</string>
+    <string name="contact_bubble_conversation">Mostrar en una burbuja</string>
     <string name="settings_mark_read_subtitle">Borrar insignias de no leídas de todas las conversaciones</string>
     <string name="settings_mark_read_confirm_title">¿Marcar todas como leídas?</string>
     <string name="settings_mark_read_confirm_message">Se borrarán las insignias de no leídas de todas las conversaciones. No se puede deshacer.</string>

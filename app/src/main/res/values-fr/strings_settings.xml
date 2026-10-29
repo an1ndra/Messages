@@ -37,6 +37,7 @@
     <string name="settings_delivery_reports_subtitle">Savoir quand un message SMS est livré</string>
     <string name="settings_mark_read_title">Tout marquer comme lu</string>
     <string name="settings_bubbles_title">Bulles</string>
+    <string name="contact_bubble_conversation">Afficher dans une bulle</string>
     <string name="settings_mark_read_subtitle">Effacer les badges de non-lu pour chaque conversation</string>
     <string name="settings_mark_read_confirm_title">Tout marquer comme lu ?</string>
     <string name="settings_mark_read_confirm_message">Les badges de non-lu seront effacés pour toutes les conversations. Cette action est irréversible.</string>
