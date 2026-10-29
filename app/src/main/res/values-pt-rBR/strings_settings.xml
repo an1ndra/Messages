@@ -37,6 +37,7 @@
     <string name="settings_delivery_reports_subtitle">Saiba quando uma mensagem SMS é entregue</string>
     <string name="settings_mark_read_title">Marcar todas como lidas</string>
     <string name="settings_bubbles_title">Balões</string>
+    <string name="contact_bubble_conversation">Mostrar em um balão</string>
     <string name="settings_mark_read_subtitle">Limpar badges de não lidas para todas as conversas</string>
     <string name="settings_mark_read_confirm_title">Marcar todas como lidas?</string>
     <string name="settings_mark_read_confirm_message">Os badges de não lidas serão limpos em todas as conversas. Não é possível desfazer.</string>

@@ -37,6 +37,7 @@
     <string name="settings_delivery_reports_subtitle">Find out when an SMS message is delivered</string>
     <string name="settings_mark_read_title">Mark all as read</string>
     <string name="settings_bubbles_title">Bubbles</string>
+    <string name="contact_bubble_conversation">Show in a bubble</string>
     <string name="settings_mark_read_subtitle">Clear unread badges for every conversation</string>
     <string name="settings_mark_read_confirm_title">Mark all as read?</string>
     <string name="settings_mark_read_confirm_message">Unread badges will be cleared on every conversation. This can’t be undone.</string>
