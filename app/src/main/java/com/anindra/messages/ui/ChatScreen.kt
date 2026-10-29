@@ -2998,7 +2998,9 @@ internal fun InputBar(
                                 Modifier
                                     .align(Alignment.TopEnd)
                                     .offset(x = 1.dp, y = (-1).dp)
-                                    .size(10.dp)
+                                    // GM's dot measures ~5dp across; the 8dp box
+                                    // is the cut-out ring plus that dot.
+                                    .size(8.dp)
                                     .background(MaterialTheme.colorScheme.inputPill, CircleShape)
                                     .padding(1.5.dp)
                                     .background(ComposerAttachDot, CircleShape)

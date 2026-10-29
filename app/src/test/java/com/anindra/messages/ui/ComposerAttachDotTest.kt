@@ -35,6 +35,17 @@ class ComposerAttachDotTest {
     }
 
     @Test
+    fun theDotIsGooglesMeasuredSize() {
+        // GM's dot measures 14px (~5dp) across at 440dpi; the 8dp box is that
+        // dot plus the 1.5dp cut-out ring on each side.
+        assertTrue(
+            "the dot box must be 8dp, or the badge reads heavier than GM's",
+            Regex("""\.size\(8\.dp\)\s*\.background\(MaterialTheme\.colorScheme\.inputPill""")
+                .containsMatchIn(chat)
+        )
+    }
+
+    @Test
     fun theAttachButtonCarriesIt() {
         assertTrue(
             "the dot must sit on the attach button's ring",
