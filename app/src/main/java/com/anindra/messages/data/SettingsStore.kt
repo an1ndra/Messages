@@ -12,6 +12,26 @@ class SettingsStore(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("messages_settings", Context.MODE_PRIVATE)
 
+    /**
+     * True when this package has never been replaced by an update: a fresh
+     * install ships the redesigned UI and DM Sans, while an installation that
+     * has been updated keeps the defaults it started with. An update must not
+     * restyle the app under someone who never touched the setting.
+     */
+    private val firstInstall: Boolean =
+        runCatching {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            info.firstInstallTime == info.lastUpdateTime
+        }.getOrDefault(false)
+
+    init {
+        // Written once, on a fresh install, so a later update keeps the look the
+        // user first saw instead of falling back with the package's age.
+        seedFontFor(firstInstall, prefs.getString(KEY_FONT_FAMILY, null))?.let {
+            prefs.edit().putString(KEY_FONT_FAMILY, it).apply()
+        }
+    }
+
     private val _revision = MutableStateFlow(0)
     val revision: StateFlow<Int> = _revision.asStateFlow()
 
@@ -40,6 +60,7 @@ class SettingsStore(context: Context) {
         const val KEY_FORWARDING_ENABLED = "forwarding_enabled"
         const val KEY_UNREAD_AT_TOP_ENABLED = "unread_at_top_enabled"
         const val KEY_SCHEDULED_MESSAGES_ENABLED = "scheduled_messages_enabled"
+        const val KEY_PINCH_ZOOM = "pinch_zoom_enabled"
         const val KEY_DELAYED_SENDING_ENABLED = "delayed_sending_enabled"
         const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_HIGHLIGHT_LINKS = "highlight_links"
@@ -74,6 +95,16 @@ class SettingsStore(context: Context) {
         const val KEY_LINK_WARNING = "link_open_warning_enabled"
         const val KEY_FONT_FAMILY = "font_family"
         const val FONT_SYSTEM = "system"
+
+        /**
+         * The font a new installation is seeded with, or null to leave whatever
+         * is stored alone. Only a fresh install with no stored choice is
+         * seeded: an update must not restyle the app under someone who never
+         * touched the setting, and an explicit choice always wins.
+         */
+        internal fun seedFontFor(freshInstall: Boolean, storedFont: String?): String? =
+            if (freshInstall && storedFont == null) FONT_DM_SANS else null
+
         const val FONT_DM_SANS = "dm_sans"
         const val FONT_INTER = "inter"
         const val FONT_FIGTREE = "figtree"
@@ -194,9 +225,10 @@ class SettingsStore(context: Context) {
         set(v) { prefs.edit().putBoolean(KEY_FORWARDING_ENABLED, v).apply(); _revision.value++ }
 
     /**
-     * Which settings/chat surface to render. The pre-redesign screens under
-     * `ui/legacy` are the default; switching on renders the redesigned set.
-     * Both read this same store, so data stays in sync either way.
+     * Which settings/chat surface to render. Fresh installs start on the
+     * redesigned screens; the pre-redesign views under `ui/legacy` stay
+     * reachable through this switch. Both read the same store, so data stays in
+     * sync either way.
      */
     var useNewUi: Boolean
         get() = prefs.getBoolean(KEY_USE_NEW_UI, true)
@@ -230,6 +262,15 @@ class SettingsStore(context: Context) {
     var unreadAtTopEnabled: Boolean
         get() = prefs.getBoolean(KEY_UNREAD_AT_TOP_ENABLED, DEFAULTS_UNREAD_AT_TOP)
         set(v) { prefs.edit().putBoolean(KEY_UNREAD_AT_TOP_ENABLED, v).apply(); _revision.value++ }
+
+    /**
+     * Whether pinching a chat scales its text (#348). On by default, and
+     * off means the gesture is not installed at all, so a two-finger drag
+     * scrolls like any other drag.
+     */
+    var pinchZoomEnabled: Boolean
+        get() = prefs.getBoolean(KEY_PINCH_ZOOM, true)
+        set(v) { prefs.edit().putBoolean(KEY_PINCH_ZOOM, v).apply(); _revision.value++ }
 
     var scheduledMessagesEnabled: Boolean
         get() = prefs.getBoolean(KEY_SCHEDULED_MESSAGES_ENABLED, true)

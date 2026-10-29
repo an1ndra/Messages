@@ -36,6 +36,7 @@
     <string name="settings_delivery_reports_title">전달 보고서</string>
     <string name="settings_delivery_reports_subtitle">SMS 메시지가 전달된 시기를 확인하세요</string>
     <string name="settings_mark_read_title">모두 읽음으로 표시</string>
+    <string name="settings_bubbles_title">버블</string>
     <string name="settings_mark_read_subtitle">모든 대화의 안 읽음 배지 제거</string>
     <string name="settings_mark_read_confirm_title">모두 읽음으로 표시할까요?</string>
     <string name="settings_mark_read_confirm_message">모든 대화의 안 읽음 배지가 제거됩니다. 되돌릴 수 없습니다.</string>
@@ -129,6 +130,8 @@
     <string name="settings_import_source_title">가져올 백업 선택</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">SMS 가져오기/내보내기 (.zip, .json)</string>
+    <string name="settings_import_quik_title">QUIK(QKSMS) 백업</string>
+    <string name="settings_pinch_zoom_title">핀치로 텍스트 확대</string>
     <string name="settings_import_sms_ie_failed">해당 백업 파일을 읽을 수 없습니다</string>
     <string name="settings_import_failed">가져오기 실패: %s</string>
     <string name="settings_merge_title">기존 메시지와 병합</string>

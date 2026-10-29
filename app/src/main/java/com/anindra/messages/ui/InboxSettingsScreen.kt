@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -93,8 +94,14 @@ fun InboxSettingsScreen(
     val blockedNumbers by vm.blockedNumbers().collectAsState(initial = emptyList())
 
     Scaffold(
+        // Same sheet as General settings: page and app bar are surfaceContainer,
+        // rows are inset at the page background.
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = { Text(stringResource(R.string.settings_inbox_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -147,6 +154,12 @@ fun InboxSettingsScreen(
                     title = stringResource(R.string.settings_unread_top_title),
                     checked = unreadAtTop,
                     onChecked = { unreadAtTop = it; vm.settings.unreadAtTopEnabled = it }
+                )
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_pinch_zoom_title),
+                    checked = vm.settings.pinchZoomEnabled,
+                    onChecked = { vm.settings.pinchZoomEnabled = it }
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,

@@ -61,6 +61,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import com.anindra.messages.ui.theme.ComposerAttachDot
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -192,6 +193,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.Motion
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.unit.IntSize
 import com.anindra.messages.ui.theme.motionSpring
 import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.ui.theme.chatBar
@@ -673,6 +676,7 @@ fun ChatScreen(
     // Held outside the gesture handler: Compose restarts a `pointerInput` block
     // whenever its lambda changes, and this chat recomposes on every zoom step.
     val pinch = remember(conversationId) { ChatZoom.Pinch() }
+    val pinchZoomEnabled = vm.settings.pinchZoomEnabled
     // Every row changes height when the scale changes, and the list keeps its
     // scroll offset, so the message under the fingers slides away. Re-anchor it:
     // note the row under the touch point, then scroll back so that same point of
@@ -1540,6 +1544,7 @@ fun ChatScreen(
                                 }
                             }
                         },
+                        schedulingEnabled = vm.settings.scheduledMessagesEnabled,
                         onSchedule = {
                             val text = draft.trim()
                             if (text.isNotEmpty()) {
@@ -1570,7 +1575,11 @@ fun ChatScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(conversationId) { pinchToZoom() }
+                    // Off means the handler is not installed, so two fingers
+                    // scroll the list instead of being captured by the zoom.
+                    .pointerInput(conversationId, pinchZoomEnabled) {
+                        if (pinchZoomEnabled) pinchToZoom()
+                    }
                     .pointerInput(conversationId) {
                         detectTapGestures(
                             onDoubleTap = { offset ->
@@ -1597,7 +1606,15 @@ fun ChatScreen(
                     val isLastMessage = idx == lastSentRow
                     val isRevealed = msg.id in revealed
 
-                    Column(Modifier.fillMaxWidth()) {
+                    // Bubbles glide into place on send/receive and when an older
+                    // page is prepended, instead of the list jumping a row.
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .animateItem(
+                                placementSpec = motionSpring<IntOffset>(LocalReduceMotion.current)
+                            )
+                    ) {
                         if (groupStart) {
                             Box(
                                 Modifier.fillMaxWidth().padding(top = 30.dp, bottom = 18.dp),
@@ -2931,6 +2948,7 @@ internal fun InputBar(
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
     onSchedule: () -> Unit = {},
+    schedulingEnabled: Boolean = true,
     onEmojiToggle: () -> Unit,
     onAttach: () -> Unit,
     showEmojiButton: Boolean = false,
@@ -2954,10 +2972,17 @@ internal fun InputBar(
         LaunchedEffect(draftStyle.textDirection) {
             android.util.Log.d("ComposerDirection", "dir=${draftStyle.textDirection}")
         }
+        // GM's composer is a true pill: a 56dp field with a 28dp corner, which
+        // at 24dp still read as a rounded rectangle beside it.
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.inputPill,
-            modifier = Modifier.weight(1f)
+            // A new line makes the pill taller; ease that instead of snapping.
+            modifier = Modifier
+                .weight(1f)
+                .animateContentSize(
+                    animationSpec = motionSpring<IntSize>(LocalReduceMotion.current)
+                )
         ) {
             TextField(
                 value = draft,
@@ -2965,10 +2990,29 @@ internal fun InputBar(
                 placeholder = { Text(placeholder) },
                 leadingIcon = {
                     IconButton(onClick = onAttach) {
-                        Icon(
-                            Icons.Rounded.AddCircleOutline, stringResource(R.string.icon_attach),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        // GM badges the attach button with a dot that overlaps the
+                        // ring's top-right; the ring shows through as broken
+                        // because the dot carries a ring of field colour around it.
+                        Box {
+                            Icon(
+                                Icons.Rounded.AddCircleOutline,
+                                stringResource(R.string.icon_attach),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    // Sits *on* the ring, not outside it: GM's
+                                    // dot centre is 0.99·r from the ring centre.
+                                    .offset(x = (-1).dp, y = 1.dp)
+                                    // GM's dot measures ~5dp across; the 8dp box
+                                    // is the cut-out ring plus that dot.
+                                    .size(8.dp)
+                                    .background(MaterialTheme.colorScheme.inputPill, CircleShape)
+                                    .padding(1.5.dp)
+                                    .background(ComposerAttachDot, CircleShape)
+                            )
+                        }
                     }
                 },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -3023,17 +3067,32 @@ internal fun InputBar(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        // The send circle is always drawn, as it was before #347: hiding it made
-        // the field jump about and left the bar looking unfinished. It is only
-        // inert while there is nothing to send, so an empty tap cannot fire.
+        // The send circle is always there, dimmed while there is nothing to
+        // send, and inert until then — combinedClickable is gated on [ready], so
+        // an empty tap cannot fire and holding it schedules nothing. Round 2 of
+        // #347 hid it instead; the row then looked unfinished on an empty chat.
         val ready = canSend(draft, hasAttachments)
         val sendLabel = stringResource(R.string.icon_send)
+        val sendReduceMotion = LocalReduceMotion.current
+        val present by animateFloatAsState(
+            targetValue = if (ready) 1f else 0.38f,
+            animationSpec = motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
+            label = "sendPresence"
+        )
         Spacer(Modifier.width(8.dp))
         Box(
             Modifier
                 .size(48.dp)
+                .graphicsLayer { alpha = present }
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
-                .combinedClickable(enabled = ready, onClick = onSend, onLongClick = onSchedule)
+                // Holding Send is the only way in, as it was before #386: the
+                // reporter was told where scheduling lives instead of being
+                // given another button in the row.
+                .combinedClickable(
+                    enabled = ready,
+                    onClick = onSend,
+                    onLongClick = if (schedulingEnabled) onSchedule else null
+                )
                 .semantics { contentDescription = sendLabel },
             contentAlignment = Alignment.Center
         ) {

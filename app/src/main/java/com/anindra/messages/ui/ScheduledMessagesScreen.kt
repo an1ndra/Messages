@@ -175,6 +175,7 @@ fun ScheduledMessagesScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(visible, key = { it.id }) { sm ->
+                        Column(Modifier.animateItem()) {
                         ScheduledRow(
                             address = sm.address,
                             label = labelFor(sm),
@@ -184,6 +185,7 @@ fun ScheduledMessagesScreen(
                             onReschedule = { editing = sm },
                             onCancel = { vm.cancelScheduledMessage(sm.id) }
                         )
+                        }
                     }
                 }
             }

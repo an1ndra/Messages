@@ -36,6 +36,7 @@
     <string name="settings_delivery_reports_title">Delivery reports</string>
     <string name="settings_delivery_reports_subtitle">Find out when an SMS message is delivered</string>
     <string name="settings_mark_read_title">Mark all as read</string>
+    <string name="settings_bubbles_title">Bubbles</string>
     <string name="settings_mark_read_subtitle">Clear unread badges for every conversation</string>
     <string name="settings_mark_read_confirm_title">Mark all as read?</string>
     <string name="settings_mark_read_confirm_message">Unread badges will be cleared on every conversation. This can’t be undone.</string>
@@ -130,6 +131,8 @@
     <string name="settings_import_source_title">Choose backup to import</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">SMS Import / Export (.zip, .json)</string>
+    <string name="settings_import_quik_title">QUIK (QKSMS) backup</string>
+    <string name="settings_pinch_zoom_title">Pinch to zoom conversation text</string>
     <string name="settings_import_sms_ie_failed">Could not read that backup file</string>
     <string name="settings_import_failed">Import failed: %s</string>
     <string name="settings_merge_title">Merge with existing messages</string>

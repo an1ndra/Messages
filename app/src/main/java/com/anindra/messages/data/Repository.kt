@@ -38,6 +38,9 @@ private const val EXPORT_MODE = "none"
 
 /** Format label for an SMS Import / Export archive, which has no BackupFormat. */
 private const val SMS_IE_FORMAT = "sms-ie"
+
+/** Cap on a QUIK backup read into memory; its files are plain message JSON. */
+private const val MAX_QUIK_BYTES = 64 * 1024 * 1024
 /**
  * How a backup file is encoded.
  *
@@ -2626,6 +2629,60 @@ class Repository(private val context: Context) {
                     ImportResult.Success(report.added)
                 }
             }
+        }
+    }
+
+    /**
+     * Imports a QUIK (QKSMS) backup.
+     *
+     * The file is converted to the sms-ie record shape and then handed to
+     * [importStaged], so dedupe, merge/replace, the provider mirror and the
+     * transfer log all behave exactly as they do for an sms-ie import. QUIK's
+     * format carries nothing else — its own screen says only SMS is supported —
+     * so "everything" here means every field it does write, including read
+     * state and the sent timestamp.
+     */
+    fun importQuikFrom(
+        context: Context,
+        uri: android.net.Uri,
+        mode: ImportMode = ImportMode.MERGE,
+        onProgress: ((done: Int, total: Int) -> Unit)? = null
+    ): ImportResult {
+        val objectJson = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                val text = stream.bufferedReader().readText()
+                if (text.length > MAX_QUIK_BYTES) null else org.json.JSONObject(text)
+            }
+        }.getOrNull()
+        if (objectJson == null) {
+            recordTransfer(
+                TransferOperation.IMPORT, QuikBackup.FORMAT, mode.name, false,
+                "Cannot read that QUIK backup"
+            )
+            return ImportResult.Error("Cannot read that QUIK backup")
+        }
+        val records = ArrayList<String>()
+        QuikBackup.toRecords(objectJson) { records.add(it) }
+        if (records.isEmpty()) {
+            recordTransfer(
+                TransferOperation.IMPORT, QuikBackup.FORMAT, mode.name, false,
+                "No messages found in that backup"
+            )
+            return ImportResult.Error("No messages found in that backup")
+        }
+        val staged = SmsIeReader.stageRecords(records, context.cacheDir)
+        return staged.use {
+            val report = importStaged(staged, mode, onProgress)
+            pushLocalMessagesToProvider()
+            recordTransfer(
+                TransferOperation.IMPORT, QuikBackup.FORMAT, mode.name, true,
+                "Imported ${report.added} of ${report.seen} message(s)",
+                added = report.added,
+                seen = report.seen,
+                skipped = report.skipped,
+                conflicts = report.conflicts
+            )
+            ImportResult.Success(report.added)
         }
     }
 

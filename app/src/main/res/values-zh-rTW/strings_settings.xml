@@ -36,6 +36,7 @@
     <string name="settings_delivery_reports_title">送達報告</string>
     <string name="settings_delivery_reports_subtitle">追蹤 SMS 訊息是否已成功送達</string>
     <string name="settings_mark_read_title">全部標記為已讀</string>
+    <string name="settings_bubbles_title">氣泡</string>
     <string name="settings_mark_read_subtitle">清除所有對話的未讀徽章</string>
     <string name="settings_mark_read_confirm_title">全部標記為已讀？</string>
     <string name="settings_mark_read_confirm_message">所有對話的未讀徽章都將被清除。此操作無法復原。</string>
@@ -129,6 +130,8 @@
     <string name="settings_import_source_title">選擇要匯入的備份</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">簡訊匯入/匯出 (.zip, .json)</string>
+    <string name="settings_import_quik_title">QUIK（QKSMS）備份</string>
+    <string name="settings_pinch_zoom_title">雙指縮放文字</string>
     <string name="settings_import_sms_ie_failed">無法讀取該備份檔案</string>
     <string name="settings_import_failed">匯入失敗：%s</string>
     <string name="settings_merge_title">與現有訊息合併</string>

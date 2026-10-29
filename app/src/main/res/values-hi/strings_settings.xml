@@ -36,6 +36,7 @@
     <string name="settings_delivery_reports_title">डिलीवरी रिपोर्ट</string>
     <string name="settings_delivery_reports_subtitle">जानें कि SMS संदेश कब वितरित हुआ</string>
     <string name="settings_mark_read_title">सभी को पढ़े के रूप में चिह्नित करें</string>
+    <string name="settings_bubbles_title">बबल</string>
     <string name="settings_mark_read_subtitle">प्रत्येक संवाद के लिए अपढ़े बैज साफ़ करें</string>
     <string name="settings_mark_read_confirm_title">सभी को पढ़े के रूप में चिह्नित करें?</string>
     <string name="settings_mark_read_confirm_message">सभी संवादों के अपढ़े बैज साफ़ हो जाएंगे। इसे पूर्ववत नहीं किया जा सकता।</string>
@@ -129,6 +130,8 @@
     <string name="settings_import_source_title">आयात करने के लिए बैकअप चुनें</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">SMS आयात/निर्यात (.zip, .json)</string>
+    <string name="settings_import_quik_title">QUIK (QKSMS) बैकअप</string>
+    <string name="settings_pinch_zoom_title">टेक्स्ट ज़ूम के लिए पिंच करें</string>
     <string name="settings_import_sms_ie_failed">वह बैकअप फ़ाइल नहीं पढ़ी जा सकी</string>
     <string name="settings_import_failed">आयात विफल: %s</string>
     <string name="settings_merge_title">मौजूदा संदेशों के साथ मर्ज करें</string>

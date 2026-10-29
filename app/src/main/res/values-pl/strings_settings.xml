@@ -36,6 +36,7 @@
     <string name="settings_delivery_reports_title">Raporty dostarczenia</string>
     <string name="settings_delivery_reports_subtitle">Dowiedz się, kiedy wiadomość SMS została dostarczona</string>
     <string name="settings_mark_read_title">Oznacz wszystkie jako przeczytane</string>
+    <string name="settings_bubbles_title">Dymki</string>
     <string name="settings_mark_read_subtitle">Usuń odznaki nieprzeczytanych dla każdej rozmowy</string>
     <string name="settings_mark_read_confirm_title">Oznaczyć wszystkie jako przeczytane?</string>
     <string name="settings_mark_read_confirm_message">Odznaki nieprzeczytanych zostaną usunięte ze wszystkich rozmów. Tej operacji nie można cofnąć.</string>
@@ -129,6 +130,8 @@
     <string name="settings_import_source_title">Wybierz kopię zapasową do zaimportowania</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">Import/eksport SMS (.zip, .json)</string>
+    <string name="settings_import_quik_title">Kopia QUIK (QKSMS)</string>
+    <string name="settings_pinch_zoom_title">Powiększanie tekstu szczypaniem</string>
     <string name="settings_import_sms_ie_failed">Nie można odczytać tego pliku kopii zapasowej</string>
     <string name="settings_import_failed">Import nie powiódł się: %s</string>
     <string name="settings_merge_title">Scal z istniejącymi wiadomościami</string>
