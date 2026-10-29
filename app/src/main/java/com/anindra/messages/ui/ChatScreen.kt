@@ -1542,6 +1542,7 @@ fun ChatScreen(
                                 }
                             }
                         },
+                        schedulingEnabled = vm.settings.scheduledMessagesEnabled,
                         onSchedule = {
                             val text = draft.trim()
                             if (text.isNotEmpty()) {
@@ -2941,6 +2942,7 @@ internal fun InputBar(
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
     onSchedule: () -> Unit = {},
+    schedulingEnabled: Boolean = true,
     onEmojiToggle: () -> Unit,
     onAttach: () -> Unit,
     showEmojiButton: Boolean = false,
@@ -3045,12 +3047,51 @@ internal fun InputBar(
         // [ready], so an invisible mid-animation tap cannot fire a send either.
         val ready = canSend(draft, hasAttachments)
         val sendLabel = stringResource(R.string.icon_send)
+        val scheduleLabel = stringResource(R.string.chat_schedule)
         val sendReduceMotion = LocalReduceMotion.current
         val present by animateFloatAsState(
             targetValue = if (ready) 1f else 0f,
             animationSpec = motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
             label = "sendPresence"
         )
+        // Scheduling used to be reachable only by long-pressing Send, which
+        // nobody discovers (#386). A clock beside it is the UI the report was
+        // looking for; long-press keeps working as a shortcut.
+        if (schedulingEnabled) {
+            // A fixed slot keeps the bar from shifting, but the control itself is
+            // only composed while there is something to schedule: an alpha-0
+            // button still reaches the accessibility tree, so a screen reader
+            // would announce a Schedule button that cannot act.
+            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = ready,
+                    enter = fadeIn(motionTween(sendReduceMotion, Motion.DURATION_SHORT4)) +
+                        scaleIn(
+                            motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
+                            initialScale = 0.5f
+                        ),
+                    exit = fadeOut(motionTween(sendReduceMotion, Motion.DURATION_SHORT4)) +
+                        scaleOut(
+                            motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
+                            targetScale = 0.5f
+                        )
+                ) {
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .combinedClickable(onClick = onSchedule)
+                            .semantics { contentDescription = scheduleLabel },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Schedule, null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+        }
         Spacer(Modifier.width(8.dp))
         Box(
             Modifier
@@ -3062,7 +3103,11 @@ internal fun InputBar(
                     scaleY = scale
                 }
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
-                .combinedClickable(enabled = ready, onClick = onSend, onLongClick = onSchedule)
+                .combinedClickable(
+                    enabled = ready,
+                    onClick = onSend,
+                    onLongClick = if (schedulingEnabled) onSchedule else null
+                )
                 .semantics { contentDescription = sendLabel },
             contentAlignment = Alignment.Center
         ) {

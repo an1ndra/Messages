@@ -170,6 +170,13 @@ onOpenAccessibility: () -> Unit = {},
                 )
                 SettingsRow(
                 position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_scheduled_title),
+                subtitle = stringResource(R.string.settings_scheduled_subtitle),
+                checked = vm.settings.scheduledMessagesEnabled,
+                onChecked = { vm.settings.scheduledMessagesEnabled = it }
+                )
+                SettingsRow(
+                position = RowPosition.MIDDLE,
                 title = stringResource(R.string.settings_new_ui_title),
                 subtitle = stringResource(R.string.settings_new_ui_subtitle),
                 checked = vm.settings.useNewUi,
