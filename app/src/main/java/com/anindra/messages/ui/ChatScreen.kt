@@ -2966,8 +2966,10 @@ internal fun InputBar(
         LaunchedEffect(draftStyle.textDirection) {
             android.util.Log.d("ComposerDirection", "dir=${draftStyle.textDirection}")
         }
+        // GM's composer is a true pill: a 56dp field with a 28dp corner, which
+        // at 24dp still read as a rounded rectangle beside it.
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.inputPill,
             // A new line makes the pill taller; ease that instead of snapping.
             modifier = Modifier
