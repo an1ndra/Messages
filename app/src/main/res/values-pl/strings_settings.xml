@@ -132,7 +132,6 @@
     <string name="settings_import_source_sms_ie_title">Import/eksport SMS (.zip, .json)</string>
     <string name="settings_import_quik_title">Kopia QUIK (QKSMS)</string>
     <string name="settings_pinch_zoom_title">Powiększanie tekstu szczypaniem</string>
-    <string name="settings_pinch_zoom_subtitle">Uszczypnij rozmowę, aby zmienić rozmiar tekstu; powiększenie jest pamiętane dla każdej rozmowy</string>
     <string name="settings_import_sms_ie_failed">Nie można odczytać tego pliku kopii zapasowej</string>
     <string name="settings_import_failed">Import nie powiódł się: %s</string>
     <string name="settings_merge_title">Scal z istniejącymi wiadomościami</string>

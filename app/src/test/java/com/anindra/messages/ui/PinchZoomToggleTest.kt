@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import com.anindra.messages.data.SettingsStore
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -34,6 +35,27 @@ class PinchZoomToggleTest {
         assertTrue(
             "and write it back",
             inbox.contains("onChecked = { vm.settings.pinchZoomEnabled = it }")
+        )
+    }
+
+    @Test
+    fun itSitsDirectlyAboveForwarding() {
+        val titles = Regex("""title = stringResource\(R\.string\.([a-z_]+)\)""")
+            .findAll(inbox).map { it.groupValues[1] }.toList()
+        val zoom = titles.indexOf("settings_pinch_zoom_title")
+        assertTrue("the pinch row must be in the list", zoom >= 0)
+        assertEquals(
+            "pinch to zoom must come immediately before forwarding",
+            "settings_forwarding_title",
+            titles.getOrNull(zoom + 1)
+        )
+    }
+
+    @Test
+    fun theRowCarriesNoDescription() {
+        assertTrue(
+            "the option is a bare label, like the other switches in that list",
+            !inbox.contains("settings_pinch_zoom_subtitle")
         )
     }
 

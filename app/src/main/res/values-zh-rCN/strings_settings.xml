@@ -132,7 +132,6 @@
     <string name="settings_import_source_sms_ie_title">短信导入/导出 (.zip, .json)</string>
     <string name="settings_import_quik_title">QUIK（QKSMS）备份</string>
     <string name="settings_pinch_zoom_title">双指缩放文字</string>
-    <string name="settings_pinch_zoom_subtitle">双指缩放会话中的文字大小；缩放比例按会话记住</string>
     <string name="settings_import_sms_ie_failed">无法读取该备份文件</string>
     <string name="settings_import_failed">导入失败：%s</string>
     <string name="settings_merge_title">与现有消息合并</string>

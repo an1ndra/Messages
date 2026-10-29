@@ -132,7 +132,6 @@
     <string name="settings_import_source_sms_ie_title">SMS のインポート/エクスポート (.zip, .json)</string>
     <string name="settings_import_quik_title">QUIK（QKSMS）バックアップ</string>
     <string name="settings_pinch_zoom_title">ピンチで文字を拡大</string>
-    <string name="settings_pinch_zoom_subtitle">会話をピンチして文字サイズを変更します。ズームは会話ごとに保存されます</string>
     <string name="settings_import_sms_ie_failed">そのバックアップファイルを読み込めませんでした</string>
     <string name="settings_import_failed">インポートに失敗しました: %s</string>
     <string name="settings_merge_title">既存のメッセージとマージ</string>
