@@ -61,6 +61,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import com.anindra.messages.ui.theme.ComposerAttachDot
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -2984,10 +2985,25 @@ internal fun InputBar(
                 placeholder = { Text(placeholder) },
                 leadingIcon = {
                     IconButton(onClick = onAttach) {
-                        Icon(
-                            Icons.Rounded.AddCircleOutline, stringResource(R.string.icon_attach),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        // GM badges the attach button with a dot that overlaps the
+                        // ring's top-right; the ring shows through as broken
+                        // because the dot carries a ring of field colour around it.
+                        Box {
+                            Icon(
+                                Icons.Rounded.AddCircleOutline,
+                                stringResource(R.string.icon_attach),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 1.dp, y = (-1).dp)
+                                    .size(10.dp)
+                                    .background(MaterialTheme.colorScheme.inputPill, CircleShape)
+                                    .padding(1.5.dp)
+                                    .background(ComposerAttachDot, CircleShape)
+                            )
+                        }
                     }
                 },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
