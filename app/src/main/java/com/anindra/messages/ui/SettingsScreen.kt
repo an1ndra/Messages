@@ -54,7 +54,13 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.unit.IntSize
+import com.anindra.messages.ui.theme.motionSpring
+import com.anindra.messages.ui.theme.LocalReduceMotion
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -87,7 +93,7 @@ import com.anindra.messages.ui.theme.LocalLargeTouchTargets
 private enum class PinDialogMode { SET, ENTER }
 
 /** Which backup format the picked file belongs to. */
-private enum class ImportSource { OWN_BACKUP, SMS_IE }
+private enum class ImportSource { OWN_BACKUP, SMS_IE, QUIK }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,6 +205,18 @@ fun SettingsScreen(
         }
     }
 
+    // QUIK's backup is its own entry and its own picker: the file is plain JSON
+    // and nothing about the sms-ie flow applies to it.
+    val quikLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            pendingImportUri = it
+            pendingImportSource = ImportSource.QUIK
+            importModeDialog = true
+        }
+    }
+
     val backupFolderLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -221,8 +239,18 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        // Google Messages paints the settings sheet a step lighter than the rest
+        // of the app and insets the rows into it: page #1E1F20, row #131314.
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
+                // GM paints the app bar with the sheet, not with the page: the
+                // title band is #1E1F20 like the gaps, and only the rows are
+                // inset at #131314. Left at the default role it was the one
+                // black band that made the screen read darker than GM.
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = { Text(stringResource(R.string.settings_general)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -232,6 +260,17 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
+        val pageColor = MaterialTheme.colorScheme.surfaceContainer
+        val rowColor = MaterialTheme.colorScheme.background
+        // The settings sheet's two colours are pixels with no text equivalent, so
+        // report them the way SettingsRowShape reports the corners: a regression
+        // script can then assert Google Messages' pattern from logcat.
+        LaunchedEffect(pageColor, rowColor) {
+            android.util.Log.d(
+                "SettingsColors",
+                "page=${hexColor(pageColor)} row=${hexColor(rowColor)}"
+            )
+        }
         Column(
             Modifier
                 .padding(padding)
@@ -251,6 +290,14 @@ fun SettingsScreen(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_mark_read_title),
                     onClick = { markReadDialog = true }
+                )
+                // Android owns this one: its per-app Bubbles page already carries
+                // the same All / Selected / Nothing choice, and mirroring it here
+                // meant two places deciding the same thing.
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_bubbles_title),
+                    onClick = { openSystemBubbleSettings(context) }
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,
@@ -549,6 +596,8 @@ fun SettingsScreen(
                 importLauncher.launch(
                     arrayOf("application/octet-stream", "application/x-sqlite3")
                 )
+            } else if (source == ImportSource.QUIK) {
+                quikLauncher.launch(arrayOf("application/json", "*/*"))
             } else {
                 smsIeLauncher.launch(
                     arrayOf(
@@ -567,11 +616,20 @@ fun SettingsScreen(
                 ImportRadioGroup(
                     options = listOf(
                         stringResource(R.string.settings_import_source_own_title) to "",
-                        stringResource(R.string.settings_import_source_sms_ie_title) to ""
+                        stringResource(R.string.settings_import_source_sms_ie_title) to "",
+                        stringResource(R.string.settings_import_quik_title) to ""
                     ),
-                    selectedIndex = if (source == ImportSource.OWN_BACKUP) 0 else 1,
+                    selectedIndex = when (source) {
+                        ImportSource.OWN_BACKUP -> 0
+                        ImportSource.SMS_IE -> 1
+                        ImportSource.QUIK -> 2
+                    },
                     onSelect = {
-                        source = if (it == 0) ImportSource.OWN_BACKUP else ImportSource.SMS_IE
+                        source = when (it) {
+                            0 -> ImportSource.OWN_BACKUP
+                            1 -> ImportSource.SMS_IE
+                            else -> ImportSource.QUIK
+                        }
                     }
                 )
             },
@@ -595,6 +653,10 @@ fun SettingsScreen(
         }
         fun applyImport() {
             val target = uri ?: return
+            if (pendingImportSource == ImportSource.QUIK) {
+                vm.importQuik(target, mode, showImportResult)
+                return
+            }
             if (pendingImportSource == ImportSource.SMS_IE) {
                 // The real ImportResult carries the reason; the old Int callback
                 // discarded it and showed one generic failure for every cause.
@@ -937,6 +999,18 @@ fun GroupedRowCard(
     }
 }
 
+/* Google Messages puts its settings rows *darker* than the sheet they sit on —
+ * page #1E1F20, row #131314 — so every settings screen paints the sheet in
+ * surfaceContainer and every SettingsRow paints the page background. One rule,
+ * in SettingsRow, so no screen can drift from another. */
+
+/** "#RRGGBB" for the SettingsColors log line; Compose channels are 0..1 floats. */
+internal fun hexColor(c: androidx.compose.ui.graphics.Color): String = "#%02X%02X%02X".format(
+    (c.red * 255f + 0.5f).toInt().coerceIn(0, 255),
+    (c.green * 255f + 0.5f).toInt().coerceIn(0, 255),
+    (c.blue * 255f + 0.5f).toInt().coerceIn(0, 255)
+)
+
 @Composable
 fun SettingsGroup(content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(SettingsLayout.ROW_GAP)) {
@@ -967,6 +1041,16 @@ fun GroupedRowList(
 
 /** Android's own notification prefs for this app, which is where the OS-level
  *  toggles (per-conversation, channels, badges) actually live. */
+private fun openSystemBubbleSettings(context: android.content.Context) {
+    runCatching {
+        context.startActivity(
+            android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS)
+                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+}
+
 private fun openSystemNotificationSettings(context: android.content.Context) {
     runCatching {
         context.startActivity(
@@ -1064,13 +1148,17 @@ fun SettingsRow(
             bottomStart = corners.bottomStart
         ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = MaterialTheme.colorScheme.background
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // A row that gains a subtitle (or loses one) eases to its new
+                // height instead of jumping, which is what made the list feel
+                // like it re-laid-out under the finger.
+                .animateContentSize(animationSpec = motionSpring<IntSize>(LocalReduceMotion.current))
                 .clickable(enabled = enabled && (onClick != null || checked != null)) {
                     if (checked != null && onChecked != null) onChecked(!checked) else onClick?.invoke()
                 }

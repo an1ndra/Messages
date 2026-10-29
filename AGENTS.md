@@ -136,6 +136,14 @@ in `src/main` has no preview referencing it.
    through a file instead so the message stays exactly as written:
    `git commit -F - <<'EOF' … EOF`.
 8. Never create GitHub issues unless explicitly asked.
+9. **Ask before adding a feature.** When a report or an idea implies new UI — a
+   button, a screen, a setting, a gesture — check with the user first and
+   describe what you would add. Do not grow the app's surface on your own
+   initiative, even when the change looks obvious: #386's report was answered
+   with a new clock button beside Send, which the maintainer had not asked for
+   and immediately had removed (scheduling stays on hold-Send). Fixes to
+   existing behaviour are fine; new affordances, settings and screens are not
+   without a yes.
 
 ## Traps that have cost real time
 

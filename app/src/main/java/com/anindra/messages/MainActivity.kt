@@ -750,6 +750,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      *  The full [Repository.ImportResult] is passed through rather than a
      *  count: collapsing it to an Int is what made "wrong PIN" and "unreadable
      *  file" both surface as one generic toast. */
+    fun importQuik(
+        uri: Uri,
+        mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
+        onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit
+    ) {
+        importLoading.value = 0
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    repo.importQuikFrom(getApplication(), uri, mode)
+                }.getOrElse { e ->
+                    com.anindra.messages.data.Repository.ImportResult.Error(
+                        "Import error: ${e.message ?: e.javaClass.simpleName}"
+                    )
+                }
+            }
+            onResult(result)
+        }
+    }
+
     fun importSmsIe(
         uri: Uri,
         mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
@@ -1249,6 +1269,13 @@ class MainActivity : FragmentActivity() {
                     if (id > 0 && isBubbleLaunch(intent)) {
                         bubbleConversationId = id
                         com.anindra.messages.sms.BubbleHost.enter(id)
+                    } else {
+                        // A full-screen open by address must retire that
+                        // conversation's floating bubble too: cancelling by
+                        // address hash never reaches the bubble's
+                        // conversation-id notification.
+                        com.anindra.messages.sms.NotificationHelper
+                            .retireBubbleForFullChat(this@MainActivity, id)
                     }
                 }
 
@@ -1341,6 +1368,8 @@ class MainActivity : FragmentActivity() {
                         onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
+                            com.anindra.messages.sms.NotificationHelper
+                                .retireBubbleForFullChat(this@MainActivity, id)
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
@@ -1352,6 +1381,8 @@ class MainActivity : FragmentActivity() {
                         onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
+                            com.anindra.messages.sms.NotificationHelper
+                                .retireBubbleForFullChat(this@MainActivity, id)
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"

@@ -36,6 +36,7 @@
     <string name="settings_delivery_reports_title">Rapports de livraison</string>
     <string name="settings_delivery_reports_subtitle">Savoir quand un message SMS est livré</string>
     <string name="settings_mark_read_title">Tout marquer comme lu</string>
+    <string name="settings_bubbles_title">Bulles</string>
     <string name="settings_mark_read_subtitle">Effacer les badges de non-lu pour chaque conversation</string>
     <string name="settings_mark_read_confirm_title">Tout marquer comme lu ?</string>
     <string name="settings_mark_read_confirm_message">Les badges de non-lu seront effacés pour toutes les conversations. Cette action est irréversible.</string>
@@ -129,6 +130,8 @@
     <string name="settings_import_source_title">Choisissez la sauvegarde à importer</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">Import/export SMS (.zip, .json)</string>
+    <string name="settings_import_quik_title">Sauvegarde QUIK (QKSMS)</string>
+    <string name="settings_pinch_zoom_title">Pincer pour zoomer le texte</string>
     <string name="settings_import_sms_ie_failed">Impossible de lire ce fichier de sauvegarde</string>
     <string name="settings_import_failed">Échec de l\'importation : %s</string>
     <string name="settings_merge_title">Fusionner avec les messages existants</string>

@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import com.anindra.messages.data.SettingsStore
-import com.anindra.messages.ui.LocalThemedAvatars
 
 /**
  * Material 3 color system (m3.material.io/styles/color/system).
@@ -255,8 +254,6 @@ val ColorScheme.chatBar: Color
     get() = if (background.luminance() < 0.5f) surfaceContainerLow else background
 val ColorScheme.inputPill: Color get() = surfaceContainerHigh           // text field pill
 
-private const val START_CHAT_MIN_CONTRAST = 3f
-
 /** WCAG relative-contrast ratio between two opaque colours. */
 internal fun contrastRatio(a: Color, b: Color): Float {
     val la = a.luminance()
@@ -264,24 +261,35 @@ internal fun contrastRatio(a: Color, b: Color): Float {
     return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
 }
 
-// The "Start chat" pill: the v1.0.30 design paints the secondary container
-// behind primary-coloured content. A wallpaper palette can hand back a dim
-// primary, so the content drops to onSecondaryContainer when that pair falls
-// under the readable floor. Container and content are defined once here so the
-// FAB and Diagnostics cannot disagree.
-val ColorScheme.startChatContainer: Color get() = secondaryContainer
+// The "Start chat" pill is the tinted accent container (#347), measured off
+// Google Messages on both schemes: #D3E3FD with #0842A0 content in the light
+// theme, #0842A0 with #D3E3FD content in the dark one. That is the scheme's
+// primaryContainer and whichever of its content roles reads on it — a solid
+// primary fill (round 2) turned into a dead grey slab under a wallpaper
+// palette, and secondaryContainer (round 1) was never the surface GM paints.
+// Defined once here so the FAB, the legacy screen and Diagnostics cannot
+// disagree.
+val ColorScheme.startChatContainer: Color get() = primaryContainer
 val ColorScheme.startChatContent: Color
-    get() = if (contrastRatio(primary, secondaryContainer) >= START_CHAT_MIN_CONTRAST) primary
-            else onSecondaryContainer
+    get() = if (primaryContainer.luminance() < 0.5f) onPrimaryContainer else primary
 
-val ColorScheme.selectedBubble: Color
-    get() = if (background.luminance() < 0.5f) Color(0xFF9CC0FF) else Color(0xFF1A46A0)
-val ColorScheme.onSelectedBubble: Color
-    get() = if (background.luminance() < 0.5f) Color(0xFF062E6F) else Color(0xFFFFFFFF)
+// Selected messages sit inside the accent the theme (seeded or wallpaper)
+// supplies: the bubble fills with primary and its content reads onPrimary.
+// The previous hard-coded blue never followed the wallpaper pair (#347).
+val ColorScheme.selectedBubble: Color get() = primary
+val ColorScheme.onSelectedBubble: Color get() = onPrimary
 
 // Chat date separators and message times use the platform default typeface
 // at a slightly lighter weight than surrounding text.
 val ChatMetaWeight: FontWeight = FontWeight.Medium
+
+/**
+ * The badge Google Messages draws on the composer's attach button: a #76D1FF
+ * dot sitting on the "+" ring's top-right, overlapping it so the ring reads as
+ * broken there. Measured off the running app; it is the one colour in the
+ * composer that is not a scheme role, so it lives here with the seeds.
+ */
+val ComposerAttachDot: Color = Color(0xFF76D1FF)
 
 /**
  * Whether a theme mode renders as a dark scheme.
@@ -296,19 +304,6 @@ internal fun themeIsDark(mode: String, systemIsDark: Boolean): Boolean = when (m
     // "dynamic" and "system" both follow the device's night setting.
     else -> systemIsDark
 }
-
-/**
- * Whether avatars are drawn in the theme's container colour instead of the fixed
- * per-contact palette. Exactly one mode wants that: the dynamic (wallpaper)
- * theme, where the palette would be the only thing on screen not derived from
- * the wallpaper. Every other mode keeps the Google-Messages look.
- *
- * One function because the theme paints the avatars through it and Diagnostics
- * reports through it: a second copy of the branch is how a report starts
- * disagreeing with what was drawn.
- */
-internal fun avatarsFollowTheme(mode: String): Boolean =
-    mode == SettingsStore.THEME_DYNAMIC
 
 /**
  * The wallpaper-derived scheme Android 12+ can supply, or null where it does not
@@ -392,8 +387,7 @@ fun MessagesTheme(
     CompositionLocalProvider(
         LocalDensity provides scaledDensity,
         LocalReduceMotion provides a11y.reduceMotionEnabled,
-        LocalLargeTouchTargets provides a11y.largeTouchTargetsEnabled,
-        LocalThemedAvatars provides avatarsFollowTheme(mode)
+        LocalLargeTouchTargets provides a11y.largeTouchTargetsEnabled
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

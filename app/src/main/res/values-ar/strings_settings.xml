@@ -36,6 +36,7 @@
     <string name="settings_delivery_reports_title">تقارير التسليم</string>
     <string name="settings_delivery_reports_subtitle">معرفة متى يتم تسليم رسالة SMS</string>
     <string name="settings_mark_read_title">وضع علامة على الكل كمقروء</string>
+    <string name="settings_bubbles_title">الفقاعات</string>
     <string name="settings_mark_read_subtitle">إزالة علامات الرسائل غير المقروءة لجميع المحادثات</string>
     <string name="settings_mark_read_confirm_title">وضع علامة على الكل كمقروء؟</string>
     <string name="settings_mark_read_confirm_message">ستتم إزالة علامات غير المقروء من جميع المحادثات. لا يمكن التراجع عن ذلك.</string>
@@ -129,6 +130,8 @@
     <string name="settings_import_source_title">اختر النسخة الاحتياطية المراد استيرادها</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">استيراد/تصدير SMS (.zip, .json)</string>
+    <string name="settings_import_quik_title">نسخة QUIK (QKSMS) الاحتياطية</string>
+    <string name="settings_pinch_zoom_title">تكبير نص المحادثة بالقرص</string>
     <string name="settings_import_sms_ie_failed">تعذر قراءة ملف النسخة الاحتياطية</string>
     <string name="settings_import_failed">فشل الاستيراد: %s</string>
     <string name="settings_merge_title">الدمج مع الرسائل الحالية</string>

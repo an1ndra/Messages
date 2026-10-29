@@ -5,9 +5,10 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Appearance follow-ups from the #347 feedback: the redesigned interface is the
- * default, and the send circle is permanent but only live when there is
- * something to send.
+ * Appearance behaviour: the redesigned interface is the default, and the send
+ * button follows Google Messages — it disappears (shrink + fade) while there is
+ * nothing to send, keeps its layout footprint so the field does not jump, and
+ * cannot fire a send while empty.
  */
 class AppearanceOptionsTest {
 
@@ -30,23 +31,31 @@ class AppearanceOptionsTest {
     }
 
     @Test
-    fun theSendButtonIsAlwaysOnScreenAndOnlyLiveWithSomethingToSend() {
+    fun theSendButtonIsAlwaysThereButInertUntilThereIsSomethingToSend() {
         val chat = read("src/main/java/com/anindra/messages/ui/ChatScreen.kt")
         assertTrue(
             "the send button must not be hidden inside a content check",
             !chat.contains("if (draft.isNotBlank() || hasAttachments) {")
         )
         assertTrue(
-            "the input bar must draw the send circle unconditionally",
+            "the input bar must resolve readability through canSend()",
             chat.contains("val ready = canSend(draft, hasAttachments)")
         )
         assertTrue(
             "an empty composer must not be able to fire a send",
-            chat.contains(".combinedClickable(enabled = ready, onClick = onSend, onLongClick = onSchedule)")
+            Regex("""combinedClickable\(\s*enabled = ready,\s*onClick = onSend,""").containsMatchIn(chat)
         )
         assertTrue(
-            "the circle keeps its full primary fill even when idle",
-            chat.contains(".background(MaterialTheme.colorScheme.primary, CircleShape)")
+            "the button stays on screen and dims instead of vanishing",
+            chat.contains("targetValue = if (ready) 1f else 0.38f")
+        )
+        assertTrue(
+            "the animation must keep the layout footprint (graphicsLayer, not size removal)",
+            Regex("""\.graphicsLayer\s*\{""").containsMatchIn(chat)
+        )
+        assertTrue(
+            "reduce motion must skip the dimming animation",
+            chat.contains("motionTween(sendReduceMotion, Motion.DURATION_SHORT4)")
         )
     }
 }

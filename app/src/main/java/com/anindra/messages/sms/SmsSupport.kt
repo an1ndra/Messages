@@ -727,6 +727,23 @@ object NotificationHelper {
         nm.cancel("failed", ids.second)
     }
 
+    /**
+     * Opening a thread full-screen must retire its floating bubble (#354):
+     * the live bubble still floats over the chat screen it now duplicates.
+     * Cancelling the notification is what collapses the bubble. Without a
+     * live bubble this is a no-op — [clearConversationNotification] covers
+     * the ordinary dismissal.
+     */
+    fun retireBubbleForFullChat(context: Context, conversationId: Long?) {
+        if (conversationId == null) return
+        if (!BubbleHost.holds(conversationId)) return
+        BubbleHost.leave(conversationId)
+        val ids = BadgePolicy.idsToDismiss(conversationId, null) ?: return
+        val nm = NotificationManagerCompat.from(context)
+        nm.cancel(ids.first)
+        nm.cancel("failed", ids.second)
+    }
+
     /** A sender moving to Spam & blocked must drop out of the launcher badge:
      *  the badge sums the numbers of the app's live notifications, and this
      *  sender's notification keeps its unread number until it is cancelled —

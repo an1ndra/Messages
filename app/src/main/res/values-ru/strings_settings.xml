@@ -36,6 +36,7 @@
     <string name="settings_delivery_reports_title">Отчёты о доставке</string>
     <string name="settings_delivery_reports_subtitle">Узнавать, когда SMS-сообщение доставлено</string>
     <string name="settings_mark_read_title">Отметить все как прочитанные</string>
+    <string name="settings_bubbles_title">Пузыри</string>
     <string name="settings_mark_read_subtitle">Убрать значки непрочитанных для всех переписок</string>
     <string name="settings_mark_read_confirm_title">Отметить все как прочитанные?</string>
     <string name="settings_mark_read_confirm_message">Значки непрочитанных будут убраны во всех переписках. Это действие нельзя отменить.</string>
@@ -129,6 +130,8 @@
     <string name="settings_import_source_title">Выберите резервную копию для импорта</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">Импорт/экспорт SMS (.zip, .json)</string>
+    <string name="settings_import_quik_title">Резервная копия QUIK (QKSMS)</string>
+    <string name="settings_pinch_zoom_title">Масштаб текста щипком</string>
     <string name="settings_import_sms_ie_failed">Не удалось прочитать файл резервной копии</string>
     <string name="settings_import_failed">Ошибка импорта: %s</string>
     <string name="settings_merge_title">Объединить с существующими сообщениями</string>
