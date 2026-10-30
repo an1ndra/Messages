@@ -149,6 +149,17 @@
     <string name="settings_theme_dark">Dunkel</string>
     <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">Systemstandard</string>
+    <string name="settings_calendar_title">Kalender</string>
+    <string name="settings_choose_calendar">Kalender auswählen</string>
+    <string name="calendar_auto">Automatisch (nach Sprache)</string>
+    <string name="calendar_gregorian">Gregorianisch</string>
+    <string name="calendar_persian">Persisch (Jalali)</string>
+    <string name="calendar_hijri">Islamisch (Umm al-Qura)</string>
+    <string name="calendar_hebrew">Hebräisch</string>
+    <string name="calendar_buddhist">Buddhistisch</string>
+    <string name="calendar_japanese">Japanisch</string>
+    <string name="calendar_indian">Indisch (Saka)</string>
+    <string name="calendar_coptic">Koptisch</string>
     <string name="convo_your_prefix">"Sie: "</string>
     <string name="settings_restored_msg">%s Nachrichten wiederhergestellt. Bestehende Unterhaltungen beibehalten.</string>
     <string name="settings_sim_default">Standard (System)</string>

@@ -149,6 +149,17 @@
     <string name="settings_theme_dark">Тёмная</string>
     <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">Системные</string>
+    <string name="settings_calendar_title">Календарь</string>
+    <string name="settings_choose_calendar">Выберите календарь</string>
+    <string name="calendar_auto">Автоматически (по языку)</string>
+    <string name="calendar_gregorian">Григорианский</string>
+    <string name="calendar_persian">Персидский (джалали)</string>
+    <string name="calendar_hijri">Исламский (Умм аль-Кура)</string>
+    <string name="calendar_hebrew">Еврейский</string>
+    <string name="calendar_buddhist">Буддийский</string>
+    <string name="calendar_japanese">Японский</string>
+    <string name="calendar_indian">Индийский (сака)</string>
+    <string name="calendar_coptic">Коптский</string>
     <string name="convo_your_prefix">"Вы: "</string>
     <string name="settings_restored_msg">Восстановлено %s сообщений. Существующие переписки сохранены.</string>
     <string name="settings_sim_default">Основная (системная)</string>

@@ -149,6 +149,17 @@
     <string name="settings_theme_dark">داكن</string>
     <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">تفضيلات النظام</string>
+    <string name="settings_calendar_title">التقويم</string>
+    <string name="settings_choose_calendar">اختيار التقويم</string>
+    <string name="calendar_auto">تلقائي (حسب اللغة)</string>
+    <string name="calendar_gregorian">ميلادي</string>
+    <string name="calendar_persian">فارسي (جلالي)</string>
+    <string name="calendar_hijri">هجري (أم القرى)</string>
+    <string name="calendar_hebrew">عبري</string>
+    <string name="calendar_buddhist">بوذي</string>
+    <string name="calendar_japanese">ياباني</string>
+    <string name="calendar_indian">هندي (ساكا)</string>
+    <string name="calendar_coptic">قبطي</string>
     <string name="convo_your_prefix">"أنت: "</string>
     <string name="settings_restored_msg">تم استعادة %s رسائل. تم الحفاظ على المحادثات الحالية.</string>
     <string name="settings_sim_default">الافتراضي (النظام)</string>

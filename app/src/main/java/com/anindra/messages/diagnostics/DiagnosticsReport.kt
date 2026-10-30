@@ -21,6 +21,7 @@ import com.anindra.messages.crash.CrashDeviceInfo
 import com.anindra.messages.crash.CrashReporter
 import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.data.BackupHealth
+import com.anindra.messages.data.CalendarSystem
 import com.anindra.messages.data.DownloadsStore
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
@@ -29,6 +30,8 @@ import com.anindra.messages.data.TransferEntry
 import com.anindra.messages.data.TransferLog
 import com.anindra.messages.data.TransferLogStore
 import com.anindra.messages.data.TransferOperation
+import com.anindra.messages.ui.DateStyle
+import com.anindra.messages.ui.formatDate
 import com.anindra.messages.ui.theme.A11yOptions
 import com.anindra.messages.ui.theme.schemeFor
 import com.anindra.messages.ui.theme.startChatContainer
@@ -50,6 +53,20 @@ data class AppDetails(
     val locale: String,
     val timeZone: String,
     val themeMode: String,
+    /**
+     * The calendar dates render in (#363), as "persian (automatic)" or
+     * "gregorian (chosen explicitly)". Reading the same [CalendarSystem.resolve]
+     * the screens render through is what stops this line from claiming a
+     * calendar the app is not drawing.
+     */
+    val calendar: String = "",
+    /**
+     * One fixed instant rendered in the resolved calendar. Timestamps on screen
+     * depend on the messages and the clock, which makes them awkward to assert;
+     * this constant does not, so a script can pin Jalali/Hijri rendering from a
+     * text dump.
+     */
+    val calendarSample: String = "",
     /**
      * The page colour the theme mode actually resolves to, as #RRGGBB.
      *
@@ -222,6 +239,14 @@ data class DiagnosticsData(
 object DiagnosticsReport {
     const val FILE_NAME = "messages-diagnostics.txt"
 
+    /**
+     * 2026-10-26T12:00Z. A constant instant, not "now": the sample line reports
+     * how the chosen calendar formats a date, and a date that moves with the
+     * clock cannot be asserted. On a UTC phone it is 1405-08-04 Jalali and
+     * 1448-05-15 Umm al-Qura.
+     */
+    private const val CALENDAR_SAMPLE_MILLIS = 1_793_016_000_000L
+
     fun format(data: DiagnosticsData): String {
         val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(data.timestamp))
         return buildString {
@@ -238,6 +263,8 @@ object DiagnosticsReport {
             appendLine("Locale: ${data.appDetails.locale}")
             appendLine("Time zone: ${data.appDetails.timeZone}")
             appendLine("Theme mode: ${data.appDetails.themeMode}")
+            appendLine("Calendar: ${data.appDetails.calendar}")
+            appendLine("Calendar sample: ${data.appDetails.calendarSample}")
             appendLine("Resolved page colour: ${data.appDetails.resolvedBackground}")
             appendLine("Resolved Start chat colours: ${data.appDetails.resolvedStartChat}")
             // The rule is the same for every theme, so this line is the same for
@@ -601,6 +628,18 @@ object DiagnosticsReport {
             locale = Locale.getDefault().toString(),
             timeZone = TimeZone.getDefault().id,
             themeMode = settings.themeMode,
+            calendar = if (settings.calendarChoice == CalendarSystem.AUTO) {
+                "${settings.calendarSystem.storageValue} (automatic)"
+            } else {
+                "${settings.calendarSystem.storageValue} (chosen explicitly)"
+            },
+            calendarSample = formatDate(
+                CALENDAR_SAMPLE_MILLIS,
+                DateStyle.DayWithYear,
+                settings.calendarSystem,
+                Locale.getDefault(),
+                java.time.ZoneOffset.UTC
+            ),
             resolvedBackground = resolvedBackgroundHex(
                 settings.themeMode,
                 systemIsDark(),

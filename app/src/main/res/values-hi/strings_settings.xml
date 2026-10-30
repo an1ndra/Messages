@@ -149,6 +149,17 @@
     <string name="settings_theme_dark">डार्क</string>
     <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">सिस्टम डिफ़ॉल्ट</string>
+    <string name="settings_calendar_title">कैलेंडर</string>
+    <string name="settings_choose_calendar">कैलेंडर चुनें</string>
+    <string name="calendar_auto">स्वचालित (भाषा के अनुसार)</string>
+    <string name="calendar_gregorian">ग्रेगोरियन</string>
+    <string name="calendar_persian">फ़ारसी (जलाली)</string>
+    <string name="calendar_hijri">इस्लामी (उम्म अल-क़ुरा)</string>
+    <string name="calendar_hebrew">हिब्रू</string>
+    <string name="calendar_buddhist">बौद्ध</string>
+    <string name="calendar_japanese">जापानी</string>
+    <string name="calendar_indian">भारतीय (साका)</string>
+    <string name="calendar_coptic">कॉप्टिक</string>
     <string name="convo_your_prefix">"आप: "</string>
     <string name="settings_restored_msg">%s संदेश बहाल हुए। मौजूदा संवाद रखे गए।</string>
     <string name="settings_sim_default">डिफ़ॉल्ट (सिस्टम)</string>

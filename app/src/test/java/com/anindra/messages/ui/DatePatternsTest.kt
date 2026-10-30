@@ -27,6 +27,7 @@ class DatePatternsTest {
         "MMMEd" to mapOf("en" to "EEE, MMM d", "fr" to "EEE d MMM", "ja" to "M月d日(E)"),
         "MMMMEEEEd" to mapOf("en" to "EEEE, MMMM d", "fr" to "EEEE d MMMM"),
         "yMMMMEEEEd" to mapOf("en" to "EEEE, MMMM d, y", "fr" to "EEEE d MMMM y"),
+        "yMMMd" to mapOf("en" to "MMM d, y", "fr" to "d MMM y", "de" to "d. MMM y", "ja" to "y年M月d日"),
     )
 
     private val resolver = SkeletonResolver { locale, skeleton ->
@@ -86,6 +87,13 @@ class DatePatternsTest {
     fun yearStyleKeepsTheYearLast() {
         val fr = dateFormatter(DateStyle.DayWithFullWeekdayAndYear, Locale.FRENCH, resolver).format(sample)
         assertEquals("vendredi 2 août 2024", fr)
+    }
+
+    @Test
+    fun dayAndYearOrderFollowsTheLocale() {
+        assertEquals("Aug 2, 2024", dateFormatter(DateStyle.DayWithYear, Locale.ENGLISH, resolver).format(sample))
+        assertEquals("2 août 2024", dateFormatter(DateStyle.DayWithYear, Locale.FRENCH, resolver).format(sample))
+        assertEquals("2024年8月2日", dateFormatter(DateStyle.DayWithYear, Locale.JAPANESE, resolver).format(sample))
     }
 
     /**
