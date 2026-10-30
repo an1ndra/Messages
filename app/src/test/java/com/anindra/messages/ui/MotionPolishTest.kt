@@ -56,11 +56,13 @@ class MotionPolishTest {
     }
 
     @Test
-    fun theListToEmptyStateCrossFades() {
-        assertTrue("the conversation surface must cross-fade", list.contains("Crossfade("))
+    fun theConversationSurfaceIsNotCrossFaded() {
+        // Reported: opening a chat left the list blinking. A cross-fade over the
+        // whole surface draws every row twice at partial alpha, so the swap
+        // between skeleton, list and the empty panel stays instant.
         assertTrue(
-            "and honour reduce motion",
-            list.contains("animationSpec = motionTween(LocalReduceMotion.current, Motion.DURATION_SHORT4)")
+            "the whole-list surface must not be cross-faded",
+            !list.contains("Crossfade(")
         )
     }
 
