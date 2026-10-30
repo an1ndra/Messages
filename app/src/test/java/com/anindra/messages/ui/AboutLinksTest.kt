@@ -67,6 +67,35 @@ class AboutLinksTest {
     }
 
     @Test
+    fun perConversationChannelsDoNotCrowdOutTheReport() {
+        // On the reporting device the prefill was 4,053 characters of channel
+        // names, so the app, theme, SIM and notification sections never reached
+        // the issue at all.
+        val report = buildString {
+            appendLine("Messages diagnostics report")
+            appendLine("--- App ---")
+            appendLine("Version: 1.0.31 (34)")
+            appendLine("Channels:")
+            repeat(64) { appendLine("  messages_convo_${it}_default=4 (high)") }
+            appendLine()
+            appendLine("--- SIM ---")
+            appendLine("Multi-SIM: false")
+        }
+        val body = diagnosticsForIssue(report, limit = 4096)
+        assertTrue("the app section survives", body.contains("--- App ---"))
+        assertTrue("the SIM section survives", body.contains("--- SIM ---"))
+        assertTrue("the count is stated", body.contains("64 per-conversation channels omitted"))
+        assertTrue("no raw channel names", !body.contains("messages_convo_0_default"))
+        assertTrue(body.length < 500)
+    }
+
+    @Test
+    fun aReportWithoutChannelsIsUntouched() {
+        val report = "Messages diagnostics report\n--- App ---"
+        assertEquals(report, diagnosticsForIssue(report, 4096))
+    }
+
+    @Test
     fun truncationKeepsTheSectionsThatAnswerReports() {
         val report = buildString {
             appendLine("Messages diagnostics report")

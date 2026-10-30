@@ -113,8 +113,35 @@ internal object AboutLinks {
  * [limit]. The report is sectioned top-down (app, theme, notifications, SIM),
  * so dropping the tail keeps the parts that answer most reports.
  */
+/**
+ * One line per notification channel is 3-4 KB on a phone with a thread each: on
+ * the reporting device the prefill was 4,053 characters of
+ * `messages_convo_NN_default=4 (high)`, which pushed the app, theme, SIM and
+ * notification sections out of GitHub's 4,096-character limit entirely. The
+ * channel count and the importance summary above it say the same thing, so the
+ * per-channel detail is dropped from the issue body.
+ */
+private fun condenseChannels(report: String): String {
+    val lines = report.lines()
+    val channels = lines.count { it.trim().startsWith("messages_convo_") }
+    if (channels == 0) return report
+    val out = StringBuilder()
+    var noted = false
+    for (line in lines) {
+        val trimmedLine = line.trim()
+        if (trimmedLine.startsWith("messages_convo_")) continue
+        out.append(line).append('\n')
+        if (!noted && trimmedLine == "Channels:") {
+            out.append("  ").append(channels)
+                .append(" per-conversation channels omitted (see Diagnostics)\n")
+            noted = true
+        }
+    }
+    return out.toString().trimEnd()
+}
+
 internal fun diagnosticsForIssue(report: String, limit: Int = AboutLinks.ISSUE_BODY_LIMIT): String {
-    val trimmed = report.trimEnd()
+    val trimmed = condenseChannels(report.trimEnd())
     if (trimmed.length <= limit) return trimmed
     val note = "\n(truncated)"
     val room = limit - note.length
