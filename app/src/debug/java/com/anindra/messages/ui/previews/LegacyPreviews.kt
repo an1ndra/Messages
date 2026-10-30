@@ -2,6 +2,9 @@ package com.anindra.messages.ui.previews
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -35,6 +38,7 @@ import com.anindra.messages.ui.SheetActionRow
 import com.anindra.messages.ui.StartChatFab
 import com.anindra.messages.ui.SwipeConversationItem
 import com.anindra.messages.ui.legacy.ConversationRow as LegacyConversationRow
+import com.anindra.messages.ui.legacy.LegacySettingsScaffold
 import com.anindra.messages.ui.legacy.ImportRadioGroup as LegacyImportRadioGroup
 import com.anindra.messages.ui.legacy.SheetActionRow as LegacySheetActionRow
 import com.anindra.messages.ui.legacy.StartChatFab as LegacyStartChatFab
@@ -159,3 +163,23 @@ private fun ChatSchedulePickerPreview() {
         )
     }
 }
+
+@PreviewLightDark
+@Preview(name = "Legacy settings sheet", showBackground = true, widthDp = 380, heightDp = 420)
+@Composable
+private fun LegacySettingsScaffoldPreview() {
+    Stage {
+        LegacySettingsScaffold(screen = "preview", topBar = {}) { padding ->
+            Column(
+                Modifier
+                    .padding(padding)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Settings row", style = MaterialTheme.typography.bodyLarge)
+                Text("A second row", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+

@@ -335,8 +335,7 @@ fun SettingsScreen(
                     }
                 }
             )
-        }
-    ) { padding ->
+    }) { padding ->
         CompositionLocalProvider(
             LocalHighlightedSetting provides highlightTitle,
             LocalCardOffsets provides cardOffsets
