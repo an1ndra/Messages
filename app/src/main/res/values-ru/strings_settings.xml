@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">В браузере откроется форма issue на GitHub с заполненными описанием и диагностикой: версия приложения, тема, уведомления, данные SIM. История сообщений, контакты и номер телефона не включаются.</string>
     <string name="about_issue_subtitle">Прикрепляет диагностику: данные приложения, настройки, SIM. Ваши сообщения — никогда.</string>
     <string name="about_issue_title">Сообщить о проблеме</string>
+    <string name="about_licences_intro">Messages построен на этих проектах с открытым кодом.</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">Лицензии открытого кода</string>
     <string name="about_open_failed">Нет браузера, чтобы открыть эту ссылку.</string>

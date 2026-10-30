@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">A GitHub issue form will open in your browser with a pre-filled summary and diagnostics: app version, theme, notifications and SIM details. Message history, contacts and your phone number are never included.</string>
     <string name="about_issue_subtitle">Attaches diagnostics: app info, settings and SIM. Never your messages.</string>
     <string name="about_issue_title">Report an issue</string>
+    <string name="about_licences_intro">Messages is built on these open-source projects.</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">Open-source licences</string>
     <string name="about_open_failed">No browser is available to open this link.</string>

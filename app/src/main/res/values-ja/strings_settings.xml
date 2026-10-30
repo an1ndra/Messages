@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">ブラウザでGitHubのIssueフォームが開き、概要と診断情報が入力済みになります: アプリのバージョン、テーマ、通知、SIM情報。メッセージ履歴、連絡先、電話番号は含まれません。</string>
     <string name="about_issue_subtitle">診断情報(アプリ情報・設定・SIM)を添付します。メッセージは含まれません。</string>
     <string name="about_issue_title">問題を報告</string>
+    <string name="about_licences_intro">Messages はこれらのオープンソースプロジェクトで作られています。</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">オープンソースライセンス</string>
     <string name="about_open_failed">このリンクを開けるブラウザがありません。</string>

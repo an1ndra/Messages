@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">브라우저에서 GitHub 이슈 양식이 열리며 요약과 진단 정보가 미리 채워집니다. 앱 버전, 테마, 알림, SIM 정보가 포함됩니다. 메시지 기록, 연락처, 전화번호는 포함되지 않습니다.</string>
     <string name="about_issue_subtitle">진단 정보(앱 정보, 설정, SIM)를 첨부합니다. 메시지는 첨부되지 않습니다.</string>
     <string name="about_issue_title">문제 신고</string>
+    <string name="about_licences_intro">Messages는 다음 오픈 소스 프로젝트를 기반으로 합니다.</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">오픈 소스 라이선스</string>
     <string name="about_open_failed">이 링크를 열 수 있는 브라우저가 없습니다.</string>
