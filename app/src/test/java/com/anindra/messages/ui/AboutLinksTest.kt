@@ -3,6 +3,7 @@ package com.anindra.messages.ui
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * The About screen's three outgoing actions all end in a URL, and a wrong one
@@ -95,6 +96,19 @@ class AboutLinksTest {
             "https://f-droid.org/packages/com.anindra.messages/",
             AboutLinks.FDROID_URL
         )
+    }
+
+    @Test
+    fun theShareTemplateTakesBothDownloadLinks() {
+        val res = generateSequence(File("").absoluteFile) { it.parentFile }
+            .map { File(it, "app/src/main/res/values/strings_settings.xml") }
+            .first { it.isFile }
+            .readText()
+        val entry = Regex("""<string name="about_share_text">(.*?)</string>""")
+            .find(res)?.groupValues?.get(1)
+        require(entry != null) { "about_share_text is missing" }
+        assertTrue("the release link needs a slot: $entry", entry.contains("%1\$s"))
+        assertTrue("the F-Droid link needs its own slot: $entry", entry.contains("%2\$s"))
     }
 
     @Test

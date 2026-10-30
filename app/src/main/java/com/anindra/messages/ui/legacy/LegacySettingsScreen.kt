@@ -60,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -350,6 +351,39 @@ fun SettingsScreen(
                 modifier = Modifier.padding(padding)
             )
         } else {
+        // Content that arrives late (SIM label, scheduled count) grows the list
+        // and clamps a restored offset without restoring it. Re-apply the offset
+        // the reader left until the height settles, then leave them alone.
+        LaunchedEffect(scrollState) {
+            val target = scrollState.value
+            // A reader parked at the end of the list expects to stay there when
+            // the rest of it finishes loading; anyone else keeps their offset.
+            var wasAtEnd = target >= scrollState.maxValue - 1
+            var previousMax = -1
+            var stableFrames = 0
+            var frames = 0
+            // One unchanged frame is not "settled": a subtitle that arrives a
+            // few frames later grows the list after this loop would have given
+            // up, which is exactly how the list ended up short. Wait for the
+            // height to hold still for ~200ms before handing control back.
+            while (frames < 300) {
+                withFrameNanos { }
+                frames++
+                val max = scrollState.maxValue
+                val wanted = when {
+                    wasAtEnd -> max
+                    else -> target.coerceAtMost(max)
+                }
+                stableFrames = if (max == previousMax) stableFrames + 1 else 0
+                previousMax = max
+                // The reader's own drag always wins; this only outlasts data
+                // that arrives after the screen is up (a scheduled count).
+                if (!scrollState.isScrollInProgress && scrollState.value != wanted) {
+                    scrollState.scrollTo(wanted)
+                }
+                if (stableFrames >= 60 && scrollState.value == wanted) break
+            }
+        }
         Column(
             Modifier
                 .padding(padding)
