@@ -2387,12 +2387,20 @@ internal fun ChatSchedulePicker(
             initialMinute = scheduledMinute,
             is24Hour = is24HourFormat(context)
         )
-        ScheduleDialog(onDismiss = onDismiss) {
-            Column {
+        ScheduleDialog(onDismiss = onDismiss, maxWidth = 400.dp) {
+            Column(
+                // The clock face is left-aligned inside its own 328dp box; without
+                // this the whole picker sat against the dialog's left edge and the
+                // AM/PM column was clipped on the right.
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
                     stringResource(R.string.chat_select_time),
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
                 )
                 TimePicker(state = timePickerState)
                 Row(
@@ -2423,7 +2431,11 @@ internal fun ChatSchedulePicker(
  * transform origin, so the picker is drawn here and animated itself.
  */
 @Composable
-internal fun ScheduleDialog(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+internal fun ScheduleDialog(
+    onDismiss: () -> Unit,
+    maxWidth: Dp = 420.dp,
+    content: @Composable () -> Unit
+) {
     val reduceMotion = LocalReduceMotion.current
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
@@ -2448,9 +2460,8 @@ internal fun ScheduleDialog(onDismiss: () -> Unit, content: @Composable () -> Un
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier
-                .fillMaxWidth(0.94f)
-                .widthIn(max = 420.dp)
-                .padding(horizontal = 4.dp)
+                .fillMaxWidth(0.96f)
+                .widthIn(max = maxWidth)
                 .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
