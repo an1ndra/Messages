@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">Darmowa i prywatna aplikacja do SMS-ów. Wiadomości, kopie zapasowe i historia zostają na tym telefonie.</string>
+    <string name="about_developer_format">Autor: %1$s</string>
+    <string name="about_diagnostics_body">W przeglądarce otworzy się formularz zgłoszenia na GitHubie z wpisanym podsumowaniem i danymi diagnostycznymi: wersja aplikacji, motyw, powiadomienia, dane SIM. Historia wiadomości, kontakty i numer telefonu nigdy nie są dołączane.</string>
+    <string name="about_issue_subtitle">Dołącza dane diagnostyczne: informacje o aplikacji, ustawienia, SIM. Nigdy Twoje wiadomości.</string>
+    <string name="about_issue_title">Zgłoś problem</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">Licencje open source</string>
+    <string name="about_open_failed">Brak przeglądarki do otwarcia tego linku.</string>
+    <string name="about_open_with_diagnostics">Otwórz z danymi diagnostycznymi</string>
+    <string name="about_open_without">Otwórz bez</string>
+    <string name="about_share_subtitle">Powiedz znajomym o tej aplikacji.</string>
+    <string name="about_share_text">Zobacz Messages — darmowa aplikacja SMS działająca offline, bez reklam, bez konta i bez śledzenia.\n\nPobierz: %1$s\nF-Droid: %2$s</string>
+    <string name="about_share_title">Udostępnij Messages</string>
+    <string name="about_star_subtitle">Podoba się aplikacja? Dodaj jej gwiazdkę — pomoże innym ją znaleźć.</string>
+    <string name="about_star_title">Dodaj gwiazdkę na GitHubie</string>
+    <string name="settings_about_title">O aplikacji</string>
+    <string name="settings_about_version">Wersja %1$s (%2$d)</string>
     <string name="settings_general">Ustawienia ogólne</string>
     <string name="settings_choose_theme">Wybierz motyw</string>
     <string name="settings_pin_enter">4-16 cyfrowy PIN</string>

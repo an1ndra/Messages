@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">Um app de mensagens de texto gratuito e privado. As mensagens, os backups e o histórico ficam neste telefone.</string>
+    <string name="about_developer_format">Desenvolvido por %1$s</string>
+    <string name="about_diagnostics_body">Um formulário de issue do GitHub abrirá no navegador com o resumo e os diagnósticos já preenchidos: versão do app, tema, notificações e dados da SIM. Histórico de mensagens, contatos e seu número de telefone nunca são incluídos.</string>
+    <string name="about_issue_subtitle">Anexa diagnósticos: informações do app, ajustes e SIM. Nunca suas mensagens.</string>
+    <string name="about_issue_title">Relatar um problema</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">Licenças de código aberto</string>
+    <string name="about_open_failed">Não há navegador disponível para abrir este link.</string>
+    <string name="about_open_with_diagnostics">Abrir com diagnósticos</string>
+    <string name="about_open_without">Abrir sem</string>
+    <string name="about_share_subtitle">Conte para um amigo sobre este app.</string>
+    <string name="about_share_text">Conheça o Messages: um app de SMS gratuito e offline, sem anúncios, sem conta e sem rastreamento.\n\nBaixar: %1$s\nF-Droid: %2$s</string>
+    <string name="about_share_title">Compartilhar o Messages</string>
+    <string name="about_star_subtitle">Gostou do app? Dê uma estrela, isso ajuda outras pessoas a encontrá-lo.</string>
+    <string name="about_star_title">Dar uma estrela no GitHub</string>
+    <string name="settings_about_title">Sobre</string>
+    <string name="settings_about_version">Versão %1$s (%2$d)</string>
     <string name="settings_general">Configurações gerais</string>
     <string name="settings_choose_theme">Escolher tema</string>
     <string name="settings_pin_enter">PIN de 4-16 dígitos</string>

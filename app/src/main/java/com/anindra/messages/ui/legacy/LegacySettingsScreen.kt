@@ -105,6 +105,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.animateColorAsState
 import com.anindra.messages.ui.SettingsSearch
+import com.anindra.messages.ui.SettingsLayout
 
 private enum class PinDialogMode { SET, ENTER }
 
@@ -118,6 +119,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenTrash: () -> Unit = {},
     onOpenAdvanced: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
     onOpenSpamBlocked: () -> Unit = {},
     onOpenScheduled: () -> Unit = {},
     onOpenRoute: (String) -> Unit = {},
@@ -127,6 +129,7 @@ fun SettingsScreen(
     BackHandler(onBack = onBack)
 
     val context = LocalContext.current
+    val appInfo = remember(context) { com.anindra.messages.crash.CrashReporter.appInfo(context) }
 
     val revision by vm.settings.revision.collectAsState()
 
@@ -565,20 +568,20 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_advanced_subtitle),
                     onClick = onOpenAdvanced
                 )
+                SettingsRow(
+                    title = stringResource(R.string.settings_about_title),
+                    subtitle = stringResource(
+                        R.string.settings_about_version,
+                        appInfo.versionName,
+                        appInfo.versionCode
+                    ),
+                    onClick = onOpenAbout
+                )
             }
 
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                stringResource(R.string.messages_footer),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .padding(bottom = 16.dp)
-            )
+            // The version footer that used to close this screen is gone; keep
+            // the same breathing room under the last card.
+            Spacer(Modifier.height(SettingsLayout.BOTTOM_GAP))
         }
         }
         }

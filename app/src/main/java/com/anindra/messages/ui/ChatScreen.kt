@@ -2605,11 +2605,14 @@ fun phoneKey(address: String): String =
 fun isPhoneNumber(address: String): Boolean =
     com.anindra.messages.data.AddressIdentity.isReplyable(address)
 
-fun openUrl(context: android.content.Context, url: String) {
-    val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return
-    try {
+/** Opens a web link; false when nothing on the phone can take it. */
+fun openUrl(context: android.content.Context, url: String): Boolean {
+    val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return false
+    return try {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+        true
     } catch (_: Exception) {
+        false
     }
 }
 

@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">Eine freie, private SMS-App. Nachrichten, Sicherungen und Verlauf bleiben auf diesem Telefon.</string>
+    <string name="about_developer_format">Entwickelt von %1$s</string>
+    <string name="about_diagnostics_body">Im Browser öffnet sich ein GitHub-Issue-Formular mit vorausgefüllter Zusammenfassung und Diagnosedaten: App-Version, Design, Benachrichtigungen, SIM-Details. Nachrichtenverlauf, Kontakte und deine Telefonnummer sind nie dabei.</string>
+    <string name="about_issue_subtitle">Hängt Diagnosedaten an: App-Infos, Einstellungen, SIM. Nie deine Nachrichten.</string>
+    <string name="about_issue_title">Problem melden</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">Open-Source-Lizenzen</string>
+    <string name="about_open_failed">Kein Browser zum Öffnen dieses Links gefunden.</string>
+    <string name="about_open_with_diagnostics">Mit Diagnosedaten öffnen</string>
+    <string name="about_open_without">Ohne öffnen</string>
+    <string name="about_share_subtitle">Erzähl einem Freund von dieser App.</string>
+    <string name="about_share_text">Schau dir Messages an — eine freie Offline-SMS-App ohne Werbung, ohne Konto und ohne Tracking.\n\nDownload: %1$s\nF-Droid: %2$s</string>
+    <string name="about_share_title">Messages teilen</string>
+    <string name="about_star_subtitle">Gefällt dir die App? Gib ihr einen Stern, so finden sie andere leichter.</string>
+    <string name="about_star_title">Auf GitHub mit Stern markieren</string>
+    <string name="settings_about_title">Über</string>
+    <string name="settings_about_version">Version %1$s (%2$d)</string>
     <string name="settings_general">Allgemeine Einstellungen</string>
     <string name="settings_choose_theme">Design wählen</string>
     <string name="settings_pin_enter">4-16-stellige PIN</string>

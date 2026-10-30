@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">免费且私密的短信应用。消息、备份和记录都留在这部手机上。</string>
+    <string name="about_developer_format">开发者：%1$s</string>
+    <string name="about_diagnostics_body">浏览器会打开 GitHub 问题表单，并预先填入摘要和诊断信息：应用版本、主题、通知、SIM 详情。绝不会包含消息记录、联系人和你的电话号码。</string>
+    <string name="about_issue_subtitle">附带诊断信息：应用信息、设置和 SIM。绝不包含你的消息。</string>
+    <string name="about_issue_title">报告问题</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">开源许可</string>
+    <string name="about_open_failed">没有可打开此链接的浏览器。</string>
+    <string name="about_open_with_diagnostics">附诊断信息打开</string>
+    <string name="about_open_without">不附诊断打开</string>
+    <string name="about_share_subtitle">把这款应用推荐给朋友。</string>
+    <string name="about_share_text">来看看 Messages —— 免费离线短信应用，无广告、无账户、无追踪。\n\n下载：%1$s\nF-Droid：%2$s</string>
+    <string name="about_share_title">分享 Messages</string>
+    <string name="about_star_subtitle">喜欢这个应用？给它加个星标，帮助更多人找到它。</string>
+    <string name="about_star_title">在 GitHub 上加星标</string>
+    <string name="settings_about_title">关于</string>
+    <string name="settings_about_version">版本 %1$s (%2$d)</string>
     <string name="settings_general">常规设置</string>
     <string name="settings_choose_theme">选择主题</string>
     <string name="settings_pin_enter">4-16 位数字密码</string>

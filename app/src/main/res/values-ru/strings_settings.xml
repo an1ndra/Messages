@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">Бесплатное и приватное приложение для SMS. Сообщения, резервные копии и история остаются на этом телефоне.</string>
+    <string name="about_developer_format">Автор: %1$s</string>
+    <string name="about_diagnostics_body">В браузере откроется форма issue на GitHub с заполненными описанием и диагностикой: версия приложения, тема, уведомления, данные SIM. История сообщений, контакты и номер телефона не включаются.</string>
+    <string name="about_issue_subtitle">Прикрепляет диагностику: данные приложения, настройки, SIM. Ваши сообщения — никогда.</string>
+    <string name="about_issue_title">Сообщить о проблеме</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">Лицензии открытого кода</string>
+    <string name="about_open_failed">Нет браузера, чтобы открыть эту ссылку.</string>
+    <string name="about_open_with_diagnostics">Открыть с диагностикой</string>
+    <string name="about_open_without">Открыть без неё</string>
+    <string name="about_share_subtitle">Расскажите об этом приложении другу.</string>
+    <string name="about_share_text">Попробуйте Messages — бесплатное SMS-приложение, работающее без интернета, без рекламы, без аккаунта и без слежки.\n\nСкачать: %1$s\nF-Droid: %2$s</string>
+    <string name="about_share_title">Поделиться Messages</string>
+    <string name="about_star_subtitle">Нравится приложение? Поставьте звезду — так его будет легче найти.</string>
+    <string name="about_star_title">Поставить звезду на GitHub</string>
+    <string name="settings_about_title">О приложении</string>
+    <string name="settings_about_version">Версия %1$s (%2$d)</string>
     <string name="settings_general">Основные настройки</string>
     <string name="settings_choose_theme">Выбрать тему</string>
     <string name="settings_pin_enter">PIN-код из 4–16 цифр</string>
