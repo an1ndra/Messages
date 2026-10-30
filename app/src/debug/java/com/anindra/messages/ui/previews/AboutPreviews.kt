@@ -23,6 +23,6 @@ private fun AboutScreenPreview() {
 @Composable
 private fun AboutIdentityPreview() {
     MessagesTheme(mode = "system") {
-        Identity(versionName = "1.0.31", versionCode = 31)
+        Identity(versionName = "1.0.31", versionCode = 31, onDeveloperClick = {})
     }
 }

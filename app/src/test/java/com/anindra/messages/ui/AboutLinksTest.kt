@@ -25,6 +25,11 @@ class AboutLinksTest {
     }
 
     @Test
+    fun theDeveloperChipPointsAtTheProfile() {
+        assertEquals("https://github.com/an1ndra", AboutLinks.PROFILE_URL)
+    }
+
+    @Test
     fun theIssueTitleNamesTheBuildThatReported() {
         val title = AboutLinks.issueTitle("1.0.31")
         assertTrue("title should name the version: $title", title.contains("1.0.31"))
@@ -59,9 +64,9 @@ class AboutLinksTest {
         val report = (1..200).joinToString("\n") { "line $it" }
         val trimmed = diagnosticsForIssue(report, limit = 120)
         assertTrue("the prefill must fit the limit: ${trimmed.length}", trimmed.length <= 120)
-        assertTrue("the reader must be told it was cut: $trimmed", trimmed.endsWith("(truncated)"))
+        assertTrue("the reader must be told it was cut: $trimmed", trimmed.contains("(truncated"))
         // Every kept line is a complete one; no half line glued to the marker.
-        val keptLines = trimmed.removeSuffix("\n(truncated)").lines()
+        val keptLines = trimmed.substringBefore("\n(truncated").lines()
         assertEquals("the first line is kept", "line 1", keptLines.first())
         assertTrue("no line is cut in half", keptLines.all { it.matches(Regex("line \\d+")) })
     }
@@ -106,6 +111,23 @@ class AboutLinksTest {
         val trimmed = diagnosticsForIssue(report, limit = 4096)
         assertTrue("the app section survives: $trimmed", trimmed.contains("--- App ---"))
         assertTrue(trimmed.length <= 4096)
+    }
+
+    @Test
+    fun thePrefilledLinkStaysShortEnoughToOpen() {
+        // Readers reported a broken page with the 4 KB prefill; the encoded body
+        // is now kept well inside what a browser or link handler passes through.
+        val report = buildString {
+            appendLine("Messages diagnostics report")
+            repeat(400) { appendLine("line $it with some real-looking diagnostics content here") }
+        }
+        val body = diagnosticsForIssue(report)
+        val encoded = AboutLinks.queryValue(body).length
+        assertTrue("encoded body is ${encoded} chars", encoded <= AboutLinks.ISSUE_URL_LIMIT)
+        assertTrue("the reader is told it was cut", body.endsWith("(truncated - full report in Diagnostics)"))
+        // And a short report still goes through untouched.
+        val small = "Messages diagnostics report\n--- App ---"
+        assertEquals(small, diagnosticsForIssue(small))
     }
 
     @Test

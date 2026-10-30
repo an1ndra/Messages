@@ -86,6 +86,25 @@ class AboutRowPlacementTest {
     }
 
     @Test
+    fun theDeveloperCreditOpensTheProfile() {
+        // "if user click here then open my github profile" - the credit line is a
+        // chip, so it has to look and behave like something you can tap.
+        val screen = source("ui/AboutScreen.kt")
+        assertTrue(
+            "Identity must take the profile action rather than reach for context",
+            screen.contains("onDeveloperClick: () -> Unit")
+        )
+        assertTrue(
+            "the chip must be clickable",
+            Regex("""\.clickable\(onClick = onDeveloperClick\)""").containsMatchIn(screen)
+        )
+        assertTrue(
+            "the screen must open the profile URL",
+            screen.contains("openAboutUrl(context, AboutLinks.PROFILE_URL)")
+        )
+    }
+
+    @Test
     fun sharePassesBothDownloadLinksInTemplateOrder() {
         val screen = source("ui/AboutScreen.kt")
         assertTrue(
