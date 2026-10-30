@@ -60,7 +60,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.animation.Crossfade
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -514,19 +513,11 @@ fun ConversationsScreen(
                 )
             }
 
-            // Skeleton -> list -> empty panel is a state change the user sees
-            // mid-scroll; cross-fading it keeps the row positions from snapping.
-            Crossfade(
-                targetState = when {
-                    !loaded -> "loading"
-                    !readSmsAllowed && conversations.isEmpty() -> "denied"
-                    conversations.isEmpty() -> "empty"
-                    else -> "list"
-                },
-                animationSpec = motionTween(LocalReduceMotion.current, Motion.DURATION_SHORT4),
-                label = "conversationSurface"
-            ) { state ->
-            if (state == "loading") {
+            // Swapped, not cross-faded: this surface holds the whole list, and
+            // fading it draws every row twice at partial alpha — which reads as
+            // the list blinking when the skeleton is replaced or a chat is
+            // closed back into it.
+            if (!loaded) {
                 ProvideShimmer {
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(8, key = { "skeleton_$it" }) { SkeletonConversationRow() }
@@ -629,7 +620,6 @@ fun ConversationsScreen(
                         item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
                     }
                 }
-            }
             }
         }
     }
