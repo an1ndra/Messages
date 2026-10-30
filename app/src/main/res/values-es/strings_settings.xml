@@ -149,6 +149,17 @@
     <string name="settings_theme_dark">Oscuro</string>
     <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">Predeterminado del sistema</string>
+    <string name="settings_calendar_title">Calendario</string>
+    <string name="settings_choose_calendar">Elegir calendario</string>
+    <string name="calendar_auto">Automático (según el idioma)</string>
+    <string name="calendar_gregorian">Gregoriano</string>
+    <string name="calendar_persian">Persa (Jalali)</string>
+    <string name="calendar_hijri">Islámico (Umm al-Qura)</string>
+    <string name="calendar_hebrew">Hebreo</string>
+    <string name="calendar_buddhist">Budista</string>
+    <string name="calendar_japanese">Japonés</string>
+    <string name="calendar_indian">Indio (Saka)</string>
+    <string name="calendar_coptic">Copto</string>
     <string name="convo_your_prefix">"Tú: "</string>
     <string name="settings_restored_msg">Restaurados %s mensajes. Conversaciones existentes conservadas.</string>
     <string name="settings_sim_default">Predeterminada (Sistema)</string>

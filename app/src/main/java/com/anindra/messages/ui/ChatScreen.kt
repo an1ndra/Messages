@@ -184,6 +184,7 @@ import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.MessageSearch
+import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimSwitcher
@@ -1625,7 +1626,8 @@ fun ChatScreen(
                                     formatGroupLabel(
                                         msg.timestamp,
                                         is24HourFormat(context),
-                                        stringResource(R.string.time_yesterday)
+                                        stringResource(R.string.time_yesterday),
+                                        SettingsStore.calendarSystemOf(context)
                                     ),
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = ChatMetaWeight
@@ -1901,7 +1903,12 @@ fun ChatScreen(
                         ).show()
                         return@scheduleMessage
                     }
-                    val timeText = formatDateTime(ts, "MMM d,", is24HourFormat(context))
+                    val timeText = formatDateTime(
+                        ts,
+                        DateStyle.Day,
+                        is24HourFormat(context),
+                        SettingsStore.calendarSystemOf(context)
+                    )
                     Toast.makeText(context, context.getString(R.string.chat_scheduled_for, timeText), Toast.LENGTH_SHORT).show()
                     vm.saveDraft(conversationId, "")
                     draft = ""
@@ -2370,6 +2377,19 @@ internal fun ChatSchedulePicker(
         ScheduleDialog(onDismiss = onDismiss) {
             Column {
                 DatePicker(state = datePickerState, modifier = Modifier.fillMaxWidth())
+                // The platform grid only speaks Gregorian; this line says what
+                // the picked day is called in the calendar the user reads.
+                pickedDateInCalendar(
+                    datePickerState.selectedDateMillis,
+                    SettingsStore.calendarSystemOf(context)
+                )?.let { converted ->
+                    Text(
+                        stringResource(R.string.chat_schedule_calendar_hint, converted),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp)
+                    )
+                }
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.End
@@ -2646,6 +2666,7 @@ internal fun MessageDetailsDialog(
     val toSelf = MessageDetails.direction(message.isMe) == MessageDetails.Direction.TO
     val context = LocalContext.current
     val is24Hour = is24HourFormat(context)
+    val calendar = SettingsStore.calendarSystemOf(context)
     val statusLabel = when (MessageDetails.status(message.status)) {
         MessageDetails.Status.SENDING -> stringResource(R.string.message_status_sending)
         MessageDetails.Status.DELIVERED -> stringResource(R.string.message_status_delivered)
@@ -2663,9 +2684,9 @@ internal fun MessageDetailsDialog(
                     stringResource(if (toSelf) R.string.message_detail_to else R.string.message_detail_from),
                     formatPhoneNumber(address)
                 )
-                DetailRow(stringResource(R.string.message_detail_sent), formatDateTime(message.timestamp, "MMM d, yyyy,", is24Hour))
+                DetailRow(stringResource(R.string.message_detail_sent), formatDateTime(message.timestamp, DateStyle.DayWithYear, is24Hour, calendar))
                 MessageDetails.deliveredAt(message)?.let {
-                    DetailRow(stringResource(R.string.message_detail_delivered), formatDateTime(it, "MMM d, yyyy,", is24Hour))
+                    DetailRow(stringResource(R.string.message_detail_delivered), formatDateTime(it, DateStyle.DayWithYear, is24Hour, calendar))
                 }
                 DetailRow(stringResource(R.string.message_detail_status), statusLabel)
             }

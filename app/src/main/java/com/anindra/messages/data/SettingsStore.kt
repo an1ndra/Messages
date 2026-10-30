@@ -5,12 +5,13 @@ import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Locale
 
 /** Google-Messages-like customization store. */
 class SettingsStore(context: Context) {
 
     private val prefs: SharedPreferences =
-        context.getSharedPreferences("messages_settings", Context.MODE_PRIVATE)
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     /**
      * True when this package has never been replaced by an update: a fresh
@@ -36,6 +37,8 @@ class SettingsStore(context: Context) {
     val revision: StateFlow<Int> = _revision.asStateFlow()
 
     companion object {
+        private const val PREFS_NAME = "messages_settings"
+
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
         const val THEME_DARK = "dark"
@@ -43,6 +46,7 @@ class SettingsStore(context: Context) {
         const val THEME_DYNAMIC = "dynamic"
 
         const val KEY_THEME = "theme_mode"
+        const val KEY_CALENDAR = "calendar_system"
         const val KEY_NOTIFICATIONS = "notifications_enabled"
         const val KEY_SOUNDS = "message_sounds_enabled"
         const val KEY_DELIVERY_REPORTS = "delivery_reports_enabled"
@@ -137,11 +141,39 @@ class SettingsStore(context: Context) {
 
         /** Per-conversation key holding that chat's zoom (#348). */
         fun chatZoomKey(conversationId: Long): String = "$KEY_CHAT_ZOOM_PREFIX$conversationId"
+
+        /**
+         * The calendar dates render in. Read straight from preferences rather
+         * than through a store, because every timestamp on every screen asks
+         * for it and a store re-reads the package manager on construction.
+         * [CalendarSystem.resolve] makes the choice, so the setting, the
+         * subtitle and Diagnostics cannot drift apart.
+         */
+        fun calendarSystemOf(context: Context, locale: Locale = Locale.getDefault()): CalendarSystem =
+            CalendarSystem.resolve(storedCalendarOf(sharedPrefs(context)), locale)
+
+        private fun sharedPrefs(context: Context): SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        private fun storedCalendarOf(prefs: SharedPreferences): String? =
+            prefs.getString(KEY_CALENDAR, CalendarSystem.AUTO.storageValue)
     }
 
     var themeMode: String
         get() = prefs.getString(KEY_THEME, THEME_SYSTEM) ?: THEME_SYSTEM
         set(v) { prefs.edit().putString(KEY_THEME, v).apply(); _revision.value++ }
+
+    /**
+     * The calendar the user picked (#363), which may be [CalendarSystem.AUTO].
+     * [calendarSystem] is what that choice actually renders as.
+     */
+    var calendarChoice: CalendarSystem
+        get() = CalendarSystem.fromStorage(storedCalendarOf(prefs))
+        set(v) { prefs.edit().putString(KEY_CALENDAR, v.storageValue).apply(); _revision.value++ }
+
+    /** The calendar dates render in; never [CalendarSystem.AUTO]. */
+    val calendarSystem: CalendarSystem
+        get() = CalendarSystem.resolve(storedCalendarOf(prefs), Locale.getDefault())
 
     var notificationsEnabled: Boolean
         get() = prefs.getBoolean(KEY_NOTIFICATIONS, DEFAULTS_NOTIFICATIONS)

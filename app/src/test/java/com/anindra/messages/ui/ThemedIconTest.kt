@@ -1,17 +1,25 @@
 package com.anindra.messages.ui
 
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
- * Reported: "in system dynamic the app icon lines are not showing".
+ * The themed (monochrome) icon layer.
  *
- * The themed (monochrome) layer reused the coloured foreground, which draws a
- * filled white bubble with blue strokes for the message lines. A themed icon
- * tints the entire drawable one colour, so the strokes merged into the fill and
- * the icon rendered as a blank shape. The monochrome layer is now line art:
- * outlined bubble plus lines, nothing filled over anything.
+ * Two rounds of feedback shaped it. First: "in system dynamic the app icon lines
+ * are not showing" — the layer had been pointed at the coloured foreground,
+ * whose blue strokes for the message lines merged into its white fill once the
+ * launcher tinted everything one colour, and the icon rendered as a blank shape.
+ * It was changed to line art, which then read as "the fill is gone"; the
+ * reviewed decision was A, a filled bubble with the lines cut out of it.
+ *
+ * A monochrome layer is a mask: the launcher tints opaque pixels one colour and
+ * the plate shows through everything else. So the fill has to be a fill and the
+ * lines have to be holes — a stroke would be opaque and would disappear into it
+ * again. That is what these assertions protect.
  */
 class ThemedIconTest {
 
@@ -24,8 +32,10 @@ class ThemedIconTest {
 
     private fun read(rel: String) = File(app, rel).readText()
 
+    private val monochrome by lazy { read("src/main/res/drawable/ic_launcher_monochrome.xml") }
+
     @Test
-    fun bothLauncherIconsPointAtTheLineArtLayer() {
+    fun bothLauncherIconsPointAtTheMonochromeLayer() {
         listOf(
             "src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
             "src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"
@@ -38,21 +48,35 @@ class ThemedIconTest {
     }
 
     @Test
-    fun theLineArtLayerFillsNothing() {
-        val mono = read("src/main/res/drawable/ic_launcher_monochrome.xml")
-        assertTrue(
-            "a filled shape would swallow the lines under a single tint",
-            !mono.contains("android:fillColor=\"#FFFFFF\"")
+    fun theBubbleIsFilledAndTheLinesAreHoles() {
+        assertTrue("the bubble must be filled", monochrome.contains("android:fillColor="))
+        assertEquals(
+            "the lines only read as light if they are cut out of the fill",
+            "evenOdd",
+            Regex("""android:fillType="(\w+)"""").find(monochrome)?.groupValues?.get(1)
         )
-        assertTrue(
-            "the bubble is a stroke",
-            mono.contains("android:strokeWidth=\"3.2\"")
+        // Three capsules, each closed by two half-circle ends.
+        assertEquals(
+            "expected three line capsules inside the bubble path",
+            6,
+            Regex("A1\\.25,1\\.25 0 0 1").findAll(monochrome).count()
         )
-        assertTrue(
-            "and the three message lines are strokes too",
-            Regex("""android:pathData="M24,28L48,28"""")
-                .find(mono) != null
+        assertFalse(
+            "an opaque stroke would merge into the fill, which is the original bug",
+            monochrome.contains("android:strokeColor")
         )
+    }
+
+    @Test
+    fun theLineCapsulesSitOnTheColouredIconsLinePositions() {
+        // Same y positions and lengths as the strokes in the coloured icon, so
+        // the two faces of the app show the same three lines.
+        for (y in listOf("26.75", "32.75", "38.75")) {
+            assertTrue("no line capsule starting at y=$y", monochrome.contains("M24,$y"))
+        }
+        assertTrue(monochrome.contains("L48,26.75"))
+        assertTrue(monochrome.contains("L44,32.75"))
+        assertTrue(monochrome.contains("L38,38.75"))
     }
 
     @Test
@@ -61,6 +85,10 @@ class ThemedIconTest {
         assertTrue(
             "the normal launcher icon still uses the white bubble",
             fg.contains("android:fillColor=\"#FFFFFF\"")
+        )
+        assertTrue(
+            "and its blue message lines",
+            fg.contains("android:strokeColor=\"#0B57D0\"")
         )
     }
 }

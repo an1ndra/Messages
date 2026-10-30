@@ -59,6 +59,7 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.data.ScheduledMessage
 import com.anindra.messages.data.ScheduledTime
+import com.anindra.messages.data.SettingsStore
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -250,7 +251,12 @@ internal fun ScheduledRow(
                 )
                 Text(
                     context.getString(R.string.chat_scheduled_prefix) +
-                        formatDateTime(timestamp, "MMM d,", is24Hour),
+                        formatDateTime(
+                            timestamp,
+                            DateStyle.Day,
+                            is24Hour,
+                            SettingsStore.calendarSystemOf(context)
+                        ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,

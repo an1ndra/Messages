@@ -18,11 +18,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -52,9 +54,13 @@ fun AccessibilityScreen(
     val cardOffsets = remember { mutableMapOf<Int, Int>() }
     var highlightTitle by remember { mutableStateOf<String?>(null) }
 
-    Scaffold(
-        topBar = {
+    // The page colour is painted by the shared legacy sheet, which also
+    // reports it, so no settings screen can drift from the others.
+    LegacySettingsScaffold(screen = "accessibility", topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = { Text(stringResource(R.string.accessibility_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -62,8 +68,7 @@ fun AccessibilityScreen(
                     }
                 }
             )
-        }
-    ) { padding ->
+    }) { padding ->
       androidx.compose.runtime.CompositionLocalProvider(
         LocalHighlightedSetting provides highlightTitle,
         LocalCardOffsets provides cardOffsets

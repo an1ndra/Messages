@@ -149,6 +149,17 @@
     <string name="settings_theme_dark">ダーク</string>
     <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">システム規定値</string>
+    <string name="settings_calendar_title">カレンダー</string>
+    <string name="settings_choose_calendar">カレンダーを選択</string>
+    <string name="calendar_auto">自動（言語に合わせる）</string>
+    <string name="calendar_gregorian">グレゴリオ暦</string>
+    <string name="calendar_persian">ペルシャ暦（ジャラリ）</string>
+    <string name="calendar_hijri">イスラム暦（ウム・アルクラ）</string>
+    <string name="calendar_hebrew">ヘブライ暦</string>
+    <string name="calendar_buddhist">仏暦</string>
+    <string name="calendar_japanese">和暦</string>
+    <string name="calendar_indian">インド暦（サカ）</string>
+    <string name="calendar_coptic">コプト暦</string>
     <string name="convo_your_prefix">"あなた: "</string>
     <string name="settings_restored_msg">%s件のメッセージを復元しました。既存の会話を保持。</string>
     <string name="settings_sim_default">既定（システム）</string>

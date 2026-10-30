@@ -149,6 +149,17 @@
     <string name="settings_theme_dark">어둡게</string>
     <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">시스템 기본값</string>
+    <string name="settings_calendar_title">달력</string>
+    <string name="settings_choose_calendar">달력 선택</string>
+    <string name="calendar_auto">자동 (언어 기준)</string>
+    <string name="calendar_gregorian">그레고리력</string>
+    <string name="calendar_persian">페르시아력 (자랄리)</string>
+    <string name="calendar_hijri">이슬람력 (움물쿠라)</string>
+    <string name="calendar_hebrew">히브리력</string>
+    <string name="calendar_buddhist">불기</string>
+    <string name="calendar_japanese">일본력</string>
+    <string name="calendar_indian">인도력 (사카)</string>
+    <string name="calendar_coptic">콥트력</string>
     <string name="convo_your_prefix">"나: "</string>
     <string name="settings_restored_msg">%s개의 메시지가 복원되었습니다. 기존 대화가 유지됩니다.</string>
     <string name="settings_sim_default">기본 (시스템)</string>

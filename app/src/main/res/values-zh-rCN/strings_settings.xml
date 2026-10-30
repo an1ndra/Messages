@@ -149,6 +149,17 @@
     <string name="settings_theme_dark">深色</string>
     <string name="settings_theme_amoled">Amoled</string>
     <string name="settings_theme_system">系统默认</string>
+    <string name="settings_calendar_title">日历</string>
+    <string name="settings_choose_calendar">选择日历</string>
+    <string name="calendar_auto">自动（按语言）</string>
+    <string name="calendar_gregorian">公历</string>
+    <string name="calendar_persian">波斯历（贾拉利）</string>
+    <string name="calendar_hijri">伊斯兰历（乌姆库拉）</string>
+    <string name="calendar_hebrew">希伯来历</string>
+    <string name="calendar_buddhist">佛历</string>
+    <string name="calendar_japanese">和历</string>
+    <string name="calendar_indian">印度历（塞迦）</string>
+    <string name="calendar_coptic">科普特历</string>
     <string name="convo_your_prefix">"我："</string>
     <string name="settings_restored_msg">已还原 %s 条消息。现有对话已保留。</string>
     <string name="settings_sim_default">默认（系统）</string>
