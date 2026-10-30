@@ -72,7 +72,8 @@ object SettingsSearch {
             R.string.settings_backup_title,
             R.string.settings_import_title)
         card(Route.SETTINGS, 6,
-            R.string.settings_advanced_title)
+            R.string.settings_advanced_title,
+            R.string.settings_about_title)
 
         card(Route.ADVANCED, 7,
             R.string.settings_drafts_title,
