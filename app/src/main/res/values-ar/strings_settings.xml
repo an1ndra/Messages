@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">تطبيق مراسلة نصية مجاني وخاص. تبقى الرسائل والنسخ الاحتياطي والسجل على هذا الهاتف.</string>
+    <string name="about_developer_format">طُوِّر بواسطة %1$s</string>
+    <string name="about_diagnostics_body">سيُفتح نموذج مشكلة على GitHub في المتصفح مع ملخص مُعبأ مسبقًا وبيانات التشخيص: إصدار التطبيق والمظهر والإشعارات وتفاصيل SIM. لا تُرفق سجل الرسائل أو جهات الاتصال أو رقم هاتفك أبدًا.</string>
+    <string name="about_issue_subtitle">يُرفق بيانات التشخيص: معلومات التطبيق والإعدادات وSIM. لا تُرفق رسائلك أبدًا.</string>
+    <string name="about_issue_title">الإبلاغ عن مشكلة</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">تراخيص المصادر المفتوحة</string>
+    <string name="about_open_failed">لا يوجد متصفح لفتح هذا الرابط.</string>
+    <string name="about_open_with_diagnostics">فتح مع بيانات التشخيص</string>
+    <string name="about_open_without">فتح بدونها</string>
+    <string name="about_share_subtitle">أخبر صديقًا عن هذا التطبيق.</string>
+    <string name="about_share_text">جرّب Messages — تطبيق SMS مجاني يعمل دون إنترنت، بلا إعلانات ولا حساب ولا تتبّع.\n\nتنزيل: %1$s\nF-Droid: %2$s</string>
+    <string name="about_share_title">مشاركة Messages</string>
+    <string name="about_star_subtitle">هل أعجبك التطبيق؟ أضف له نجمة — فهذا يساعد الآخرين على العثور عليه.</string>
+    <string name="about_star_title">أضف نجمة على GitHub</string>
+    <string name="settings_about_title">حول</string>
+    <string name="settings_about_version">الإصدار %1$s (%2$d)</string>
     <string name="settings_general">الإعدادات العامة</string>
     <string name="settings_choose_theme">اختر السمة</string>
     <string name="settings_pin_enter">رقم سري مكون من 4-16 خانة</string>

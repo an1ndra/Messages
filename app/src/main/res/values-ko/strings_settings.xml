@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">무료이며 개인 정보를 지키는 문자 앱입니다. 메시지, 백업, 기록은 이 휴대전화에만 남습니다.</string>
+    <string name="about_developer_format">개발: %1$s</string>
+    <string name="about_diagnostics_body">브라우저에서 GitHub 이슈 양식이 열리며 요약과 진단 정보가 미리 채워집니다. 앱 버전, 테마, 알림, SIM 정보가 포함됩니다. 메시지 기록, 연락처, 전화번호는 포함되지 않습니다.</string>
+    <string name="about_issue_subtitle">진단 정보(앱 정보, 설정, SIM)를 첨부합니다. 메시지는 첨부되지 않습니다.</string>
+    <string name="about_issue_title">문제 신고</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">오픈 소스 라이선스</string>
+    <string name="about_open_failed">이 링크를 열 수 있는 브라우저가 없습니다.</string>
+    <string name="about_open_with_diagnostics">진단 정보와 함께 열기</string>
+    <string name="about_open_without">진단 정보 없이 열기</string>
+    <string name="about_share_subtitle">친구에게 이 앱을 알려 주세요.</string>
+    <string name="about_share_text">Messages를 확인해 보세요. 광고도 계정도 추적도 없는 무료 오프라인 SMS 앱입니다.\n\n다운로드: %1$s\nF-Droid: %2$s</string>
+    <string name="about_share_title">Messages 공유</string>
+    <string name="about_star_subtitle">앱이 마음에 드시나요? 별표를 눌러 주세요. 다른 사람이 찾는 데 도움이 됩니다.</string>
+    <string name="about_star_title">GitHub에서 별표 주기</string>
+    <string name="settings_about_title">앱 정보</string>
+    <string name="settings_about_version">버전 %1$s (%2$d)</string>
     <string name="settings_general">일반 설정</string>
     <string name="settings_choose_theme">테마 선택</string>
     <string name="settings_pin_enter">4-16자리 PIN</string>

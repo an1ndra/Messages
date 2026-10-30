@@ -58,6 +58,13 @@ object SettingsLayout {
     val FOOTER_BOTTOM_GAP: Dp = 20.dp
 
     /**
+     * Room under the last row when the screen has no footer text. The footer
+     * used to supply this; a screen that ends on a card would otherwise sit
+     * flush against the bottom inset.
+     */
+    val BOTTOM_GAP: Dp = 20.dp
+
+    /**
      * Rounding on a row's outward-facing corners, i.e. the group's first and
      * last rows. Raised from 7dp: with a 2dp row gap the run reads as a stack of
      * near-rectangles, and softening the two outer ends is what makes it read as

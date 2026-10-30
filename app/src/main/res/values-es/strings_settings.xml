@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">Una app de mensajes de texto gratuita y privada. Los mensajes, las copias de seguridad y el historial se quedan en este teléfono.</string>
+    <string name="about_developer_format">Desarrollada por %1$s</string>
+    <string name="about_diagnostics_body">Se abrirá un formulario de incidencia de GitHub en el navegador con un resumen y diagnósticos ya rellenados: versión, tema, notificaciones y datos de la SIM. El historial de mensajes, los contactos y tu número de teléfono nunca se incluyen.</string>
+    <string name="about_issue_subtitle">Adjunta diagnósticos: datos de la app, ajustes y SIM. Nunca tus mensajes.</string>
+    <string name="about_issue_title">Informar de un problema</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">Licencias de código abierto</string>
+    <string name="about_open_failed">No hay ningún navegador para abrir este enlace.</string>
+    <string name="about_open_with_diagnostics">Abrir con diagnósticos</string>
+    <string name="about_open_without">Abrir sin ellos</string>
+    <string name="about_share_subtitle">Cuéntaselo a un amigo.</string>
+    <string name="about_share_text">Descubre Messages: una app de SMS gratuita y sin conexión, sin anuncios, sin cuenta y sin rastreo.\n\nDescargar: %1$s\nF-Droid: %2$s</string>
+    <string name="about_share_title">Compartir Messages</string>
+    <string name="about_star_subtitle">¿Te gusta la app? Dale una estrella: ayuda a que otros la encuentren.</string>
+    <string name="about_star_title">Dar una estrella en GitHub</string>
+    <string name="settings_about_title">Acerca de</string>
+    <string name="settings_about_version">Versión %1$s (%2$d)</string>
     <string name="settings_general">Configuración general</string>
     <string name="settings_choose_theme">Elegir tema</string>
     <string name="settings_pin_enter">PIN de 4-16 dígitos</string>

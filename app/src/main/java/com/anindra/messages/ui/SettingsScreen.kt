@@ -105,11 +105,15 @@ fun SettingsScreen(
     onOpenSpamBlocked: () -> Unit = {},
     onOpenInbox: () -> Unit = {},
     onOpenScheduled: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
 
     val context = LocalContext.current
+    // The version the About row shows comes from the same lookup the crash
+    // report and Diagnostics print, so the three cannot disagree.
+    val appInfo = remember(context) { com.anindra.messages.crash.CrashReporter.appInfo(context) }
 
     val revision by vm.settings.revision.collectAsState()
     val scheduledAll by vm.scheduledMessages().collectAsState(initial = emptyList())
@@ -407,14 +411,28 @@ fun SettingsScreen(
                     onClick = { importSourceDialog = true }
                 )
                 SettingsRow(
-                    position = RowPosition.LAST,
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_advanced_title),
                     subtitle = stringResource(R.string.settings_advanced_subtitle),
                     onClick = onOpenAdvanced
                 )
+                // The version lives on the About screen now; this row replaced
+                // the footer that used to spell it out here.
+                SettingsRow(
+                    position = RowPosition.LAST,
+                    title = stringResource(R.string.settings_about_title),
+                    subtitle = stringResource(
+                        R.string.settings_about_version,
+                        appInfo.versionName,
+                        appInfo.versionCode
+                    ),
+                    onClick = onOpenAbout
+                )
             }
 
-            SettingsFooter(stringResource(R.string.messages_footer))
+            // What the removed footer left behind: the list ends on a card, and
+            // without this the card sits flush against the bottom inset.
+            Spacer(Modifier.height(SettingsLayout.BOTTOM_GAP))
         }
     }
 
