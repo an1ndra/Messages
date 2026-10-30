@@ -1,5 +1,6 @@
 package com.anindra.messages.ui
 
+import com.anindra.messages.data.CalendarSystem
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Locale
@@ -34,14 +35,20 @@ class TimeFormatTest {
     }
 
     @Test
-    fun dateTimePrefixKeepsTheChosenClock() {
-        assertEquals(
-            "Jan 1, 2026, 00:30",
-            dateTimeFormatter("MMM d, yyyy,", true, locale).format(at(0, 30))
+    fun dateTimeKeepsTheChosenClock() {
+        val ts = 1_767_268_800_000L // 2026-01-01T12:00Z
+        clearDateFormatterCache()
+        // The platform resolver is not available off-device, so stand one in for
+        // the locale this test formats in.
+        dateFormatter(DateStyle.DayWithYear, Locale.US, SkeletonResolver { _, _ -> "MMM d, y" })
+        // The clock is the device's, so only its shape is asserted here.
+        assertTrue(
+            formatDateTime(ts, DateStyle.DayWithYear, true, CalendarSystem.GREGORIAN, Locale.US)
+                .matches(Regex("""Jan 1, 2026, \d{2}:\d{2}"""))
         )
-        assertEquals(
-            "Jan 1, 2026, 12:30 AM",
-            dateTimeFormatter("MMM d, yyyy,", false, locale).format(at(0, 30))
+        assertTrue(
+            formatDateTime(ts, DateStyle.DayWithYear, false, CalendarSystem.GREGORIAN, Locale.US)
+                .matches(Regex("""Jan 1, 2026, \d{1,2}:\d{2} [AP]M"""))
         )
     }
 
@@ -55,10 +62,13 @@ class TimeFormatTest {
     @Test
     fun groupLabelDropsAmPmIn24HourMode() {
         val ts = 1_700_000_000_000L
-        assertTrue(formatGroupLabel(ts, true, "Yesterday", now = ts).matches(Regex("\\d{2}:\\d{2}")))
+        assertTrue(
+            formatGroupLabel(ts, true, "Yesterday", CalendarSystem.GREGORIAN, now = ts)
+                .matches(Regex("\\d{2}:\\d{2}"))
+        )
         assertNotEquals(
-            formatGroupLabel(ts, true, "Yesterday", now = ts),
-            formatGroupLabel(ts, false, "Yesterday", now = ts)
+            formatGroupLabel(ts, true, "Yesterday", CalendarSystem.GREGORIAN, now = ts),
+            formatGroupLabel(ts, false, "Yesterday", CalendarSystem.GREGORIAN, now = ts)
         )
     }
 
@@ -68,8 +78,14 @@ class TimeFormatTest {
         seedDateFormatters()
         val ts = 1_700_000_000_000L
         val yesterday = ts - 86_400_000L
-        assertTrue(formatGroupLabel(yesterday, true, "Yesterday", now = ts).startsWith("Yesterday \u2022"))
-        assertTrue(formatGroupLabel(yesterday, true, "Hier", now = ts).startsWith("Hier \u2022"))
+        assertTrue(
+            formatGroupLabel(yesterday, true, "Yesterday", CalendarSystem.GREGORIAN, now = ts)
+                .startsWith("Yesterday \u2022")
+        )
+        assertTrue(
+            formatGroupLabel(yesterday, true, "Hier", CalendarSystem.GREGORIAN, now = ts)
+                .startsWith("Hier \u2022")
+        )
     }
 
     /** formatGroupLabel resolves date patterns through the platform, which is not

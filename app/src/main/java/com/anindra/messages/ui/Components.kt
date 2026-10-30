@@ -25,6 +25,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.anindra.messages.ui.theme.Motion
 import com.anindra.messages.R
+import com.anindra.messages.data.CalendarSystem
+import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -231,22 +233,31 @@ val LocalNowTick = compositionLocalOf { System.currentTimeMillis() }
  *  "Scheduled: …" conversation-list preview. Empty when nothing is queued. */
 val LocalScheduledPreview = compositionLocalOf<Map<Long, String>> { emptyMap() }
 
-fun formatListTime(ts: Long, now: Long = System.currentTimeMillis(), ctx: android.content.Context): String {
+fun formatListTime(
+    ts: Long,
+    now: Long = System.currentTimeMillis(),
+    ctx: android.content.Context,
+    calendar: CalendarSystem = SettingsStore.calendarSystemOf(ctx)
+): String {
     if (ts <= 0) return ""
     return when {
         now - ts < 60_000L -> ctx.getString(R.string.time_now)
         now - ts < 3_600_000L -> String.format(ctx.getString(R.string.time_minutes), (now - ts) / 60_000)
         sameDay(ts, now) -> timeOnlyFormatter(is24HourFormat(ctx)).format(zoned(ts))
         isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
-        else -> dateFormatter(DateStyle.Day).format(zoned(ts))
+        else -> formatDate(ts, DateStyle.Day, calendar)
     }
 }
 
-fun formatDividerTime(ts: Long, ctx: android.content.Context): String {
+fun formatDividerTime(
+    ts: Long,
+    ctx: android.content.Context,
+    calendar: CalendarSystem = SettingsStore.calendarSystemOf(ctx)
+): String {
     return when {
         sameDay(ts, System.currentTimeMillis()) -> ctx.getString(R.string.time_today)
         isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
-        else -> dateFormatter(DateStyle.DayWithAbbrevWeekday).format(zoned(ts))
+        else -> formatDate(ts, DateStyle.DayWithAbbrevWeekday, calendar)
     }
 }
 

@@ -2,6 +2,7 @@ package com.anindra.messages.ui
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+import com.anindra.messages.data.CalendarSystem
 import com.anindra.messages.data.Message
 import java.time.Instant
 import java.time.ZoneId
@@ -110,15 +111,27 @@ private fun isYesterday(ts: Long, now: Long): Boolean =
  *  - yesterday  -> "Yesterday • 9:20 PM"
  *  - same year  -> "Sunday, Aug 2 • 3:15 PM"
  *  - older      -> "Sunday, Aug 2, 2024 • 3:15 PM"
+ *
+ * "Same year" is asked of the *displayed* calendar, not of the Gregorian one:
+ * around a Nowruz or a Hijri new year the two disagree, and a label that dropped
+ * the year on a message from a different displayed year would read as if it
+ * belonged to the year on the neighbouring label.
  */
-fun formatGroupLabel(ts: Long, is24Hour: Boolean, yesterdayLabel: String, now: Long = System.currentTimeMillis()): String {
+fun formatGroupLabel(
+    ts: Long,
+    is24Hour: Boolean,
+    yesterdayLabel: String,
+    calendar: CalendarSystem,
+    now: Long = System.currentTimeMillis()
+): String {
     val t = at(ts)
     val timeFmt = timeOnlyFormatter(is24Hour)
     val dateAndTime = { date: String -> "$date \u2022 ${timeFmt.format(t)}" }
     return when {
         sameDay(ts, now) -> timeFmt.format(t)
         isYesterday(ts, now) -> dateAndTime(yesterdayLabel)
-        t.year == at(now).year -> dateAndTime(dateFormatter(DateStyle.DayWithFullWeekday).format(t))
-        else -> dateAndTime(dateFormatter(DateStyle.DayWithFullWeekdayAndYear).format(t))
+        displayYear(ts, calendar) == displayYear(now, calendar) ->
+            dateAndTime(formatDate(ts, DateStyle.DayWithFullWeekday, calendar))
+        else -> dateAndTime(formatDate(ts, DateStyle.DayWithFullWeekdayAndYear, calendar))
     }
 }

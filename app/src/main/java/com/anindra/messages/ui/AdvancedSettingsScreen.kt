@@ -82,6 +82,7 @@ onOpenAccessibility: () -> Unit = {},
     var retentionTrashDays by remember(revision) { mutableStateOf(vm.settings.retentionTrashDays) }
     var retentionSpamDays by remember(revision) { mutableStateOf(vm.settings.retentionSpamDays) }
     var fontDialog by remember { mutableStateOf(false) }
+    var calendarDialog by remember { mutableStateOf(false) }
     var keywordsDialog by remember { mutableStateOf(false) }
     var diagReport by remember { mutableStateOf<String?>(null) }
 
@@ -136,6 +137,16 @@ onOpenAccessibility: () -> Unit = {},
                 title = stringResource(R.string.settings_font_title),
                 subtitle = fontLabel(vm.fontFamily),
                 onClick = { fontDialog = true }
+                )
+                SettingsRow(
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_calendar_title),
+                subtitle = calendarLabel(
+                    vm.settings.calendarChoice,
+                    vm.settings.calendarSystem,
+                    context
+                ),
+                onClick = { calendarDialog = true }
                 )
                 SettingsRow(
                 position = RowPosition.MIDDLE,
@@ -291,6 +302,14 @@ onOpenAccessibility: () -> Unit = {},
             dismissButton = {
                 TextButton(onClick = { fontDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
+        )
+    }
+
+    if (calendarDialog) {
+        CalendarPickerDialog(
+            choice = vm.settings.calendarChoice,
+            onChoose = { vm.settings.calendarChoice = it },
+            onDismiss = { calendarDialog = false }
         )
     }
 
