@@ -136,6 +136,59 @@ fun PersonAvatar(
 private val photoUriCache = PhotoUriCache()
 
 /** Resolves the contact's photo URI via ContactsContract (no caching). */
+/**
+ * The owner's own contact card photo, if they set one on the device. Android
+ * keeps it on the profile row of the contacts provider, which is a different
+ * cursor from a phone-number lookup.
+ */
+private fun resolveOwnerPhotoUri(context: Context): String? = try {
+    context.contentResolver.query(
+        android.provider.ContactsContract.Profile.CONTENT_URI,
+        arrayOf(android.provider.ContactsContract.CommonDataKinds.Photo.PHOTO_URI),
+        null, null, null
+    )?.use { c ->
+        if (c.moveToFirst()) c.getString(0)?.ifBlank { null } else null
+    }
+} catch (_: Exception) {
+    null
+}
+
+/**
+ * The signed-in user's avatar: the device profile picture when there is one,
+ * otherwise the themed silhouette it always used. Reading the profile needs
+ * READ_CONTACTS, which this app already asks for; without it the query returns
+ * nothing and the default is drawn.
+ */
+@Composable
+fun OwnerAvatar(
+    size: Dp,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = MaterialTheme.colorScheme.primary,
+    tint: Color = MaterialTheme.colorScheme.onPrimary
+) {
+    val context = LocalContext.current
+    val photo by produceState<String?>(initialValue = null) {
+        value = withContext(Dispatchers.IO) { resolveOwnerPhotoUri(context) }
+    }
+    val uri = photo
+    if (uri != null) {
+        coil3.compose.AsyncImage(
+            model = uri,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier.size(size).clip(CircleShape)
+        )
+    } else {
+        PersonAvatar(
+            stringResource(R.string.conversations_me),
+            size = size,
+            modifier = modifier,
+            backgroundColor = backgroundColor,
+            tint = tint
+        )
+    }
+}
+
 private fun resolveContactPhotoUri(context: Context, number: String): String? = try {
     val lookupUri = Uri.withAppendedPath(
         ContactsContract.AUTHORITY_URI, "phone_lookup/" + Uri.encode(number)

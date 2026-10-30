@@ -392,7 +392,6 @@ fun SettingsScreen(
                 SettingsRow(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_backup_title),
-                    subtitle = stringResource(R.string.settings_backup_subtitle),
                     enabled = !privacyMode,
                     onClick = {
                         pinMode = PinDialogMode.SET
@@ -404,7 +403,6 @@ fun SettingsScreen(
                 SettingsRow(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_import_title),
-                    subtitle = stringResource(R.string.settings_import_subtitle),
                     onClick = { importSourceDialog = true }
                 )
                 SettingsRow(

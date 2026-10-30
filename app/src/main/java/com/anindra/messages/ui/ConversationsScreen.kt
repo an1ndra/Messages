@@ -492,8 +492,8 @@ fun ConversationsScreen(
                             Icon(Icons.Outlined.Search, stringResource(R.string.icon_search))
                         }
                         IconButton(onClick = onOpenSettings) {
-                            PersonAvatar(
-                                stringResource(R.string.conversations_me), size = 32.dp,
+                            OwnerAvatar(
+                                size = 32.dp,
                                 backgroundColor = MaterialTheme.colorScheme.primary,
                                 tint = MaterialTheme.colorScheme.onPrimary
                             )
@@ -533,8 +533,7 @@ fun ConversationsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    PersonAvatar(
-                        "sms-launcher",
+                    OwnerAvatar(
                         size = 72.dp,
                         backgroundColor = MaterialTheme.colorScheme.primaryContainer,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer
