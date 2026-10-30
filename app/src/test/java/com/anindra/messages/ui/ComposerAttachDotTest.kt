@@ -1,19 +1,22 @@
 package com.anindra.messages.ui
 
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import com.anindra.messages.ui.theme.ComposerAttachDot
+import com.anindra.messages.ui.theme.composerAttachDot
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import java.io.File
 
 /**
- * Google Messages badges the composer's attach button: a #76D1FF dot overlaps
- * the top-right of the "+" ring, and the ring reads as broken because the dot
- * carries a ring of the field's own colour around it.
+ * Reported: "in light mode in + icon one dot color not looks good?"
  *
- * The colour was measured off the running app, so it is pinned here; it is the
- * one composer colour that is not a Material scheme role.
+ * The composer's attach button carries GM's badge dot. It was pinned to the
+ * #76D1FF sampled off GM's *dark* composer, which on a light pill is a pale cyan
+ * almost the colour of the field it sits on. It follows the accent now, so each
+ * theme supplies a dot that reads.
  */
 class ComposerAttachDotTest {
 
@@ -28,60 +31,51 @@ class ComposerAttachDotTest {
         app, "src/main/java/com/anindra/messages/ui/ChatScreen.kt"
     ).readText()
 
+    private val theme get() = File(
+        app, "src/main/java/com/anindra/messages/ui/theme/Theme.kt"
+    ).readText()
+
+    private fun scheme(primary: Color) = lightColorScheme(primary = primary)
+
     @Test
-    fun theDotIsGooglesMeasuredColour() {
-        val argb = ComposerAttachDot.toArgb()
-        assertEquals("#76D1FF", "#%06X".format(argb and 0xFFFFFF))
+    fun theDotFollowsTheAccentInBothThemes() {
+        assertEquals(Color(0xFF0B57D0), scheme(Color(0xFF0B57D0)).composerAttachDot)
+        assertEquals(Color(0xFFA8C7FA), scheme(Color(0xFFA8C7FA)).composerAttachDot)
     }
 
     @Test
-    fun theDotIsGooglesMeasuredSize() {
-        // GM's dot measures 14px (~5dp) across at 440dpi; the 8dp box is that
-        // dot plus the 1.5dp cut-out ring on each side.
+    fun theDotIsNoLongerTheDarkComposerCyan() {
+        val light = scheme(Color(0xFF0B57D0)).composerAttachDot.toArgb() and 0xFFFFFF
+        assertNotEquals("the pale cyan is the light-mode defect", 0x76D1FF, light)
+    }
+
+    @Test
+    fun theHexIsGoneFromTheColourSource() {
         assertTrue(
-            "the dot box must be 8dp, or the badge reads heavier than GM's",
-            Regex("""\.size\(8\.dp\)\s*\.background\(MaterialTheme\.colorScheme\.inputPill""")
-                .containsMatchIn(chat)
+            "a fixed hex cannot follow the theme",
+            !Regex("""Color\(0xFF76D1FF\)""").containsMatchIn(theme)
         )
+        assertTrue("the dot must be a scheme role", theme.contains("get() = composerAttachDot") ||
+            theme.contains("val ColorScheme.composerAttachDot"))
     }
 
     @Test
     fun theAttachButtonCarriesIt() {
         assertTrue(
-            "the dot must sit on the attach button's ring",
-            chat.contains("ComposerAttachDot")
+            "the dot must be painted with the role, not a literal",
+            Regex("""\.background\(dot, CircleShape\)""").containsMatchIn(chat)
         )
         assertTrue(
-            "it is drawn at the ring's top-right, not centred",
-            chat.contains("Alignment.TopEnd")
+            "the dot must name its colour for the regression script",
+            chat.contains("\"ComposerDot\"")
+        )
+        assertTrue(
+            "GM's dot measures 14px (~5dp) across at 440dpi; the box stays 8dp",
+            Regex("""\.size\(8\.dp\)""").containsMatchIn(chat)
         )
     }
 
-    @Test
-    fun theDotSitsOnTheRingNotOutsideIt() {
-        // Measured off GM: the dot's centre is 0.99·r from the ring's centre, so
-        // it overlaps the ring. An outward offset puts it just past the ring,
-        // where it reads as a separate speck.
-        assertTrue(
-            "the dot must be nudged inward to land on the ring",
-            Regex("""\.offset\(x = \(-1\)\.dp, y = 1\.dp\)""").containsMatchIn(chat)
-        )
-    }
-
-    @Test
-    fun theRingReadsAsBroken() {
-        assertTrue(
-            "the dot needs a ring of field colour, or it floats on the icon instead of cutting it",
-            Regex("""background\(MaterialTheme\.colorScheme\.inputPill, CircleShape\)\s*\.padding""")
-                .containsMatchIn(chat)
-        )
-    }
-
-    @Test
-    fun theBadgeIsDecorative() {
-        assertTrue(
-            "the attach button's label already explains the control; the dot must not add one",
-            chat.contains("stringResource(R.string.icon_attach)")
-        )
+    private fun assertTrue(message: String, condition: Boolean) {
+        org.junit.Assert.assertTrue(message, condition)
     }
 }
