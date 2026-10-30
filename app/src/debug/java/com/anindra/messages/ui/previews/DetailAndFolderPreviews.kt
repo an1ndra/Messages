@@ -16,9 +16,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.crash.CrashReportDialog
+import com.anindra.messages.data.CalendarSystem
 import com.anindra.messages.diagnostics.DiagnosticsDialog
 import com.anindra.messages.ui.AutoDeleteDurationAction
 import com.anindra.messages.ui.BlockedKeywordsDialog
+import com.anindra.messages.ui.CalendarPickerDialog
 import com.anindra.messages.ui.DetailActionButton
 import com.anindra.messages.ui.DetailCardRow
 import com.anindra.messages.ui.EmptyFolder
@@ -143,6 +145,19 @@ private fun PermanentDeleteConfirmDialogPreview() {
 @Composable
 private fun CrashReportDialogPreview() {
     Stage { CrashReportDialog(reportCount = 3, onExportZip = {}, onCopy = {}, onDelete = {}) }
+}
+
+@PreviewLightDark
+@Preview(name = "Calendar picker", showBackground = true, widthDp = 380, heightDp = 620)
+@Composable
+private fun CalendarPickerDialogPreview() {
+    Stage {
+        CalendarPickerDialog(
+            choice = CalendarSystem.AUTO,
+            onChoose = {},
+            onDismiss = {}
+        )
+    }
 }
 
 @PreviewLightDark

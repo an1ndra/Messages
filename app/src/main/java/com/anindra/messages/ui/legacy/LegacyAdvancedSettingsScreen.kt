@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -97,9 +98,13 @@ fun AdvancedSettingsScreen(
     var keywordsDialog by remember { mutableStateOf(false) }
     var diagReport by remember { mutableStateOf<String?>(null) }
 
-    Scaffold(
-        topBar = {
+    // The page colour is painted by the shared legacy sheet, which also
+    // reports it, so no settings screen can drift from the others.
+    LegacySettingsScaffold(screen = "advanced", topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = { Text(stringResource(R.string.settings_advanced_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -107,8 +112,7 @@ fun AdvancedSettingsScreen(
                     }
                 }
             )
-        }
-    ) { padding ->
+    }) { padding ->
       androidx.compose.runtime.CompositionLocalProvider(
         LocalHighlightedSetting provides highlightTitle,
         LocalCardOffsets provides cardOffsets
