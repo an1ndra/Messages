@@ -86,6 +86,17 @@ class AboutRowPlacementTest {
     }
 
     @Test
+    fun sharePassesBothDownloadLinksInTemplateOrder() {
+        val screen = source("ui/AboutScreen.kt")
+        assertTrue(
+            "the template's %1\$s is the release and %2\$s the F-Droid listing",
+            Regex(
+                """R\.string\.about_share_text,\s*AboutLinks\.RELEASE_URL,\s*AboutLinks\.FDROID_URL"""
+            ).containsMatchIn(screen)
+        )
+    }
+
+    @Test
     fun backGoesToSettingsRatherThanClosingTheApp() {
         val screen = source("ui/AboutScreen.kt")
         assertTrue(

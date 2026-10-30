@@ -128,7 +128,11 @@ private fun openAboutUrl(context: Context, url: String) {
 }
 
 private fun shareApp(context: Context, chooserTitle: String, text: String) {
-    android.util.Log.d("AboutAction", "share ${text.length}")
+    android.util.Log.d(
+        "AboutAction",
+        "share len=${text.length} release=${text.contains(AboutLinks.RELEASE_URL)} " +
+            "fdroid=${text.contains(AboutLinks.FDROID_URL)}"
+    )
     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
     try {
         context.startActivity(Intent.createChooser(send, chooserTitle))
