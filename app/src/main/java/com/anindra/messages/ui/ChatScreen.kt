@@ -1369,7 +1369,12 @@ fun ChatScreen(
         draftLoaded = false
     }
     DisposableEffect(conversationId) {
-        onDispose { vm.setViewedConversation(0L) }
+        onDispose {
+            // Closes the exit-animation window the script measures: this must happen
+            // after the transition, never in the same frame as the route change.
+            android.util.Log.d("NavTransition", "chat closed")
+            vm.setViewedConversation(0L)
+        }
     }
     // Content handed over by an external share, handled in one effect so the text
     // and the media are read from the same composition. Sharing text with an
