@@ -1402,6 +1402,10 @@ class MainActivity : FragmentActivity() {
                     AnimatedContent(
                         targetState = navRoute,
                         transitionSpec = {
+                            // Permanent marker: the chat-close regression script reads
+                            // this and the teardown line to prove the exit window is
+                            // not skipped.
+                            android.util.Log.d("NavTransition", "$initialState to $targetState")
                             if (vm.a11y.reduceMotionEnabled) {
                                 androidx.compose.animation.EnterTransition.None togetherWith
                                     androidx.compose.animation.ExitTransition.None
@@ -1420,10 +1424,16 @@ class MainActivity : FragmentActivity() {
                                             fadeOut(navFade)
                                     // Back out of a chat: the reverse, so the list is
                                     // revealed rather than pushed in from the left.
+                                    // Solid on the way out too. Fading the outgoing
+                                    // chat let the list show through it while it slid,
+                                    // so closing dissolved instead of moving and the
+                                    // pair read as "opening animates, closing does not".
+                                    // The list is drawn behind this container, so it
+                                    // needs no enter transition; the chat carries the
+                                    // whole move as one opaque surface.
                                     targetState == "list" && initialState == "chat" ->
-                                        fadeIn(navFade) togetherWith
-                                            androidx.compose.animation.slideOutVertically(navSlide) { it } +
-                                            fadeOut(navFade)
+                                        androidx.compose.animation.EnterTransition.None togetherWith
+                                            androidx.compose.animation.slideOutVertically(navSlide) { it }
                                     to > from ->
                                         slideInHorizontally(navSlide) { it } togetherWith
                                             slideOutHorizontally(navSlide) { -it }
