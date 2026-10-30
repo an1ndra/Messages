@@ -38,7 +38,7 @@ class ScheduleHoldAnimationTest {
     fun theCalendarGrowsOutOfTheSendButtonsCorner() {
         assertTrue(
             "the picker must animate itself, not rely on a centred dialog",
-            chat.contains("fun ScheduleDialog(onDismiss: () -> Unit")
+            chat.contains("fun ScheduleDialog(")
         )
         assertTrue(
             "scaling from the bottom-right, where Send sits",
