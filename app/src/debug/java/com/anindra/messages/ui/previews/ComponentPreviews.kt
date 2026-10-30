@@ -28,6 +28,7 @@ import com.anindra.messages.ui.ReactionChips
 import com.anindra.messages.ui.InputBar
 import com.anindra.messages.ui.MessageDetailsDialog
 import com.anindra.messages.ui.OwnerAvatar
+import com.anindra.messages.ui.ScheduleDialog
 import com.anindra.messages.ui.PersonAvatar
 import com.anindra.messages.ui.ProvideShimmer
 import com.anindra.messages.ui.RowPosition
@@ -649,4 +650,18 @@ private fun SkeletonRowsPreview() {
 @Composable
 private fun OwnerAvatarPreview() {
     OwnerAvatar(size = 56.dp)
+}
+
+
+/** The schedule picker's window: it grows out of the send button's corner. */
+@PreviewLightDark
+@Preview(name = "Schedule dialog", showBackground = true, widthDp = 360)
+@Composable
+private fun ScheduleDialogPreview() {
+    ScheduleDialog(onDismiss = {}) {
+        androidx.compose.material3.Text(
+            "Select date",
+            modifier = androidx.compose.ui.Modifier.padding(24.dp)
+        )
+    }
 }

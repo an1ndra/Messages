@@ -26,11 +26,35 @@ class ScheduleHoldAnimationTest {
     fun holdingShrinksTheCircle() {
         assertTrue(
             "the send circle must scale down while held",
-            chat.contains("targetValue = if (holding) 0.45f else 1f")
+            chat.contains("targetValue = if (holding) 0.8f else 1f")
         )
         assertTrue(
             "and the scale must be applied to the button",
             chat.contains("scaleX = holdScale") && chat.contains("scaleY = holdScale")
+        )
+    }
+
+    @Test
+    fun theCalendarGrowsOutOfTheSendButtonsCorner() {
+        assertTrue(
+            "the picker must animate itself, not rely on a centred dialog",
+            chat.contains("fun ScheduleDialog(onDismiss: () -> Unit")
+        )
+        assertTrue(
+            "scaling from the bottom-right, where Send sits",
+            chat.contains("transformOrigin = TransformOrigin(1f, 1f)")
+        )
+        assertTrue(
+            "and it must start small rather than appear",
+            chat.contains("targetValue = if (shown) 1f else 0.35f")
+        )
+    }
+
+    @Test
+    fun theShrinkStaysGentle() {
+        assertTrue(
+            "0.45 made the button nearly vanish; 0.8 reads as a press",
+            chat.contains("targetValue = if (holding) 0.8f else 1f")
         )
     }
 
