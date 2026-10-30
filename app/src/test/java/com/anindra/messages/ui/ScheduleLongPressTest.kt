@@ -31,9 +31,12 @@ class ScheduleLongPressTest {
     @Test
     fun holdingSendOpensTheSchedulePicker() {
         assertTrue(
-            "hold-Send must stay wired to the schedule picker",
-            Regex("""onLongClick = if \(schedulingEnabled\) onSchedule else null""")
-                .containsMatchIn(chat)
+            "hold-Send starts the shrink, which then opens the picker",
+            chat.contains("onLongClick = if (schedulingEnabled) ({ holding = true }) else null")
+        )
+        assertTrue(
+            "and the reproducibility probe is the picker being opened afterwards",
+            chat.contains("onSchedule()")
         )
     }
 

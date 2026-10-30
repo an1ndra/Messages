@@ -1409,6 +1409,21 @@ class MainActivity : FragmentActivity() {
                                 val from = routeDepth[initialState] ?: 0
                                 val to = routeDepth[targetState] ?: 0
                                 when {
+                                    // Opening a chat covers the list from below, the
+                                    // way Google Messages does it: the list stays
+                                    // put and the chat rises over it, rather than
+                                    // both sliding sideways like a page push.
+                                    // Solid while it rises: fading the incoming chat
+                                    // in made the list show through its own bubbles.
+                                    targetState == "chat" && initialState == "list" ->
+                                        androidx.compose.animation.slideInVertically(navSlide) { it } togetherWith
+                                            fadeOut(navFade)
+                                    // Back out of a chat: the reverse, so the list is
+                                    // revealed rather than pushed in from the left.
+                                    targetState == "list" && initialState == "chat" ->
+                                        fadeIn(navFade) togetherWith
+                                            androidx.compose.animation.slideOutVertically(navSlide) { it } +
+                                            fadeOut(navFade)
                                     to > from ->
                                         slideInHorizontally(navSlide) { it } togetherWith
                                             slideOutHorizontally(navSlide) { -it }

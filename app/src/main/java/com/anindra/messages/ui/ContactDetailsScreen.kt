@@ -342,10 +342,6 @@ onBack: () -> Unit,
                                 notifState = it
                                 vm.setConversationNotificationsEnabled(conversationId, it)
                             },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-                            )
                         )
                     }
                 )
@@ -375,10 +371,6 @@ onBack: () -> Unit,
                                 bubbleEnabled = it
                                 vm.settings.setBubblesFor(conversationId, it)
                             },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-                            )
                         )
                     }
                 )
