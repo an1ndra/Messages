@@ -263,6 +263,23 @@ private fun LazyListState.bottomSnapshot(): BottomSnapshot {
     )
 }
 
+/**
+ * The draft to put back in the composer, or null when there is nothing to
+ * restore.
+ *
+ * The restore used to be a bare `{ … }` lambda literal that was never invoked, so
+ * a saved draft silently vanished on re-open ("one Draft message I open in chat
+ * Text field I cant see them it disappere"). Keeping the decision as a function
+ * is what makes it testable off-device: an empty or already-loaded draft restores
+ * nothing, and anything else is put back exactly once.
+ */
+internal fun restoredDraft(saved: String?, alreadyLoaded: Boolean): String? =
+    when {
+        alreadyLoaded -> null
+        saved.isNullOrBlank() -> null
+        else -> saved
+    }
+
 /** Rows of slack above the first loaded message that count as "at the top". */
 private const val EARLIER_EDGE_ROWS = 3
 
@@ -1352,7 +1369,12 @@ fun ChatScreen(
         draftLoaded = false
     }
     DisposableEffect(conversationId) {
-        onDispose { vm.setViewedConversation(0L) }
+        onDispose {
+            // Closes the exit-animation window the script measures: this must happen
+            // after the transition, never in the same frame as the route change.
+            android.util.Log.d("NavTransition", "chat closed")
+            vm.setViewedConversation(0L)
+        }
     }
     // Content handed over by an external share, handled in one effect so the text
     // and the media are read from the same composition. Sharing text with an
@@ -1373,15 +1395,12 @@ fun ChatScreen(
         com.anindra.messages.sms.ForegroundTracker.setOpenConversation(convo?.address)
     }
     LaunchedEffect(convo) {
-        if (convo != null && !draftLoaded) {
-            {
-                val savedDraft = convo!!.draft
-                if (savedDraft.isNotBlank()) {
-                    draft = savedDraft
-                }
-            }
+        val current = convo
+        val restored = restoredDraft(current?.draft, draftLoaded)
+        if (restored != null) draft = restored
+        if (current != null && !draftLoaded) {
             draftLoaded = true
-            numberIsBlocked = vm.isNumberBlocked(convo!!.address)
+            numberIsBlocked = vm.isNumberBlocked(current.address)
         }
     }
 
@@ -2586,11 +2605,14 @@ fun phoneKey(address: String): String =
 fun isPhoneNumber(address: String): Boolean =
     com.anindra.messages.data.AddressIdentity.isReplyable(address)
 
-fun openUrl(context: android.content.Context, url: String) {
-    val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return
-    try {
+/** Opens a web link; false when nothing on the phone can take it. */
+fun openUrl(context: android.content.Context, url: String): Boolean {
+    val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return false
+    return try {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+        true
     } catch (_: Exception) {
+        false
     }
 }
 

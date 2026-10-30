@@ -60,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,6 +106,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.animateColorAsState
 import com.anindra.messages.ui.SettingsSearch
+import com.anindra.messages.ui.SettingsLayout
 
 private enum class PinDialogMode { SET, ENTER }
 
@@ -118,6 +120,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenTrash: () -> Unit = {},
     onOpenAdvanced: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
     onOpenSpamBlocked: () -> Unit = {},
     onOpenScheduled: () -> Unit = {},
     onOpenRoute: (String) -> Unit = {},
@@ -127,6 +130,7 @@ fun SettingsScreen(
     BackHandler(onBack = onBack)
 
     val context = LocalContext.current
+    val appInfo = remember(context) { com.anindra.messages.crash.CrashReporter.appInfo(context) }
 
     val revision by vm.settings.revision.collectAsState()
 
@@ -347,6 +351,43 @@ fun SettingsScreen(
                 modifier = Modifier.padding(padding)
             )
         } else {
+        // Content that arrives late (SIM label, scheduled count) grows the list
+        // and clamps a restored offset without restoring it. Re-apply the offset
+        // the reader left until the height settles, then leave them alone.
+        LaunchedEffect(scrollState) {
+            val target = scrollState.value
+            // Nothing was remembered, so there is nothing to restore: without
+            // this early exit the loop kept pulling a fresh screen back to the
+            // top while the reader was already scrolling down to About.
+            if (target > 0) {
+                // A reader parked at the end expects to stay there when the rest
+                // of the list finishes loading; anyone else keeps their offset.
+                var wasAtEnd = target >= scrollState.maxValue - 1
+                var previousMax = -1
+                var stableFrames = 0
+                var frames = 0
+                // One unchanged frame is not "settled": a subtitle that arrives
+                // a few frames later grows the list after this loop would have
+                // given up. Wait for the height to hold still before handing
+                // control back.
+                while (frames < 300) {
+                    withFrameNanos { }
+                    frames++
+                    // Once the reader touches the list the restore is over; it
+                    // exists to survive late data, not to overrule them.
+                    if (scrollState.isScrollInProgress) break
+                    val max = scrollState.maxValue
+                    val wanted = when {
+                        wasAtEnd -> max
+                        else -> target.coerceAtMost(max)
+                    }
+                    stableFrames = if (max == previousMax) stableFrames + 1 else 0
+                    previousMax = max
+                    if (scrollState.value != wanted) scrollState.scrollTo(wanted)
+                    if (stableFrames >= 60 && scrollState.value == wanted) break
+                }
+            }
+        }
         Column(
             Modifier
                 .padding(padding)
@@ -565,20 +606,20 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_advanced_subtitle),
                     onClick = onOpenAdvanced
                 )
+                SettingsRow(
+                    title = stringResource(R.string.settings_about_title),
+                    subtitle = stringResource(
+                        R.string.settings_about_version,
+                        appInfo.versionName,
+                        appInfo.versionCode
+                    ),
+                    onClick = onOpenAbout
+                )
             }
 
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                stringResource(R.string.messages_footer),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .padding(bottom = 16.dp)
-            )
+            // The version footer that used to close this screen is gone; keep
+            // the same breathing room under the last card.
+            Spacer(Modifier.height(SettingsLayout.BOTTOM_GAP))
         }
         }
         }

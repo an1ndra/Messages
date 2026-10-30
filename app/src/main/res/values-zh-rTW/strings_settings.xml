@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">免費且私密的簡訊應用程式。訊息、備份和記錄都留在這支手機上。</string>
+    <string name="about_developer_format">開發者：%1$s</string>
+    <string name="about_diagnostics_body">瀏覽器會開啟 GitHub 問題表單，並預先填入摘要和診斷資訊：應用程式版本、主題、通知、SIM 詳細資料。絕不會包含訊息記錄、聯絡人和你的電話號碼。</string>
+    <string name="about_issue_subtitle">附加診斷資訊：應用程式資訊、設定和 SIM。絕不包含你的訊息。</string>
+    <string name="about_issue_title">回報問題</string>
+    <string name="about_licences_intro">Messages 以這些開放原始碼專案為基礎。</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">開放原始碼授權</string>
+    <string name="about_open_failed">沒有可開啟此連結的瀏覽器。</string>
+    <string name="about_open_with_diagnostics">附診斷資訊開啟</string>
+    <string name="about_open_without">不附診斷開啟</string>
+    <string name="about_share_subtitle">把這個應用程式推薦給朋友。</string>
+    <string name="about_share_text">來看看 Messages —— 免費離線簡訊應用程式，無廣告、無帳號、無追蹤。\n\n下載：%1$s\nF-Droid：%2$s</string>
+    <string name="about_share_title">分享 Messages</string>
+    <string name="about_star_subtitle">喜歡這個應用程式？給它一個星號，幫助其他人找到它。</string>
+    <string name="about_star_title">在 GitHub 上加星號</string>
+    <string name="settings_about_title">關於</string>
+    <string name="settings_about_version">版本 %1$s (%2$d)</string>
     <string name="settings_general">一般設定</string>
     <string name="settings_choose_theme">選擇主題</string>
     <string name="settings_pin_enter">4-16 位數字密碼</string>

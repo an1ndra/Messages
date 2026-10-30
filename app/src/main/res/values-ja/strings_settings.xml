@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">無料でプライベートなSMSアプリです。メッセージ、バックアップ、履歴はこの端末内に留まります。</string>
+    <string name="about_developer_format">開発: %1$s</string>
+    <string name="about_diagnostics_body">ブラウザでGitHubのIssueフォームが開き、概要と診断情報が入力済みになります: アプリのバージョン、テーマ、通知、SIM情報。メッセージ履歴、連絡先、電話番号は含まれません。</string>
+    <string name="about_issue_subtitle">診断情報(アプリ情報・設定・SIM)を添付します。メッセージは含まれません。</string>
+    <string name="about_issue_title">問題を報告</string>
+    <string name="about_licences_intro">Messages はこれらのオープンソースプロジェクトで作られています。</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">オープンソースライセンス</string>
+    <string name="about_open_failed">このリンクを開けるブラウザがありません。</string>
+    <string name="about_open_with_diagnostics">診断情報付きで開く</string>
+    <string name="about_open_without">付けずに開く</string>
+    <string name="about_share_subtitle">このアプリを友だちに教える。</string>
+    <string name="about_share_text">Messages をチェック — 広告なし、アカウント不要、追跡なしの無料オフラインSMSアプリ。\n\nダウンロード: %1$s\nF-Droid: %2$s</string>
+    <string name="about_share_title">Messagesを共有</string>
+    <string name="about_star_subtitle">気に入ったらスターをお願いします。他の人が見つけやすくなります。</string>
+    <string name="about_star_title">GitHubでスターを付ける</string>
+    <string name="settings_about_title">アプリについて</string>
+    <string name="settings_about_version">バージョン %1$s (%2$d)</string>
     <string name="settings_general">一般設定</string>
     <string name="settings_choose_theme">テーマを選択</string>
     <string name="settings_pin_enter">4〜16桁のPIN</string>

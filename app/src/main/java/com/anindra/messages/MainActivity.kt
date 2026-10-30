@@ -85,6 +85,7 @@ import com.anindra.messages.ui.LinkSettingsScreen
 import com.anindra.messages.ui.InboxSettingsScreen
 import com.anindra.messages.ui.ScheduledMessagesScreen
 import com.anindra.messages.ui.NewChatScreen
+import com.anindra.messages.ui.AboutScreen
 import com.anindra.messages.ui.SettingsScreen
 import com.anindra.messages.ui.AdvancedSettingsScreen
 import com.anindra.messages.ui.AccessibilityScreen
@@ -1228,6 +1229,7 @@ class MainActivity : FragmentActivity() {
                 var settingsJumpTarget by remember { mutableStateOf<Int?>(null) }
                 val advancedScroll = rememberScrollState()
                 val accessibilityScroll = rememberScrollState()
+                val aboutScroll = rememberScrollState()
                 val contactDetailsScroll = rememberScrollState()
                 val inboxScroll = rememberScrollState()
                 val settingsRevision by vm.settings.revision.collectAsState()
@@ -1356,13 +1358,14 @@ class MainActivity : FragmentActivity() {
                         "auto-delete" -> navRoute = "advanced"
                         "links" -> navRoute = "advanced"
                         "advanced" -> navRoute = "settings"
+                        "about" -> navRoute = "settings"
                         "accessibility" -> navRoute = "advanced"
                         "spam" -> navRoute = "settings"
                         else -> navRoute = "list"
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "inbox" to 2, "advanced" to 2, "accessibility" to 3,
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "inbox" to 2, "advanced" to 2, "about" to 2, "accessibility" to 3,
                         "notif-settings" to 3, "auto-delete" to 3, "links" to 3,
                         "transfer-log" to 3,
                         "add-people" to 3, "mms-check" to 3, "scheduled" to 2)
@@ -1402,6 +1405,10 @@ class MainActivity : FragmentActivity() {
                     AnimatedContent(
                         targetState = navRoute,
                         transitionSpec = {
+                            // Permanent marker: the chat-close regression script reads
+                            // this and the teardown line to prove the exit window is
+                            // not skipped.
+                            android.util.Log.d("NavTransition", "$initialState to $targetState")
                             if (vm.a11y.reduceMotionEnabled) {
                                 androidx.compose.animation.EnterTransition.None togetherWith
                                     androidx.compose.animation.ExitTransition.None
@@ -1420,10 +1427,16 @@ class MainActivity : FragmentActivity() {
                                             fadeOut(navFade)
                                     // Back out of a chat: the reverse, so the list is
                                     // revealed rather than pushed in from the left.
+                                    // Solid on the way out too. Fading the outgoing
+                                    // chat let the list show through it while it slid,
+                                    // so closing dissolved instead of moving and the
+                                    // pair read as "opening animates, closing does not".
+                                    // The list is drawn behind this container, so it
+                                    // needs no enter transition; the chat carries the
+                                    // whole move as one opaque surface.
                                     targetState == "list" && initialState == "chat" ->
-                                        fadeIn(navFade) togetherWith
-                                            androidx.compose.animation.slideOutVertically(navSlide) { it } +
-                                            fadeOut(navFade)
+                                        androidx.compose.animation.EnterTransition.None togetherWith
+                                            androidx.compose.animation.slideOutVertically(navSlide) { it }
                                     to > from ->
                                         slideInHorizontally(navSlide) { it } togetherWith
                                             slideOutHorizontally(navSlide) { -it }
@@ -1466,6 +1479,7 @@ class MainActivity : FragmentActivity() {
                                         onOpenSpamBlocked = { navRoute = "spam" },
                                         onOpenInbox = { navRoute = "inbox" },
                                         onOpenScheduled = { navRoute = "scheduled" },
+                                        onOpenAbout = { navRoute = "about" },
                                         scrollState = settingsScroll
                                     ) else com.anindra.messages.ui.legacy.SettingsScreen(
                                         onOpenRoute = { route -> navRoute = route },
@@ -1476,6 +1490,7 @@ class MainActivity : FragmentActivity() {
                                         onOpenAdvanced = { navRoute = "advanced" },
                                         onOpenSpamBlocked = { navRoute = "spam" },
                                         onOpenScheduled = { navRoute = "scheduled" },
+                                        onOpenAbout = { navRoute = "about" },
                                         scrollState = settingsScroll
                                     )
                                     "inbox" -> InboxSettingsScreen(
@@ -1506,6 +1521,11 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         entries = vm.transferLog.value,
                                         onBack = { navRoute = "advanced" },
                                         onClear = { vm.clearTransferLog() }
+                                    )
+                                    "about" -> AboutScreen(
+                                        requestDiagnostics = { onReady -> vm.diagnosticsReport(onReady) },
+                                        onBack = { navRoute = "settings" },
+                                        scrollState = aboutScroll
                                     )
                                     "scheduled" -> ScheduledMessagesScreen(
                                         vm = vm,

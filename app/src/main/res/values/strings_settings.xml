@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="about_description">A free, private text-messaging app. Messages, backups and history stay on this phone.</string>
+    <string name="about_developer_format">Developed by %1$s</string>
+    <string name="about_diagnostics_body">A GitHub issue form will open in your browser with a pre-filled summary and diagnostics: app version, theme, notifications and SIM details. Message history, contacts and your phone number are never included.</string>
+    <string name="about_issue_subtitle">Attaches diagnostics: app info, settings and SIM. Never your messages.</string>
+    <string name="about_issue_title">Report an issue</string>
+    <string name="about_licences_intro">Messages is built on these open-source projects.</string>
+    <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
+    <string name="about_licences_title">Open-source licences</string>
+    <string name="about_open_failed">No browser is available to open this link.</string>
+    <string name="about_open_with_diagnostics">Open with diagnostics</string>
+    <string name="about_open_without">Open without</string>
+    <string name="about_share_subtitle">Tell a friend about this app.</string>
+    <string name="about_share_text">Check out Messages — a free, offline SMS app with no ads, no account and no tracking.\n\nDownload: %1$s\nF-Droid: %2$s</string>
+    <string name="about_share_title">Share Messages</string>
+    <string name="about_star_subtitle">Like the app? Give it a star, it helps others find it.</string>
+    <string name="about_star_title">Star on GitHub</string>
+    <string name="settings_about_title">About</string>
+    <string name="settings_about_version">Version %1$s (%2$d)</string>
     <string name="settings_general">General settings</string>
     <string name="settings_choose_theme">Choose theme</string>
     <string name="settings_pin_enter">4-16 digit PIN</string>
