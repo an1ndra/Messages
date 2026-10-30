@@ -61,7 +61,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import com.anindra.messages.ui.theme.ComposerAttachDot
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -197,6 +196,8 @@ import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.Motion
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.graphics.toArgb
+import com.anindra.messages.ui.theme.composerAttachDot
 import com.anindra.messages.ui.theme.motionSpring
 import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.ui.theme.chatBar
@@ -3158,6 +3159,15 @@ internal fun InputBar(
                                 stringResource(R.string.icon_attach),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            val dot = MaterialTheme.colorScheme.composerAttachDot
+                            // A dot colour has no text equivalent, so it names
+                            // itself; scripts/test-composer-dot.sh uses this.
+                            LaunchedEffect(dot) {
+                                android.util.Log.d(
+                                    "ComposerDot",
+                                    "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
+                                )
+                            }
                             Box(
                                 Modifier
                                     .align(Alignment.TopEnd)
@@ -3169,7 +3179,7 @@ internal fun InputBar(
                                     .size(8.dp)
                                     .background(MaterialTheme.colorScheme.inputPill, CircleShape)
                                     .padding(1.5.dp)
-                                    .background(ComposerAttachDot, CircleShape)
+                                    .background(dot, CircleShape)
                             )
                         }
                     }
