@@ -61,6 +61,19 @@ class AvatarThemeResolutionTest {
     }
 
     @Test
+    fun thePaletteIsTheSameInEveryScheme() {
+        // GM parity: a contact's chip does not change with the theme, only its
+        // ink does. A contrast floor on the fill broke this (#347 review).
+        val key = "555-1212"
+        assertEquals(avatarColor(key), avatarColor(key))
+        assertFalse(
+            "no surface-dependent selection: that is the removed contrast floor",
+            read("src/main/java/com/anindra/messages/ui/Components.kt")
+                .contains("avatarColorOn(")
+        )
+    }
+
+    @Test
     fun theAvatarPaintsThroughTheSharedRule() {
         val components = read("src/main/java/com/anindra/messages/ui/Components.kt")
         assertTrue(

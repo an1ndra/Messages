@@ -78,6 +78,14 @@ val GoogleBlue = Color(0xFF1A73E8)
 // one (measured #FFFFFF and #202124 off the running app). Tinting the fills
 // toward the theme — what #347 round 2 did under Dynamic — desaturates them into
 // mud on a muted wallpaper palette, so the fills stay fixed.
+//
+// A contrast floor on the fill was built and then removed on purpose (#347
+// review). GM ships these fills against a white page at 1.78–2.98:1 and against
+// a dark one at 2.09–2.95:1 for the low-chroma entries; it leans on chromatic
+// contrast and the silhouette instead of luminance. Enforcing 3:1 turned every
+// light-mode chip into a saturated mid tone, which no longer looked like
+// Messages, so matching GM wins over the floor. Do not re-add it without asking:
+// the palette, the hash-based choice and the night-mode ink are the contract.
 private val avatarGlyphInkDark = Color(0xFF202124)
 
 internal fun avatarGlyphInk(cs: androidx.compose.material3.ColorScheme): Color =
