@@ -24,7 +24,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.anindra.messages.ui.theme.Motion
-import com.anindra.messages.ui.theme.contrastRatio
 import com.anindra.messages.R
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import androidx.compose.material3.MaterialTheme
@@ -74,62 +73,21 @@ private val avatarColors = listOf(
 
 val GoogleBlue = Color(0xFF1A73E8)
 
-// Google Messages keeps the same bright palette on both schemes and only flips
-// the silhouette ink (measured #FFFFFF and #202124 off the running app). Tinting
-// the fills toward the theme — #347 round 2 — desaturates them into mud on a
-// muted wallpaper palette, so the fills stay in the palette.
+// Google Messages paints the same bright palette on both schemes and only
+// flips the silhouette ink: white on the light scheme, a near-black on the dark
+// one (measured #FFFFFF and #202124 off the running app). Tinting the fills
+// toward the theme — what #347 round 2 did under Dynamic — desaturates them into
+// mud on a muted wallpaper palette, so the fills stay fixed.
 private val avatarGlyphInkDark = Color(0xFF202124)
 
-/** WCAG floor for a non-text UI component against its surface. */
-internal const val AVATAR_MIN_CONTRAST = 3f
+internal fun avatarGlyphInk(cs: androidx.compose.material3.ColorScheme): Color =
+    if (cs.background.luminance() < 0.5f) avatarGlyphInkDark else Color.White
 
-/** The contact's own palette colour, before any contrast consideration. */
 fun avatarColor(key: String): Color {
     var h = 0
     for (c in key) h = h * 31 + c.code
     return avatarColors[Math.abs(h) % avatarColors.size]
 }
-
-/**
- * The colour this contact actually paints, guaranteed to be readable on
- * [surface].
- *
- * GM ships the palette as-is and lets a chip blend into the page — pink on white
- * measures 2.58:1, cyan 1.78:1 — because chromatic contrast and the silhouette
- * carry the meaning. That works until the wallpaper palette is muted, where a
- * low-chroma entry (brown, indigo, blue-grey) is neither lighter nor a different
- * hue from the page. So the contact keeps its own colour when it passes the
- * floor, and otherwise takes the nearest palette entry that does; the walk is
- * deterministic, so a contact doesn't change colour between recompositions.
- */
-internal fun avatarColorOn(key: String, surface: Color): Color {
-    val start = avatarColors.indexOf(avatarColor(key)).coerceAtLeast(0)
-    var best = avatarColors[start]
-    var bestRatio = contrastRatio(best, surface)
-    if (bestRatio >= AVATAR_MIN_CONTRAST) return best
-    for (step in 1 until avatarColors.size) {
-        val candidate = avatarColors[(start + step) % avatarColors.size]
-        val ratio = contrastRatio(candidate, surface)
-        if (ratio >= AVATAR_MIN_CONTRAST) return candidate
-        if (ratio > bestRatio) {
-            best = candidate
-            bestRatio = ratio
-        }
-    }
-    return best
-}
-
-/**
- * The silhouette ink for [fill]: whichever of the near-black and white reads
- * better on that colour. Read from the fill rather than the night mode, because
- * the fill is what it sits on.
- */
-internal fun avatarInkOn(fill: Color): Color =
-    if (contrastRatio(avatarGlyphInkDark, fill) >= contrastRatio(Color.White, fill)) {
-        avatarGlyphInkDark
-    } else {
-        Color.White
-    }
 
 /** Google-Messages style contact avatar: contact photo if available, else silhouette. */
 @Composable
@@ -138,12 +96,10 @@ fun PersonAvatar(
     size: Dp = 48.dp,
     modifier: Modifier = Modifier,
     backgroundColor: Color? = null,
-    tint: Color? = null,
-    /** What the chip is painted on, so the fill can keep a readable contrast. */
-    onSurface: Color = MaterialTheme.colorScheme.background
+    tint: Color? = null
 ) {
-    val fill = backgroundColor ?: avatarColorOn(key, onSurface)
-    val glyphTint = tint ?: avatarInkOn(fill)
+    val fill = backgroundColor ?: avatarColor(key)
+    val glyphTint = tint ?: avatarGlyphInk(MaterialTheme.colorScheme)
     val context = LocalContext.current
     val photoUri by produceState<String?>(initialValue = photoUriCache.get(key), key) {
         val hit = photoUriCache.get(key)

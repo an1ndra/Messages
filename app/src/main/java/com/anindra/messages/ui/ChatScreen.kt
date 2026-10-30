@@ -337,9 +337,7 @@ internal fun ChatBubble(
         ) {
             PersonAvatar(
                 msg.address.ifBlank { senderName ?: "" },
-                size = 18.dp,
-                // Sits on the incoming bubble, not the page.
-                onSurface = MaterialTheme.colorScheme.surfaceContainerHighest
+                size = 18.dp
             )
             Spacer(Modifier.width(6.dp))
             Text(

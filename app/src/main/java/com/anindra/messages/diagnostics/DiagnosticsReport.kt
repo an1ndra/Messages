@@ -61,12 +61,8 @@ data class AppDetails(
     val resolvedBackground: String = "",
     /** The "Start chat" pill's content on its container, as "#RRGGBB on #RRGGBB". */
     val resolvedStartChat: String = "",
-    /**
-     * A sample contact's avatar fill on the page, and the contrast between them:
-     * "#RRGGBB on #RRGGBB (x.x:1)". The chip's readability is a pixel property,
-     * so the report states the pair it resolves through.
-     */
-    val resolvedAvatar: String = "",
+    /** The silhouette ink an avatar resolves to under the current scheme. */
+    val resolvedAvatarInk: String = "",
     val notificationsEnabled: Boolean,
     val fontFamily: String = "",
     val sendSound: Boolean = false,
@@ -247,7 +243,7 @@ object DiagnosticsReport {
             // The rule is the same for every theme, so this line is the same for
             // every theme: it states the rule rather than reporting a per-mode
             // value that would make two identical builds look different.
-            appendLine("Avatar: ${data.appDetails.resolvedAvatar}")
+            appendLine("Avatar ink: ${data.appDetails.resolvedAvatarInk} on the fixed GM palette")
             appendLine("Font: ${data.appDetails.fontFamily}")
             appendLine("Accessibility mode: ${data.appDetails.accessibilityMode}")
             if (data.appDetails.accessibilityMode) {
@@ -621,7 +617,7 @@ object DiagnosticsReport {
                     context, settings.themeMode, themeIsDark(settings.themeMode, systemIsDark())
                 )
             ),
-            resolvedAvatar = resolvedAvatarHex(
+            resolvedAvatarInk = resolvedAvatarInkHex(
                 settings.themeMode,
                 systemIsDark(),
                 com.anindra.messages.ui.theme.dynamicSchemeOrNull(
@@ -715,12 +711,12 @@ internal fun resolvedStartChatHex(
 }
 
 /**
- * A sample contact's avatar fill and its contrast against the page, resolved
- * through the same [com.anindra.messages.ui.avatarColorOn] the avatar itself
- * paints with — a second copy of the selection rule here is how a report starts
- * disagreeing with what was drawn.
+ * The silhouette ink an avatar paints with, resolved through the same
+ * [com.anindra.messages.ui.avatarGlyphInk] the avatar itself uses — a second
+ * copy of the night-mode branch here is how a report starts disagreeing with
+ * what was drawn.
  */
-internal fun resolvedAvatarHex(
+internal fun resolvedAvatarInkHex(
     mode: String,
     systemIsDark: Boolean,
     dynamic: androidx.compose.material3.ColorScheme? = null
@@ -728,16 +724,10 @@ internal fun resolvedAvatarHex(
     val scheme = schemeFor(
         mode, A11yOptions.DISABLED, themeIsDark(mode, systemIsDark), dynamic
     )
+    val ink = com.anindra.messages.ui.avatarGlyphInk(scheme)
     fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
-    fun hex(c: androidx.compose.ui.graphics.Color) =
-        "#%02X%02X%02X".format(channel(c.red), channel(c.green), channel(c.blue))
-    val fill = com.anindra.messages.ui.avatarColorOn(SAMPLE_AVATAR_KEY, scheme.background)
-    val ratio = com.anindra.messages.ui.theme.contrastRatio(fill, scheme.background)
-    return "${hex(fill)} on ${hex(scheme.background)} (" + "%.1f".format(ratio) + ":1)"
+    return "#%02X%02X%02X".format(channel(ink.red), channel(ink.green), channel(ink.blue))
 }
-
-/** A stable contact key, so the report's sample does not move between runs. */
-private const val SAMPLE_AVATAR_KEY = "555-1212"
 
 /** The device's night setting, read without a Context. */
 private fun systemIsDark(): Boolean =
