@@ -3079,11 +3079,34 @@ internal fun InputBar(
             animationSpec = motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
             label = "sendPresence"
         )
+        // Holding Send shrinks the circle, and the date picker opens once it has
+        // finished shrinking — the press reads as "this is doing something"
+        // instead of the calendar appearing under a finger that is still down.
+        var holding by remember { mutableStateOf(false) }
+        val holdScale by animateFloatAsState(
+            targetValue = if (holding) 0.45f else 1f,
+            animationSpec = motionTween(sendReduceMotion, Motion.DURATION_MEDIUM1),
+            label = "sendHold"
+        )
+        LaunchedEffect(holding) {
+            if (!holding) return@LaunchedEffect
+            // Let the shrink finish and sit small for a beat: at the animation's
+            // own duration the circle was back to full size by the time the
+            // dialog covered it, so the press looked like nothing happened.
+            delay(Motion.DURATION_MEDIUM1.toLong() + 220L)
+            android.util.Log.d("ScheduleHold", "shrunk, opening the picker")
+            onSchedule()
+            holding = false
+        }
         Spacer(Modifier.width(8.dp))
         Box(
             Modifier
                 .size(48.dp)
-                .graphicsLayer { alpha = present }
+                .graphicsLayer {
+                    alpha = present
+                    scaleX = holdScale
+                    scaleY = holdScale
+                }
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
                 // Holding Send is the only way in, as it was before #386: the
                 // reporter was told where scheduling lives instead of being
@@ -3091,7 +3114,7 @@ internal fun InputBar(
                 .combinedClickable(
                     enabled = ready,
                     onClick = onSend,
-                    onLongClick = if (schedulingEnabled) onSchedule else null
+                    onLongClick = if (schedulingEnabled) ({ holding = true }) else null
                 )
                 .semantics { contentDescription = sendLabel },
             contentAlignment = Alignment.Center
