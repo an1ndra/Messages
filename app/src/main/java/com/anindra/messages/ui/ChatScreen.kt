@@ -116,6 +116,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -2366,18 +2367,19 @@ internal fun ChatSchedulePicker(
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = scheduledDateMillis ?: System.currentTimeMillis()
         )
-        DatePickerDialog(
-            onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton(onClick = { onDateSelected(datePickerState.selectedDateMillis ?: System.currentTimeMillis()) }) {
-                    Text(stringResource(R.string.chat_next))
+        ScheduleDialog(onDismiss = onDismiss) {
+            Column {
+                DatePicker(state = datePickerState, modifier = Modifier.fillMaxWidth())
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
+                    TextButton(onClick = {
+                        onDateSelected(datePickerState.selectedDateMillis ?: System.currentTimeMillis())
+                    }) { Text(stringResource(R.string.chat_next)) }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
             }
-        ) {
-            DatePicker(state = datePickerState)
         }
     } else if (step == "time") {
         val timePickerState = rememberTimePickerState(
@@ -2385,26 +2387,90 @@ internal fun ChatSchedulePicker(
             initialMinute = scheduledMinute,
             is24Hour = is24HourFormat(context)
         )
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(stringResource(R.string.chat_select_time)) },
-            text = { TimePicker(state = timePickerState) },
-            confirmButton = {
-                TextButton(onClick = {
-                    onTimeSelected(timePickerState.hour, timePickerState.minute)
-                    onSchedule(
-                        com.anindra.messages.data.ScheduledTime.resolve(
-                            scheduledDateMillis ?: System.currentTimeMillis(),
-                            timePickerState.hour,
-                            timePickerState.minute
+        ScheduleDialog(onDismiss = onDismiss, maxWidth = 400.dp) {
+            Column(
+                // The clock face is left-aligned inside its own 328dp box; without
+                // this the whole picker sat against the dialog's left edge and the
+                // AM/PM column was clipped on the right.
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    stringResource(R.string.chat_select_time),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
+                )
+                TimePicker(state = timePickerState)
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
+                    TextButton(onClick = {
+                        onTimeSelected(timePickerState.hour, timePickerState.minute)
+                        onSchedule(
+                            com.anindra.messages.data.ScheduledTime.resolve(
+                                scheduledDateMillis ?: System.currentTimeMillis(),
+                                timePickerState.hour,
+                                timePickerState.minute
+                            )
                         )
-                    )
-                }) { Text(stringResource(R.string.chat_schedule)) }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
+                    }) { Text(stringResource(R.string.chat_schedule)) }
+                }
             }
-        )
+        }
+    }
+}
+
+/**
+ * The schedule picker's window, growing out of the bottom-right corner — the
+ * corner the send button sits in — instead of fading in centred. A Material
+ * `DatePickerDialog` cannot do that: its window is centred and does not expose a
+ * transform origin, so the picker is drawn here and animated itself.
+ */
+@Composable
+internal fun ScheduleDialog(
+    onDismiss: () -> Unit,
+    maxWidth: Dp = 420.dp,
+    content: @Composable () -> Unit
+) {
+    val reduceMotion = LocalReduceMotion.current
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val scale by animateFloatAsState(
+        targetValue = if (shown) 1f else 0.35f,
+        animationSpec = motionTween(reduceMotion, Motion.DURATION_MEDIUM2),
+        label = "scheduleScale"
+    )
+    val fade by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
+        label = "scheduleFade"
+    )
+    // usePlatformDefaultWidth = false: the platform caps dialog width below the
+    // DatePicker's 360dp minimum, which clipped the Saturday column. The Surface
+    // sets its own width instead.
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier
+                .fillMaxWidth(0.96f)
+                .widthIn(max = maxWidth)
+                .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = fade
+                transformOrigin = TransformOrigin(1f, 1f)
+            }
+        ) {
+            content()
+        }
     }
 }
 
@@ -3079,11 +3145,34 @@ internal fun InputBar(
             animationSpec = motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
             label = "sendPresence"
         )
+        // Holding Send shrinks the circle, and the date picker opens once it has
+        // finished shrinking — the press reads as "this is doing something"
+        // instead of the calendar appearing under a finger that is still down.
+        var holding by remember { mutableStateOf(false) }
+        val holdScale by animateFloatAsState(
+            targetValue = if (holding) 0.8f else 1f,
+            animationSpec = motionTween(sendReduceMotion, Motion.DURATION_MEDIUM1),
+            label = "sendHold"
+        )
+        LaunchedEffect(holding) {
+            if (!holding) return@LaunchedEffect
+            // Let the shrink finish and sit small for a beat: at the animation's
+            // own duration the circle was back to full size by the time the
+            // dialog covered it, so the press looked like nothing happened.
+            delay(Motion.DURATION_MEDIUM1.toLong() + 220L)
+            android.util.Log.d("ScheduleHold", "shrunk, opening the picker")
+            onSchedule()
+            holding = false
+        }
         Spacer(Modifier.width(8.dp))
         Box(
             Modifier
                 .size(48.dp)
-                .graphicsLayer { alpha = present }
+                .graphicsLayer {
+                    alpha = present
+                    scaleX = holdScale
+                    scaleY = holdScale
+                }
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
                 // Holding Send is the only way in, as it was before #386: the
                 // reporter was told where scheduling lives instead of being
@@ -3091,7 +3180,7 @@ internal fun InputBar(
                 .combinedClickable(
                     enabled = ready,
                     onClick = onSend,
-                    onLongClick = if (schedulingEnabled) onSchedule else null
+                    onLongClick = if (schedulingEnabled) ({ holding = true }) else null
                 )
                 .semantics { contentDescription = sendLabel },
             contentAlignment = Alignment.Center
