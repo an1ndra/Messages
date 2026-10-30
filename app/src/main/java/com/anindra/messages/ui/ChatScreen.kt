@@ -263,6 +263,23 @@ private fun LazyListState.bottomSnapshot(): BottomSnapshot {
     )
 }
 
+/**
+ * The draft to put back in the composer, or null when there is nothing to
+ * restore.
+ *
+ * The restore used to be a bare `{ … }` lambda literal that was never invoked, so
+ * a saved draft silently vanished on re-open ("one Draft message I open in chat
+ * Text field I cant see them it disappere"). Keeping the decision as a function
+ * is what makes it testable off-device: an empty or already-loaded draft restores
+ * nothing, and anything else is put back exactly once.
+ */
+internal fun restoredDraft(saved: String?, alreadyLoaded: Boolean): String? =
+    when {
+        alreadyLoaded -> null
+        saved.isNullOrBlank() -> null
+        else -> saved
+    }
+
 /** Rows of slack above the first loaded message that count as "at the top". */
 private const val EARLIER_EDGE_ROWS = 3
 
@@ -1373,15 +1390,12 @@ fun ChatScreen(
         com.anindra.messages.sms.ForegroundTracker.setOpenConversation(convo?.address)
     }
     LaunchedEffect(convo) {
-        if (convo != null && !draftLoaded) {
-            {
-                val savedDraft = convo!!.draft
-                if (savedDraft.isNotBlank()) {
-                    draft = savedDraft
-                }
-            }
+        val current = convo
+        val restored = restoredDraft(current?.draft, draftLoaded)
+        if (restored != null) draft = restored
+        if (current != null && !draftLoaded) {
             draftLoaded = true
-            numberIsBlocked = vm.isNumberBlocked(convo!!.address)
+            numberIsBlocked = vm.isNumberBlocked(current.address)
         }
     }
 
