@@ -37,6 +37,7 @@
     <string name="settings_delivery_reports_subtitle">Узнавать, когда SMS-сообщение доставлено</string>
     <string name="settings_mark_read_title">Отметить все как прочитанные</string>
     <string name="settings_bubbles_title">Пузыри</string>
+    <string name="contact_bubble_conversation">Показывать в пузыре</string>
     <string name="settings_mark_read_subtitle">Убрать значки непрочитанных для всех переписок</string>
     <string name="settings_mark_read_confirm_title">Отметить все как прочитанные?</string>
     <string name="settings_mark_read_confirm_message">Значки непрочитанных будут убраны во всех переписках. Это действие нельзя отменить.</string>

@@ -37,6 +37,7 @@
     <string name="settings_delivery_reports_subtitle">Erfahren, wann eine SMS-Nachricht zugestellt wurde</string>
     <string name="settings_mark_read_title">Alle als gelesen markieren</string>
     <string name="settings_bubbles_title">Blasen</string>
+    <string name="contact_bubble_conversation">Als Blase anzeigen</string>
     <string name="settings_mark_read_subtitle">Ungelesen-Markierungen für alle Unterhaltungen entfernen</string>
     <string name="settings_mark_read_confirm_title">Alle als gelesen markieren?</string>
     <string name="settings_mark_read_confirm_message">Die Ungelesen-Markierungen aller Unterhaltungen werden entfernt. Das lässt sich nicht rückgängig machen.</string>

@@ -69,7 +69,7 @@ class BadgeRepostWiringTest {
         )
         assertTrue(
             "the re-post feeds from the unread summaries, silently",
-            Regex("""show\(context, address, body, silentRepost = true\)""").containsMatchIn(sms)
+            Regex("""show\(context, row\.address, row\.snippet, silentRepost = true\)""").containsMatchIn(sms)
         )
     }
 

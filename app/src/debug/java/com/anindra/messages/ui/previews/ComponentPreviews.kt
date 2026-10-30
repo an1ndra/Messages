@@ -27,6 +27,7 @@ import com.anindra.messages.ui.ReactionBar
 import com.anindra.messages.ui.ReactionChips
 import com.anindra.messages.ui.InputBar
 import com.anindra.messages.ui.MessageDetailsDialog
+import com.anindra.messages.ui.OwnerAvatar
 import com.anindra.messages.ui.PersonAvatar
 import com.anindra.messages.ui.ProvideShimmer
 import com.anindra.messages.ui.RowPosition
@@ -639,4 +640,13 @@ private fun SkeletonRowsPreview() {
             repeat(4) { SkeletonConversationRow() }
         }
     }
+}
+
+
+/** The owner's avatar: profile photo when the device has one, else the silhouette. */
+@PreviewLightDark
+@Preview(name = "Owner avatar", showBackground = true, widthDp = 120)
+@Composable
+private fun OwnerAvatarPreview() {
+    OwnerAvatar(size = 56.dp)
 }

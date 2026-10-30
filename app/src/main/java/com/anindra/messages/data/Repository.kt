@@ -1986,18 +1986,35 @@ class Repository(private val context: Context) {
      *  live receive path posts for — not blocked, not deleted, still unread —
      *  with the snippet the list itself shows, so a locked thread previews
      *  '@Lock' and a picture 'Photo' exactly as everywhere else. */
-    fun unreadForRepostBlocking(): List<Pair<String, String>> = runOnIo {
-        val out = mutableListOf<Pair<String, String>>()
+    fun unreadForRepostBlocking(): List<UnreadForRepost> = runOnIo {
+        val out = mutableListOf<UnreadForRepost>()
         db.readableDatabase.rawQuery(
-            """SELECT address, snippet FROM conversations
+            """SELECT address, snippet, id, timestamp FROM conversations
                WHERE deleted_at=0 AND blocked=0 AND unread_count>0 AND snippet!=''
                ORDER BY timestamp DESC""",
             null
         ).use { c ->
-            while (c.moveToNext()) out.add(c.getString(0) to (c.getString(1) ?: ""))
+            while (c.moveToNext()) {
+                out.add(
+                    UnreadForRepost(
+                        address = c.getString(0),
+                        snippet = c.getString(1) ?: "",
+                        conversationId = c.getLong(2),
+                        newest = c.getLong(3)
+                    )
+                )
+            }
         }
         out
     }
+
+    /** One conversation worth re-posting after a boot or an app update. */
+    data class UnreadForRepost(
+        val address: String,
+        val snippet: String,
+        val conversationId: Long,
+        val newest: Long
+    )
 
     suspend fun getConversationNotificationsEnabled(conversationId: Long): Boolean = runOnIoAsync {
         var enabled = true

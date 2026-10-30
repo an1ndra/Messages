@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
@@ -112,6 +113,10 @@ onBack: () -> Unit,
     var soundDialog by remember { mutableStateOf(false) }
     var pendingSound by remember(convoSound) { mutableStateOf(convoSound) }
     var showBlockDialog by remember { mutableStateOf(false) }
+    val bubbleRevision by vm.settings.revision.collectAsState()
+    var bubbleEnabled by remember(bubbleRevision) {
+        mutableStateOf(vm.settings.bubblesFor(conversationId))
+    }
     var numberIsBlocked by remember { mutableStateOf(false) }
     LaunchedEffect(address) { numberIsBlocked = vm.isNumberBlocked(address) }
 
@@ -359,6 +364,23 @@ onBack: () -> Unit,
                         )
                     },
                     onClick = { pendingSound = convoSound; soundDialog = true }
+                )
+                DetailCardRow(
+                    icon = Icons.Rounded.ChatBubble,
+                    title = stringResource(R.string.contact_bubble_conversation),
+                    trailing = {
+                        Switch(
+                            checked = bubbleEnabled,
+                            onCheckedChange = {
+                                bubbleEnabled = it
+                                vm.settings.setBubblesFor(conversationId, it)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
                 )
                 // Blocking one member would block the whole thread, so a group has
                 // nothing here to block.
