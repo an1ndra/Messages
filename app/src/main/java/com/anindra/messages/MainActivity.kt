@@ -390,7 +390,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun restoreMessage(messageId: Long) =
         scope.launch { repo.restoreMessageSuspend(messageId) }
 
-    fun markAllRead() = scope.launch { repo.markAllReadSuspend() }
+    fun markAllRead() {
+        val ctx = getApplication<android.app.Application>()
+        scope.launch {
+            repo.markAllReadSuspend()
+            // Marking read used to leave the shade untouched, so the
+            // notifications for those very messages stayed up (#345 follow-up).
+            com.anindra.messages.sms.NotificationHelper.cancelAll(ctx)
+        }
+    }
 
     /** Applies FLAG_SECURE immediately so privacy mode toggles without restart. */
     fun setPrivacyMode(activity: Activity, enabled: Boolean) {

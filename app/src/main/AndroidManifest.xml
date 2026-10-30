@@ -155,6 +155,10 @@
         </receiver>
 
         <receiver
+            android:name=".sms.NotificationDismissReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".sms.BootReceiver"
             android:exported="false">
             <intent-filter>

@@ -61,6 +61,8 @@ class SettingsStore(context: Context) {
         const val KEY_UNREAD_AT_TOP_ENABLED = "unread_at_top_enabled"
         const val KEY_SCHEDULED_MESSAGES_ENABLED = "scheduled_messages_enabled"
         const val KEY_PINCH_ZOOM = "pinch_zoom_enabled"
+        const val KEY_NOTIF_CLEARED_PREFIX = "notif_cleared_"
+        const val KEY_BUBBLE_OFF_PREFIX = "bubble_off_"
         const val KEY_DELAYED_SENDING_ENABLED = "delayed_sending_enabled"
         const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_HIGHLIGHT_LINKS = "highlight_links"
@@ -268,6 +270,31 @@ class SettingsStore(context: Context) {
      * off means the gesture is not installed at all, so a two-finger drag
      * scrolls like any other drag.
      */
+    /**
+     * The newest message timestamp the user has already dealt with for this
+     * conversation: they either dismissed its notification or read it.
+     *
+     * A boot or an app update re-posts unread conversations so the launcher
+     * badge survives, but without this it also resurrects notifications the user
+     * swiped away — the #345 follow-up reported exactly that.
+     */
+    fun notifClearedUpTo(conversationId: Long): Long =
+        prefs.getLong(KEY_NOTIF_CLEARED_PREFIX + conversationId, 0L)
+
+    fun markNotifCleared(conversationId: Long, upTo: Long) {
+        if (upTo <= notifClearedUpTo(conversationId)) return
+        prefs.edit().putLong(KEY_NOTIF_CLEARED_PREFIX + conversationId, upTo).apply()
+    }
+
+    /** Whether this conversation's notifications may float as a bubble. */
+    fun bubblesFor(conversationId: Long): Boolean =
+        !prefs.getBoolean(KEY_BUBBLE_OFF_PREFIX + conversationId, false)
+
+    fun setBubblesFor(conversationId: Long, enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_BUBBLE_OFF_PREFIX + conversationId, !enabled).apply()
+        _revision.value++
+    }
+
     var pinchZoomEnabled: Boolean
         get() = prefs.getBoolean(KEY_PINCH_ZOOM, true)
         set(v) { prefs.edit().putBoolean(KEY_PINCH_ZOOM, v).apply(); _revision.value++ }

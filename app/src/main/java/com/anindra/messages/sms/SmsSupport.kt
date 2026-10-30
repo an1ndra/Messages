@@ -547,7 +547,12 @@ object NotificationHelper {
         // A conversation bubble needs a published long-lived shortcut; when one
         // cannot be published (shortcut updates are rate limited) the same
         // notification still posts, just without a bubble.
-        val bubbleConversationId = convoId?.takeIf { NotificationBubble.shouldAttach(it, replyable) }
+        val bubbleConversationId = convoId?.takeIf {
+            // The platform's own bubbles page is the app-wide switch; this is
+            // the per-conversation one, set from the chat's details screen.
+            app.repository.settings.bubblesFor(it) &&
+                NotificationBubble.shouldAttach(it, replyable)
+        }
         val bubbleReady = bubbleConversationId != null &&
             NotificationBubble.ensureShortcut(context, bubbleConversationId, from, senderName)
 
@@ -584,6 +589,22 @@ object NotificationHelper {
                 android.util.Log.w("NotificationBubble", "attach conversation $bubbleConversationId: $e")
             }
         }
+        if (convoId != null) {
+            // Swiping the notification away is the user saying they are done
+            // with it; the boot/update re-post must not bring it back.
+            val dismiss = Intent(context, NotificationDismissReceiver::class.java)
+                .setPackage(context.packageName)
+                .putExtra(NotificationDismissReceiver.EXTRA_CONVERSATION_ID, convoId)
+            builder.setDeleteIntent(
+                PendingIntent.getBroadcast(
+                    context,
+                    reqCode + 3000,
+                    dismiss,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                )
+            )
+        }
+
         // A heads-up popup is a peek: on a locked screen the panel stays asleep.
         // Only a full-screen intent is treated as a user-initiated wake, so this
         // is what turns the screen on. Privacy mode suppresses it because the
@@ -611,8 +632,12 @@ object NotificationHelper {
      *  blocked senders, muted conversations and POST_NOTIFICATIONS all opt out. */
     fun repostUnread(context: Context) {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        for ((address, body) in app.repository.unreadForRepostBlocking()) {
-            show(context, address, body, silentRepost = true)
+        val settings = app.repository.settings
+        for (row in app.repository.unreadForRepostBlocking()) {
+            // A notification the user dismissed stays dismissed. Only a message
+            // newer than the moment they cleared it earns a fresh one.
+            if (settings.notifClearedUpTo(row.conversationId) >= row.newest) continue
+            show(context, row.address, row.snippet, silentRepost = true)
         }
     }
 
@@ -709,6 +734,23 @@ object NotificationHelper {
         try {
             NotificationManagerCompat.from(context).notify("failed", failId, notif)
         } catch (_: SecurityException) {
+        }
+    }
+
+    /**
+     * Drops every notification the app is showing. "Mark all as read" needs
+     * this: the messages it just read still had live notifications, so the
+     * shade kept claiming unread messages that no longer existed.
+     */
+    fun cancelAll(context: Context) {
+        val nm = context.getSystemService(android.app.NotificationManager::class.java) ?: return
+        // Cancelling a notification collapses its bubble. A live bubble is a
+        // conversation the user has open in front of them, so "mark all as read"
+        // must read everything else and leave that one alone — the same rule
+        // clearConversationNotification applies to a single thread.
+        nm.activeNotifications.forEach { posted ->
+            if (BubbleHost.holds(posted.id.toLong())) return@forEach
+            nm.cancel(posted.tag, posted.id)
         }
     }
 

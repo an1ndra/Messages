@@ -37,6 +37,7 @@
     <string name="settings_delivery_reports_subtitle">معرفة متى يتم تسليم رسالة SMS</string>
     <string name="settings_mark_read_title">وضع علامة على الكل كمقروء</string>
     <string name="settings_bubbles_title">الفقاعات</string>
+    <string name="contact_bubble_conversation">إظهار في فقاعة</string>
     <string name="settings_mark_read_subtitle">إزالة علامات الرسائل غير المقروءة لجميع المحادثات</string>
     <string name="settings_mark_read_confirm_title">وضع علامة على الكل كمقروء؟</string>
     <string name="settings_mark_read_confirm_message">ستتم إزالة علامات غير المقروء من جميع المحادثات. لا يمكن التراجع عن ذلك.</string>
