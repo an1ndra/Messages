@@ -3,6 +3,7 @@ package com.anindra.messages.ui
 import com.anindra.messages.data.CalendarSystem
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.Locale
 
 /**
@@ -34,6 +35,31 @@ internal fun formatDate(
     val effective =
         if (calendar == CalendarSystem.AUTO) CalendarSystem.forLanguage(locale) else calendar
     return renderer.render(style, effective, ts, locale, zone)
+}
+
+/**
+ * The day picked in the schedule dialog, written in the reader's calendar.
+ *
+ * Null when nothing is picked or the calendar is Gregorian: the platform's grid
+ * already draws that one, and a second copy of the same date would just be
+ * noise. The selection is UTC midnight of the picked day, so it is formatted in
+ * UTC — the device zone would shift it to the previous day west of Greenwich.
+ */
+internal fun pickedDateInCalendar(
+    selectedUtcMillis: Long?,
+    calendar: CalendarSystem,
+    locale: Locale = Locale.getDefault(),
+    renderer: DateRenderer = platformDateRenderer
+): String? {
+    if (selectedUtcMillis == null || calendar == CalendarSystem.GREGORIAN) return null
+    return formatDate(
+        selectedUtcMillis,
+        DateStyle.DayWithYear,
+        calendar,
+        locale,
+        ZoneOffset.UTC,
+        renderer
+    )
 }
 
 /** The year [ts] falls in under [calendar], for the "same year?" label choice. */
