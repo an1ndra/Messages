@@ -97,6 +97,25 @@ class AboutRowPlacementTest {
     }
 
     @Test
+    fun theScrollRestoreNeverFightsTheReader() {
+        // Reported: opening General settings and scrolling down to About
+        // snapped back to Notifications. The restore effect was re-applying a
+        // remembered offset of 0 while the list settled. Two guards keep it from
+        // ever overruling the reader, and both are timing-dependent enough that
+        // only the source can pin them.
+        for ((name, src) in listOf("Settings" to settings, "legacy settings" to legacy)) {
+            assertTrue(
+                "$name must skip the restore when nothing was remembered",
+                Regex("""if \(target > 0\) \{""").containsMatchIn(src)
+            )
+            assertTrue(
+                "$name must stop restoring once the reader scrolls",
+                src.contains("if (scrollState.isScrollInProgress) break")
+            )
+        }
+    }
+
+    @Test
     fun backGoesToSettingsRatherThanClosingTheApp() {
         val screen = source("ui/AboutScreen.kt")
         assertTrue(

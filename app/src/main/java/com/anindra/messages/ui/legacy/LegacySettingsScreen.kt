@@ -356,32 +356,36 @@ fun SettingsScreen(
         // the reader left until the height settles, then leave them alone.
         LaunchedEffect(scrollState) {
             val target = scrollState.value
-            // A reader parked at the end of the list expects to stay there when
-            // the rest of it finishes loading; anyone else keeps their offset.
-            var wasAtEnd = target >= scrollState.maxValue - 1
-            var previousMax = -1
-            var stableFrames = 0
-            var frames = 0
-            // One unchanged frame is not "settled": a subtitle that arrives a
-            // few frames later grows the list after this loop would have given
-            // up, which is exactly how the list ended up short. Wait for the
-            // height to hold still for ~200ms before handing control back.
-            while (frames < 300) {
-                withFrameNanos { }
-                frames++
-                val max = scrollState.maxValue
-                val wanted = when {
-                    wasAtEnd -> max
-                    else -> target.coerceAtMost(max)
+            // Nothing was remembered, so there is nothing to restore: without
+            // this early exit the loop kept pulling a fresh screen back to the
+            // top while the reader was already scrolling down to About.
+            if (target > 0) {
+                // A reader parked at the end expects to stay there when the rest
+                // of the list finishes loading; anyone else keeps their offset.
+                var wasAtEnd = target >= scrollState.maxValue - 1
+                var previousMax = -1
+                var stableFrames = 0
+                var frames = 0
+                // One unchanged frame is not "settled": a subtitle that arrives
+                // a few frames later grows the list after this loop would have
+                // given up. Wait for the height to hold still before handing
+                // control back.
+                while (frames < 300) {
+                    withFrameNanos { }
+                    frames++
+                    // Once the reader touches the list the restore is over; it
+                    // exists to survive late data, not to overrule them.
+                    if (scrollState.isScrollInProgress) break
+                    val max = scrollState.maxValue
+                    val wanted = when {
+                        wasAtEnd -> max
+                        else -> target.coerceAtMost(max)
+                    }
+                    stableFrames = if (max == previousMax) stableFrames + 1 else 0
+                    previousMax = max
+                    if (scrollState.value != wanted) scrollState.scrollTo(wanted)
+                    if (stableFrames >= 60 && scrollState.value == wanted) break
                 }
-                stableFrames = if (max == previousMax) stableFrames + 1 else 0
-                previousMax = max
-                // The reader's own drag always wins; this only outlasts data
-                // that arrives after the screen is up (a scheduled count).
-                if (!scrollState.isScrollInProgress && scrollState.value != wanted) {
-                    scrollState.scrollTo(wanted)
-                }
-                if (stableFrames >= 60 && scrollState.value == wanted) break
             }
         }
         Column(
