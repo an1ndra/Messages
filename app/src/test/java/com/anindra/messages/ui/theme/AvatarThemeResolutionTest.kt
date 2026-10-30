@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.ui.avatarColor
-import com.anindra.messages.ui.avatarGlyphInk
+import com.anindra.messages.ui.avatarInkOn
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -42,22 +42,13 @@ class AvatarThemeResolutionTest {
     )
 
     @Test
-    fun theInkFlipsWithTheScheme() {
-        assertEquals("#FFFFFF", hex(avatarGlyphInk(LightColors)))
-        assertEquals("#202124", hex(avatarGlyphInk(DarkColors)))
-        assertEquals("#202124", hex(avatarGlyphInk(AmoledColors)))
-    }
-
-    @Test
-    fun theInkReadsTheBackgroundNotTheMode() {
-        // A wallpaper palette the user happens to like is the authority, not the
-        // mode string: this is the bug a duplicated branch would reintroduce.
-        val darkWallpaper = darkColorScheme(background = Color(0xFF101014))
-        val lightWallpaper = lightColorScheme(background = Color(0xFFFDFBFF))
-        assertEquals("#202124", hex(avatarGlyphInk(darkWallpaper)))
-        assertEquals("#FFFFFF", hex(avatarGlyphInk(lightWallpaper)))
-        assertTrue(darkWallpaper.background.luminance() < 0.5f)
-        assertFalse(lightWallpaper.background.luminance() < 0.5f)
+    fun theInkIsChosenFromTheFillItSitsOn() {
+        // The night mode is no longer the input: a bright chip needs the dark
+        // silhouette in either scheme, which is what GM paints in dark mode and
+        // what white-on-pastel was getting wrong in light.
+        assertEquals("#202124", hex(avatarInkOn(Color(0xFFFF63B8))))
+        assertEquals("#202124", hex(avatarInkOn(Color(0xFF4ECDE6))))
+        assertEquals("#FFFFFF", hex(avatarInkOn(Color(0xFF3F51B5))))
     }
 
     @Test
@@ -65,11 +56,11 @@ class AvatarThemeResolutionTest {
         val components = read("src/main/java/com/anindra/messages/ui/Components.kt")
         assertTrue(
             "the avatar must resolve its ink through the shared function",
-            components.contains("avatarGlyphInk(MaterialTheme.colorScheme)")
+            components.contains("val glyphTint = tint ?: avatarInkOn(fill)")
         )
         assertTrue(
-            "the fill must be the palette colour, never a theme tint",
-            components.contains("val fill = backgroundColor ?: avatarColor(key)")
+            "the fill must come from the palette, chosen by contrast, never a theme tint",
+            components.contains("val fill = backgroundColor ?: avatarColorOn(key, onSurface)")
         )
         assertFalse(
             "the harmonizer is gone; a theme-tinted fill is the bug it caused",
@@ -84,11 +75,11 @@ class AvatarThemeResolutionTest {
         )
         assertTrue(
             "the report must state the ink",
-            diagnostics.contains("\"Avatar ink: \${data.appDetails.resolvedAvatarInk} on the fixed GM palette\"")
+            diagnostics.contains("\"Avatar: \${data.appDetails.resolvedAvatar}\"")
         )
         assertTrue(
             "the ink must be resolved through the same function the avatar uses",
-            diagnostics.contains("com.anindra.messages.ui.avatarGlyphInk(scheme)")
+            diagnostics.contains("com.anindra.messages.ui.avatarColorOn(SAMPLE_AVATAR_KEY, scheme.background)")
         )
     }
 
