@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,6 +64,8 @@ import com.anindra.messages.R
  */
 internal object AboutLinks {
     const val REPO_URL = "https://github.com/an1ndra/Messages"
+    /** The developer chip opens this, so the credit is also a way to reach them. */
+    const val PROFILE_URL = "https://github.com/an1ndra"
     /** Where the signed APKs live, for anyone who does not use a store. */
     const val RELEASE_URL = "https://github.com/an1ndra/Messages/releases/latest"
     const val FDROID_URL = "https://f-droid.org/packages/com.anindra.messages/"
@@ -74,6 +77,14 @@ internal object AboutLinks {
      * diagnostics are trimmed to fit before the URL is built.
      */
     const val ISSUE_BODY_LIMIT = 4096
+
+    /**
+     * A prefill body that survives percent-encoding, pasted into a URL and handed
+     * to whatever browser is installed. 4 KB is legal for GitHub but readers
+     * reported a broken page, so the encoded form is kept well under what any
+     * link handler or server truncates.
+     */
+    const val ISSUE_URL_LIMIT = 2000
 
     /**
      * Shown in the licences dialog, grouped by licence: four libraries under one
@@ -140,18 +151,31 @@ private fun condenseChannels(report: String): String {
     return out.toString().trimEnd()
 }
 
-internal fun diagnosticsForIssue(report: String, limit: Int = AboutLinks.ISSUE_BODY_LIMIT): String {
-    val trimmed = condenseChannels(report.trimEnd())
-    if (trimmed.length <= limit) return trimmed
-    val note = "\n(truncated)"
-    val room = limit - note.length
-    val kept = StringBuilder()
-    for (line in trimmed.lineSequence()) {
-        if (kept.length + line.length + 1 > room) break
-        kept.append(line).append('\n')
+internal fun diagnosticsForIssue(
+    report: String,
+    limit: Int = AboutLinks.ISSUE_BODY_LIMIT,
+    urlLimit: Int = AboutLinks.ISSUE_URL_LIMIT
+): String {
+    val lines = condenseChannels(report.trimEnd()).lines()
+    fun fits(count: Int): Boolean {
+        val candidate = lines.take(count).joinToString("\n").trimEnd()
+        val note = noteFor(count < lines.size)
+        // Both budgets count the note: it is part of what the reader sends.
+        if (candidate.length + note.length > limit) return false
+        return AboutLinks.queryValue(candidate).length + AboutLinks.queryValue(note).length <= urlLimit
     }
-    return kept.trimEnd().toString() + note
+    if (fits(lines.size)) return lines.joinToString("\n").trimEnd()
+    // Longest prefix that still encodes into a link that opens.
+    var lo = 0
+    var hi = lines.size
+    while (lo < hi) {
+        val mid = (lo + hi + 1) / 2
+        if (fits(mid)) lo = mid else hi = mid - 1
+    }
+    return lines.take(lo).joinToString("\n").trimEnd() + noteFor(lo < lines.size)
 }
+
+private fun noteFor(cut: Boolean): String = if (cut) "\n(truncated - full report in Diagnostics)" else ""
 
 private fun openAboutUrl(context: Context, url: String) {
     android.util.Log.d("AboutAction", "open $url")
@@ -237,7 +261,9 @@ internal fun AboutScreen(
         ) {
             Spacer(Modifier.height(SettingsLayout.TOP_GAP))
 
-            Identity(versionName, versionCode)
+            Identity(versionName, versionCode) {
+                openAboutUrl(context, AboutLinks.PROFILE_URL)
+            }
 
             Spacer(Modifier.height(8.dp))
 
@@ -392,7 +418,11 @@ private val ICON_PLATE = 136.dp
 private val ICON_GLYPH = 96.dp
 
 @Composable
-internal fun Identity(versionName: String, versionCode: Long) {
+internal fun Identity(
+    versionName: String,
+    versionCode: Long,
+    onDeveloperClick: () -> Unit
+) {
     LaunchedEffect(Unit) {
         android.util.Log.d(
             "AboutIcon",
@@ -440,7 +470,8 @@ internal fun Identity(versionName: String, versionCode: Long) {
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.clickable(onClick = onDeveloperClick)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
