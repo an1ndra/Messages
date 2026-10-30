@@ -61,7 +61,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import com.anindra.messages.ui.theme.ComposerAttachDot
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -197,6 +196,8 @@ import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.Motion
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.graphics.toArgb
+import com.anindra.messages.ui.theme.composerAttachDot
 import com.anindra.messages.ui.theme.motionSpring
 import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.ui.theme.chatBar
@@ -226,6 +227,45 @@ private val EMOJIS = MessageReactions.EMOJI
 
 private const val INITIAL_CHUNK = 40
 private const val AUTO_CHUNK = 40
+/**
+ * Whether older history should be loaded now.
+ *
+ * Only when the reader has actually reached the top of the loaded window — a few
+ * rows of slack so the placeholder under the first message counts. Loading while
+ * parked at the bottom prepends rows nobody asked for: the visible ones shift for
+ * a frame before the follow-bottom snap pulls them back, which on a long thread
+ * is one visible flash per chunk.
+ */
+internal fun shouldLoadEarlier(totalItems: Int, firstVisibleIndex: Int): Boolean =
+    totalItems > 0 && firstVisibleIndex <= EARLIER_EDGE_ROWS
+
+/**
+ * What the list needs to know about its own bottom: whether the *last* row is on
+ * screen, and where its bottom edge sits.
+ *
+ * Comparing a row's bottom with the viewport is not enough — a row clipped by the
+ * fold has its bottom on the fold too. Only the last row of the list can prove
+ * the list has reached its end.
+ */
+private data class BottomSnapshot(
+    val totalItems: Int,
+    val lastRowShown: Boolean,
+    val bottomEdge: Int
+)
+
+private fun LazyListState.bottomSnapshot(): BottomSnapshot {
+    val info = layoutInfo
+    val lastRow = info.visibleItemsInfo.lastOrNull()
+    return BottomSnapshot(
+        totalItems = info.totalItemsCount,
+        lastRowShown = lastRow != null && lastRow.index == info.totalItemsCount - 1,
+        bottomEdge = if (lastRow == null) Int.MAX_VALUE else lastRow.offset + lastRow.size
+    )
+}
+
+/** Rows of slack above the first loaded message that count as "at the top". */
+private const val EARLIER_EDGE_ROWS = 3
+
 private const val AUTO_CAP = 400
 private const val LOAD_EARLIER_STEP = 200
 
@@ -1196,14 +1236,30 @@ fun ChatScreen(
             if (it is DragInteraction.Start) userDraggedList = true
         }
     }
+    // Park the list on the newest row, and keep it there while the content settles.
+    //
+    // scrollToItem(Int.MAX_VALUE) is clamped to the rows laid out *so far*, so a
+    // first pass over a list that has not composed yet scrolls nowhere. The old
+    // version snapped on every layout change for a fixed four seconds, which was
+    // a race: a slow first query (300 rows landing on a busy database) outlived
+    // the window and the chat opened at the top of the loaded window. It now
+    // re-snaps only while the newest row is still off screen, and stops as soon
+    // as it is — which also ends the run of snaps that made the list twitch after
+    // a picture finished decoding.
     LaunchedEffect(conversationId, newestId, focusedSearchId) {
         if (focusedSearchId != null || newestId == null) return@LaunchedEffect
-        withTimeoutOrNull(4_000L) {
-            snapshotFlow {
+        withTimeoutOrNull(10_000L) {
+            snapshotFlow { listState.bottomSnapshot() }.collect { snapshot ->
                 val info = listState.layoutInfo
-                info.totalItemsCount to info.visibleItemsInfo.sumOf { it.size }
-            }.collect {
-                if (!userDraggedList) listState.scrollToItem(Int.MAX_VALUE)
+                if (snapshot.totalItems == 0) return@collect
+                if (!userDraggedList) {
+                    val inset = info.viewportEndOffset - info.afterContentPadding
+                    if (snapshot.lastRowShown && snapshot.bottomEdge <= inset + 1) {
+                        hasScrolledToBottom = true
+                    } else {
+                        listState.scrollToItem(Int.MAX_VALUE)
+                    }
+                }
             }
         }
     }
@@ -1240,18 +1296,31 @@ fun ChatScreen(
         delay(if (reduceMotion) 3500L else 1900L)
         searchFlashOn = false
     }
-    // Load chunks while pinned near the bottom so inserting rows doesn't jump the
-    // view; a search hit older than the window loads without waiting, in bigger
-    // steps, so the chat reaches what the home list found.
-    LaunchedEffect(pageLimit, totalCount, searchWantsOlder) {
-        if (!pendingEarlier && !searchWantsOlder) return@LaunchedEffect
+    // Older history is loaded when the reader reaches the top of the loaded
+    // window, never while the list is parked at the bottom. Prepending there
+    // shifts every visible row for a frame and the follow-bottom snap pulls it
+    // back, so a 300-message chat flashed seven times in 2.5s on open — the
+    // "chat flickers every time I open it" report.
+    var earlierRequest by remember(conversationId) { mutableIntStateOf(0) }
+    // The tick is what the load effect waits for; pageLimit changing below must
+    // not count as a new request, or every load would ask for the next one and
+    // the chat would page in its whole history on open again.
+    var handledRequest by remember(conversationId) { mutableIntStateOf(0) }
+    LaunchedEffect(conversationId) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            info.totalItemsCount to (info.visibleItemsInfo.firstOrNull()?.index ?: Int.MAX_VALUE)
+        }.collect { (total, first) ->
+            // Not before the open has landed on the newest message: until then
+            // the list still sits at the top of the rows that just loaded, which
+            // is exactly the state that used to trigger a preload.
+            if (hasScrolledToBottom && shouldLoadEarlier(total, first)) earlierRequest++
+        }
+    }
+    LaunchedEffect(pageLimit, totalCount, searchWantsOlder, earlierRequest) {
         if (!searchWantsOlder) {
-            val nearBottom: () -> Boolean = {
-                val info = listState.layoutInfo
-                val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-                info.totalItemsCount == 0 || last >= info.totalItemsCount - 2
-            }
-            while (!nearBottom()) delay(80)
+            if (earlierRequest == handledRequest || !pendingEarlier) return@LaunchedEffect
+            handledRequest = earlierRequest
         }
         delay(240)
         // Hold the first visible row across the prepend. LazyColumn re-anchors by
@@ -1262,6 +1331,10 @@ fun ChatScreen(
         val first = listState.layoutInfo.visibleItemsInfo.firstOrNull()
         val anchor = first?.let { PrependAnchor(it.key, it.offset) }
         val rowsBefore = chatRows.size
+        // Permanent report: older history must not load while a chat is merely
+        // being opened. scripts/test-chat-open-stability.sh asserts this stays
+        // silent for a conversation opened at the bottom.
+        if (!searchWantsOlder) android.util.Log.d("ChatPreload", "scroll-up load rowsBefore=$rowsBefore")
         pageLimit = (pageLimit + if (searchWantsOlder) LOAD_EARLIER_STEP else AUTO_CHUNK)
             .coerceAtMost(if (searchWantsOlder) totalCount else AUTO_CAP)
         if (anchor != null) {
@@ -3086,6 +3159,15 @@ internal fun InputBar(
                                 stringResource(R.string.icon_attach),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            val dot = MaterialTheme.colorScheme.composerAttachDot
+                            // A dot colour has no text equivalent, so it names
+                            // itself; scripts/test-composer-dot.sh uses this.
+                            LaunchedEffect(dot) {
+                                android.util.Log.d(
+                                    "ComposerDot",
+                                    "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
+                                )
+                            }
                             Box(
                                 Modifier
                                     .align(Alignment.TopEnd)
@@ -3097,7 +3179,7 @@ internal fun InputBar(
                                     .size(8.dp)
                                     .background(MaterialTheme.colorScheme.inputPill, CircleShape)
                                     .padding(1.5.dp)
-                                    .background(ComposerAttachDot, CircleShape)
+                                    .background(dot, CircleShape)
                             )
                         }
                     }

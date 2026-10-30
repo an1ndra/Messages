@@ -284,12 +284,16 @@ val ColorScheme.onSelectedBubble: Color get() = onPrimary
 val ChatMetaWeight: FontWeight = FontWeight.Medium
 
 /**
- * The badge Google Messages draws on the composer's attach button: a #76D1FF
- * dot sitting on the "+" ring's top-right, overlapping it so the ring reads as
- * broken there. Measured off the running app; it is the one colour in the
- * composer that is not a scheme role, so it lives here with the seeds.
+ * The badge Google Messages draws on the composer's attach button: a dot on the
+ * "+" ring's top-right, overlapping it so the ring reads as broken there.
+ *
+ * It used to be pinned to the #76D1FF sampled off GM's *dark* composer. On a
+ * light pill that pale cyan has almost no contrast against the white field —
+ * "in light mode the attach dot colour does not look good" — and a fixed hex is
+ * not a scheme role. It follows the accent now, like every other highlight, so
+ * each theme (and each wallpaper palette, under Dynamic) gets a dot that reads.
  */
-val ComposerAttachDot: Color = Color(0xFF76D1FF)
+val ColorScheme.composerAttachDot: Color get() = primary
 
 /**
  * Whether a theme mode renders as a dark scheme.
