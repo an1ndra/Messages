@@ -2,6 +2,7 @@ package com.anindra.messages.ui
 
 import com.anindra.messages.data.CalendarSystem
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -150,6 +151,42 @@ class CalendarDatesTest {
             listOf(CalendarSystem.JAPANESE),
             CalendarSystem.entries.filter { it.keepsEra }
         )
+    }
+
+    /** The schedule grid is Gregorian, so the hint only exists for the others. */
+    @Test
+    fun thePickerHintIsSkippedForGregorianAndEmptySelections() {
+        assertNull(pickedDateInCalendar(null, CalendarSystem.PERSIAN))
+        assertNull(pickedDateInCalendar(0L, CalendarSystem.GREGORIAN))
+    }
+
+    /**
+     * The platform date picker hands back UTC midnight of the picked day, so the
+     * hint must be formatted in UTC or every zone west of Greenwich shows the
+     * previous day.
+     */
+    @Test
+    fun thePickerHintIsFormattedInUtcAndInTheChosenCalendar() {
+        var zone: ZoneId? = null
+        var style: DateStyle? = null
+        var seen: CalendarSystem? = null
+        var ts: Long? = null
+        val recorder = DateRenderer { s, calendar, millis, _, z ->
+            style = s
+            seen = calendar
+            ts = millis
+            zone = z
+            "converted"
+        }
+        val picked = 1_793_059_200_000L // 2026-10-30T00:00Z
+        assertEquals(
+            "converted",
+            pickedDateInCalendar(picked, CalendarSystem.PERSIAN, Locale.ENGLISH, recorder)
+        )
+        assertEquals(DateStyle.DayWithYear, style)
+        assertEquals(CalendarSystem.PERSIAN, seen)
+        assertEquals(ZoneOffset.UTC, zone)
+        assertEquals(picked, ts)
     }
 
     /**

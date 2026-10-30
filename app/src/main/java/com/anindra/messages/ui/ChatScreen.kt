@@ -2377,6 +2377,19 @@ internal fun ChatSchedulePicker(
         ScheduleDialog(onDismiss = onDismiss) {
             Column {
                 DatePicker(state = datePickerState, modifier = Modifier.fillMaxWidth())
+                // The platform grid only speaks Gregorian; this line says what
+                // the picked day is called in the calendar the user reads.
+                pickedDateInCalendar(
+                    datePickerState.selectedDateMillis,
+                    SettingsStore.calendarSystemOf(context)
+                )?.let { converted ->
+                    Text(
+                        stringResource(R.string.chat_schedule_calendar_hint, converted),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp)
+                    )
+                }
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.End

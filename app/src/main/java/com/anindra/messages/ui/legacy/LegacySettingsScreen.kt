@@ -88,6 +88,8 @@ import com.anindra.messages.ui.formatDateTime
 import com.anindra.messages.ui.is24HourFormat
 import com.anindra.messages.ui.directionalStyle
 import com.anindra.messages.ui.BackupLocation
+import com.anindra.messages.ui.CalendarPickerDialog
+import com.anindra.messages.ui.calendarLabel
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
@@ -129,6 +131,7 @@ fun SettingsScreen(
     val revision by vm.settings.revision.collectAsState()
 
     var themeDialog by remember { mutableStateOf(false) }
+    var calendarDialog by remember { mutableStateOf(false) }
     var markReadDialog by remember { mutableStateOf(false) }
     var notifications by remember(revision) { mutableStateOf(vm.settings.notificationsEnabled) }
     var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
@@ -286,11 +289,7 @@ fun SettingsScreen(
     }
 
 
-    Scaffold(
-        // Same sheet as General settings: page and app bar are surfaceContainer,
-        // rows are inset at the page background.
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
+    LegacySettingsScaffold(screen = "general", topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -393,6 +392,15 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_theme_title),
                     subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_calendar_title),
+                    subtitle = calendarLabel(
+                        vm.settings.calendarChoice,
+                        vm.settings.calendarSystem,
+                        context
+                    ),
+                    onClick = { calendarDialog = true }
                 )
                 val selectedSub = sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }
                 val currentSimLabel = if (selectedSub == null) {
@@ -581,6 +589,14 @@ fun SettingsScreen(
             scrollState = scrollState,
             setHighlight = { highlightTitle = it },
             onHandled = { pendingJump = null }
+        )
+    }
+
+    if (calendarDialog) {
+        CalendarPickerDialog(
+            choice = vm.settings.calendarChoice,
+            onChoose = { vm.settings.calendarChoice = it },
+            onDismiss = { calendarDialog = false }
         )
     }
 
