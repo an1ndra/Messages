@@ -114,9 +114,25 @@ class AboutLinksTest {
     @Test
     fun everyLicenceEntryIsNamed() {
         assertTrue("licences are listed", AboutLinks.LICENCES.isNotEmpty())
-        AboutLinks.LICENCES.forEach { (library, licence) ->
-            assertTrue("library name", library.isNotBlank())
-            assertTrue("$library should name its licence", licence.isNotBlank())
+        for ((licence, libraries) in AboutLinks.LICENCES) {
+            assertTrue("every group names its licence", licence.isNotBlank())
+            assertTrue("$licence should list its libraries", libraries.isNotEmpty())
+            libraries.forEach { assertTrue("library name", it.isNotBlank()) }
         }
+    }
+
+    @Test
+    fun aLicenceIsNamedOnceNoMatterHowManyLibrariesUseIt() {
+        // The dialog draws one heading per licence; repeating the same licence
+        // under every library is what made the old dialog a wall of identical
+        // "Apache License 2.0" lines.
+        val apache = AboutLinks.LICENCES["Apache License 2.0"]
+        requireNotNull(apache) { "the Apache group is missing" }
+        assertTrue("all four libraries sit under it", apache.size >= 4)
+        assertEquals(
+            "each licence appears exactly once",
+            AboutLinks.LICENCES.keys.toList().distinct(),
+            AboutLinks.LICENCES.keys.toList()
+        )
     }
 }

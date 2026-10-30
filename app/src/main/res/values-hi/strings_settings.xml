@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">ब्राउज़र में एक GitHub इश्यू फ़ॉर्म खुलेगा जिसमें सारांश और डायग्नोस्टिक्स पहले से भरे होंगे: ऐप संस्करण, थीम, सूचनाएँ, SIM विवरण। संदेश इतिहास, संपर्क और आपका फ़ोन नंबर कभी शामिल नहीं होते।</string>
     <string name="about_issue_subtitle">डायग्नोस्टिक्स जोड़ता है: ऐप जानकारी, सेटिंग्स और SIM। आपके संदेश कभी नहीं।</string>
     <string name="about_issue_title">समस्या की रिपोर्ट करें</string>
+    <string name="about_licences_intro">Messages इन ओपन-सोर्स प्रोजेक्ट्स पर बना है।</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">ओपन-सोर्स लाइसेंस</string>
     <string name="about_open_failed">यह लिंक खोलने के लिए कोई ब्राउज़र नहीं है।</string>

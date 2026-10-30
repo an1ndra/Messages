@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">瀏覽器會開啟 GitHub 問題表單，並預先填入摘要和診斷資訊：應用程式版本、主題、通知、SIM 詳細資料。絕不會包含訊息記錄、聯絡人和你的電話號碼。</string>
     <string name="about_issue_subtitle">附加診斷資訊：應用程式資訊、設定和 SIM。絕不包含你的訊息。</string>
     <string name="about_issue_title">回報問題</string>
+    <string name="about_licences_intro">Messages 以這些開放原始碼專案為基礎。</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">開放原始碼授權</string>
     <string name="about_open_failed">沒有可開啟此連結的瀏覽器。</string>

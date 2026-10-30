@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">Im Browser öffnet sich ein GitHub-Issue-Formular mit vorausgefüllter Zusammenfassung und Diagnosedaten: App-Version, Design, Benachrichtigungen, SIM-Details. Nachrichtenverlauf, Kontakte und deine Telefonnummer sind nie dabei.</string>
     <string name="about_issue_subtitle">Hängt Diagnosedaten an: App-Infos, Einstellungen, SIM. Nie deine Nachrichten.</string>
     <string name="about_issue_title">Problem melden</string>
+    <string name="about_licences_intro">Messages baut auf diesen Open-Source-Projekten auf.</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">Open-Source-Lizenzen</string>
     <string name="about_open_failed">Kein Browser zum Öffnen dieses Links gefunden.</string>

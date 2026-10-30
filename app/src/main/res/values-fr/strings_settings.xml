@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">Un formulaire d’issue GitHub s’ouvrira dans le navigateur avec un résumé et des diagnostics préremplis : version de l’application, thème, notifications, détails de la SIM. L’historique des messages, les contacts et votre numéro de téléphone ne sont jamais inclus.</string>
     <string name="about_issue_subtitle">Joint les diagnostics : infos de l’application, réglages, SIM. Jamais vos messages.</string>
     <string name="about_issue_title">Signaler un problème</string>
+    <string name="about_licences_intro">Messages repose sur ces projets open source.</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">Licences open source</string>
     <string name="about_open_failed">Aucun navigateur n’est disponible pour ouvrir ce lien.</string>

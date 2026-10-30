@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">Um formulário de issue do GitHub abrirá no navegador com o resumo e os diagnósticos já preenchidos: versão do app, tema, notificações e dados da SIM. Histórico de mensagens, contatos e seu número de telefone nunca são incluídos.</string>
     <string name="about_issue_subtitle">Anexa diagnósticos: informações do app, ajustes e SIM. Nunca suas mensagens.</string>
     <string name="about_issue_title">Relatar um problema</string>
+    <string name="about_licences_intro">O Messages é construído sobre estes projetos de código aberto.</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">Licenças de código aberto</string>
     <string name="about_open_failed">Não há navegador disponível para abrir este link.</string>

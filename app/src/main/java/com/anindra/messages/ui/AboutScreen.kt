@@ -75,12 +75,18 @@ internal object AboutLinks {
      */
     const val ISSUE_BODY_LIMIT = 4096
 
-    /** Shown in the licences dialog. Library and licence names stay untranslated. */
-    val LICENCES: List<Pair<String, String>> = listOf(
-        "AndroidX / Jetpack Compose" to "Apache License 2.0",
-        "Coil" to "Apache License 2.0",
-        "libphonenumber" to "Apache License 2.0",
-        "Kotlin coroutines" to "Apache License 2.0"
+    /**
+     * Shown in the licences dialog, grouped by licence: four libraries under one
+     * Apache heading read better than the same licence name repeated four
+     * times. Library and licence names stay untranslated, like SMS and PIN.
+     */
+    val LICENCES: Map<String, List<String>> = linkedMapOf(
+        "Apache License 2.0" to listOf(
+            "AndroidX / Jetpack Compose",
+            "Coil",
+            "libphonenumber",
+            "Kotlin coroutines"
+        )
     )
 
     val issuesUrl: String get() = "$REPO_URL/issues/new"
@@ -299,29 +305,58 @@ internal fun AboutScreen(
     }
 
     if (licencesDialog) {
-        AlertDialog(
-            onDismissRequest = { licencesDialog = false },
-            title = { Text(stringResource(R.string.about_licences_title)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    for ((library, licence) in AboutLinks.LICENCES) {
-                        Column {
-                            Text(library, style = MaterialTheme.typography.bodyLarge)
+        Dialog(onDismissRequest = { licencesDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Column(Modifier.padding(24.dp)) {
+                    Text(
+                        stringResource(R.string.about_licences_title),
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.about_licences_intro),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    for ((licence, libraries) in AboutLinks.LICENCES) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ) {
                             Text(
                                 licence,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                         }
+                        Spacer(Modifier.height(10.dp))
+                        for (library in libraries) {
+                            Row(Modifier.padding(vertical = 3.dp)) {
+                                Text(
+                                    "•",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(library, style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    TextButton(
+                        onClick = { licencesDialog = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.common_ok))
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { licencesDialog = false }) {
-                    Text(stringResource(R.string.common_ok))
-                }
             }
-        )
+        }
     }
 }
 

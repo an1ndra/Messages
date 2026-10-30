@@ -5,6 +5,7 @@
     <string name="about_diagnostics_body">سيُفتح نموذج مشكلة على GitHub في المتصفح مع ملخص مُعبأ مسبقًا وبيانات التشخيص: إصدار التطبيق والمظهر والإشعارات وتفاصيل SIM. لا تُرفق سجل الرسائل أو جهات الاتصال أو رقم هاتفك أبدًا.</string>
     <string name="about_issue_subtitle">يُرفق بيانات التشخيص: معلومات التطبيق والإعدادات وSIM. لا تُرفق رسائلك أبدًا.</string>
     <string name="about_issue_title">الإبلاغ عن مشكلة</string>
+    <string name="about_licences_intro">يُبنى Messages على هذه المشاريع مفتوحة المصدر.</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">تراخيص المصادر المفتوحة</string>
     <string name="about_open_failed">لا يوجد متصفح لفتح هذا الرابط.</string>
