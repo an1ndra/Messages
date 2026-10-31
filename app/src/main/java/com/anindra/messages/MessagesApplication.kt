@@ -58,6 +58,11 @@ class MessagesApplication : Application() {
                 // name until a resume clears the refresh gate (#317).
                 repository.observeContactChanges()
             }
+            // The three category channels exist from the first launch, so the
+            // app's notification settings are never empty on a fresh install.
+            // No per-chat channel is created here — those are opt-in.
+            com.anindra.messages.sms.NotificationHelper
+                .ensureChannels(this@MessagesApplication, recoverDemoted = false)
             // Chats no longer get a channel just for existing (#339 follow-up).
             // This only re-titles the ones that have one — after a restore or an
             // import the names may have changed — and drops those of chats that

@@ -231,6 +231,20 @@ class NotificationChannelWiringTest {
     }
 
     @Test
+    fun theThreeCategoryChannelsExistFromTheFirstLaunch() {
+        // The reporter's summary: install the app and the three category
+        // channels are there. They are created at launch, not on the first
+        // message — but nothing per-chat is created with them.
+        val app = read("java/com/anindra/messages/MessagesApplication.kt")
+        val ensure = app.indexOf("ensureChannels(")
+        assertTrue("the category channels are never created at launch", ensure >= 0)
+        assertTrue(
+            "the launch pass must not rebuild a channel the user quieted",
+            app.contains("recoverDemoted = false")
+        )
+    }
+
+    @Test
     fun everyLocaleDefinesTheNewKeys() {
         val keys = listOf(
             "notification_channel_direct_title",

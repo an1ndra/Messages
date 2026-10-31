@@ -184,7 +184,7 @@ object NotificationHelper {
      * place). The single pre-category channels are deleted so the list does not
      * double up.
      */
-    fun ensureChannels(context: Context) {
+    fun ensureChannels(context: Context, recoverDemoted: Boolean = true) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val settings = app.repository.settings
@@ -192,7 +192,9 @@ object NotificationHelper {
         NotificationCategory.entries.forEach { category ->
             val selection = settings.notificationSoundFor(NotificationCategory.keyOf(category))
             val id = NotificationChannels.forCategory(category, selection, soundOn)
-            recoverDemotedChannel(nm, id)
+            // Only a post rebuilds a channel the user quieted: at launch the
+            // absent channel is created and an existing one is left as it is.
+            if (recoverDemoted) recoverDemotedChannel(nm, id)
             nm.createNotificationChannel(
                 NotificationChannel(
                     id,
