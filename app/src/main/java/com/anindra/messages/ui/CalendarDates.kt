@@ -38,14 +38,15 @@ internal fun formatDate(
 }
 
 /**
- * The day picked in the schedule dialog, written in the reader's calendar.
+ * The day picked on the schedule grid, written in Gregorian for a reader whose
+ * grid is not (#363).
  *
- * Null when nothing is picked or the calendar is Gregorian: the platform's grid
- * already draws that one, and a second copy of the same date would just be
- * noise. The selection is UTC midnight of the picked day, so it is formatted in
- * UTC — the device zone would shift it to the previous day west of Greenwich.
+ * Null when nothing is picked or the calendar is already Gregorian: the grid
+ * says that one, and a second copy of the same date would just be noise. The
+ * selection is UTC midnight of the picked day, so it is formatted in UTC — the
+ * device zone would shift it to the previous day west of Greenwich.
  */
-internal fun pickedDateInCalendar(
+internal fun pickedDateInGregorian(
     selectedUtcMillis: Long?,
     calendar: CalendarSystem,
     locale: Locale = Locale.getDefault(),
@@ -55,7 +56,7 @@ internal fun pickedDateInCalendar(
     return formatDate(
         selectedUtcMillis,
         DateStyle.DayWithYear,
-        calendar,
+        CalendarSystem.GREGORIAN,
         locale,
         ZoneOffset.UTC,
         renderer

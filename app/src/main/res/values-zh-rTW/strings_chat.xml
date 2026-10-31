@@ -13,6 +13,7 @@
     <string name="chat_details">詳情</string>
     <string name="chat_view_details">檢視詳情</string>
     <string name="chat_schedule">排定</string>
+    <string name="chat_select_date">選擇日期</string>
     <string name="chat_select_time">選擇時間</string>
     <string name="chat_media_camera">相機</string>
     <string name="chat_media_gallery">相簿</string>
@@ -36,7 +37,10 @@
     <string name="chat_sending_via">透過 %s 傳送</string>
     <string name="chat_switch_sim">切換 SIM 卡</string>
     <string name="chat_scheduled_for">已排定於 %s 傳送</string>
-    <string name="chat_schedule_calendar_hint">依您的日曆：%1$s</string>
+    <string name="chat_schedule_gregorian_hint">公曆：%1$s</string>
+    <string name="chat_schedule_previous_month">上個月</string>
+    <string name="chat_schedule_next_month">下個月</string>
+    <string name="chat_schedule_choose_year">選擇年份</string>
     <string name="chat_schedule_failed">無法排定此訊息</string>
     <string name="chat_search_contacts">搜尋通訊錄</string>
     <string name="chat_add_people">加入人員</string>
@@ -93,4 +97,9 @@
     <string name="chat_search_counter">%1$d/%2$d</string>
     <string name="chat_scroll_to_latest">跳至最新訊息</string>
     <string name="access_zoom_reset">縮放 %1$d%%，點按重設</string>
+    <string name="chat_star">加星號</string>
+    <string name="chat_unstar">取消星號</string>
+    <string name="chat_starred">已加星號</string>
+    <string name="chat_unstarred">已取消星號</string>
+    <string name="chat_message_starred">已加星號的訊息</string>
 </resources>

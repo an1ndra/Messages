@@ -153,20 +153,19 @@ class CalendarDatesTest {
         )
     }
 
-    /** The schedule grid is Gregorian, so the hint only exists for the others. */
+    /** The grid already speaks Gregorian, so the echo only exists for the others. */
     @Test
-    fun thePickerHintIsSkippedForGregorianAndEmptySelections() {
-        assertNull(pickedDateInCalendar(null, CalendarSystem.PERSIAN))
-        assertNull(pickedDateInCalendar(0L, CalendarSystem.GREGORIAN))
+    fun theGregorianEchoIsSkippedForGregorianAndEmptySelections() {
+        assertNull(pickedDateInGregorian(null, CalendarSystem.PERSIAN))
+        assertNull(pickedDateInGregorian(0L, CalendarSystem.GREGORIAN))
     }
 
     /**
-     * The platform date picker hands back UTC midnight of the picked day, so the
-     * hint must be formatted in UTC or every zone west of Greenwich shows the
-     * previous day.
+     * The grid hands back UTC midnight of the picked day, so the echo must be
+     * formatted in UTC or every zone west of Greenwich shows the previous day.
      */
     @Test
-    fun thePickerHintIsFormattedInUtcAndInTheChosenCalendar() {
+    fun theGregorianEchoIsFormattedInUtcAndInGregorian() {
         var zone: ZoneId? = null
         var style: DateStyle? = null
         var seen: CalendarSystem? = null
@@ -181,10 +180,14 @@ class CalendarDatesTest {
         val picked = 1_793_059_200_000L // 2026-10-30T00:00Z
         assertEquals(
             "converted",
-            pickedDateInCalendar(picked, CalendarSystem.PERSIAN, Locale.ENGLISH, recorder)
+            pickedDateInGregorian(picked, CalendarSystem.PERSIAN, Locale.ENGLISH, recorder)
         )
         assertEquals(DateStyle.DayWithYear, style)
-        assertEquals(CalendarSystem.PERSIAN, seen)
+        assertEquals(
+            "the echo exists because the grid is not Gregorian, so it prints Gregorian",
+            CalendarSystem.GREGORIAN,
+            seen
+        )
         assertEquals(ZoneOffset.UTC, zone)
         assertEquals(picked, ts)
     }

@@ -86,20 +86,20 @@ object NotificationChannels {
         categoryPrefix(category).let { p -> SOUND_SUFFIXES.map { "${p}_$it" } }
 
     /**
-     * The channel a conversation posts to: every conversation owns one (#339),
-     * so the category channel is only the fallback for a sender with no
-     * conversation row yet. The inherited tone is the override when there is
-     * one, else the category's.
+     * The channel a message posts to: a conversation's own channel when it has
+     * one, otherwise its category's. A chat gets a channel only when the user
+     * opts in for it, so the category channel covers every other case — and it
+     * is also the fallback when a chat's channel has been removed.
      */
     fun forMessage(
         category: NotificationCategory,
         selection: String,
         soundOn: Boolean,
         conversationId: Long?,
-        overrideSound: String
+        customChannelOn: Boolean
     ): String =
-        if (conversationId != null) {
-            forConversation(conversationId, overrideSound.ifEmpty { selection }, soundOn)
+        if (conversationId != null && customChannelOn) {
+            forConversation(conversationId)
         } else {
             forCategory(category, selection, soundOn)
         }
@@ -107,24 +107,42 @@ object NotificationChannels {
     fun conversationPrefix(conversationId: Long): String = "${PREFIX}_convo_$conversationId"
 
     /**
-     * A conversation's channel id. The sound is part of the id because a
-     * channel's tone cannot be changed once created, so changing it has to move
-     * to a fresh id and delete the old one.
+     * A conversation's channel id, stable for the chat's lifetime. The sound is
+     * deliberately NOT part of it: the system owns the tone once the channel
+     * exists, so changing it in Android's settings keeps the same channel and
+     * keeps the rest of the user's tuning. An id that moved with the tone would
+     * throw all of that away on every change.
      */
-    fun forConversation(conversationId: Long, sound: String, soundOn: Boolean): String =
-        "${conversationPrefix(conversationId)}_${soundSuffix(sound, soundOn)}"
+    fun forConversation(conversationId: Long): String = conversationPrefix(conversationId)
 
-    /** Every id one conversation could own, so the stale ones can be deleted. */
-    fun conversationVariants(conversationId: Long): List<String> =
+    /**
+     * Ids the per-chat channels used to carry (one per tone). Deleted on sight:
+     * they are the scheme that let the app and Android disagree about a chat's
+     * sound, and no new channel is ever created under them.
+     */
+    fun legacyConversationVariants(conversationId: Long): List<String> =
         conversationPrefix(conversationId).let { p -> SOUND_SUFFIXES.map { "${p}_$it" } }
+
+    /** Every id one conversation could own, so all of them can be pruned. */
+    fun conversationVariants(conversationId: Long): List<String> =
+        listOf(forConversation(conversationId)) + legacyConversationVariants(conversationId)
+
+    /**
+     * Whether an id is one of the old per-tone channels. Those were created for
+     * every recent chat rather than at the user's request, so the launch pass
+     * deletes them instead of re-creating them under the stable id.
+     */
+    fun isLegacyConversationChannel(channelId: String): Boolean =
+        Regex("^${PREFIX}_convo_\\d+_[a-z0-9]+$").matches(channelId)
 
     /**
      * The conversation a channel id belongs to, or null for a category or
      * legacy channel. Used to reconcile and prune channels against the database,
-     * so the id is the only thing that has to round-trip.
+     * so the id is the only thing that has to round-trip. Both the current and
+     * the old per-tone form are recognised, so old channels still get pruned.
      */
     fun conversationIdOf(channelId: String): Long? =
-        Regex("^${PREFIX}_convo_(\\d+)_[a-z0-9]+$")
+        Regex("^${PREFIX}_convo_(\\d+)(?:_[a-z0-9]+)?$")
             .find(channelId)
             ?.groupValues
             ?.get(1)

@@ -385,6 +385,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setLocked(messageId: Long, locked: Boolean) =
         scope.launch { repo.setLockedSuspend(messageId, locked) }
 
+    /** Bookmarks or clears messages from the chat's selection toolbar (#394). */
+    fun setStarred(messageIds: List<Long>, starred: Boolean) =
+        scope.launch { repo.setStarred(messageIds, starred) }
+
+    /** The Starred scope of the home search (#394). */
+    fun starredMessages(query: String, hideLinks: Boolean) = repo.starredMessages(query, hideLinks)
+
     fun deleteMessage(messageId: Long) =
         scope.launch { repo.deleteMessageSuspend(messageId) }
 
@@ -717,12 +724,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      *  message count before the atomic file swap. */
     val importLoading = androidx.compose.runtime.mutableStateOf<Int?>(null)
 
-    /** A restore or an sms-ie import can add hundreds of chats in one go, and
-     *  every chat owns a channel (#339). They are created from the imported
-     *  rows here rather than waiting for each chat's first new message. */
+    /** A restore or an sms-ie import can add or wipe hundreds of chats at once.
+     *  Chats no longer own a channel merely by existing (#339 follow-up), so this
+     *  only re-titles the channels that do and drops those of deleted chats. */
     private fun syncChannelsAfterBulkImport() {
         scope.launch(Dispatchers.IO) {
-            NotificationHelper.syncConversationChannels(getApplication())
+            NotificationHelper.syncNotificationChannels(getApplication())
         }
     }
 
@@ -860,14 +867,52 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch(Dispatchers.IO) { repo.setConversationNotificationsEnabled(conversationId, enabled) }
     }
 
-    fun conversationNotificationSoundFlow(conversationId: Long): Flow<String> =
-        repo.conversationNotificationSoundFlow(conversationId)
+    /** Whether this chat has overcome its category channel with one of its own. */
+    fun conversationCustomChannel(conversationId: Long): Boolean =
+        com.anindra.messages.sms.NotificationHelper
+            .conversationChannelExists(getApplication(), conversationId)
 
-    /** Empty [sound] clears the override back to the inherited tone. */
-    fun setConversationNotificationSound(conversationId: Long, sound: String) {
+    /**
+     * Turns this chat's own notification channel on or off. On creates it with
+     * the chat's category tone; off deletes it, so the chat falls back to its
+     * category channel instead of going quiet.
+     */
+    fun setConversationCustomChannel(conversationId: Long, enabled: Boolean) {
         scope.launch(Dispatchers.IO) {
-            repo.setConversationNotificationSound(conversationId, sound)
-            com.anindra.messages.sms.NotificationHelper.syncNotificationChannels(getApplication())
+            val helper = com.anindra.messages.sms.NotificationHelper
+            if (!enabled) {
+                helper.deleteConversationChannels(getApplication(), conversationId)
+                return@launch
+            }
+            val target = repo.conversationChannelTargetBlocking(conversationId) ?: return@launch
+            helper.ensureConversationChannel(
+                getApplication(),
+                target,
+                helper.categoryFor(target),
+                repo.settings.receiveSoundEnabled
+            )
+        }
+    }
+
+    /** Opens Android's page for this chat's channel, creating it if needed. */
+    fun openConversationChannelSettings(conversationId: Long) {
+        scope.launch(Dispatchers.IO) {
+            val helper = com.anindra.messages.sms.NotificationHelper
+            val target = repo.conversationChannelTargetBlocking(conversationId) ?: return@launch
+            val id = helper.ensureConversationChannel(
+                getApplication(),
+                target,
+                helper.categoryFor(target),
+                repo.settings.receiveSoundEnabled
+            )
+            withContext(Dispatchers.Main) {
+                val intent = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                val app = getApplication<Application>()
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE, app.packageName)
+                intent.putExtra(Settings.EXTRA_CHANNEL_ID, id)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                runCatching { app.startActivity(intent) }
+            }
         }
     }
 
@@ -1687,10 +1732,10 @@ onOpenAccessibility = { navRoute = "accessibility" },
         ) {
             repo.requeryFromSystem()
             // A fresh install imports the whole history right here — SMS access
-            // only exists from this point on — so the channels for those chats
-            // have to be created from the imported rows, not at
-            // Application.onCreate where the database was still empty (#339).
-            com.anindra.messages.sms.NotificationHelper.syncConversationChannelsAsync(this)
+            // only exists from this point on — so the channels that already
+            // exist for those chats have to be matched up after the import, not
+            // at Application.onCreate where the database was still empty (#339).
+            com.anindra.messages.sms.NotificationHelper.reconcileAsync(this)
         }
         val now = System.currentTimeMillis()
         if (now - lastResumeTime > 5 * 60_000L) {

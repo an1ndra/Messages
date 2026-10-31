@@ -14,6 +14,7 @@
     <string name="chat_details">詳細</string>
     <string name="chat_view_details">詳細を表示</string>
     <string name="chat_schedule">スケジュール</string>
+    <string name="chat_select_date">日付を選択</string>
     <string name="chat_select_time">時間を選択</string>
     <string name="chat_media_camera">カメラ</string>
     <string name="chat_media_gallery">ギャラリー</string>
@@ -38,7 +39,10 @@
     <string name="chat_sending_via">%s 経由で送信中</string>
     <string name="chat_switch_sim">SIM を切り替え</string>
     <string name="chat_scheduled_for">%s にスケジュールされました</string>
-    <string name="chat_schedule_calendar_hint">あなたのカレンダーでは: %1$s</string>
+    <string name="chat_schedule_gregorian_hint">グレゴリオ暦: %1$s</string>
+    <string name="chat_schedule_previous_month">前の月</string>
+    <string name="chat_schedule_next_month">次の月</string>
+    <string name="chat_schedule_choose_year">年を選択</string>
     <string name="chat_schedule_failed">メッセージを予約できませんでした</string>
     <string name="chat_search_contacts">連絡先を検索</string>
     <string name="chat_add_people">人を追加</string>
@@ -97,4 +101,9 @@
     <string name="chat_search_counter">%1$d/%2$d</string>
     <string name="chat_scroll_to_latest">最新のメッセージへ移動</string>
     <string name="access_zoom_reset">ズーム %1$d%%。タップでリセット</string>
+    <string name="chat_star">スターを付ける</string>
+    <string name="chat_unstar">スターを外す</string>
+    <string name="chat_starred">メッセージにスターを付けました</string>
+    <string name="chat_unstarred">スターを外しました</string>
+    <string name="chat_message_starred">スター付きメッセージ</string>
 </resources>

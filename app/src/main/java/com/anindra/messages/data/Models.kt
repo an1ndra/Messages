@@ -35,7 +35,21 @@ data class Message(
     val transport: String = "sms",
     val deliveredAt: Long = 0,
     /** Who sent it. Blank means the conversation's own address. */
-    val address: String = ""
+    val address: String = "",
+    /** Bookmarked by the user (#394). Local only; the provider has no column. */
+    val starred: Boolean = false
+)
+
+/** A bookmarked message, with the chat it came from (#394). */
+data class StarredMessage(
+    val messageId: Long,
+    val conversationId: Long,
+    val body: String,
+    val timestamp: Long,
+    val isMe: Boolean,
+    val chatName: String,
+    val address: String,
+    val locked: Boolean
 )
 
 data class BlockedNumber(
@@ -77,12 +91,12 @@ data class ScheduledMessage(
 
 /**
  * Everything a conversation's notification channel is built from (#339),
- * resolved in one query so the poster, the launch-time channel sync and the
- * settings reconciliation can never title or tone a channel differently.
+ * resolved in one query so the poster and the settings reconciliation can never
+ * title or classify a channel differently.
  *
  * [display] is the locale-formatted address and [recipients] the member count;
  * together with [name] they are what [com.anindra.messages.ui.ContactDetails]
- * needs to label the chat and [NotificationCategory] to inherit a tone.
+ * needs to label the chat and [NotificationCategory] to pick its category.
  */
 data class ConversationChannelTarget(
     val conversationId: Long,
@@ -90,6 +104,5 @@ data class ConversationChannelTarget(
     val name: String,
     val display: String,
     val groupTitle: String,
-    val recipients: Int,
-    val overrideSound: String
+    val recipients: Int
 )

@@ -14,6 +14,7 @@
     <string name="chat_details">Details</string>
     <string name="chat_view_details">View details</string>
     <string name="chat_schedule">Schedule</string>
+    <string name="chat_select_date">Select date</string>
     <string name="chat_select_time">Select time</string>
     <string name="chat_media_camera">Camera</string>
     <string name="chat_media_gallery">Gallery</string>
@@ -38,7 +39,10 @@
     <string name="chat_sending_via">Sending via %s</string>
     <string name="chat_switch_sim">Switch SIM</string>
     <string name="chat_scheduled_for">Scheduled for %s</string>
-    <string name="chat_schedule_calendar_hint">In your calendar: %1$s</string>
+    <string name="chat_schedule_gregorian_hint">Gregorian: %1$s</string>
+    <string name="chat_schedule_previous_month">Previous month</string>
+    <string name="chat_schedule_next_month">Next month</string>
+    <string name="chat_schedule_choose_year">Choose year</string>
     <string name="chat_schedule_failed">Could not schedule the message</string>
     <string name="chat_search_contacts">Search contacts</string>
     <string name="chat_add_people">Add people</string>
@@ -97,4 +101,9 @@
     <string name="chat_search_counter">%1$d of %2$d</string>
     <string name="chat_scroll_to_latest">Scroll to latest message</string>
     <string name="access_zoom_reset">Zoom %1$d%%, tap to reset</string>
+    <string name="chat_star">Star</string>
+    <string name="chat_unstar">Remove star</string>
+    <string name="chat_starred">Message starred</string>
+    <string name="chat_unstarred">Star removed</string>
+    <string name="chat_message_starred">Starred message</string>
 </resources>

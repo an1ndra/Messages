@@ -58,11 +58,11 @@ class MessagesApplication : Application() {
                 // name until a resume clears the refresh gate (#317).
                 repository.observeContactChanges()
             }
-            // Every conversation owns a notification channel (#339), and the
-            // import above is where a fresh install's conversations come from —
-            // running this before it left the whole history without channels
-            // until each chat's first new message (#339 follow-up).
-            com.anindra.messages.sms.NotificationHelper.syncConversationChannels(this@MessagesApplication)
+            // Chats no longer get a channel just for existing (#339 follow-up).
+            // This only re-titles the ones that have one — after a restore or an
+            // import the names may have changed — and drops those of chats that
+            // are gone.
+            com.anindra.messages.sms.NotificationHelper.syncNotificationChannels(this@MessagesApplication)
         }
     }
 }

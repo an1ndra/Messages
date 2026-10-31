@@ -5,9 +5,10 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Wiring for the per-category channels (#339): the schema column, the settings
- * store, the poster and Diagnostics all have to agree, so each side is pinned
- * against the source that owns it.
+ * Wiring for the per-category channels (#339) and the opt-in per-chat channels
+ * (#339 follow-up): the schema column, the settings store, the poster and
+ * Diagnostics all have to agree, so each side is pinned against the source that
+ * owns it.
  */
 class NotificationChannelWiringTest {
 
@@ -35,9 +36,11 @@ class NotificationChannelWiringTest {
             "the poster never resolves the conversation's channel inputs",
             s.contains("conversationChannelTargetBlocking")
         )
+        // A chat posts on its own channel only while that channel exists; the
+        // check is what keeps a message alive after the user removes it.
         assertTrue(
-            "a conversation does not always post on its own channel",
-            s.contains("ensureConversationChannel(context, target, category")
+            "posting does not check that the chat's channel exists",
+            s.contains("conversationChannelExists(context, convoId)")
         )
     }
 
@@ -62,17 +65,19 @@ class NotificationChannelWiringTest {
     }
 
     @Test
-    fun schemaAddsThePerConversationSoundAtV29() {
+    fun thePerConversationSoundColumnStaysForRestores() {
+        // Nothing reads the column any more — a chat's tone belongs to its system
+        // channel — but backups written before the change still carry it, so the
+        // schema and the restore path keep it rather than paying for a migration.
         val repo = src("data/Repository.kt")
         assertTrue(
-            "fresh schema lacks the sound column",
+            "fresh schema lost the sound column",
             repo.contains("notifications_enabled INTEGER NOT NULL DEFAULT 1,\n                sound TEXT NOT NULL DEFAULT ''")
         )
         assertTrue(
             "no v29 migration for the sound column",
             repo.contains("ALTER TABLE conversation_notifications ADD COLUMN sound TEXT NOT NULL DEFAULT ''")
         )
-        assertTrue(repo.contains("fun setConversationNotificationSound("))
     }
 
     @Test
@@ -93,35 +98,69 @@ class NotificationChannelWiringTest {
     }
 
     @Test
-    fun everyConversationOwnsAChannelCreatedAndReconciledInOnePlace() {
+    fun aConversationChannelIsBuiltFromTheSharedLabelAndStableId() {
         val s = src("sms/SmsSupport.kt")
         assertTrue("no conversation channel builder", s.contains("internal fun ensureConversationChannel("))
         assertTrue("the channel is not titled with the shared chat label", s.contains("channelLabel(target)"))
         assertTrue("the label is not delegated to ContactDetails", s.contains("ContactDetails.listLabel"))
         assertTrue("the category is re-derived outside the shared decision", s.contains("internal fun categoryFor("))
-        assertTrue("stale tone variants of a conversation are never deleted", s.contains("NotificationChannels.conversationVariants("))
+        assertTrue(
+            "the channel id is not the stable one",
+            s.contains("NotificationChannels.forConversation(target.conversationId)")
+        )
+        assertTrue(
+            "old per-tone channels of a conversation are never deleted",
+            s.contains("NotificationChannels.legacyConversationVariants(")
+        )
+        // The sound is seeded on creation only. An upsert that reset it would
+        // overwrite whatever the user chose in Android's own settings.
+        val body = s.substringAfter("internal fun ensureConversationChannel(")
+            .substringBefore("\n    /** The row Android shows")
+        assertTrue(
+            "the channel's sound is re-applied on every refresh",
+            body.contains("if (existing == null) {\n                    setSound(")
+        )
     }
 
     @Test
-    fun channelsAreCreatedAfterTheImportThatFillsTheDatabase() {
-        // #339 follow-up: on a fresh install the launch sync ran before
-        // syncFromSystem() and the database was still empty, so the imported
-        // history got no channels until each chat's first new message. The
-        // sync has to sit *after* every bulk import.
+    fun noChannelIsCreatedForAChatTheUserHasNotAskedAbout() {
+        // The bulk sync that gave every recent chat a channel is gone: a fresh
+        // install must not dump the address book into system notification
+        // settings. Only chats that already own a channel are touched.
+        val s = src("sms/SmsSupport.kt")
+        assertTrue(
+            "the launch sync creates channels again",
+            !s.contains("recentConversationChannelTargetsBlocking")
+        )
+        assertTrue(
+            "the launch sync does not walk the channels that exist",
+            s.contains("?.notificationChannels")
+        )
         val app = read("java/com/anindra/messages/MessagesApplication.kt")
-        val imported = app.indexOf("repository.syncFromSystem()")
-        val synced = app.indexOf("syncConversationChannels")
-        assertTrue("no launch channel sync", synced >= 0)
-        assertTrue("the launch sync only knows the pre-import database", synced > imported)
+        assertTrue(
+            "Application.onCreate still creates channels in bulk",
+            !app.contains("syncConversationChannels")
+        )
+        assertTrue(
+            "Application.onCreate never reconciles the channels that exist",
+            app.contains("syncNotificationChannels")
+        )
+    }
 
+    @Test
+    fun bulkImportsAndTheFirstRunReconcileInsteadOfCreating() {
         val activity = read("java/com/anindra/messages/MainActivity.kt")
+        assertTrue(
+            "a bulk import still creates channels",
+            !activity.contains("syncConversationChannels")
+        )
         val requery = activity.indexOf("repo.requeryFromSystem()")
         assertTrue("the first-run import is gone", requery >= 0)
-        val afterRequery = activity.indexOf("syncConversationChannelsAsync", requery)
-        assertTrue("the first-run import leaves its chats without channels", afterRequery > requery)
-
+        val afterRequery = activity.indexOf("reconcileAsync(this)", requery)
+        assertTrue("the first-run import leaves stale channels behind", afterRequery > requery)
+        // The restore and sms-ie paths still clean up after themselves.
         assertTrue(
-            "a restored/imported database never syncs its channels",
+            "a restored/imported database never reconciles its channels",
             Regex("syncChannelsAfterBulkImport\\(\\)").findAll(activity).count() >= 3
         )
     }
@@ -129,12 +168,9 @@ class NotificationChannelWiringTest {
     @Test
     fun theLaunchSyncAndSettingsReconciliationAreWired() {
         assertTrue(
-            "nothing creates conversation channels at launch",
-            read("java/com/anindra/messages/MessagesApplication.kt")
-                .contains("syncConversationChannels")
+            "changing a category sound does not reconcile existing channels",
+            read("java/com/anindra/messages/ui/AdvancedSubScreens.kt").contains("reconcileAsync(")
         )
-        val settings = read("java/com/anindra/messages/ui/AdvancedSubScreens.kt")
-        assertTrue("changing the sound does not reconcile conversation channels", settings.contains("reconcileAsync("))
         assertTrue(
             "a permanently deleted conversation keeps its channel",
             read("java/com/anindra/messages/MainActivity.kt")
@@ -142,7 +178,6 @@ class NotificationChannelWiringTest {
         )
         val repo = src("data/Repository.kt")
         assertTrue(repo.contains("fun conversationChannelTargetBlocking("))
-        assertTrue(repo.contains("fun recentConversationChannelTargetsBlocking("))
         assertTrue(repo.contains("fun liveConversationIdsBlocking("))
         assertTrue(
             "emptying the trash leaves channels behind",
@@ -158,17 +193,41 @@ class NotificationChannelWiringTest {
     }
 
     @Test
-    fun theViewModelCanSetAPerConversationSound() {
+    fun theViewModelTogglesAndOpensTheChatsChannel() {
         val activity = read("java/com/anindra/messages/MainActivity.kt")
-        assertTrue(activity.contains("fun setConversationNotificationSound("))
-        assertTrue(activity.contains("syncNotificationChannels"))
+        assertTrue(activity.contains("fun conversationCustomChannel("))
+        assertTrue(activity.contains("fun setConversationCustomChannel("))
+        assertTrue(
+            "there is no way to reach the chat's page in system settings",
+            activity.contains("Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS")
+        )
+        assertTrue(
+            "the system page is opened without the chat's channel id",
+            activity.contains("Settings.EXTRA_CHANNEL_ID")
+        )
+        assertTrue(
+            "the per-chat sound is still stored in the app",
+            !activity.contains("fun setConversationNotificationSound(")
+        )
     }
 
     @Test
-    fun contactDetailsExposesTheSoundPicker() {
+    fun contactDetailsHandsTheSettingToTheSystem() {
         val screen = read("java/com/anindra/messages/ui/ContactDetailsScreen.kt")
-        assertTrue(screen.contains("R.string.contact_notification_sound"))
-        assertTrue(screen.contains("setConversationNotificationSound"))
+        assertTrue(screen.contains("R.string.contact_custom_notifications"))
+        assertTrue(screen.contains("R.string.contact_customize_notifications"))
+        assertTrue(screen.contains("setConversationCustomChannel"))
+        assertTrue(screen.contains("openConversationChannelSettings"))
+        // No second copy of the tone: the app cannot change a channel's sound
+        // once it exists, so a picker here could only disagree with Android.
+        assertTrue(
+            "the in-app per-chat sound picker is back",
+            !screen.contains("contactSoundOptions(context)")
+        )
+        assertTrue(
+            "the in-app per-chat sound picker is back",
+            !screen.contains("contact_notification_sound\"")
+        )
     }
 
     @Test
@@ -178,7 +237,8 @@ class NotificationChannelWiringTest {
             "notification_channel_group_title",
             "notification_channel_unknown_title",
             "notification_channel_convo_desc",
-            "contact_notification_sound",
+            "contact_custom_notifications",
+            "contact_customize_notifications",
             "contact_notification_sound_default",
             "settings_notif_manage_channels",
             "settings_notif_manage_channels_subtitle"

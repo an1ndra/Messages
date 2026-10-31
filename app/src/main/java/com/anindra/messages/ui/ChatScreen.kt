@@ -77,7 +77,9 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.Archive
@@ -94,8 +96,6 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Schedule
 
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -123,7 +123,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -506,6 +505,16 @@ internal fun ChatBubble(
                                     if (isSearchFocus) contentDescription =
                                         A11y.describe(bodyText.text, searchResultLabel)
                                 }
+                        )
+                    }
+                    if (msg.starred) {
+                        Icon(
+                            Icons.Filled.Star,
+                            contentDescription = stringResource(R.string.chat_message_starred),
+                            tint = cs.primary,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(14.dp)
                         )
                     }
                 }
@@ -1102,6 +1111,19 @@ fun ChatScreen(
         }
     }
 
+    fun starSelection() {
+        val targets = messages.filter { it.id in selectedMessageIds }
+        if (targets.isEmpty()) return
+        val star = targets.any { !it.starred }
+        vm.setStarred(targets.map { it.id }, star)
+        clearSelection()
+        Toast.makeText(
+            context,
+            context.getString(if (star) R.string.chat_starred else R.string.chat_unstarred),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
     fun forwardSelection() {
         val ids = messages.filter { it.id in selectedMessageIds }.map { it.id }
         if (ids.isEmpty()) return
@@ -1434,6 +1456,8 @@ fun ChatScreen(
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
+                    allStarred = messages.filter { it.id in selectedMessageIds }
+                        .let { sel -> sel.isNotEmpty() && sel.all { it.starred } },
                     onSelectAll = { selectAllMessages() },
                     onSelectText = messages.firstOrNull { it.id in selectedMessageIds }
                         ?.takeIf { it.body.isNotBlank() }
@@ -1444,6 +1468,7 @@ fun ChatScreen(
                     onClose = { clearSelection() },
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
+                    onToggleStar = { starSelection() },
                     onShare = { shareSelection() },
                     onViewDetails = {
                         detailsMessage = messages.firstOrNull { it.id in selectedMessageIds }
@@ -2024,12 +2049,14 @@ fun ChatScreen(
 internal fun MessageSelectionToolbar(
     count: Int,
     allLocked: Boolean,
+    allStarred: Boolean,
     onSelectAll: () -> Unit,
     onSelectText: (() -> Unit)?,
     onSaveImage: (() -> Unit)?,
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
+    onToggleStar: () -> Unit,
     onShare: () -> Unit,
     onViewDetails: () -> Unit,
     onDelete: () -> Unit,
@@ -2062,6 +2089,15 @@ internal fun MessageSelectionToolbar(
                     Icon(
                         painterResource(R.drawable.ic_forward),
                         stringResource(R.string.chat_forward),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            if (SelectionToolbar.showStar(count)) {
+                IconButton(onClick = onToggleStar) {
+                    Icon(
+                        if (allStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        stringResource(if (allStarred) R.string.chat_unstar else R.string.chat_star),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -2463,20 +2499,24 @@ internal fun ChatSchedulePicker(
     if (!visible) return
     val context = LocalContext.current
     if (step == "date") {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = scheduledDateMillis ?: System.currentTimeMillis()
-        )
-        ScheduleDialog(onDismiss = onDismiss) {
+        val calendar = SettingsStore.calendarSystemOf(context)
+        var picked by remember(scheduledDateMillis) {
+            mutableStateOf(scheduledDateMillis ?: utcMidnightOfToday())
+        }
+        // 360dp is Material's date picker width: seven 48dp cells plus the
+        // picker's own 12dp side padding, exactly.
+        ScheduleDialog(onDismiss = onDismiss, maxWidth = 360.dp) {
             Column {
-                DatePicker(state = datePickerState, modifier = Modifier.fillMaxWidth())
-                // The platform grid only speaks Gregorian; this line says what
-                // the picked day is called in the calendar the user reads.
-                pickedDateInCalendar(
-                    datePickerState.selectedDateMillis,
-                    SettingsStore.calendarSystemOf(context)
-                )?.let { converted ->
+                CalendarDatePicker(
+                    utcMillis = picked,
+                    calendar = calendar,
+                    onPick = { picked = it }
+                )
+                // The grid speaks the reader's calendar; this says what the same
+                // day is called in Gregorian, for anyone reading both.
+                pickedDateInGregorian(picked, calendar)?.let { converted ->
                     Text(
-                        stringResource(R.string.chat_schedule_calendar_hint, converted),
+                        stringResource(R.string.chat_schedule_gregorian_hint, converted),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp)
@@ -2487,9 +2527,9 @@ internal fun ChatSchedulePicker(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
-                    TextButton(onClick = {
-                        onDateSelected(datePickerState.selectedDateMillis ?: System.currentTimeMillis())
-                    }) { Text(stringResource(R.string.chat_next)) }
+                    TextButton(onClick = { onDateSelected(picked) }) {
+                        Text(stringResource(R.string.chat_next))
+                    }
                 }
             }
         }
@@ -2562,8 +2602,8 @@ internal fun ScheduleDialog(
         label = "scheduleFade"
     )
     // usePlatformDefaultWidth = false: the platform caps dialog width below the
-    // DatePicker's 360dp minimum, which clipped the Saturday column. The Surface
-    // sets its own width instead.
+    // seven columns the month grid needs, which clipped the last weekday. The
+    // Surface sets its own width instead.
     Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)

@@ -36,4 +36,13 @@
     <string name="convo_pinned">Pinned</string>
     <string name="convo_unpinned">Unpinned</string>
     <string name="convo_blocked">Number blocked</string>
+    <string name="search_scope_all">All</string>
+    <string name="search_scope_unread">Unread</string>
+    <string name="search_scope_starred">Starred</string>
+    <string name="starred_empty">No starred messages yet</string>
+    <string name="starred_empty_hint">Long-press a message and tap the star to keep it here</string>
+    <string name="search_scope_unread_empty">No unread conversations</string>
+    <string name="search_scope_contacts">Contacts</string>
+    <string name="search_scope_messages">Messages</string>
+    <string name="search_scope_no_results">No matches</string>
 </resources>

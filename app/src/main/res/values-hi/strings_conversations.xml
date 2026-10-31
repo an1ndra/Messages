@@ -36,4 +36,13 @@
     <string name="convo_pinned">पिन किया गया</string>
     <string name="convo_unpinned">पिन हटाया गया</string>
     <string name="convo_blocked">नंबर अवरुद्ध किया गया</string>
+    <string name="search_scope_all">सभी</string>
+    <string name="search_scope_unread">अपठित</string>
+    <string name="search_scope_starred">स्टार किए गए</string>
+    <string name="starred_empty">अभी कोई स्टार किया संदेश नहीं</string>
+    <string name="starred_empty_hint">किसी संदेश को देर तक दबाएँ और स्टार पर टैप करके यहाँ रखें</string>
+    <string name="search_scope_unread_empty">कोई अपठित बातचीत नहीं</string>
+    <string name="search_scope_contacts">संपर्क</string>
+    <string name="search_scope_messages">संदेश</string>
+    <string name="search_scope_no_results">कोई मेल नहीं</string>
 </resources>

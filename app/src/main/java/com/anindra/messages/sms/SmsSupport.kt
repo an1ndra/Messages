@@ -24,24 +24,26 @@ import kotlinx.coroutines.launch
 object NotificationHelper {
     private var previewPlayer: android.media.MediaPlayer? = null
 
-    /** How many recent conversations get a channel at launch, so the settings list stays readable. */
-    private const val CHANNEL_SYNC_LIMIT = 100
-
     /**
-     * The channel a message posts to: a conversation's own channel whenever there
-     * is one, otherwise its category's. Single source of truth for the poster and
-     * Diagnostics, so they cannot disagree.
+     * The channel a message posts to: a conversation's own channel whenever it
+     * has one, otherwise its category's. Single source of truth for the poster
+     * and Diagnostics, so they cannot disagree.
      */
     internal fun channelIdFor(
         category: NotificationCategory,
         selection: String,
         soundOn: Boolean,
         conversationId: Long?,
-        overrideSound: String
+        customChannelOn: Boolean
     ): String =
         NotificationChannels.forMessage(
-            category, selection, soundOn, conversationId, overrideSound
+            category, selection, soundOn, conversationId, customChannelOn
         )
+
+    /** Whether this chat has opted-in channel of its own. */
+    fun conversationChannelExists(context: Context, conversationId: Long): Boolean =
+        context.getSystemService(NotificationManager::class.java)
+            ?.getNotificationChannel(NotificationChannels.forConversation(conversationId)) != null
 
     private fun defaultSoundUri(): Uri? =
         android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
@@ -215,13 +217,14 @@ object NotificationHelper {
 
     /**
      * Creates or refreshes a conversation's channel (#339) and returns its id.
-     * Every conversation owns one, titled after the chat, because a per-chat row
-     * in system settings is the only way Android offers per-chat sound,
+     * Every conversation can own one, titled after the chat, because a per-chat
+     * row in system settings is the only way Android offers per-chat sound,
      * vibration and importance.
      *
-     * The id carries the tone, so changing it lands on a fresh id and the
-     * conversation's other variants are deleted: an existing channel will not
-     * take a new sound.
+     * Created only when the user opts in for that chat; the id is stable, and an
+     * existing channel is never re-created with a new tone — the system owns the
+     * sound from the moment it exists, and moving to a fresh id would discard
+     * everything the user has tuned on the old one.
      */
     internal fun ensureConversationChannel(
         context: Context,
@@ -231,27 +234,31 @@ object NotificationHelper {
     ): String {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val selection = app.repository.settings.notificationSoundFor(NotificationCategory.keyOf(category))
-        val sound = target.overrideSound.ifEmpty { selection }
-        val id = channelIdFor(category, selection, soundOn, target.conversationId, target.overrideSound)
+        val id = NotificationChannels.forConversation(target.conversationId)
         val nm = context.getSystemService(NotificationManager::class.java) ?: return id
         val label = channelLabel(target)
-        val desired = channelSoundUri(context, sound, soundOn)
+        val description = context.getString(R.string.notification_channel_convo_desc)
         val existing = nm.getNotificationChannel(id)
-        if (existing != null && existing.sound == desired && existing.name == label) return id
+        // Already right: one binder read, no write, so the rename refresh stays
+        // cheap however many chats have a channel.
+        if (existing != null && existing.name == label && existing.description == description) return id
         if (existing == null) {
-            // A fresh tone (or the first post): the previous variant is stale.
-            // Checking the desired id first keeps a launch sync to one binder
-            // read per conversation instead of six writes.
-            NotificationChannels.conversationVariants(target.conversationId)
-                .filter { it != id }
+            // The per-tone ids this chat may still carry are the scheme that let
+            // the app and Android disagree; they are never reused.
+            NotificationChannels.legacyConversationVariants(target.conversationId)
                 .forEach { nm.deleteNotificationChannel(it) }
-        } else if (existing.sound != desired) {
-            nm.deleteNotificationChannel(id)
         }
         nm.createNotificationChannel(
             NotificationChannel(id, label, NotificationManager.IMPORTANCE_HIGH).apply {
-                description = context.getString(R.string.notification_channel_convo_desc)
-                setSound(desired, android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT)
+                this.description = description
+                // The tone is seeded once, from the chat's category. It is the
+                // user's afterwards, and the upsert must not overwrite it.
+                if (existing == null) {
+                    setSound(
+                        channelSoundUri(context, selection, soundOn),
+                        android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT
+                    )
+                }
             }
         )
         return id
@@ -276,26 +283,11 @@ object NotificationHelper {
             replyable = com.anindra.messages.data.AddressIdentity.isReplyable(target.address)
         )
 
-    /** Deletes every tone variant of a conversation's channel. */
+    /** Deletes a conversation's channel, current and legacy ids alike. */
     fun deleteConversationChannels(context: Context, conversationId: Long) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         NotificationChannels.conversationVariants(conversationId)
             .forEach { nm.deleteNotificationChannel(it) }
-    }
-
-    /**
-     * Gives the most recent conversations their channel at launch, so system
-     * settings lists chats nothing has arrived in yet, and prunes the channels
-     * of conversations that are gone.
-     */
-    fun syncConversationChannels(context: Context) {
-        val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        val repo = app.repository
-        val soundOn = repo.settings.receiveSoundEnabled
-        repo.recentConversationChannelTargetsBlocking(CHANNEL_SYNC_LIMIT).forEach { target ->
-            ensureConversationChannel(context, target, categoryFor(target), soundOn)
-        }
-        pruneConversationChannels(context)
     }
 
     /** Drops the channels of conversations that no longer exist. */
@@ -311,10 +303,14 @@ object NotificationHelper {
     }
 
     /**
-     * Recreates the channels that already exist after a sound or receive-sound
-     * change, and drops any whose conversation is gone. Only conversations that
-     * own a channel are touched, so a long history does not dump hundreds of
-     * rows into system settings at once.
+     * Refreshes the chats that already own a channel and drops the channels of
+     * conversations that are gone. No channel is created here: a chat gets one
+     * only when the user asks for it, so a long history cannot dump hundreds of
+     * rows into system settings (#339 follow-up).
+     *
+     * The ids the previous scheme minted per tone are deleted outright. They
+     * were never opt-in — that build created one for every recent chat — and
+     * their tone lived in the id, so there is nothing worth carrying over.
      */
     fun syncNotificationChannels(context: Context) {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
@@ -322,26 +318,23 @@ object NotificationHelper {
         val soundOn = repo.settings.receiveSoundEnabled
         context.getSystemService(NotificationManager::class.java)
             ?.notificationChannels
-            ?.mapNotNull { NotificationChannels.conversationIdOf(it.id) }
-            ?.distinct()
-            ?.forEach { conversationId ->
+            ?.map { it.id }
+            ?.filter { NotificationChannels.conversationIdOf(it) != null }
+            ?.forEach { channelId ->
+                val conversationId = NotificationChannels.conversationIdOf(channelId)!!
+                if (NotificationChannels.isLegacyConversationChannel(channelId)) {
+                    deleteConversationChannels(context, conversationId)
+                    return@forEach
+                }
                 val target = repo.conversationChannelTargetBlocking(conversationId)
                 if (target == null) deleteConversationChannels(context, conversationId)
+                // The channel exists, so the tone is already the user's; only a
+                // rename is repaired here.
                 else ensureConversationChannel(context, target, categoryFor(target), soundOn)
             }
     }
 
-    /** Runs [syncConversationChannels] off the main thread, for the paths that
-     *  have just added conversations in bulk: the first-run import and a
-     *  restore both land rows after the launch sync has already run. */
-    fun syncConversationChannelsAsync(context: Context) {
-        val app = context.applicationContext
-        kotlinx.coroutines.CoroutineScope(
-            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
-        ).launch { syncConversationChannels(app) }
-    }
-
-    /** Runs [syncNotificationChannels] off the main thread, for settings rows. */
+    /** Runs [syncNotificationChannels] off the main thread, for launch and settings rows. */
     fun reconcileAsync(context: Context) {
         val app = context.applicationContext
         kotlinx.coroutines.CoroutineScope(
@@ -438,24 +431,21 @@ object NotificationHelper {
         val replyable = com.anindra.messages.data.AddressIdentity.isReplyable(from)
         val contactName = app.repository.contactNameFor(from)
         val settings = app.repository.settings
-        // A conversation always posts on its own channel (#339); the category
-        // channel is only the fallback for a sender with no conversation row.
+        // A chat posts on its own channel once the user has enabled one for it;
+        // every other case — including a channel the user removed — posts on the
+        // category channel, so a message is never dropped for want of a channel.
         val target = convoId?.let { app.repository.conversationChannelTargetBlocking(it) }
         val category = target?.let { categoryFor(it) }
             ?: NotificationCategory.resolve(
                 isGroup = false, knownContact = contactName != null, replyable = replyable
             )
-        val channelId = if (target != null) {
-            ensureConversationChannel(context, target, category, settings.receiveSoundEnabled)
-        } else {
-            channelIdFor(
-                category,
-                settings.notificationSoundFor(NotificationCategory.keyOf(category)),
-                settings.receiveSoundEnabled,
-                null,
-                ""
-            )
-        }
+        val channelId = channelIdFor(
+            category,
+            settings.notificationSoundFor(NotificationCategory.keyOf(category)),
+            settings.receiveSoundEnabled,
+            convoId,
+            convoId != null && conversationChannelExists(context, convoId)
+        )
 
         // stable per-conversation id: hashCode collisions between different
         // senders would otherwise overwrite each other's PendingIntents and
@@ -685,7 +675,8 @@ object NotificationHelper {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val convoId = app.repository.conversationIdForAddress(to)
         val settings = app.repository.settings
-        // A failure belongs to the same conversation channel its messages use.
+        // A failure follows the same rule as the chat's messages: its own
+        // channel when the user enabled one, else the category channel.
         val target = convoId?.let { app.repository.conversationChannelTargetBlocking(it) }
         val category = target?.let { categoryFor(it) }
             ?: NotificationCategory.resolve(
@@ -693,17 +684,13 @@ object NotificationHelper {
                 knownContact = app.repository.contactNameFor(to) != null,
                 replyable = com.anindra.messages.data.AddressIdentity.isReplyable(to)
             )
-        val channelId = if (target != null) {
-            ensureConversationChannel(context, target, category, settings.receiveSoundEnabled)
-        } else {
-            channelIdFor(
-                category,
-                settings.notificationSoundFor(NotificationCategory.keyOf(category)),
-                settings.receiveSoundEnabled,
-                null,
-                ""
-            )
-        }
+        val channelId = channelIdFor(
+            category,
+            settings.notificationSoundFor(NotificationCategory.keyOf(category)),
+            settings.receiveSoundEnabled,
+            convoId,
+            convoId != null && conversationChannelExists(context, convoId)
+        )
         val failId = (convoId ?: to.hashCode().toLong()).toInt()
 
         // "failed" tag decouples failure notifications from incoming-message ids

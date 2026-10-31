@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MarkEmailRead
 import androidx.compose.material.icons.rounded.MarkEmailUnread
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -56,6 +57,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -130,6 +135,7 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.data.StarredMessage
 import com.anindra.messages.data.ConversationList
 import com.anindra.messages.data.SwipeAction
 import kotlinx.coroutines.Job
@@ -172,6 +178,7 @@ fun ConversationsScreen(
     var unreadSeeded by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    var searchScope by remember { mutableStateOf(SearchScope.All) }
     var showArchived by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -358,11 +365,33 @@ fun ConversationsScreen(
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
+    val starredHits by remember(query, rowSettings.hideLinks) {
+        vm.starredMessages(query, rowSettings.hideLinks)
+    }.collectAsState(initial = emptyList())
+
     val messageMatchIds = rememberMessageMatchIds(vm, query)
 
     val displayed = rememberSearchResults(
         conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks, messageMatchIds
     )
+
+    // The conversation-list scopes narrow `displayed`; Starred swaps the list
+    // for message rows entirely (see the list branch below). Contacts looks at
+    // who the chat is with, Messages at what was said.
+    val scoped = when {
+        !searching -> displayed
+        searchScope == SearchScope.Unread -> displayed.filter { it.unreadCount > 0 }
+        searchScope == SearchScope.Contacts -> displayed.filter {
+            it.name.contains(query, ignoreCase = true) ||
+                it.address.contains(query, ignoreCase = true) ||
+                it.display.contains(query, ignoreCase = true)
+        }
+        searchScope == SearchScope.Messages -> displayed.filter {
+            val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
+            snippet.contains(query, ignoreCase = true) || it.id in messageMatchIds
+        }
+        else -> displayed
+    }
 
     // Reveal a new unread only while the user is still at the top.
     LaunchedEffect(displayed) {
@@ -503,6 +532,16 @@ fun ConversationsScreen(
             }
             }
 
+            // Part of the same frame as the header swap on purpose: growing it
+            // in afterwards moved the whole list a second time, which read as
+            // the screen jumping twice on the way into search.
+            if (searching) {
+                SearchScopeChips(
+                    selected = searchScope,
+                    onSelect = { searchScope = it }
+                )
+            }
+
             syncProgress?.let { progress ->
                 LinearProgressIndicator(
                     progress = { progress },
@@ -572,12 +611,71 @@ fun ConversationsScreen(
                     }
                 }
             } else {
-                CompositionLocalProvider(
+                if (searching && searchScope == SearchScope.Starred) {
+                    if (starredHits.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = 40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.starred_empty),
+                                style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                stringResource(R.string.starred_empty_hint),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+                            items(starredHits, key = { "star_${it.messageId}" }) { hit ->
+                                StarredHitRow(
+                                    hit = hit,
+                                    now = nowTick,
+                                    onClick = { onOpenConversation(hit.conversationId, hit.body) }
+                                )
+                            }
+                            item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
+                        }
+                    }
+                } else CompositionLocalProvider(
                     LocalNowTick provides nowTick,
                     LocalScheduledPreview provides scheduledPreview
                 ) {
+                    if (searching && scoped.isEmpty() &&
+                        searchScope != SearchScope.Starred
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = 40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (searchScope == SearchScope.Unread) {
+                                        R.string.search_scope_unread_empty
+                                    } else {
+                                        R.string.search_scope_no_results
+                                    }
+                                ),
+                                style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else
                     LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
-                        items(displayed, key = { it.id }) { convo ->
+                        items(scoped, key = { it.id }) { convo ->
                             SwipeableConversationItem(
                                 context,
                                 modifier = Modifier.animateItem(
@@ -1242,3 +1340,91 @@ internal fun StartChatFab(
 
 /** One recoverable inbox action; [message] is what the snackbar says it did. */
 private class UndoEntry(val message: String, val undo: () -> Unit)
+
+
+/** Home-search scopes (#394). All/Unread filter conversations; Starred lists
+ *  the bookmarked messages themselves. More scopes (Links, Images) slot in
+ *  here without touching the row. */
+internal enum class SearchScope(val labelRes: Int) {
+    All(R.string.search_scope_all),
+    Contacts(R.string.search_scope_contacts),
+    Messages(R.string.search_scope_messages),
+    Unread(R.string.search_scope_unread),
+    Starred(R.string.search_scope_starred)
+}
+
+/** Material 3 filter chips: one row, single select, 32dp tall. */
+@Composable
+internal fun SearchScopeChips(selected: SearchScope, onSelect: (SearchScope) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SearchScope.entries.forEach { scope ->
+            FilterChip(
+                selected = scope == selected,
+                onClick = { onSelect(scope) },
+                label = { Text(stringResource(scope.labelRes)) },
+                shape = RoundedCornerShape(8.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            )
+        }
+    }
+}
+
+/** One bookmarked message under the Starred scope: who, what, and when. */
+@Composable
+internal fun StarredHitRow(hit: StarredMessage, now: Long, onClick: () -> Unit) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PersonAvatar(hit.address, size = 40.dp)
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = hit.chatName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = formatListTime(hit.timestamp, now, context),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (hit.locked) "\u2022\u2022\u2022\u2022" else hit.body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(6.dp))
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = stringResource(R.string.chat_message_starred),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}

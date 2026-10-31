@@ -36,4 +36,13 @@
     <string name="convo_pinned">Fijado</string>
     <string name="convo_unpinned">Desfijado</string>
     <string name="convo_blocked">Número bloqueado</string>
+    <string name="search_scope_all">Todos</string>
+    <string name="search_scope_unread">No leídos</string>
+    <string name="search_scope_starred">Destacados</string>
+    <string name="starred_empty">Aún no hay mensajes destacados</string>
+    <string name="starred_empty_hint">Mantén pulsado un mensaje y toca la estrella para guardarlo aquí</string>
+    <string name="search_scope_unread_empty">No hay conversaciones sin leer</string>
+    <string name="search_scope_contacts">Contactos</string>
+    <string name="search_scope_messages">Mensajes</string>
+    <string name="search_scope_no_results">Sin resultados</string>
 </resources>

@@ -49,6 +49,19 @@ import com.anindra.messages.sms.NotificationCategory
 import com.anindra.messages.sms.NotificationChannels
 import com.anindra.messages.sms.SimMmsProbe
 
+/** Bundled message tones, shared by the category sound pickers. */
+internal fun contactSoundOptions(context: android.content.Context): List<Pair<String, String>> = listOf(
+    SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
+    SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
+    SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
+    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
+    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
+)
+
+internal fun contactSoundLabel(context: android.content.Context, value: String): String =
+    contactSoundOptions(context).firstOrNull { it.first == value }?.second
+        ?: context.getString(R.string.settings_sound_default)
+
 private const val DAYS_TRASH = "trash"
 private const val DAYS_SPAM = "spam"
 
