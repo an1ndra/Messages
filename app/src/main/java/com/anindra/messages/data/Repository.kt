@@ -152,7 +152,8 @@ class Db(context: Context) :
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title_custom INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
-        db.execSQL("ALTER TABLE messages ADD COLUMN starred INTEGER NOT NULL DEFAULT 0")
+        // `starred` is already in the CREATE TABLE above; re-adding it here made
+        // every fresh install crash with "duplicate column name: starred".
         createConversationRecipients(db)
         createMessageProviderIds(db)
     }
