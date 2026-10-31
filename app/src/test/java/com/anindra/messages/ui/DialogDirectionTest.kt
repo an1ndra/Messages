@@ -62,6 +62,25 @@ class DialogDirectionTest {
         }
     }
 
+    /** The default-SMS prompt is the screen a new Persian-locale user meets
+     *  first, and it is the one that parked "?" in front of "app" (#362
+     *  follow-up, seen in the field). It lives in MainActivity, not in a
+     *  settings screen, so the sweep above never covered it. */
+    @Test
+    fun theDefaultSmsPromptPaintsItsCopyDirectionally() {
+        val src = File(main, "java/com/anindra/messages/MainActivity.kt").readText()
+        val at = src.indexOf("R.string.default_sms_title")
+        assertTrue("the default-SMS dialog is gone from MainActivity", at > 0)
+        val start = src.lastIndexOf("if (showDefaultSmsDialog)", at)
+        val dialog = balancedBlock(src, src.indexOf('{', start))
+        assertEquals(
+            "both the prompt's title and its body must paint in their own direction",
+            2,
+            Regex("""directionalStyle\(\s*androidx\.compose\.material3\.LocalTextStyle\.current""")
+                .findAll(dialog).count()
+        )
+    }
+
     private fun balancedBlock(src: String, openBrace: Int): String {
         var depth = 0
         for (i in openBrace until src.length) {
