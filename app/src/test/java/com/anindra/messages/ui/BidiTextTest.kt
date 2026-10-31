@@ -1,12 +1,33 @@
 package com.anindra.messages.ui
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.text.Bidi
 
 class BidiTextTest {
 
     private val lri = BidiText.LRI
     private val pdi = BidiText.PDI
+
+    /** What the platform actually paints: the string in visual order, as the
+     *  Unicode bidi algorithm reorders it for the given paragraph direction. */
+    private fun painted(text: String, rtl: Boolean): String {
+        val bidi = Bidi(
+            text,
+            if (rtl) Bidi.DIRECTION_RIGHT_TO_LEFT else Bidi.DIRECTION_LEFT_TO_RIGHT
+        )
+        val levels = ByteArray(text.length) { bidi.getLevelAt(it).toByte() }
+        val chars = Array<Any>(text.length) { text[it].toString() }
+        Bidi.reorderVisually(levels, 0, chars, 0, text.length)
+        return chars.joinToString("")
+    }
+
+    /** The painted string without the invisible bidi controls, i.e. what the
+     *  reader actually sees. */
+    private fun String.visible(): String =
+        filterNot { it == lri || it == pdi || it in '\u200E'..'\u200F' }
 
     @Test
     fun ltrWrapsAndIsIdempotent() {
@@ -232,5 +253,47 @@ class BidiTextTest {
         // The link's digits stay where they are: the line isolate already pins
         // the whole line, and a second isolate inside it would nest for nothing.
         assertEquals("لغو 11r.eu/t", iso.text.substringAfterLast('\n'))
+    }
+
+    @Test
+    fun aGroupedAmountWithDecimalsIsIsolatedWhole() {
+        // #395: on 1.0.30 the run regex had no ',' in its middle class, so
+        // "20,980.01" matched as two runs ("20" and "980.01") and each was
+        // isolated on its own. Two adjacent isolates in an RTL paragraph paint
+        // right-to-left, so the amount came out as "980.01,20".
+        assertEquals(
+            "مبلغ ${lri}20,980.01$pdi ریال",
+            BidiText.isolateNumberRuns("مبلغ 20,980.01 ریال").text
+        )
+        assertEquals(
+            "הסכום ${lri}20,980.01$pdi שח",
+            BidiText.isolateNumberRuns("הסכום 20,980.01 שח").text
+        )
+    }
+
+    @Test
+    fun theGroupedAmountPaintsInReadingOrderInAnRtlBubble() {
+        val iso = BidiText.isolateNumberRuns("مبلغ 20,980.01 ریال")
+        assertEquals(BidiText.Direction.RTL, iso.direction)
+        assertTrue(painted(iso.text, rtl = true).contains("20,980.01"))
+        assertFalse(painted(iso.text, rtl = true).contains("980.01,20"))
+        // The split form is exactly what the report photographed: two isolates
+        // cannot hold a grouped number together, and the assertion above is only
+        // worth anything if this really is how it breaks. The isolates
+        // themselves sit between the runs, so compare what is left on screen
+        // once the invisible controls are dropped.
+        val split = painted("مبلغ ${lri}20$pdi,${lri}980.01$pdi ریال", rtl = true).visible()
+        assertTrue(split, split.contains("980.01,20"))
+    }
+
+    @Test
+    fun aSpaceGroupedAmountIsIsolatedToo() {
+        // A plain space between the groups is a neutral, not a number separator,
+        // so Unicode splits the amount there even without any isolate.
+        assertEquals(
+            "مبلغ ${lri}20 980.01$pdi ریال",
+            BidiText.isolateNumberRuns("مبلغ 20 980.01 ریال").text
+        )
+        assertFalse(painted("مبلغ 20 980.01 ریال", rtl = true).contains("20 980.01"))
     }
 }
