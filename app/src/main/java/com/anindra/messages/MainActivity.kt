@@ -1292,8 +1292,24 @@ class MainActivity : FragmentActivity() {
                 if (showDefaultSmsDialog) {
                     androidx.compose.material3.AlertDialog(
                         onDismissRequest = { showDefaultSmsDialog = false },
-                        title = { androidx.compose.material3.Text(stringResource(R.string.default_sms_title)) },
-                        text = { androidx.compose.material3.Text(stringResource(R.string.default_sms_message)) },
+                        title = {
+                            val title = stringResource(R.string.default_sms_title)
+                            androidx.compose.material3.Text(
+                                title,
+                                style = com.anindra.messages.ui.directionalStyle(
+                                    androidx.compose.material3.LocalTextStyle.current, title
+                                )
+                            )
+                        },
+                        text = {
+                            val message = stringResource(R.string.default_sms_message)
+                            androidx.compose.material3.Text(
+                                message,
+                                style = com.anindra.messages.ui.directionalStyle(
+                                    androidx.compose.material3.LocalTextStyle.current, message
+                                )
+                            )
+                        },
                         confirmButton = {
                             androidx.compose.material3.TextButton(onClick = {
                                 showDefaultSmsDialog = false
