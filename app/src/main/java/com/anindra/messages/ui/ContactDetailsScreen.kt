@@ -33,12 +33,12 @@ import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -48,6 +48,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -72,14 +73,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import com.anindra.messages.R
 import com.anindra.messages.AppViewModel
 import kotlinx.coroutines.withContext
 import com.anindra.messages.data.SavedContact
 import com.anindra.messages.data.ContactLookup
-import com.anindra.messages.data.SettingsStore
-import com.anindra.messages.sms.NotificationHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,9 +111,23 @@ onBack: () -> Unit,
     val notificationsEnabled by vm.conversationNotificationsEnabledFlow(conversationId)
         .collectAsState(initial = true)
     var notifState by remember(notificationsEnabled) { mutableStateOf(notificationsEnabled) }
-    val convoSound by vm.conversationNotificationSoundFlow(conversationId).collectAsState(initial = "")
-    var soundDialog by remember { mutableStateOf(false) }
-    var pendingSound by remember(convoSound) { mutableStateOf(convoSound) }
+    // A chat's own channel exists only if the user asked for it, and Android
+    // keeps that channel's sound — so the switch mirrors the channel rather than
+    // a stored copy of the setting. Re-read on resume: the user may have removed
+    // it from system settings while this screen was in the background.
+    var customChannel by remember(conversationId) {
+        mutableStateOf(vm.conversationCustomChannel(conversationId))
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, conversationId) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                customChannel = vm.conversationCustomChannel(conversationId)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     var showBlockDialog by remember { mutableStateOf(false) }
     val bubbleRevision by vm.settings.revision.collectAsState()
     var bubbleEnabled by remember(bubbleRevision) {
@@ -347,20 +363,29 @@ onBack: () -> Unit,
                 )
                 DetailCardRow(
                     icon = Icons.AutoMirrored.Rounded.VolumeUp,
-                    title = stringResource(R.string.contact_notification_sound),
+                    title = stringResource(R.string.contact_custom_notifications),
+                    titleColor = MaterialTheme.colorScheme.onSurface,
                     trailing = {
-                        Text(
-                            if (convoSound.isEmpty()) {
-                                stringResource(R.string.contact_notification_sound_default)
-                            } else {
-                                contactSoundLabel(context, convoSound)
+                        Switch(
+                            checked = customChannel,
+                            onCheckedChange = {
+                                customChannel = it
+                                vm.setConversationCustomChannel(conversationId, it)
                             },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    },
-                    onClick = { pendingSound = convoSound; soundDialog = true }
+                    }
                 )
+                // Only meaningful once the chat has a channel of its own, and it
+                // is a link rather than a second copy of the setting: Android
+                // owns the sound from the moment the channel exists.
+                if (customChannel) {
+                    DetailCardRow(
+                        icon = Icons.Rounded.Tune,
+                        title = stringResource(R.string.contact_customize_notifications),
+                        titleColor = MaterialTheme.colorScheme.onSurface,
+                        onClick = { vm.openConversationChannelSettings(conversationId) }
+                    )
+                }
                 DetailCardRow(
                     icon = Icons.Rounded.ChatBubble,
                     title = stringResource(R.string.contact_bubble_conversation),
@@ -500,69 +525,7 @@ onBack: () -> Unit,
             }
         )
     }
-
-    if (soundDialog) {
-        val options = listOf(
-            "" to context.getString(R.string.contact_notification_sound_default)
-        ) + contactSoundOptions(context)
-        AlertDialog(
-            onDismissRequest = { soundDialog = false },
-            title = { Text(stringResource(R.string.contact_notification_sound)) },
-            text = {
-                Column {
-                    options.forEach { (value, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    pendingSound = value
-                                    if (value.isNotEmpty()) {
-                                        NotificationHelper.previewNotificationSound(context, value)
-                                    }
-                                }
-                                .padding(vertical = 2.dp)
-                        ) {
-                            RadioButton(
-                                selected = pendingSound == value,
-                                onClick = {
-                                    pendingSound = value
-                                    if (value.isNotEmpty()) {
-                                        NotificationHelper.previewNotificationSound(context, value)
-                                    }
-                                }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(label)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.setConversationNotificationSound(conversationId, pendingSound)
-                    soundDialog = false
-                }) { Text(stringResource(R.string.common_ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { soundDialog = false }) { Text(stringResource(R.string.common_cancel)) }
-            }
-        )
-    }
 }
-
-/** Bundled message tones, shared by the per-conversation picker. */
-internal fun contactSoundOptions(context: android.content.Context): List<Pair<String, String>> = listOf(
-    SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
-    SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
-    SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
-    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
-    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
-)
-
-internal fun contactSoundLabel(context: android.content.Context, value: String): String =
-    contactSoundOptions(context).firstOrNull { it.first == value }?.second
-        ?: context.getString(R.string.settings_sound_default)
 
 @Composable
 internal fun DetailActionButton(

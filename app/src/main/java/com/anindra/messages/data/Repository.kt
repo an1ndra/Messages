@@ -64,7 +64,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 29
+private const val DB_VERSION = 30
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -109,7 +109,8 @@ class Db(context: Context) :
                 locked INTEGER NOT NULL DEFAULT 0,
                 sub_id INTEGER NOT NULL DEFAULT -1,
                 deleted_at INTEGER NOT NULL DEFAULT 0,
-                blocked_reason TEXT NOT NULL DEFAULT '')"""
+                blocked_reason TEXT NOT NULL DEFAULT '',
+                starred INTEGER NOT NULL DEFAULT 0)"""
         )
         db.execSQL("CREATE INDEX idx_messages_conversation ON messages(conversation_id)")
         db.execSQL("CREATE INDEX idx_messages_conv_ts ON messages(conversation_id, timestamp)")
@@ -151,6 +152,7 @@ class Db(context: Context) :
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title_custom INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE messages ADD COLUMN starred INTEGER NOT NULL DEFAULT 0")
         createConversationRecipients(db)
         createMessageProviderIds(db)
     }
@@ -343,6 +345,13 @@ class Db(context: Context) :
             // Per-conversation notification sound; empty means inherit the
             // category/global sound, which is what every existing row wants.
             db.execSQL("ALTER TABLE conversation_notifications ADD COLUMN sound TEXT NOT NULL DEFAULT ''")
+        }
+        if (oldVersion < 30) {
+            // Bookmarked messages (#394). Local-only: the provider has no such
+            // column, so the flag lives here and survives a re-import because
+            // sync inserts rows it does not already own.
+            db.execSQL("ALTER TABLE messages ADD COLUMN starred INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("CREATE INDEX idx_messages_starred ON messages(starred, timestamp) WHERE starred=1")
         }
     }
 
@@ -662,7 +671,7 @@ class Repository(private val context: Context) {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
             """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id,
-               transport,delivered_at,address FROM messages
+               transport,delivered_at,address,starred FROM messages
                WHERE conversation_id=? AND deleted_at=0 ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
             arrayOf(conversationId.toString(), limit.toString(), offset.toString())
         ).use { c ->
@@ -682,12 +691,68 @@ class Repository(private val context: Context) {
                         subId = c.getInt(9),
                         transport = c.getString(10),
                         deliveredAt = c.getLong(11),
-                        address = c.getString(12).orEmpty()
+                        address = c.getString(12).orEmpty(),
+                        starred = c.getInt(13) == 1
                     )
                 )
             }
         }
         out.reversed()
+    }
+
+    /** Bookmarks or clears [ids] (#394). Returns the number of rows changed. */
+    fun setStarred(ids: Collection<Long>, starred: Boolean): Int {
+        if (ids.isEmpty()) return 0
+        val list = ids.joinToString(",") { it.toString() }
+        val changed = db.writableDatabase.compileStatement(
+            "UPDATE messages SET starred=? WHERE id IN ($list) AND deleted_at=0"
+        ).use { st ->
+            st.bindLong(1, if (starred) 1 else 0)
+            st.executeUpdateDelete()
+        }
+        if (changed > 0) notifyChanged()
+        return changed
+    }
+
+    /**
+     * Every bookmarked message, newest first, optionally narrowed to [query].
+     *
+     * The match rule is [MessageSearch.matchesVisible], the same one the home
+     * list uses, so a locked body never surfaces and Hide links cannot be
+     * bypassed here (#394).
+     */
+    fun starredMessages(query: String, hideLinks: Boolean): Flow<List<StarredMessage>> = observe {
+        val out = mutableListOf<StarredMessage>()
+        db.readableDatabase.rawQuery(
+            """SELECT m.id,m.conversation_id,m.body,m.timestamp,m.is_me,
+               COALESCE(c.name,c.address),c.address,m.locked
+               FROM messages m JOIN conversations c ON c.id=m.conversation_id
+               WHERE m.starred=1 AND m.deleted_at=0 AND c.deleted_at=0
+               ORDER BY m.timestamp DESC""",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val locked = c.getInt(7) == 1
+                val body = c.getString(2)
+                if (query.isBlank() ||
+                    MessageSearch.matchesVisible(body, query, locked, hideLinks)
+                ) {
+                    out.add(
+                        StarredMessage(
+                            messageId = c.getLong(0),
+                            conversationId = c.getLong(1),
+                            body = body,
+                            timestamp = c.getLong(3),
+                            isMe = c.getInt(4) == 1,
+                            chatName = c.getString(5).orEmpty(),
+                            address = c.getString(6).orEmpty(),
+                            locked = locked
+                        )
+                    )
+                }
+            }
+        }
+        out
     }
 
     /**
@@ -2062,46 +2127,14 @@ class Repository(private val context: Context) {
         )
         notifyChanged()
     }
-
-    /** The stored per-conversation sound, or "" when it inherits the category sound. */
-    fun getConversationNotificationSoundBlocking(conversationId: Long): String = runOnIo {
-        var sound = ""
-        db.readableDatabase.rawQuery(
-            "SELECT sound FROM conversation_notifications WHERE conversation_id=?",
-            arrayOf(conversationId.toString())
-        ).use { c ->
-            if (c.moveToFirst() && !c.isNull(0)) sound = c.getString(0) ?: ""
-        }
-        sound
-    }
-
-    fun conversationNotificationSoundFlow(conversationId: Long): Flow<String> = observe {
-        var sound = ""
-        db.readableDatabase.rawQuery(
-            "SELECT sound FROM conversation_notifications WHERE conversation_id=?",
-            arrayOf(conversationId.toString())
-        ).use { c ->
-            if (c.moveToFirst() && !c.isNull(0)) sound = c.getString(0) ?: ""
-        }
-        sound
-    }
-
-    /** Empty [sound] clears the override back to the category/global tone. */
-    fun setConversationNotificationSound(conversationId: Long, sound: String) {
-        ensureConversationNotificationRow(conversationId)
-        db.writableDatabase.update(
-            "conversation_notifications",
-            ContentValues().apply { put("sound", sound) },
-            "conversation_id=?",
-            arrayOf(conversationId.toString())
-        )
-        notifyChanged()
-    }
+    // The `conversation_notifications.sound` column is deliberately still in the
+    // schema: restores from an older backup carry it, and dropping it would cost
+    // a migration for a value nothing reads any more. A chat's tone now belongs
+    // to its system notification channel, which the app cannot overwrite.
 
     /**
      * One conversation's notification-channel inputs, or null when the row is
-     * gone or trashed. Reads in a single query because the launch sync resolves
-     * up to a hundred of these.
+     * gone or trashed.
      */
     fun conversationChannelTargetBlocking(conversationId: Long): ConversationChannelTarget? {
         var out: ConversationChannelTarget? = null
@@ -2109,16 +2142,6 @@ class Repository(private val context: Context) {
             "$CHANNEL_TARGET_SELECT WHERE c.deleted_at=0 AND c.id=?",
             arrayOf(conversationId.toString())
         ).use { c -> if (c.moveToFirst()) out = readChannelTarget(c) }
-        return out
-    }
-
-    /** The most recent conversations, newest first, for the launch-time channel sync. */
-    fun recentConversationChannelTargetsBlocking(limit: Int): List<ConversationChannelTarget> {
-        val out = mutableListOf<ConversationChannelTarget>()
-        db.readableDatabase.rawQuery(
-            "$CHANNEL_TARGET_SELECT WHERE c.deleted_at=0 ORDER BY c.timestamp DESC LIMIT $limit",
-            null
-        ).use { c -> while (c.moveToNext()) out.add(readChannelTarget(c)) }
         return out
     }
 
@@ -2138,8 +2161,7 @@ class Repository(private val context: Context) {
             name = c.getString(2),
             display = c.getString(3),
             groupTitle = c.getString(4).orEmpty(),
-            recipients = c.getInt(5),
-            overrideSound = c.getString(6).orEmpty()
+            recipients = c.getInt(5)
         )
 
 
@@ -4635,8 +4657,6 @@ class Repository(private val context: Context) {
 private const val CHANNEL_TARGET_SELECT =
     """SELECT c.id, c.address, c.name,
        COALESCE(p.display_destination, c.address), c.group_title,
-       (SELECT count(*) FROM conversation_recipients r WHERE r.conversation_id=c.id),
-       COALESCE(n.sound, '')
+       (SELECT count(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)
        FROM conversations c
-       LEFT JOIN participants p ON p.normalized_destination = c.address
-       LEFT JOIN conversation_notifications n ON n.conversation_id = c.id"""
+       LEFT JOIN participants p ON p.normalized_destination = c.address"""

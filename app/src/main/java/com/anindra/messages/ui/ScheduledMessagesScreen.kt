@@ -23,10 +23,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -298,28 +295,33 @@ internal fun ReschedulePicker(timestamp: Long, onDone: (Long) -> Unit, onDismiss
     val current = Instant.ofEpochMilli(timestamp).atZone(zone)
     var step by remember { mutableStateOf("date") }
     var pickedDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
+    var pickedMillis by remember {
+        mutableStateOf(
+            current.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+    }
 
     if (step == "date") {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = current.toLocalDate()
-                .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-        )
-        DatePickerDialog(
-            onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton(onClick = {
-                    pickedDate = ScheduledTime.selectedDate(
-                        datePickerState.selectedDateMillis ?: current.toLocalDate()
-                            .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-                    )
-                    step = "time"
-                }) { Text(stringResource(R.string.chat_schedule)) }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
+        // 360dp is Material's date picker width: seven 48dp cells plus the
+        // picker's own 12dp side padding, exactly.
+        ScheduleDialog(onDismiss = onDismiss, maxWidth = 360.dp) {
+            Column {
+                CalendarDatePicker(
+                    utcMillis = pickedMillis,
+                    calendar = SettingsStore.calendarSystemOf(context),
+                    onPick = { pickedMillis = it }
+                )
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
+                    TextButton(onClick = {
+                        pickedDate = ScheduledTime.selectedDate(pickedMillis)
+                        step = "time"
+                    }) { Text(stringResource(R.string.chat_next)) }
+                }
             }
-        ) {
-            DatePicker(state = datePickerState)
         }
     } else {
         val timePickerState = rememberTimePickerState(

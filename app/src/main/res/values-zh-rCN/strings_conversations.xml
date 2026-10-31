@@ -35,4 +35,13 @@
     <string name="convo_pinned">已置顶</string>
     <string name="convo_unpinned">已取消置顶</string>
     <string name="convo_blocked">已屏蔽该号码</string>
+    <string name="search_scope_all">全部</string>
+    <string name="search_scope_unread">未读</string>
+    <string name="search_scope_starred">已加星标</string>
+    <string name="starred_empty">暂无加星标的消息</string>
+    <string name="starred_empty_hint">长按消息并点按星标即可保存在此</string>
+    <string name="search_scope_unread_empty">没有未读对话</string>
+    <string name="search_scope_contacts">联系人</string>
+    <string name="search_scope_messages">消息</string>
+    <string name="search_scope_no_results">没有匹配项</string>
 </resources>

@@ -28,6 +28,7 @@ class DatePatternsTest {
         "MMMMEEEEd" to mapOf("en" to "EEEE, MMMM d", "fr" to "EEEE d MMMM"),
         "yMMMMEEEEd" to mapOf("en" to "EEEE, MMMM d, y", "fr" to "EEEE d MMMM y"),
         "yMMMd" to mapOf("en" to "MMM d, y", "fr" to "d MMM y", "de" to "d. MMM y", "ja" to "y年M月d日"),
+        "yMMMM" to mapOf("en" to "MMMM y", "fr" to "MMMM y", "de" to "MMMM y", "ja" to "y年M月"),
     )
 
     private val resolver = SkeletonResolver { locale, skeleton ->
@@ -101,6 +102,13 @@ class DatePatternsTest {
      * from Locale.getDefault() during class initialisation, so a per-app
      * language change left the process formatting in the old language forever.
      */
+    /** The schedule grid's header: the month alone, its year after it in English. */
+    @Test
+    fun theMonthLabelLeadsWithTheMonth() {
+        assertEquals("August 2024", dateFormatter(DateStyle.MonthAndYear, Locale.ENGLISH, resolver).format(sample))
+        assertEquals("2024年8月", dateFormatter(DateStyle.MonthAndYear, Locale.JAPANESE, resolver).format(sample))
+    }
+
     @Test
     fun switchingLocaleDoesNotReturnTheStaleFormatter() {
         val asFrench = dateFormatter(DateStyle.Day, Locale.FRENCH, resolver)

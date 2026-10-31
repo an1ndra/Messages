@@ -24,6 +24,9 @@ object SelectionToolbar {
 
     fun showDelete(count: Int): Boolean = count >= 1
 
+    /** Star is offered for every selection; several messages toggle together. */
+    fun showStar(count: Int): Boolean = count >= 1
+
     /** Lock/Unlock toggles to "Unlock" only when every selected message is locked. */
     fun lockLabelRes(allLocked: Boolean): Int =
         if (allLocked) R.string.chat_unlock_dialog else R.string.chat_lock_dialog

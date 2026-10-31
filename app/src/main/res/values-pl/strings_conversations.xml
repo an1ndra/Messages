@@ -36,4 +36,13 @@
     <string name="convo_pinned">Przypięto</string>
     <string name="convo_unpinned">Odpięto</string>
     <string name="convo_blocked">Numer zablokowany</string>
+    <string name="search_scope_all">Wszystkie</string>
+    <string name="search_scope_unread">Nieprzeczytane</string>
+    <string name="search_scope_starred">Oznaczone</string>
+    <string name="starred_empty">Brak oznaczonych wiadomości</string>
+    <string name="starred_empty_hint">Naciśnij i przytrzymaj wiadomość, a następnie dotknij gwiazdki, aby ją tu zachować</string>
+    <string name="search_scope_unread_empty">Brak nieprzeczytanych rozmów</string>
+    <string name="search_scope_contacts">Kontakty</string>
+    <string name="search_scope_messages">Wiadomości</string>
+    <string name="search_scope_no_results">Brak wyników</string>
 </resources>

@@ -4,7 +4,8 @@
     <string name="contact_block_confirm">%s — no recibirás llamadas ni mensajes de este número.</string>
     <string name="contact_block_report">Bloquear número</string>
     <string name="contact_notifications">Notificaciones</string>
-    <string name="contact_notification_sound">Sonido de notificación</string>
+    <string name="contact_custom_notifications">Notificaciones personalizadas</string>
+    <string name="contact_customize_notifications">Personalizar notificaciones</string>
     <string name="contact_notification_sound_default">Usar el valor predeterminado</string>
     <string name="contact_one_person">1 persona más</string>
     <string name="contact_add_people">Agregar personas</string>

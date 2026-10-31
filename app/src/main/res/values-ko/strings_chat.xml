@@ -14,6 +14,7 @@
     <string name="chat_details">세부 정보</string>
     <string name="chat_view_details">세부 정보 보기</string>
     <string name="chat_schedule">예약</string>
+    <string name="chat_select_date">날짜 선택</string>
     <string name="chat_select_time">시간 선택</string>
     <string name="chat_media_camera">카메라</string>
     <string name="chat_media_gallery">갤러리</string>
@@ -38,7 +39,10 @@
     <string name="chat_sending_via">%s(으)로 보내는 중</string>
     <string name="chat_switch_sim">SIM 전환</string>
     <string name="chat_scheduled_for">%s에 예약됨</string>
-    <string name="chat_schedule_calendar_hint">내 달력 기준: %1$s</string>
+    <string name="chat_schedule_gregorian_hint">그레고리력: %1$s</string>
+    <string name="chat_schedule_previous_month">이전 달</string>
+    <string name="chat_schedule_next_month">다음 달</string>
+    <string name="chat_schedule_choose_year">연도 선택</string>
     <string name="chat_schedule_failed">메시지를 예약할 수 없습니다</string>
     <string name="chat_search_contacts">연락처 검색</string>
     <string name="chat_add_people">사람 추가</string>
@@ -97,4 +101,9 @@
     <string name="chat_search_counter">%1$d/%2$d</string>
     <string name="chat_scroll_to_latest">최신 메시지로 이동</string>
     <string name="access_zoom_reset">확대 %1$d%%, 탭하여 초기화</string>
+    <string name="chat_star">별표 추가</string>
+    <string name="chat_unstar">별표 제거</string>
+    <string name="chat_starred">메시지에 별표를 추가했습니다</string>
+    <string name="chat_unstarred">별표를 제거했습니다</string>
+    <string name="chat_message_starred">별표 표시된 메시지</string>
 </resources>

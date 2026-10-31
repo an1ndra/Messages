@@ -36,4 +36,13 @@
     <string name="convo_pinned">고정했습니다</string>
     <string name="convo_unpinned">고정을 해제했습니다</string>
     <string name="convo_blocked">번호를 차단했습니다</string>
+    <string name="search_scope_all">전체</string>
+    <string name="search_scope_unread">읽지 않음</string>
+    <string name="search_scope_starred">별표 표시</string>
+    <string name="starred_empty">아직 별표 표시된 메시지가 없습니다</string>
+    <string name="starred_empty_hint">메시지를 길게 누른 후 별표를 탭하면 여기에 보관됩니다</string>
+    <string name="search_scope_unread_empty">읽지 않은 대화가 없습니다</string>
+    <string name="search_scope_contacts">연락처</string>
+    <string name="search_scope_messages">메시지</string>
+    <string name="search_scope_no_results">일치하는 항목이 없습니다</string>
 </resources>

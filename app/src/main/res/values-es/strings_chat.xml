@@ -14,6 +14,7 @@
     <string name="chat_details">Detalles</string>
     <string name="chat_view_details">Ver detalles</string>
     <string name="chat_schedule">Programar</string>
+    <string name="chat_select_date">Seleccionar fecha</string>
     <string name="chat_select_time">Seleccionar hora</string>
     <string name="chat_media_camera">Cámara</string>
     <string name="chat_media_gallery">Galería</string>
@@ -38,7 +39,10 @@
     <string name="chat_sending_via">Enviando a través de %s</string>
     <string name="chat_switch_sim">Cambiar SIM</string>
     <string name="chat_scheduled_for">Programado para %s</string>
-    <string name="chat_schedule_calendar_hint">En tu calendario: %1$s</string>
+    <string name="chat_schedule_gregorian_hint">Gregoriano: %1$s</string>
+    <string name="chat_schedule_previous_month">Mes anterior</string>
+    <string name="chat_schedule_next_month">Mes siguiente</string>
+    <string name="chat_schedule_choose_year">Elegir año</string>
     <string name="chat_schedule_failed">No se pudo programar el mensaje</string>
     <string name="chat_search_contacts">Buscar contactos</string>
     <string name="chat_add_people">Agregar personas</string>
@@ -97,4 +101,9 @@
     <string name="chat_search_counter">%1$d de %2$d</string>
     <string name="chat_scroll_to_latest">Ir al mensaje más reciente</string>
     <string name="access_zoom_reset">Zoom %1$d%%, toca para restablecer</string>
+    <string name="chat_star">Destacar</string>
+    <string name="chat_unstar">Quitar destacado</string>
+    <string name="chat_starred">Mensaje destacado</string>
+    <string name="chat_unstarred">Destacado quitado</string>
+    <string name="chat_message_starred">Mensaje destacado</string>
 </resources>

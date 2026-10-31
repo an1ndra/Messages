@@ -14,6 +14,7 @@
     <string name="chat_details">Détails</string>
     <string name="chat_view_details">Voir les détails</string>
     <string name="chat_schedule">Planifier</string>
+    <string name="chat_select_date">Sélectionner la date</string>
     <string name="chat_select_time">Sélectionner l\'heure</string>
     <string name="chat_media_camera">Appareil photo</string>
     <string name="chat_media_gallery">Galerie</string>
@@ -37,7 +38,10 @@
     <string name="chat_sending_via">Envoi via %s</string>
     <string name="chat_switch_sim">Changer de SIM</string>
     <string name="chat_scheduled_for">Planifié pour %s</string>
-    <string name="chat_schedule_calendar_hint">Dans votre calendrier : %1$s</string>
+    <string name="chat_schedule_gregorian_hint">Grégorien : %1$s</string>
+    <string name="chat_schedule_previous_month">Mois précédent</string>
+    <string name="chat_schedule_next_month">Mois suivant</string>
+    <string name="chat_schedule_choose_year">Choisir l\'année</string>
     <string name="chat_schedule_failed">Impossible de planifier le message</string>
     <string name="chat_search_contacts">Rechercher des contacts</string>
     <string name="chat_add_people">Ajouter des personnes</string>
@@ -93,4 +97,9 @@
     <string name="chat_search_counter">%1$d sur %2$d</string>
     <string name="chat_scroll_to_latest">Défiler jusqu\'au dernier message</string>
     <string name="access_zoom_reset">Zoom %1$d%%, touchez pour réinitialiser</string>
+    <string name="chat_star">Ajouter une étoile</string>
+    <string name="chat_unstar">Retirer l’étoile</string>
+    <string name="chat_starred">Message marqué d’une étoile</string>
+    <string name="chat_unstarred">Étoile retirée</string>
+    <string name="chat_message_starred">Message avec étoile</string>
 </resources>
