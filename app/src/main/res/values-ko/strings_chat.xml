@@ -29,6 +29,7 @@
     <string name="chat_voice_start_failed">녹음을 시작할 수 없습니다</string>
     <string name="chat_voice_max_reached">MMS 크기 한도에 도달하여 음성 메시지를 중지했습니다</string>
     <string name="chat_voice_cancel_recording">녹음 취소</string>
+    <string name="chat_voice_lock_short">고정</string>
     <string name="chat_voice_lock_hint">위로 밀어 녹음 고정</string>
     <string name="voice_guide_title">음성 메시지 보내기</string>
     <string name="voice_guide_hold">파형 버튼을 길게 눌러 녹음</string>
