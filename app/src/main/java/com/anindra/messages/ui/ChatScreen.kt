@@ -180,6 +180,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
@@ -3530,7 +3531,7 @@ internal fun InputBar(
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Spacer(Modifier.width(16.dp))
+                            Spacer(Modifier.width(8.dp))
                             val armed = if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.error
                             else MaterialTheme.colorScheme.onSurface
                             val cancelLabel = stringResource(R.string.chat_voice_cancel_recording)
@@ -3540,7 +3541,7 @@ internal fun InputBar(
                                 IconButton(
                                     onClick = { stopRecording(send = false) },
                                     modifier = Modifier
-                                        .size(40.dp)
+                                        .size(36.dp)
                                         .semantics { contentDescription = cancelLabel }
                                 ) {
                                     Icon(
@@ -3556,7 +3557,7 @@ internal fun InputBar(
                                 // Google Messages renders it mid-hold.
                                 Box(
                                     Modifier
-                                        .size(40.dp)
+                                        .size(28.dp)
                                         .semantics { contentDescription = cancelLabel },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -3572,16 +3573,44 @@ internal fun InputBar(
                                 tint = armed,
                                 modifier = Modifier.size(20.dp)
                             )
-                            Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.width(6.dp))
                             Text(
                                 stringResource(
                                     if (armed != MaterialTheme.colorScheme.onSurface) R.string.chat_voice_release_cancel
                                     else R.string.chat_voice_slide_cancel
                                 ),
                                 style = MaterialTheme.typography.labelLarge,
-                                color = armed
+                                color = armed,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                // The two hints share one row; when space runs out
+                                // the cancel text gives way, never the lock hint —
+                                // that one has no other way of being learned.
+                                modifier = Modifier.weight(1f)
                             )
-                            Spacer(Modifier.weight(1f))
+                            if (!locked) {
+                                // The lock has a hint of its own: the padlock on
+                                // the disc only appears once the finger is already
+                                // heading up, which is too late to teach it.
+                                val lockTint = if (lockHint) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Rounded.KeyboardArrowUp,
+                                        stringResource(R.string.chat_voice_lock_hint),
+                                        tint = lockTint,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        stringResource(R.string.chat_voice_lock_short),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = lockTint,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                                Spacer(Modifier.width(2.dp))
+                            }
                         }
                 }
             }

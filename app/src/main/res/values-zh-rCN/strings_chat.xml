@@ -28,6 +28,7 @@
     <string name="chat_voice_start_failed">无法开始录音</string>
     <string name="chat_voice_max_reached">语音消息已达 MMS 大小上限并停止</string>
     <string name="chat_voice_cancel_recording">取消录音</string>
+    <string name="chat_voice_lock_short">锁定</string>
     <string name="chat_voice_lock_hint">上滑以锁定录音</string>
     <string name="voice_guide_title">发送语音消息</string>
     <string name="voice_guide_hold">长按波形按钮开始录音</string>
