@@ -29,7 +29,6 @@
     <string name="chat_voice_start_failed">रिकॉर्डिंग शुरू नहीं हो सकी</string>
     <string name="chat_voice_max_reached">MMS आकार सीमा पर वॉइस संदेश रोका गया</string>
     <string name="chat_voice_cancel_recording">रिकॉर्डिंग रद्द करें</string>
-    <string name="chat_voice_lock_short">लॉक</string>
     <string name="chat_voice_lock_hint">रिकॉर्डिंग लॉक करने के लिए ऊपर स्लाइड करें</string>
     <string name="voice_guide_title">वॉइस संदेश भेजें</string>
     <string name="voice_guide_hold">रिकॉर्ड करने के लिए वेव बटन दबाकर रखें</string>

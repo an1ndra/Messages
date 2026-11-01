@@ -29,7 +29,6 @@
     <string name="chat_voice_start_failed">Não foi possível iniciar a gravação</string>
     <string name="chat_voice_max_reached">Mensagem de voz interrompida no limite de tamanho do MMS</string>
     <string name="chat_voice_cancel_recording">Cancelar gravação</string>
-    <string name="chat_voice_lock_short">Fixar</string>
     <string name="chat_voice_lock_hint">Deslize para cima para fixar a gravação</string>
     <string name="voice_guide_title">Enviar uma mensagem de voz</string>
     <string name="voice_guide_hold">Mantenha o botão de onda pressionado para gravar</string>

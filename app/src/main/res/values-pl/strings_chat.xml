@@ -29,7 +29,6 @@
     <string name="chat_voice_start_failed">Nie udało się rozpocząć nagrywania</string>
     <string name="chat_voice_max_reached">Wiadomość głosowa zatrzymana na limicie rozmiaru MMS</string>
     <string name="chat_voice_cancel_recording">Anuluj nagrywanie</string>
-    <string name="chat_voice_lock_short">Zablokuj</string>
     <string name="chat_voice_lock_hint">Przesuń w górę, aby zablokować nagrywanie</string>
     <string name="voice_guide_title">Wyślij wiadomość głosową</string>
     <string name="voice_guide_hold">Przytrzymaj przycisk fali, aby nagrywać</string>
