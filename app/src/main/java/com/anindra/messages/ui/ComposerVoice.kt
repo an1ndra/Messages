@@ -59,19 +59,30 @@ internal object VoiceGesture {
  * reporter kept hitting (#364).
  */
 internal object VoiceLockTab {
+    /** The record button this stalk hangs from. */
+    const val BUTTON_DP = 56f
     const val WIDTH_DP = 52f
-    /** Only the part above the disc is visible; the rest is the overlap. */
-    const val HEIGHT_DP = 154f
-    const val OVERLAP_DP = 40f
-    const val OFFSET_DP = -(HEIGHT_DP - OVERLAP_DP)
+    /** How much of the tab shows above the button. 1.5x the original 76dp. */
+    const val VISIBLE_DP = 114f
+    /**
+     * How far the tab continues below the button's top edge, so its bottom is
+     * hidden behind the disc. Without this the tab ends just above the disc and
+     * reads as a white slab floating over the chat (measured: 24px of seam).
+     */
+    const val TUCK_DP = 28f
+    const val HEIGHT_DP = VISIBLE_DP + TUCK_DP
+    /**
+     * The tab is a child of the 56dp button box, and a Box centres a child
+     * larger than itself, so placing the tab's top [VISIBLE_DP] above the
+     * button means compensating for that centring: measured, a plain
+     * `-VISIBLE_DP` put the tab 43dp too high and its bottom above the disc.
+     */
+    const val OFFSET_DP = -VISIBLE_DP - (BUTTON_DP - HEIGHT_DP) / 2f
     const val RADIUS_DP = 26f
     const val ICON_TOP_DP = 18f
     const val ICON_SIZE_DP = 22f
     const val ICON_GAP_DP = 14f
     const val CHEVRON_SIZE_DP = 22f
-
-    /** The record button this stalk hangs from. */
-    const val BUTTON_DP = 56f
 
     /** How far around the icon still counts as being on it. */
     const val HIT_SLACK_DP = 6f

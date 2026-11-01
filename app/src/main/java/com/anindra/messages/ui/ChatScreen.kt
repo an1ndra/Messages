@@ -3856,16 +3856,15 @@ internal fun InputBar(
                             .align(Alignment.TopCenter)
                             .offset(y = VoiceLockTab.OFFSET_DP.dp)
                             .width(VoiceLockTab.WIDTH_DP.dp)
-                            // requiredHeight, not height: the slot this sits in is
-                            // a fixed 56dp box, and a plain height() is coerced to
-                            // that, which cropped the stalk to the disc's height.
+                            // requiredHeight, not height: the slot this sits in
+                            // is a fixed 56dp box, so height() is coerced to the
+                            // disc's own size and the stalk loses its length.
                             .requiredHeight(VoiceLockTab.HEIGHT_DP.dp)
                             .background(
                                 MaterialTheme.colorScheme.inverseSurface,
                                 RoundedCornerShape(topStart = VoiceLockTab.RADIUS_DP.dp,
                                     topEnd = VoiceLockTab.RADIUS_DP.dp)
                             )
-                            .padding(top = VoiceLockTab.ICON_TOP_DP.dp)
                             .onGloballyPositioned {
                                 lockTabLeft = it.positionInRoot().x
                                 lockTabTop = it.positionInRoot().y
@@ -3882,6 +3881,9 @@ internal fun InputBar(
                             .semantics { contentDescription = lockHintLabel },
                         verticalArrangement = Arrangement.spacedBy(VoiceLockTab.ICON_GAP_DP.dp)
                     ) {
+                        // A spacer, not top padding: padding is applied inside the
+                        // node and shifted everything measured for the hit area.
+                        Spacer(Modifier.height(VoiceLockTab.ICON_TOP_DP.dp))
                         // The lock is the target; the chevron points at it. Both in
                         // inverse ink on the light stalk, the way WhatsApp draws
                         // them, and both brighten only once the finger is on the
