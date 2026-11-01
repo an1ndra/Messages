@@ -18,6 +18,8 @@ scripts need one of the two default AVDs booted), then wait for
 `sys.boot_completed`:
 
 ```bash
+# LD_PRELOAD is not optional on this host: see "The modem" below.
+LD_PRELOAD=$HOME/.local/lib/no-addrconfig.so \
 ~/android/emulator/emulator -avd Pixel_AOSP12_AOSP31 -port 5558 -no-audio -no-boot-anim \
     -gpu swiftshader_indirect -no-snapshot &
 ~/android/platform-tools/adb wait-for-device
@@ -27,6 +29,28 @@ until [ "$(~/android/platform-tools/adb -s emulator-5558 shell getprop sys.boot_
 Android 11 is the same recipe with `-avd Pixel_AOSP11_AOSP30 -port 5557` and
 `adb -s emulator-5557`. `Pixel_7_AOSP_35` (`-port 5554`) still exists as the
 historical 1080x2400 target.
+
+**The modem.** Without the preload the emulator logs
+`qemu-system-x86_64: Unable to connect character device modem: address
+resolution failed for ::1:<port>` and the guest never gets a SIM
+(`gsm.sim.state` empty, previously `NOT_READY`). `adb emu sms send` then
+silently delivers nothing, which is what made every SMS script look broken.
+
+The cause is not the emulator: the modem simulator listens on `::1`, and qemu
+resolves it with `AI_ADDRCONFIG`, which glibc refuses for a numeric IPv6
+address on a host with no global IPv6 address (`getaddrinfo("::1", …)`,
+`EAI_ADDRFAMILY`). `~/.local/lib/no-addrconfig.so` (source beside it,
+`emu-no-addrconfig.c`) is an `LD_PRELOAD` shim that clears `AI_ADDRCONFIG` for
+the emulator and the qemu it spawns:
+
+```bash
+gcc -shared -fPIC -O2 -o ~/.local/lib/no-addrconfig.so ~/.local/lib/emu-no-addrconfig.c -ldl
+```
+
+With it, `getprop gsm.sim.state` = `LOADED` (operator `T-Mobile`, `HSPA`) and
+`adb emu sms send +1555… "text"` reaches the default SMS app. Without it the
+only inbound path is `scripts/lib/inject-sms/`, which
+`scripts/test-bubble-foreground.sh` falls back to automatically.
 
 Available AVDs (`~/android/emulator/emulator -list-avds`): `Pixel_AOSP12_AOSP31`
 (5558), `Pixel_AOSP11_AOSP30` (5557) — the standing defaults, next section —
