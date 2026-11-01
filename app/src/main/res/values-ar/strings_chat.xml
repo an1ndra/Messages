@@ -23,6 +23,11 @@
     <string name="chat_save_image">حفظ الصورة</string>
     <string name="chat_image_saved">تم حفظ الصورة في Pictures/Messages</string>
     <string name="chat_image_save_failed">تعذر حفظ الصورة</string>
+    <string name="chat_voice_slide_cancel">اسحب للإلغاء</string>
+    <string name="chat_voice_release_cancel">اترك للإلغاء</string>
+    <string name="chat_voice_permission_denied">يلزم الوصول إلى الميكروفون لتسجيل رسالة صوتية</string>
+    <string name="chat_voice_start_failed">تعذّر بدء التسجيل</string>
+    <string name="chat_voice_max_reached">أوقفت الرسالة الصوتية عند حد حجم MMS</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">لا يمكن إرسال الرسالة</string>

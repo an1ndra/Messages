@@ -67,7 +67,13 @@ internal object MmsSender {
             return false
         }
         val outcome = kotlinx.coroutines.runBlocking {
-            MmsFacade.of(app, ChainedDiagnostics(MmsFacade.diagnostics, Recorder(app, messageId))).send(
+            MmsFacade.of(
+                app,
+                ChainedDiagnostics(
+                    MmsFacade.diagnostics,
+                    Recorder(app, messageId, MmsSupport.mediaKind(mimeType))
+                )
+            ).send(
                 OutgoingMessage(
                     addresses = addresses,
                     caption = caption,
@@ -164,7 +170,8 @@ internal object MmsSender {
     /** Links the outbox row to the app message just before the PDU is handed over. */
     private class Recorder(
         private val context: Context,
-        private val messageId: Long
+        private val messageId: Long,
+        private val mediaType: String
     ) : MmsDiagnostics {
 
         override fun sendStarted(transportId: String, subscriptionId: Int, messageUri: String?) {
@@ -175,9 +182,9 @@ internal object MmsSender {
                 runCatching {
                     val repository = (context.applicationContext as MessagesApplication).repository
                     repository.linkMmsRow(messageId, rowId)
-                    // The picker's URI is dead after the app is closed; show the
-                    // provider's copy of the picture instead.
-                    repository.adoptProviderImage(messageId, rowId)
+                    // The picker's (or recorder's) URI is dead after the app is
+                    // closed; show the provider's copy of the attachment instead.
+                    repository.adoptProviderMedia(messageId, rowId, mediaType)
                 }.onFailure { Log.w(TAG, "could not link message $messageId: ${it.message}") }
             }
             val transactionId = MmsPendingSends.transactionIdOf(context, row)

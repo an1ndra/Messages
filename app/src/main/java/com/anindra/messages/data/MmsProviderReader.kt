@@ -44,7 +44,7 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
                         continue
                     }
                     val content = MmsSupport.content(parts(id))
-                    if (content.imageId == null && content.body.isBlank()) continue
+                    if (content.mediaId == null && content.body.isBlank()) continue
                     Message(id, address, timestamp, box == 2, cursor.getInt(5) != 0,
                         if (cursor.isNull(6)) -1 else cursor.getInt(6), content)
                 } catch (_: Exception) {

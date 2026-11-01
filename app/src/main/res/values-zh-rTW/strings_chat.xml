@@ -22,6 +22,11 @@
     <string name="chat_save_image">儲存圖片</string>
     <string name="chat_image_saved">圖片已儲存至 Pictures/Messages</string>
     <string name="chat_image_save_failed">無法儲存圖片</string>
+    <string name="chat_voice_slide_cancel">滑動以取消</string>
+    <string name="chat_voice_release_cancel">放開以取消</string>
+    <string name="chat_voice_permission_denied">錄製語音訊息需要麥克風存取權</string>
+    <string name="chat_voice_start_failed">無法開始錄音</string>
+    <string name="chat_voice_max_reached">語音訊息已達 MMS 大小上限並停止</string>
 
     <string name="chat_cant_send">無法傳送訊息</string>
     <string name="chat_archived">對話已封存</string>

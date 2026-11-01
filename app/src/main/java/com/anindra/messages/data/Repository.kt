@@ -1290,17 +1290,20 @@ class Repository(private val context: Context) {
     }
 
     /**
-     * Points a sent picture at the copy the provider holds for it.
+     * Points a sent attachment at the copy the provider holds for it.
      *
-     * [sendMedia] stores the URI the picker returned. That grant lasts only as
-     * long as the app's process, so after the app is closed and reopened the
-     * bubble has nothing to read and shows an empty black box. The provider's
-     * own copy of the picture (the part of the outbox row) is readable by the
-     * default SMS app for as long as the message exists, and it is the same
-     * place a received or imported MMS picture is read from.
+     * [sendMedia] stores the URI the picker (or the recorder) returned. That
+     * grant lasts only as long as the app's process — a camera/voice file in
+     * `cacheDir` is not even readable through the picker URI after a restart —
+     * so after the app is closed and reopened the bubble has nothing to read and
+     * shows an empty box. The provider's own copy of the attachment (the part of
+     * the outbox row) is readable by the default SMS app for as long as the
+     * message exists, and it is the same place a received or imported MMS
+     * picture is read from.
      */
-    fun adoptProviderImage(messageId: Long, outboxRowId: Long) {
+    fun adoptProviderMedia(messageId: Long, outboxRowId: Long, mediaType: String) {
         if (messageId <= 0 || outboxRowId <= 0) return
+        val prefix = "$mediaType/"
         val partId = runCatching {
             context.contentResolver.query(
                 android.net.Uri.parse("content://mms/$outboxRowId/part"),
@@ -1308,14 +1311,14 @@ class Repository(private val context: Context) {
             )?.use { c ->
                 var found: Long? = null
                 while (c.moveToNext() && found == null) {
-                    if (c.getString(1)?.startsWith("image/") == true) found = c.getLong(0)
+                    if (c.getString(1)?.startsWith(prefix) == true) found = c.getLong(0)
                 }
                 found
             }
         }.getOrNull() ?: return
         db.writableDatabase.execSQL(
-            "UPDATE messages SET media_uri=? WHERE id=? AND media_type='image'",
-            arrayOf<Any?>("content://mms/part/$partId", messageId)
+            "UPDATE messages SET media_uri=? WHERE id=? AND media_type=?",
+            arrayOf<Any?>("content://mms/part/$partId", messageId, mediaType)
         )
     }
 
@@ -1857,7 +1860,8 @@ class Repository(private val context: Context) {
                         timestamp = c.getLong(1),
                         fromMe = false,
                         isImage = c.getString(2) == "image",
-                        imageUri = c.getString(3)?.takeIf { it.isNotEmpty() }
+                        imageUri = c.getString(3)?.takeIf { it.isNotEmpty() },
+                        isAudio = c.getString(2) == "audio"
                     )
                 )
             }
@@ -3466,8 +3470,25 @@ class Repository(private val context: Context) {
         }
     }
 
-    suspend fun messageByIdSuspend(messageId: Long): Message? = runOnIoAsync {
-        var found: Message? = null
+    /**
+     * The newest voice note this account sent or received, for Diagnostics.
+     *
+     * A script cannot see inside a recorded file from a UI dump, so the report
+     * names the note's size instead. That is the one fact that says a real
+     * recording went through the recorder and the send path.
+     */
+    suspend fun latestVoiceNote(): Message? {
+        val id = runOnIoAsync {
+            db.readableDatabase.rawQuery(
+                "SELECT id FROM messages WHERE media_type='audio' AND deleted_at=0" +
+                    " ORDER BY timestamp DESC, id DESC LIMIT 1",
+                null
+            ).use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+        }
+        return if (id <= 0) null else messageByIdSuspend(id)
+    }
+
+    suspend fun messageByIdSuspend(messageId: Long): Message? = runOnIoAsync {        var found: Message? = null
         db.readableDatabase.rawQuery(
             """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,reactions
                FROM messages WHERE id=?""",
@@ -4175,8 +4196,8 @@ class Repository(private val context: Context) {
                                 put("sys_id", message.id)
                                 put("transport", MmsSupport.TRANSPORT_MMS)
                                 put("sub_id", message.subId)
-                                put("media_type", if (message.content.imageId == null) "text" else "image")
-                                put("media_uri", message.content.imageId?.let { "content://mms/part/$it" } ?: "")
+                                put("media_type", message.content.mediaType)
+                                put("media_uri", message.content.mediaId?.let { "content://mms/part/$it" } ?: "")
                                 put("address", if (message.isMe) "" else address)
                             })
                             if (!message.isMe && !message.read && cid != viewedConversationId) database.execSQL(
@@ -4189,13 +4210,14 @@ class Repository(private val context: Context) {
                                     address,
                                     message.content.body,
                                     message.timestamp,
-                                    imageUri = message.content.imageId?.let { "content://mms/part/$it" }
+                                    imageUri = message.content.imageId?.let { "content://mms/part/$it" },
+                                    audioUri = message.content.audioId?.let { "content://mms/part/$it" }
                                 )
                             )
                             MmsTrace.i(
                                 TRACE,
                                 "imported provider MMS row=${message.id} " +
-                                    "mine=${message.isMe} media=${message.content.imageId != null} " +
+                                    "mine=${message.isMe} media=${message.content.mediaType} " +
                                     "sub=${message.subId} read=${message.read}"
                             )
                         } else {

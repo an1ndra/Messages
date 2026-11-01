@@ -24,6 +24,13 @@
     <string name="chat_image_saved">Image saved to Pictures/Messages</string>
     <string name="chat_image_save_failed">Could not save the image</string>
 
+    <!-- Voice messages -->
+    <string name="chat_voice_slide_cancel">Slide to cancel</string>
+    <string name="chat_voice_release_cancel">Release to cancel</string>
+    <string name="chat_voice_permission_denied">Microphone access is needed to record a voice message</string>
+    <string name="chat_voice_start_failed">Couldn\'t start recording</string>
+    <string name="chat_voice_max_reached">Voice message stopped at the MMS size limit</string>
+
     <!-- Status messages -->
     <string name="chat_cant_send">Can\'t send message</string>
     <string name="chat_archived">Conversation archived</string>

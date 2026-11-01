@@ -23,6 +23,11 @@
     <string name="chat_save_image">画像を保存</string>
     <string name="chat_image_saved">画像を Pictures/Messages に保存しました</string>
     <string name="chat_image_save_failed">画像を保存できませんでした</string>
+    <string name="chat_voice_slide_cancel">スライドしてキャンセル</string>
+    <string name="chat_voice_release_cancel">離してキャンセル</string>
+    <string name="chat_voice_permission_denied">ボイス メッセージを録音するにはマイクへのアクセスが必要です</string>
+    <string name="chat_voice_start_failed">録音を開始できませんでした</string>
+    <string name="chat_voice_max_reached">MMS のサイズ上限に達したため、ボイス メッセージを停止しました</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">メッセージを送信できません</string>

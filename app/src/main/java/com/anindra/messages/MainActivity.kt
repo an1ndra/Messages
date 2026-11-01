@@ -534,11 +534,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun sendMediaMessage(conversationId: Long, uri: Uri, caption: String = "") {
+    /**
+     * Sends one attachment as an MMS. [mediaType] names the kind when the caller
+     * already knows it (a recording is audio whatever the resolver says about
+     * the cache file); a blank value asks the resolver.
+     */
+    fun sendMediaMessage(
+        conversationId: Long,
+        uri: Uri,
+        caption: String = "",
+        mediaType: String = ""
+    ) {
         scope.launch {
             val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
-            val stored = repo.sendMedia(conversationId, "image", uri.toString(), caption) ?: return@launch
+            val kind = mediaType.ifBlank {
+                MmsSupport.mediaKind(
+                    runCatching {
+                        getApplication<Application>().contentResolver.getType(uri)
+                    }.getOrNull().orEmpty()
+                )
+            }
+            val stored = repo.sendMedia(conversationId, kind, uri.toString(), caption) ?: return@launch
             // A group MMS addresses every member in one PDU, unlike SMS which
             // is sent once per person.
             val recipients = repo.conversationRecipients(conversationId)
@@ -546,7 +563,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .ifEmpty { listOf(convo.address) }
             val handedOff = SmsSender.sendMms(
                 getApplication(), stored.id, recipients, uri, settings.simSubscriptionId,
-                stored.body
+                stored.body,
+                if (kind == "audio") "audio/mp4" else null
             )
             if (!handedOff) {
                 repo.markMessageStatusSuspend(stored.id, "failed")
@@ -597,8 +615,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val recipients = repo.conversationRecipients(msg.conversationId)
                 .filter { isPhoneNumber(it) }
                 .ifEmpty { listOf(convo.address) }
-            val handedOff = if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
-                SmsSender.sendMms(getApplication(), messageId, recipients, Uri.parse(msg.mediaUri), simId)
+            val handedOff = if (msg.mediaType.let { it == "image" || it == "audio" } &&
+                msg.mediaUri.isNotBlank()
+            ) {
+                SmsSender.sendMms(
+                    getApplication(), messageId, recipients, Uri.parse(msg.mediaUri), simId,
+                    "", if (msg.mediaType == "audio") "audio/mp4" else null
+                )
             } else {
                 val results = recipients.map { address ->
                     SmsSender.send(
@@ -613,6 +636,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deliveryReportsEnabled() = settings.deliveryReportsEnabled
+
+    /**
+     * How long a voice note may run on the current line.
+     *
+     * Read from the same carrier profile the send path enforces, so the recorder
+     * stops at the size the carrier would have rejected rather than discovering
+     * it after the fact.
+     */
+    fun voiceNoteMaxSeconds(): Int {
+        val budget = runCatching {
+            com.anindra.messages.sms.MmsFacade.profiles(getApplication())
+                .of(settings.simSubscriptionId).maxMessageSize()
+        }.getOrDefault(com.anindra.messages.data.MmsConfig.DEFAULT_MAX_MESSAGE_SIZE)
+        return com.anindra.messages.voice.VoiceNotePolicy.maxSeconds(budget)
+    }
 
     fun openOrCreate(address: String, name: String?, onReady: (Long) -> Unit) {
         scope.launch {
@@ -943,11 +981,12 @@ when (val plan = ForwardPlan.of(msg, text)) {
                 is ForwardPlan.Mms -> {
                     val uri = Uri.parse(plan.mediaUri)
                     val stored = repo.sendMedia(
-                        targetConversationId, "image", plan.mediaUri, plan.caption
+                        targetConversationId, plan.mediaType, plan.mediaUri, plan.caption
                     ) ?: return@launch
                     handOff(stored.id, target.address) {
                         SmsSender.sendMms(
-                            getApplication(), stored.id, listOf(target.address), uri, subId, plan.caption
+                            getApplication(), stored.id, listOf(target.address), uri, subId,
+                            plan.caption, if (plan.mediaType == "audio") "audio/mp4" else null
                         )
                     }
                 }
@@ -1047,11 +1086,35 @@ when (val plan = ForwardPlan.of(msg, text)) {
                     settings.simSubscriptionId,
                     settings,
                     repo.totalConversationCount(),
-                    repo.totalMessageCount()
+                    repo.totalMessageCount(),
+                    voiceNoteDiagnostics()
                 )
             }
             onReady(text)
         }
+    }
+
+    /** The voice-note line the Diagnostics sheet prints; see [VoiceNoteDetails]. */
+    private suspend fun voiceNoteDiagnostics(): com.anindra.messages.diagnostics.VoiceNoteDetails {
+        val app = getApplication<Application>()
+        val cap = runCatching {
+            com.anindra.messages.sms.MmsFacade.profiles(app)
+                .of(settings.simSubscriptionId).maxMessageSize()
+        }.getOrDefault(com.anindra.messages.data.MmsConfig.DEFAULT_MAX_MESSAGE_SIZE)
+        val last = repo.latestVoiceNote()
+        val bytes = last?.mediaUri?.takeIf { it.isNotBlank() }?.let { uri ->
+            runCatching {
+                app.contentResolver.openAssetFileDescriptor(Uri.parse(uri), "r")
+                    ?.use { it.length }
+            }.getOrNull() ?: -1L
+        } ?: -1L
+        return com.anindra.messages.diagnostics.VoiceNoteDetails(
+            mime = com.anindra.messages.voice.VoiceNotePolicy.MIME,
+            maxSeconds = com.anindra.messages.voice.VoiceNotePolicy.maxSeconds(cap),
+            carrierCapBytes = cap,
+            lastBytes = bytes,
+            lastUri = last?.mediaUri.orEmpty()
+        )
     }
 }
 
