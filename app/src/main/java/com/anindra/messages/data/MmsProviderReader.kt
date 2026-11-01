@@ -56,9 +56,52 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
         }
     }
 
+    data class PartLine(val mime: String, val seq: Int)
+
+    /** One provider MMS and the parts it actually carries. Diagnostics prints
+     *  this so a "only one picture showed" report can be separated from "the
+     *  provider only had one picture" (#398). */
+    data class MultiPart(val id: Long, val scanned: Int, val parts: List<PartLine>)
+
+    /**
+     * The newest provider MMS carrying two or more parts, if any.
+     *
+     * [scan] bounds the work: only the newest rows are looked at, because the
+     * report is answering "what does a multi-part MMS look like here", not
+     * counting the whole provider.
+     */
+    fun newestMultiPart(scan: Int = 20): MultiPart? {
+        val ids = mutableListOf<Long>()
+        runCatching {
+            resolver.query(
+                Telephony.Mms.CONTENT_URI,
+                arrayOf(Telephony.Mms._ID),
+                null, null, "date DESC, _id DESC LIMIT $scan"
+            )?.use { cursor ->
+                while (cursor.moveToNext()) ids.add(cursor.getLong(0))
+            }
+        }
+        for (id in ids) {
+            val parts = runCatching { partLines(id) }.getOrNull() ?: continue
+            if (parts.size >= 2) return MultiPart(id, ids.size, parts)
+        }
+        return null
+    }
+
+    private fun partLines(id: Long): List<PartLine> {
+        val result = mutableListOf<PartLine>()
+        val cursor = resolver.query(
+            Uri.parse("content://mms/$id/part"),
+            arrayOf("ct", "seq"), null, null, "seq ASC, _id ASC"
+        ) ?: return result
+        cursor.use {
+            while (it.moveToNext()) result.add(PartLine(it.getString(0).orEmpty(), it.getInt(1)))
+        }
+        return result
+    }
+
     /** Incoming MMS the carrier has announced but that nobody has downloaded
-     *  yet; the default SMS app has to fetch it before it can be imported.
-     *  The Content-Location (ct_l) is where the platform expects it to be
+     *  yet; the default SMS app has to fetch it before it can be imported.     *  The Content-Location (ct_l) is where the platform expects it to be
      *  fetched from — a row without one cannot be requested at all. */
     fun pendingDownloads(): List<MmsSupport.PendingDownload> {
         val columns = arrayOf(

@@ -76,6 +76,7 @@ class SettingsStore(context: Context) {
         const val KEY_FIRST_IMPORT_DONE = "first_import_done"
         const val KEY_PARTICIPANTS_MIGRATED = "participants_migrated"
         const val KEY_ALPHANUMERIC_REPAIR_DONE = "alphanumeric_repair_done"
+        const val KEY_MMS_PARTS_BACKFILL_DONE = "mms_parts_backfill_done"
         const val KEY_PHONE_REGION = "phone_region"
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
@@ -196,6 +197,14 @@ class SettingsStore(context: Context) {
     var alphanumericRepairDone: Boolean
         get() = prefs.getBoolean(KEY_ALPHANUMERIC_REPAIR_DONE, false)
         set(v) { prefs.edit().putBoolean(KEY_ALPHANUMERIC_REPAIR_DONE, v).apply() }
+
+    /**
+     * Whether the one-time re-scan that fills in the extra pictures of an MMS
+     * imported before multi-part support has run (#398).
+     */
+    var mmsPartsBackfillDone: Boolean
+        get() = prefs.getBoolean(KEY_MMS_PARTS_BACKFILL_DONE, false)
+        set(v) { prefs.edit().putBoolean(KEY_MMS_PARTS_BACKFILL_DONE, v).apply() }
 
     var phoneRegion: String
         get() = prefs.getString(KEY_PHONE_REGION, "") ?: ""
