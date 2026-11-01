@@ -69,6 +69,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -3734,33 +3735,44 @@ internal fun InputBar(
                 // Only while a note is running: idle, this tab floated over the
                 // chat with nothing to lock.
                 if (recording && !locked) {
-                    val lockTint = if (lockHint) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = RoundedCornerShape(12.dp),
+                    // A stalk rising out of the button itself, the way WhatsApp
+                    // draws it: the lock at its top, a chevron under it, and the
+                    // same fill as the disc so the two read as one control rather
+                    // than a label floating over the chat.
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .offset(y = LOCK_TAB_OFFSET_DP.dp)
-                            .semantics { contentDescription = lockHintLabel }
+                            .width(LOCK_TAB_WIDTH_DP.dp)
+                            // requiredHeight, not height: the slot this sits in is
+                            // a fixed 56dp box, and a plain height() is coerced to
+                            // that, which cropped the stalk to the disc's height.
+                            .requiredHeight(LOCK_TAB_HEIGHT_DP.dp)
+                            .background(
+                                MaterialTheme.colorScheme.inverseSurface,
+                                RoundedCornerShape(topStart = LOCK_TAB_RADIUS_DP.dp,
+                                    topEnd = LOCK_TAB_RADIUS_DP.dp)
+                            )
+                            .padding(top = 18.dp)
+                            .semantics { contentDescription = lockHintLabel },
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .width(28.dp)
-                                .padding(vertical = 6.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.Lock, null,
-                                tint = lockTint,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Icon(
-                                Icons.Rounded.KeyboardArrowUp, null,
-                                tint = lockTint,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
+                        // The lock is the target; the chevron points at it. Both in
+                        // inverse ink on the light stalk, the way WhatsApp draws
+                        // them, and both brighten as the finger climbs.
+                        val lockTint = if (lockHint) MaterialTheme.colorScheme.inverseOnSurface
+                        else MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.65f)
+                        Icon(
+                            Icons.Filled.Lock, null,
+                            tint = lockTint,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Icon(
+                            Icons.Rounded.KeyboardArrowUp, null,
+                            tint = lockTint,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
                 // The live meter: a translucent ring that grows with the voice,
@@ -3922,8 +3934,12 @@ internal enum class ComposerCircle { Record, Send, LockedSend }
 /** How far a finger has to travel before releasing a recording cancels it. */
 private const val SLIDE_CANCEL_DP = 72
 
-/** How far above the circle the lock tab sits. */
-private const val LOCK_TAB_OFFSET_DP = -42
+/** The stalk above the record button: its height, and how far it overlaps. */
+private const val LOCK_TAB_HEIGHT_DP = 116
+private const val LOCK_TAB_OVERLAP_DP = 40
+private const val LOCK_TAB_OFFSET_DP = -(LOCK_TAB_HEIGHT_DP - LOCK_TAB_OVERLAP_DP)
+private const val LOCK_TAB_WIDTH_DP = 52
+private const val LOCK_TAB_RADIUS_DP = 26
 
 /** How far the circle turns while it swaps meaning. */
 private const val CIRCLE_SWAP_ROTATION = 45f
