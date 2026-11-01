@@ -1099,7 +1099,8 @@ when (val plan = ForwardPlan.of(msg, text)) {
                     settings,
                     repo.totalConversationCount(),
                     repo.totalMessageCount(),
-                    voiceNoteDiagnostics()
+                    voiceNoteDiagnostics(),
+                    mmsDiagnostics()
                 )
             }
             onReady(text)
@@ -1120,12 +1121,57 @@ when (val plan = ForwardPlan.of(msg, text)) {
                     ?.use { it.length }
             }.getOrNull() ?: -1L
         } ?: -1L
+        val (sent, received) = repo.voiceNoteCounts()
+        val playback = com.anindra.messages.voice.VoicePlayback.state.value
+        val playbackLine = if (playback.uri.isBlank()) "idle" else {
+            val position = playback.positionMs / 1000.0
+            val total = playback.durationMs / 1000.0
+            "%s %.1fs / %.1fs".format(
+                if (playback.playing) "playing" else "paused", position, total
+            )
+        }
+        // The waveform is decoded from the note itself; when that fails the
+        // bubble draws a placeholder, which looks like a note that recorded
+        // nothing. Saying which one happened separates those two.
+        val peaks = last?.mediaUri?.takeIf { it.isNotBlank() }
+            ?.let { com.anindra.messages.voice.VoiceWaveform.cached(it) }
+        val waveform = when {
+            last?.mediaUri.isNullOrBlank() -> "none"
+            peaks == null -> "placeholder (the last note has not decoded yet)"
+            else -> "decoded, ${peaks.size} bars for the last note"
+        }
         return com.anindra.messages.diagnostics.VoiceNoteDetails(
             mime = com.anindra.messages.voice.VoiceNotePolicy.MIME,
             maxSeconds = com.anindra.messages.voice.VoiceNotePolicy.maxSeconds(cap),
             carrierCapBytes = cap,
             lastBytes = bytes,
-            lastUri = last?.mediaUri.orEmpty()
+            lastUri = last?.mediaUri.orEmpty(),
+            sent = sent,
+            received = received,
+            playback = playbackLine,
+            waveform = waveform
+        )
+    }
+
+    /**
+     * The MMS shape for Diagnostics (#398): what the store holds per provider
+     * message, and what the newest multi-part provider MMS actually contains.
+     * Both halves are read from their owners — the database and the provider —
+     * never re-derived from what a bubble drew.
+     */
+    private suspend fun mmsDiagnostics(): com.anindra.messages.diagnostics.MmsDetails {
+        val app = getApplication<Application>()
+        val (rows, multi, max) = repo.mmsPartStats()
+        val probe = runCatching {
+            com.anindra.messages.data.MmsProviderReader(app.contentResolver).newestMultiPart()
+        }.getOrNull()
+        return com.anindra.messages.diagnostics.MmsDetails(
+            rows = rows,
+            multiPart = multi,
+            maxParts = max,
+            providerId = probe?.id ?: 0L,
+            scanned = probe?.scanned ?: 20,
+            parts = probe?.parts.orEmpty().map { "seq=${it.seq} ${it.mime}" }
         )
     }
 }
