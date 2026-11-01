@@ -91,6 +91,26 @@ class VoiceGestureTest {
     }
 
     @Test
+    fun theTabEndsBehindTheDisc() {
+        // The tab is a child of the 56dp button box, which centres an oversized
+        // child; the offset compensates so the tab's top lands VISIBLE_DP above
+        // the button and its bottom lands TUCK_DP below.
+        val centring = (VoiceLockTab.BUTTON_DP - VoiceLockTab.HEIGHT_DP) / 2f
+        val topAboveButton = VoiceLockTab.OFFSET_DP + centring
+        assertEquals(-VoiceLockTab.VISIBLE_DP, topAboveButton, 0.01f)
+        val bottomBelowButton = topAboveButton + VoiceLockTab.HEIGHT_DP
+        assertEquals(VoiceLockTab.TUCK_DP, bottomBelowButton, 0.01f)
+        assertTrue(
+            "the bottom has to tuck behind the disc, not stop above it",
+            bottomBelowButton > 0f
+        )
+        assertTrue(
+            "but not so far that it shows below the disc",
+            bottomBelowButton <= VoiceLockTab.BUTTON_DP / 2f
+        )
+    }
+
+    @Test
     fun theDrawnStalkAndTheHitAreaShareTheirGeometry() {
         assertTrue(
             "the icon has to sit inside the stalk that is drawn",
