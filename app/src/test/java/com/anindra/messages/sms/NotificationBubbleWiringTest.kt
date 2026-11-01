@@ -38,6 +38,45 @@ class NotificationBubbleWiringTest {
     }
 
     @Test
+    fun theBubbleLaunchOwnsItsOwnTask() {
+        val helper = src("sms/NotificationBubble.kt")
+        assertTrue(
+            "the bubble launch must target BubbleChatActivity, not the singleTop MainActivity",
+            helper.contains("BubbleChatActivity::class.java")
+        )
+        assertTrue(
+            "the bubble launch must ask for a new task, or singleTop hands it to the app already on screen",
+            helper.contains("Intent.FLAG_ACTIVITY_MULTIPLE_TASK")
+        )
+        assertTrue(
+            "the bubble launch must be a document task so it gets a task of its own",
+            helper.contains("Intent.FLAG_ACTIVITY_NEW_DOCUMENT")
+        )
+
+        val activity = src("MainActivity.kt")
+        assertTrue("the bubble must be recognisable by its extra", activity.contains("isBubbleLaunch"))
+    }
+
+    @Test
+    fun theBubbleActivityIsItsOwnTask() {
+        val activity = Regex("""<activity(?=[^>]*android:name="\.BubbleChatActivity")[^>]*>""")
+            .find(manifest())
+            ?.value
+            ?: error("BubbleChatActivity is not declared; a bubble launch would land on the app's own task")
+        assertTrue(
+            "the bubble needs an affinity of its own, or its launch is folded into the app's task",
+            activity.contains("android:taskAffinity=\"com.anindra.messages.bubble\"")
+        )
+        assertTrue(
+            "launchMode must be standard: singleTop is what swallowed the launch into the resumed instance",
+            activity.contains("android:launchMode=\"standard\"")
+        )
+        assertTrue("the bubble activity must stay embeddable", activity.contains("android:allowEmbedded=\"true\""))
+        assertTrue("the bubble activity must stay resizable", activity.contains("android:resizeableActivity=\"true\""))
+        assertTrue("a bubble must not add itself to Recents", activity.contains("android:excludeFromRecents=\"true\""))
+    }
+
+    @Test
     fun thePosterAttachesBubbleMetadataBehindAPublishedShortcut() {
         val s = src("sms/SmsSupport.kt")
         assertTrue("the poster never publishes the conversation shortcut", s.contains("NotificationBubble.ensureShortcut"))

@@ -12,7 +12,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
-import com.anindra.messages.MainActivity
 import com.anindra.messages.R
 
 /**
@@ -114,13 +113,23 @@ object NotificationBubble {
      * The data URI is what keeps the bubble PendingIntents apart: PendingIntent
      * equality ignores extras, so two conversations sharing a request code would
      * otherwise open each other's thread.
+     *
+     * NEW_DOCUMENT + MULTIPLE_TASK is what makes the bubble own a task. Without
+     * them MainActivity's singleTop handed the launch to the instance already on
+     * screen: the app navigated and the expanded bubble had nothing to host, so
+     * it showed blank (#354). These are the flags Google Messages' own bubble
+     * launch carries.
      */
     private fun launchIntent(context: Context, address: String, conversationId: Long): Intent =
-        Intent(context, MainActivity::class.java).apply {
+        Intent(context, com.anindra.messages.BubbleChatActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             data = Uri.parse("messages://conversation/$conversationId")
             setPackage(context.packageName)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
+                    Intent.FLAG_ACTIVITY_NEW_DOCUMENT
+            )
             putExtra("open_conversation_address", address)
             putExtra(EXTRA_OPEN_IN_BUBBLE, true)
         }

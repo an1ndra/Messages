@@ -380,7 +380,7 @@ internal fun ChatBubble(
     val bodyStyle = MaterialTheme.typography.bodyLarge.merge(
         TextStyle(
             color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface,
-            textDirection = BidiText.direction(displayBody).toTextDirection()
+            textDirection = TextDirection.Content
         )
     )
     LaunchedEffect(msg.id, bodyStyle.textDirection) {
@@ -966,10 +966,12 @@ fun ChatScreen(
     val activity = context as? androidx.fragment.app.FragmentActivity
     val biometricExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
     DisposableEffect(Unit) {
-        onDispose {
-            biometricExecutor.shutdown()
-            com.anindra.messages.sms.ForegroundTracker.setOpenConversation(null)
-        }
+        onDispose { biometricExecutor.shutdown() }
+    }
+    DisposableEffect(convo?.address) {
+        val address = convo?.address
+        com.anindra.messages.sms.ForegroundTracker.openConversation(address)
+        onDispose { com.anindra.messages.sms.ForegroundTracker.closeConversation(address) }
     }
 
     fun cycleSim() {
@@ -1412,9 +1414,6 @@ fun ChatScreen(
             draft = initialDraft
             onInitialDraftConsumed()
         }
-    }
-    LaunchedEffect(convo?.address) {
-        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(convo?.address)
     }
     LaunchedEffect(convo) {
         val current = convo

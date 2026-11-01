@@ -1060,7 +1060,7 @@ when (val plan = ForwardPlan.of(msg, text)) {
 /** logcat tag the transfer-log dump is written under; see applyTransferLogProbe. */
 private const val TRANSFER_LOG_TAG = "TransferLog"
 
-class MainActivity : FragmentActivity() {
+open class MainActivity : FragmentActivity() {
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
