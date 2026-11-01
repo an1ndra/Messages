@@ -281,28 +281,63 @@ object MmsSupport {
         else -> null
     }
 
+    /** Where a saved attachment belongs. One decision, read by the menu that
+     *  offers the save and by the store that performs it, so a voice note can
+     *  never be labelled "Save image" and written into the gallery. */
+    enum class SaveTarget { IMAGE, AUDIO, FILE }
+
+    fun saveTargetFor(mediaType: String): SaveTarget = when (mediaType) {
+        "image" -> SaveTarget.IMAGE
+        "audio" -> SaveTarget.AUDIO
+        else -> SaveTarget.FILE
+    }
+
     private val EXTENSIONS = mapOf(
         "image/jpeg" to "jpg", "image/jpg" to "jpg", "image/png" to "png",
         "image/gif" to "gif", "image/webp" to "webp", "image/bmp" to "bmp",
-        "image/heic" to "heic", "image/heif" to "heif", "video/mp4" to "mp4"
+        "image/heic" to "heic", "image/heif" to "heif", "video/mp4" to "mp4",
+        "audio/mp4" to "m4a", "audio/m4a" to "m4a", "audio/x-m4a" to "m4a",
+        "audio/mp4a-latm" to "m4a", "audio/aac" to "aac", "audio/3gpp" to "3gp",
+        "audio/amr" to "amr", "audio/mpeg" to "mp3", "audio/ogg" to "ogg",
+        "audio/wav" to "wav", "audio/x-wav" to "wav"
     )
 
+    /** The fallback a saved attachment gets when neither the resolver nor the
+     *  URI names a usable type: pictures when saving a picture, audio when
+     *  saving a voice note. */
+    private fun fallbackMime(target: SaveTarget): String = when (target) {
+        SaveTarget.IMAGE -> "image/jpeg"
+        SaveTarget.AUDIO -> "audio/mp4"
+        SaveTarget.FILE -> "application/octet-stream"
+    }
+
     /** Fallback mime for a saved attachment when the resolver reports none. */
-    fun mimeForSavedAttachment(uri: String, resolved: String?): String {
+    fun mimeForSavedAttachment(
+        uri: String,
+        resolved: String?,
+        target: SaveTarget = SaveTarget.IMAGE
+    ): String {
         if (!resolved.isNullOrBlank()) return resolved.substringBefore(';').trim()
         val lower = uri.lowercase()
-        return EXTENSIONS.entries.firstOrNull { lower.endsWith(".${it.value}") }?.key ?: "image/jpeg"
+        return EXTENSIONS.entries.firstOrNull { lower.endsWith(".${it.value}") }?.key
+            ?: fallbackMime(target)
     }
 
     /** Filename for a saved attachment: "<contact>_<timestamp>.<ext>". Spaces are
      *  kept (the gallery shows them); only path-unsafe characters are dropped. */
-    fun savedAttachmentName(contactName: String, timestamp: Long, mime: String): String {
+    fun savedAttachmentName(
+        contactName: String,
+        timestamp: Long,
+        mime: String,
+        target: SaveTarget = SaveTarget.IMAGE
+    ): String {
         val safe = contactName.trim()
             .replace(Regex("[/\\\\:*?\"<>|\\x00-\\x1F]"), "_")
             .trim('_', ' ')
             .take(32)
             .ifBlank { "message" }
-        val ext = EXTENSIONS[mime.substringBefore(';').trim()] ?: "jpg"
+        val ext = EXTENSIONS[mime.substringBefore(';').trim()]
+            ?: EXTENSIONS[fallbackMime(target)] ?: "bin"
         return "${safe}_$timestamp.$ext"
     }
 }

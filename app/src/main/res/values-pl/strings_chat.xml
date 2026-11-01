@@ -21,8 +21,11 @@
     <string name="chat_select_all">Zaznacz wszystko</string>
     <string name="chat_select_text">Zaznacz tekst</string>
     <string name="chat_save_image">Zapisz obraz</string>
+    <string name="chat_save_voice">Zapisz wiadomość głosową</string>
     <string name="chat_image_saved">Obraz zapisano w Pictures/Messages</string>
     <string name="chat_image_save_failed">Nie można zapisać obrazu</string>
+    <string name="chat_voice_saved">Wiadomość głosowa zapisana w Music/Messages</string>
+    <string name="chat_voice_save_failed">Nie można zapisać wiadomości głosowej</string>
     <string name="chat_voice_slide_cancel">Przesuń, aby anulować</string>
     <string name="chat_voice_release_cancel">Puść, aby anulować</string>
     <string name="chat_voice_permission_denied">Aby nagrać wiadomość głosową, potrzebny jest dostęp do mikrofonu</string>
@@ -30,6 +33,7 @@
     <string name="chat_voice_max_reached">Wiadomość głosowa zatrzymana na limicie rozmiaru MMS</string>
     <string name="chat_voice_cancel_recording">Anuluj nagrywanie</string>
     <string name="chat_voice_lock_hint">Przesuń w górę, aby zablokować nagrywanie</string>
+    <string name="chat_voice_recording_locked">Nagrywanie bez trzymania</string>
     <string name="voice_guide_title">Wyślij wiadomość głosową</string>
     <string name="voice_guide_hold">Przytrzymaj przycisk fali, aby nagrywać</string>
     <string name="voice_guide_slide">Przesuń w lewo, aby anulować nagrywanie</string>

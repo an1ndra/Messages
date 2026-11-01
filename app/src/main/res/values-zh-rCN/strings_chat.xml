@@ -20,8 +20,11 @@
     <string name="chat_select_all">全选</string>
     <string name="chat_select_text">选择文本</string>
     <string name="chat_save_image">保存图片</string>
+    <string name="chat_save_voice">保存语音消息</string>
     <string name="chat_image_saved">图片已保存到 Pictures/Messages</string>
     <string name="chat_image_save_failed">无法保存图片</string>
+    <string name="chat_voice_saved">语音消息已保存到 Music/Messages</string>
+    <string name="chat_voice_save_failed">无法保存语音消息</string>
     <string name="chat_voice_slide_cancel">滑动取消</string>
     <string name="chat_voice_release_cancel">松开取消</string>
     <string name="chat_voice_permission_denied">录制语音消息需要访问麦克风</string>
@@ -29,6 +32,7 @@
     <string name="chat_voice_max_reached">语音消息已达 MMS 大小上限并停止</string>
     <string name="chat_voice_cancel_recording">取消录音</string>
     <string name="chat_voice_lock_hint">上滑以锁定录音</string>
+    <string name="chat_voice_recording_locked">正在免提录音</string>
     <string name="voice_guide_title">发送语音消息</string>
     <string name="voice_guide_hold">长按波形按钮开始录音</string>
     <string name="voice_guide_slide">向左滑动可取消录音</string>

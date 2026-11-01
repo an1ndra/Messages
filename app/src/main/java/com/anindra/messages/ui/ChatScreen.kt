@@ -162,6 +162,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -187,6 +188,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
@@ -199,11 +202,13 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.anindra.messages.AppViewModel
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.MessageSearch
+import com.anindra.messages.data.MmsSupport
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
@@ -1256,8 +1261,8 @@ fun ChatScreen(
         }
     }
 
-    fun saveMessageImage(id: Long) {
-        vm.saveMessageImage(id)
+    fun saveMessageAttachment(id: Long) {
+        vm.saveMessageAttachment(id)
         clearSelection()
     }
 
@@ -1673,6 +1678,9 @@ fun ChatScreen(
             ) { mode ->
             when (mode) {
             "select" -> {
+                val saveTarget = messages.firstOrNull { it.id in selectedMessageIds }
+                    ?.takeIf { it.mediaUri.isNotBlank() }
+                    ?.let { m -> SelectionToolbar.saveTargetFor(m.mediaType)?.let { it to m.id } }
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
@@ -1682,9 +1690,8 @@ fun ChatScreen(
                     onSelectText = messages.firstOrNull { it.id in selectedMessageIds }
                         ?.takeIf { it.body.isNotBlank() }
                         ?.let { m -> { startTextSelection(m.id) } },
-                    onSaveImage = messages.firstOrNull { it.id in selectedMessageIds }
-                        ?.takeIf { it.mediaUri.isNotBlank() }
-                        ?.let { m -> { saveMessageImage(m.id) } },
+                    saveTarget = saveTarget?.first,
+                    onSaveMedia = { saveTarget?.second?.let { saveMessageAttachment(it) } },
                     onClose = { clearSelection() },
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
@@ -2331,7 +2338,8 @@ internal fun MessageSelectionToolbar(
     allStarred: Boolean,
     onSelectAll: () -> Unit,
     onSelectText: (() -> Unit)?,
-    onSaveImage: (() -> Unit)?,
+    onSaveMedia: () -> Unit,
+    saveTarget: MmsSupport.SaveTarget?,
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
@@ -2406,10 +2414,10 @@ internal fun MessageSelectionToolbar(
                                 onClick = { overflow = false; onSelectText() }
                             )
                         }
-                        if (onSaveImage != null) {
+                        if (saveTarget != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_save_image)) },
-                                onClick = { overflow = false; onSaveImage() }
+                                text = { Text(stringResource(SelectionToolbar.saveLabelRes(saveTarget))) },
+                                onClick = { overflow = false; onSaveMedia() }
                             )
                         }
                         if (SelectionToolbar.showSingleMessageActions(count)) {
@@ -3485,9 +3493,32 @@ internal fun InputBar(
     // Locked recording survives the finger: the note keeps running hands-free
     // until send, cancel or the carrier's cap ends it.
     var locked by remember { mutableStateOf(false) }
-    // The disc shows a padlock while the finger is heading for the lock, which
-    // is the cue Google Messages gives before the recording is let go.
-    var lockHint by remember { mutableStateOf(false) }
+    // How far the slide has carried the bar's contents, in pixels; read only by
+    // the offset lambda so a drag costs a layout pass, not a recomposition.
+    var slideDx by remember { mutableFloatStateOf(0f) }
+    // Where the padlock stalk and the button actually are on screen, measured
+    // from the views that draw them: a hit area derived from the button's
+    // position drifts off the icon whenever the stalk's layout shifts, and a
+    // lock that arms below the padlock is the sensitivity #364 keeps hitting.
+    var lockTabLeft by remember { mutableFloatStateOf(0f) }
+    var lockTabTop by remember { mutableFloatStateOf(0f) }
+    var lockTabWidth by remember { mutableFloatStateOf(0f) }
+    var micLeft by remember { mutableFloatStateOf(0f) }
+    var micTop by remember { mutableFloatStateOf(0f) }
+    val layoutDensity = LocalDensity.current.density
+    // The padlock's hit area has no text equivalent, so it names itself:
+    // scripts/test-voice-message.sh drags to exactly this rectangle.
+    // The armed state decides the disc's glyph, which has no text equivalent;
+    // it names itself so a script can prove a lift is not a lock. Logged on
+    // every recording, not only on change, or a cleared log hides the state.
+    LaunchedEffect(arm, recording) {
+        if (recording) android.util.Log.d("VoiceLock", "arm=$arm")
+    }
+    // The finger is down on the circle. The microphone only opens once that
+    // press has become a hold, so tapping the button records nothing. Named
+    // apart from the send circle's own schedule-hold, which shadows a plain
+    // `holding` further down this composable.
+    var micHeld by remember { mutableStateOf(false) }
     var elapsedMs by remember { mutableStateOf(0L) }
 
     // Stops once, whichever comes first: the finger leaving the screen or the
@@ -3498,8 +3529,41 @@ internal fun InputBar(
         recording = false
         arm = VoiceArm.NONE
         locked = false
-        lockHint = false
+        slideDx = 0f
         if (send) onVoiceFinish() else onVoiceCancel()
+    }
+
+    LaunchedEffect(micHeld) {
+        if (!micHeld || recording) return@LaunchedEffect
+        // A tap is not a recording: the press has to last before the microphone
+        // opens. Releasing first cancels this effect, so no file is ever made.
+        delay(VoiceGesture.HOLD_DELAY_MS)
+        if (!micHeld || recording) return@LaunchedEffect
+        if (!onVoiceStart()) {
+            // No microphone, or no permission for one: end the press rather
+            // than leaving a stuck bar behind.
+            micHeld = false
+            return@LaunchedEffect
+        }
+        recording = true
+        arm = VoiceArm.NONE
+        locked = false
+        slideDx = 0f
+    }
+
+    // A lock is committed by dwelling in the lock zone, not by crossing it: the
+    // finger that drifts up mid-sentence keeps recording and sends on release,
+    // while a deliberate "up and hold" goes hands-free.
+    LaunchedEffect(arm, locked, recording) {
+        if (arm != VoiceArm.LOCK || locked || !recording) return@LaunchedEffect
+        delay(VoiceGesture.LOCK_DWELL_MS)
+        if (arm != VoiceArm.LOCK || locked || !recording) return@LaunchedEffect
+        locked = true
+        arm = VoiceArm.NONE
+        slideDx = 0f
+        // The circle swaps to Send on the next frame, which disposes the gesture
+        // handler mid-drag; release the press here so the next tap can record.
+        micHeld = false
     }
 
     LaunchedEffect(recording) {
@@ -3654,6 +3718,8 @@ internal fun InputBar(
                         // and the IME closes under a finger that is still
                         // recording. The overlay swallows taps so the field
                         // underneath cannot be edited mid-recording.
+                        val barMode = VoiceBar.modeFor(locked, arm)
+                        val slideCap = with(LocalDensity.current) { 40.dp.toPx() }
                         Row(
                             Modifier
                                 .matchParentSize()
@@ -3672,10 +3738,40 @@ internal fun InputBar(
                             // a steady white dot, the counter, the discard bin, a
                             // left chevron and "Slide to cancel", then the red
                             // disc. The row stays at full contrast; only an armed
-                            // cancel changes its colour.
+                            // cancel changes its colour. A locked note has no
+                            // finger to slide, so the chevron becomes a lock and
+                            // the bar says it is recording hands-free (#364).
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    // Follows the finger with a layout-only read,
+                                    // so a drag does not recompose the bar.
+                                    .offset {
+                                        IntOffset(
+                                            VoiceBar.slideOffset(slideDx, slideCap).roundToInt(),
+                                            0
+                                        )
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                            // Hands-free, nobody is touching the screen; a pulse
+                            // is what says the note is still running.
+                            val dotAlpha = if (barMode == VoiceBarMode.LOCKED && !reduceMotion) {
+                                val pulse = rememberInfiniteTransition(label = "recordDot")
+                                pulse.animateFloat(
+                                    initialValue = 0.35f,
+                                    targetValue = 1f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(700, easing = LinearEasing),
+                                        repeatMode = RepeatMode.Reverse
+                                    ),
+                                    label = "recordDotAlpha"
+                                ).value
+                            } else 1f
                             Box(
                                 Modifier
                                     .size(12.dp)
+                                    .alpha(dotAlpha)
                                     .background(MaterialTheme.colorScheme.onSurface, CircleShape)
                             )
                             Spacer(Modifier.width(10.dp))
@@ -3685,10 +3781,10 @@ internal fun InputBar(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(Modifier.width(8.dp))
-                            val armed = if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.error
+                            val armed = if (barMode == VoiceBarMode.CANCEL) MaterialTheme.colorScheme.error
                             else MaterialTheme.colorScheme.onSurface
                             val cancelLabel = stringResource(R.string.chat_voice_cancel_recording)
-                            if (locked) {
+                            if (VoiceBar.binIsButton(barMode)) {
                                 // Hands-free: the finger is gone, so the bin is a
                                 // real button now.
                                 IconButton(
@@ -3704,10 +3800,10 @@ internal fun InputBar(
                                     )
                                 }
                             } else {
-                                // While the finger is holding, the bin is the
-                                // target the slide is aimed at, not a button: it
-                                // is drawn but not clickable, which is exactly how
-                                // Google Messages renders it mid-hold.
+                                // While the finger holds, the bin is the target
+                                // the slide is aimed at, not a button: it is drawn
+                                // but not clickable, which is exactly how Google
+                                // Messages renders it mid-hold.
                                 Box(
                                     Modifier
                                         .size(28.dp)
@@ -3721,27 +3817,34 @@ internal fun InputBar(
                                     )
                                 }
                             }
-                            Icon(
-                                Icons.Rounded.ChevronLeft, null,
-                                tint = armed,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            if (VoiceBar.showsLock(barMode)) {
+                                Icon(
+                                    Icons.Filled.Lock, null,
+                                    tint = armed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Rounded.ChevronLeft, null,
+                                    tint = armed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                stringResource(
-                                    if (armed != MaterialTheme.colorScheme.onSurface) R.string.chat_voice_release_cancel
-                                    else R.string.chat_voice_slide_cancel
-                                ),
+                                stringResource(VoiceBar.hintRes(barMode)),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = armed,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                // The two hints share one row; when space runs out
-                                // the cancel text gives way, never the lock hint —
-                                // that one has no other way of being learned.
+                                // The hint shares one row with the counter; when
+                                // space runs out the hint gives way, never the
+                                // lock stalk — that one has no other way of being
+                                // learned.
                                 modifier = Modifier.weight(1f)
                             )
                             Spacer(Modifier.width(4.dp))
+                            }
                         }
                 }
             }
@@ -3878,7 +3981,15 @@ internal fun InputBar(
                         )
                     )
                 }
-                Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier
+                        .size(56.dp)
+                        .onGloballyPositioned {
+                            micLeft = it.positionInRoot().x
+                            micTop = it.positionInRoot().y
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
                 // The lock hint lives above the button, on a little tab of its
                 // own — inside the pill it read as one more label in a row that
                 // already says "Slide to cancel". Drawn above the row so it costs
@@ -3894,35 +4005,50 @@ internal fun InputBar(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .offset(y = LOCK_TAB_OFFSET_DP.dp)
-                            .width(LOCK_TAB_WIDTH_DP.dp)
+                            .offset(y = VoiceLockTab.OFFSET_DP.dp)
+                            .width(VoiceLockTab.WIDTH_DP.dp)
                             // requiredHeight, not height: the slot this sits in is
                             // a fixed 56dp box, and a plain height() is coerced to
                             // that, which cropped the stalk to the disc's height.
-                            .requiredHeight(LOCK_TAB_HEIGHT_DP.dp)
+                            .requiredHeight(VoiceLockTab.HEIGHT_DP.dp)
                             .background(
                                 MaterialTheme.colorScheme.inverseSurface,
-                                RoundedCornerShape(topStart = LOCK_TAB_RADIUS_DP.dp,
-                                    topEnd = LOCK_TAB_RADIUS_DP.dp)
+                                RoundedCornerShape(topStart = VoiceLockTab.RADIUS_DP.dp,
+                                    topEnd = VoiceLockTab.RADIUS_DP.dp)
                             )
-                            .padding(top = 18.dp)
+                            .padding(top = VoiceLockTab.ICON_TOP_DP.dp)
+                            .onGloballyPositioned {
+                                lockTabLeft = it.positionInRoot().x
+                                lockTabTop = it.positionInRoot().y
+                                lockTabWidth = it.size.width.toFloat()
+                                val b = VoiceLockTab.iconBounds(
+                                    lockTabLeft, lockTabTop, lockTabWidth, layoutDensity
+                                )
+                                android.util.Log.d(
+                                    "VoiceLock",
+                                    "icon=[${b.left.toInt()},${b.top.toInt()}]" +
+                                        "[${b.right.toInt()},${b.bottom.toInt()}]"
+                                )
+                            }
                             .semantics { contentDescription = lockHintLabel },
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        verticalArrangement = Arrangement.spacedBy(VoiceLockTab.ICON_GAP_DP.dp)
                     ) {
                         // The lock is the target; the chevron points at it. Both in
                         // inverse ink on the light stalk, the way WhatsApp draws
-                        // them, and both brighten as the finger climbs.
-                        val lockTint = if (lockHint) MaterialTheme.colorScheme.inverseOnSurface
+                        // them, and both brighten only once the finger is on the
+                        // padlock — a highlight that followed the lift instead
+                        // made a small drift look like a lock (#364).
+                        val lockTint = if (arm == VoiceArm.LOCK) MaterialTheme.colorScheme.inverseOnSurface
                         else MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.65f)
                         Icon(
                             Icons.Filled.Lock, null,
                             tint = lockTint,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(VoiceLockTab.ICON_SIZE_DP.dp)
                         )
                         Icon(
                             Icons.Rounded.KeyboardArrowUp, null,
                             tint = lockTint,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(VoiceLockTab.CHEVRON_SIZE_DP.dp)
                         )
                     }
                 }
@@ -3977,39 +4103,46 @@ internal fun InputBar(
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
                                 down.consume()
-                                if (!onVoiceStart()) {
-                                    // No microphone (or no permission): the gesture
-                                    // ends here rather than leaving a stuck state.
-                                    while (true) {
-                                        val event = awaitPointerEvent()
-                                        if (event.changes.none { it.pressed }) break
-                                    }
-                                    return@awaitEachGesture
-                                }
-                                recording = true
-                                arm = VoiceArm.NONE
-                                locked = false
-                                lockHint = false
+                                micHeld = true
                                 var drag = androidx.compose.ui.geometry.Offset.Zero
                                 val threshold = VoiceGesture.THRESHOLD_DP.dp.toPx()
+                                val lockDensity = this.density
                                 while (true) {
                                     val event = awaitPointerEvent()
-                                    val change = event.changes.first()
+                                    // Follow the finger that started the note; a
+                                    // second pointer (a palm, or a tap on the
+                                    // overlay) must not stall the drag.
+                                    val change = event.changes.firstOrNull { it.id == down.id }
+                                        ?: event.changes.first()
                                     if (!change.pressed) {
                                         change.consume()
                                         break
                                     }
                                     drag += change.positionChange()
-                                    arm = VoiceGesture.armFor(drag.x, drag.y, threshold)
-                                    lockHint = arm == VoiceArm.NONE &&
-                                        drag.y < -threshold * VoiceGesture.LOCK_HINT_FRACTION
-                                    change.consume()
-                                    if (arm == VoiceArm.LOCK) {
-                                        locked = true
-                                        arm = VoiceArm.NONE
-                                        break
+                                    // Nothing is armed until the microphone is
+                                    // actually open; before that this is a tap.
+                                    if (recording) {
+                                        slideDx = drag.x
+                                        arm = VoiceGesture.armFor(
+                                            drag.x, drag.y, threshold,
+                                            // The finger's own place on the
+                                            // button, not the distance it has
+                                            // covered: the padlock is a target.
+                                            overLock = VoiceLockTab.reached(
+                                                micLeft + change.position.x,
+                                                micTop + change.position.y,
+                                                lockTabLeft, lockTabTop, lockTabWidth,
+                                                lockDensity
+                                            )
+                                        )
                                     }
+                                    change.consume()
                                 }
+                                micHeld = false
+                                // A press shorter than the hold delay never
+                                // opened the microphone, so there is no note to
+                                // send and nothing to clean up.
+                                if (!recording) return@awaitEachGesture
                                 if (locked) {
                                     // The finger that lifted must not send the note:
                                     // swallow the rest of the gesture and leave the
@@ -4022,13 +4155,12 @@ internal fun InputBar(
                                     return@awaitEachGesture
                                 }
                                 if (!recording) return@awaitEachGesture
-                                stopRecording(send = arm != VoiceArm.CANCEL)
-                            }
+                                stopRecording(send = arm != VoiceArm.CANCEL)                            }
                         }
                         .semantics { contentDescription = voiceLabel },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (lockHint && !locked) {
+                    if (arm == VoiceArm.LOCK && !locked) {
                         Icon(
                             Icons.Outlined.Lock,
                             stringResource(R.string.chat_voice_lock_hint),
@@ -4086,11 +4218,6 @@ internal enum class ComposerCircle { Record, Send, LockedSend }
 private const val SLIDE_CANCEL_DP = 72
 
 /** The stalk above the record button: its height, and how far it overlaps. */
-private const val LOCK_TAB_HEIGHT_DP = 116
-private const val LOCK_TAB_OVERLAP_DP = 40
-private const val LOCK_TAB_OFFSET_DP = -(LOCK_TAB_HEIGHT_DP - LOCK_TAB_OVERLAP_DP)
-private const val LOCK_TAB_WIDTH_DP = 52
-private const val LOCK_TAB_RADIUS_DP = 26
 
 /** How far the circle turns while it swaps meaning. */
 private const val CIRCLE_SWAP_ROTATION = 45f
