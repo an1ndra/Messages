@@ -27,6 +27,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -958,6 +959,20 @@ fun ChatScreen(
         }
         return started
     }
+    var recordingNow by remember { mutableStateOf(false) }
+    var voiceLevel by remember { mutableStateOf(0f) }
+    LaunchedEffect(recordingNow) {
+        if (!recordingNow) {
+            voiceLevel = 0f
+            return@LaunchedEffect
+        }
+        // The disc breathes with what the microphone hears; ~12 Hz is enough for
+        // a meter and cheap enough to run while a note is being spoken.
+        while (true) {
+            voiceLevel = recorder.level()
+            delay(80)
+        }
+    }
     DisposableEffect(Unit) {
         onDispose {
             // Leaving the chat must not leave a microphone open or a voice note
@@ -1704,6 +1719,20 @@ fun ChatScreen(
                 }
                 val chatAddress = convo?.address ?: ""
                 if (chatAddress.isBlank() || isPhoneNumber(chatAddress)) {
+                    // First run only: a hold-to-record button with two sliding
+                    // exits is not discoverable from the icon alone.
+                    // `settings` is a plain store, not observable state, so the
+                    // dismissal is mirrored locally: writing the flag alone would
+                    // leave the card on screen until the chat was reopened.
+                    var guideDismissed by remember { mutableStateOf(false) }
+                    if (hasMicrophone && !vm.settings.voiceGuideSeen && !guideDismissed) {
+                        VoiceGuideCard(
+                            onDismiss = {
+                                vm.settings.voiceGuideSeen = true
+                                guideDismissed = true
+                            }
+                        )
+                    }
                     InputBar(
                         draft = draft,
                         placeholder = stringResource(R.string.text_placeholder),
@@ -1773,7 +1802,9 @@ fun ChatScreen(
                                 ).show()
                             }
                         },
-                        onVoiceCancel = { recorder.cancel() }
+                        onVoiceCancel = { recorder.cancel() },
+                        voiceLevel = voiceLevel,
+                        onRecordingChanged = { recordingNow = it }
                     )
                 } else {
                     AlphanumericNotice(address = chatAddress)
@@ -3287,7 +3318,11 @@ internal fun InputBar(
     voiceMaxSeconds: Int = VoiceNotePolicy.MAX_SECONDS,
     onVoiceStart: () -> Boolean = { false },
     onVoiceFinish: () -> Unit = {},
-    onVoiceCancel: () -> Unit = {}
+    onVoiceCancel: () -> Unit = {},
+    /** What the microphone is hearing, 0..1, for the button's live meter. */
+    voiceLevel: Float = 0f,
+    /** Told when a recording starts and stops, so the caller can poll the mic. */
+    onRecordingChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -3314,6 +3349,7 @@ internal fun InputBar(
     }
 
     LaunchedEffect(recording) {
+        onRecordingChanged(recording)
         if (!recording) return@LaunchedEffect
         elapsedMs = 0L
         val startedAt = android.os.SystemClock.elapsedRealtime()
@@ -3608,6 +3644,23 @@ internal fun InputBar(
             },
             label = "composerCircle"
         ) { mode ->
+            // This Compose version has no rotateIn/rotateOut, so the turn comes
+            // from the content scope's own transition: the outgoing circle spins
+            // away and the incoming one unwinds into place, which is what makes
+            // the swap read as one circle turning over rather than two swapping.
+            val turn by transition.animateFloat(
+                transitionSpec = { motionTween(reduceMotion, Motion.DURATION_SHORT4) },
+                label = "composerCircleTurn"
+            ) { state ->
+                // The incoming circle unwinds from one side, the outgoing one
+                // spins away to the other.
+                when (state) {
+                    EnterExitState.PreEnter -> -CIRCLE_SWAP_ROTATION
+                    EnterExitState.PostExit -> CIRCLE_SWAP_ROTATION
+                    else -> 0f
+                }
+            }
+            Box(Modifier.graphicsLayer { rotationZ = turn }) {
             when (mode) {
                 ComposerCircle.LockedSend -> {
                 // Hands-free: the same circle sends, so there is one obvious way to
@@ -3635,11 +3688,10 @@ internal fun InputBar(
                 // padlock are the motion here.
                 val micScale = 1f
                 // Google Messages' own palette, measured off its composer: idle, the
-                // record circle is the inverse surface (a light disc in the dark
-                // theme, dark in the light one) with the glyph in inverse ink; the
-                // moment recording starts it turns red. The accent therefore still
-                // means Send and nothing else. Both are theme roles, so dynamic
-                // colour moves them with the wallpaper.
+                // record circle is the pill's fill with the light variant as its
+                // glyph; the moment recording starts it turns red. The accent
+                // therefore still means Send and nothing else. Both are theme
+                // roles, so dynamic colour moves them with the wallpaper.
                 val micColor by animateColorAsState(
                     targetValue = if (recording) MaterialTheme.colorScheme.recordActive
                     else MaterialTheme.colorScheme.inputPill,
@@ -3663,6 +3715,42 @@ internal fun InputBar(
                             micInk.toArgb() and 0xFFFFFF,
                             pillColor.toArgb() and 0xFFFFFF
                         )
+                    )
+                }
+                Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                // The live meter: a translucent ring that grows with the voice,
+                // so a recording has motion even with the finger off the screen.
+                if (recording) {
+                    // A quiet microphone would otherwise leave the meter frozen,
+                    // so the ring also breathes on its own; the voice rides on top
+                    // of that. Reduce motion keeps it at a still, faint ring.
+                    val breathe = if (reduceMotion) 0f else {
+                        val pulse = rememberInfiniteTransition(label = "recordHalo")
+                        pulse.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(900, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "recordHaloPulse"
+                        ).value
+                    }
+                    Box(
+                        Modifier
+                            .matchParentSize()
+                            .graphicsLayer {
+                                val grow = 1f + HALO_GROWTH * voiceLevel + HALO_BREATHE_GROWTH * breathe
+                                scaleX = grow
+                                scaleY = grow
+                            }
+                            .background(
+                                MaterialTheme.colorScheme.recordActive.copy(
+                                    alpha = HALO_MIN_ALPHA + HALO_ALPHA * voiceLevel +
+                                        HALO_BREATHE_ALPHA * breathe
+                                ),
+                                CircleShape
+                            )
                     )
                 }
                 Box(
@@ -3748,6 +3836,7 @@ internal fun InputBar(
                     }
                 }
                 }
+                }
                 ComposerCircle.Send -> {
             Box(
                 Modifier
@@ -3777,6 +3866,7 @@ internal fun InputBar(
             }
                 }
             }
+            }
         }
     }
 }
@@ -3786,6 +3876,16 @@ internal enum class ComposerCircle { Record, Send, LockedSend }
 
 /** How far a finger has to travel before releasing a recording cancels it. */
 private const val SLIDE_CANCEL_DP = 72
+
+/** How far the circle turns while it swaps meaning. */
+private const val CIRCLE_SWAP_ROTATION = 45f
+
+/** The live meter behind the record disc: growth and opacity against the voice. */
+private const val HALO_GROWTH = 0.45f
+private const val HALO_MIN_ALPHA = 0.22f
+private const val HALO_ALPHA = 0.35f
+private const val HALO_BREATHE_GROWTH = 0.22f
+private const val HALO_BREATHE_ALPHA = 0.20f
 
 /** How small the circle shrinks to (or grows from) while it swaps meaning. */
 private const val CIRCLE_SWAP_SCALE = 0.7f

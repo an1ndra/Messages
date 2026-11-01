@@ -84,6 +84,7 @@ class SettingsStore(context: Context) {
         const val KEY_NOTIF_ACTION_DELETE = "notif_action_delete"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
         const val KEY_EMOJI_BUTTON = "emoji_button_enabled"
+        const val KEY_VOICE_GUIDE_SEEN = "voice_guide_seen"
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
         const val KEY_PERMANENT_DELETE_WARN = "permanent_delete_warn"
         const val KEY_REVERSE_SWIPE = "reverse_swipe_enabled"
@@ -393,6 +394,15 @@ class SettingsStore(context: Context) {
     var emojiButtonEnabled: Boolean
         get() = prefs.getBoolean(KEY_EMOJI_BUTTON, DEFAULTS_EMOJI_BUTTON)
         set(v) { prefs.edit().putBoolean(KEY_EMOJI_BUTTON, v).apply(); _revision.value++ }
+
+    /**
+     * Whether the one-time card that explains the record gesture has been
+     * dismissed. A press-and-hold control with two hidden exits (slide to drop,
+     * swipe up to lock) is not discoverable on its own.
+     */
+    var voiceGuideSeen: Boolean
+        get() = prefs.getBoolean(KEY_VOICE_GUIDE_SEEN, false)
+        set(v) { prefs.edit().putBoolean(KEY_VOICE_GUIDE_SEEN, v).apply(); _revision.value++ }
 
     var permanentDeleteEnabled: Boolean
         get() = prefs.getBoolean(KEY_PERMANENT_DELETE, false)

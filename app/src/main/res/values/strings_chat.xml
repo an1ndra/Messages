@@ -32,6 +32,11 @@
     <string name="chat_voice_max_reached">Voice message stopped at the MMS size limit</string>
     <string name="chat_voice_cancel_recording">Cancel recording</string>
     <string name="chat_voice_lock_hint">Swipe up to lock recording</string>
+    <string name="voice_guide_title">Send a voice message</string>
+    <string name="voice_guide_hold">Press and hold the wave button to record</string>
+    <string name="voice_guide_slide">Slide left to cancel the recording</string>
+    <string name="voice_guide_lock">Swipe up to lock it and record hands-free</string>
+    <string name="voice_guide_dismiss">Got it</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Can\'t send message</string>

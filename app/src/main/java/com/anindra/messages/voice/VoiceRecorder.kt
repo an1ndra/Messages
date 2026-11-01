@@ -28,6 +28,17 @@ class VoiceRecorder(private val context: Context) {
 
     val isRecording: Boolean get() = recorder != null
 
+    /**
+     * The loudest sample since the last read, 0..1.
+     *
+     * The recorder resets it on every read, so a caller polling it is showing
+     * what the microphone just heard rather than a peak that never falls.
+     */
+    fun level(): Float {
+        val peak = runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0)
+        return (peak / MAX_AMPLITUDE).coerceIn(0f, 1f)
+    }
+
     /** @return the URI to play/send from, or null when the microphone could not
      *  be opened (no device, SELinux denial, or the emulator's audio disabled). */
     fun start(): Uri? {
@@ -105,5 +116,8 @@ class VoiceRecorder(private val context: Context) {
     private companion object {
         const val TAG = "VoiceRecorder"
         const val DIR = "voice"
+
+        /** MediaRecorder reports amplitude against a signed 16-bit peak. */
+        const val MAX_AMPLITUDE = 32_767f
     }
 }

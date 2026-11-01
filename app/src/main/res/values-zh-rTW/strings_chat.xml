@@ -29,6 +29,11 @@
     <string name="chat_voice_max_reached">語音訊息已達 MMS 大小上限並停止</string>
     <string name="chat_voice_cancel_recording">取消錄音</string>
     <string name="chat_voice_lock_hint">上滑以鎖定錄音</string>
+    <string name="voice_guide_title">傳送語音訊息</string>
+    <string name="voice_guide_hold">長按波形按鈕開始錄音</string>
+    <string name="voice_guide_slide">向左滑動可取消錄音</string>
+    <string name="voice_guide_lock">上滑可鎖定並免持錄音</string>
+    <string name="voice_guide_dismiss">知道了</string>
 
     <string name="chat_cant_send">無法傳送訊息</string>
     <string name="chat_archived">對話已封存</string>
