@@ -6,7 +6,6 @@
     <string name="contact_notifications">सूचनाएँ</string>
     <string name="contact_custom_notifications">कस्टम सूचनाएं</string>
     <string name="contact_customize_notifications">सूचनाएं अनुकूलित करें</string>
-    <string name="contact_notification_sound_default">ऐप डिफ़ॉल्ट का उपयोग करें</string>
     <string name="contact_one_person">1 अन्य व्यक्ति</string>
     <string name="contact_add_people">लोगों को जोड़ें</string>
 </resources>

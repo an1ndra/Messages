@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">Digitar PIN de backup</string>
     <string name="settings_pin_error_too_short">O PIN deve ter pelo menos 4 dígitos</string>
     <string name="settings_pin_error_mismatch">Os PINs não correspondem</string>
-    <string name="settings_sound_arrival">Som reproduzido ao receber uma mensagem</string>
     <string name="convo_moved_to_trash">Conversa movida para a lixeira</string>
     <string name="convo_archived">Conversa arquivada</string>
     <string name="action_undo">Desfazer</string>

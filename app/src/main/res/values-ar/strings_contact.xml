@@ -6,7 +6,6 @@
     <string name="contact_notifications">الإشعارات</string>
     <string name="contact_custom_notifications">إشعارات مخصصة</string>
     <string name="contact_customize_notifications">تخصيص الإشعارات</string>
-    <string name="contact_notification_sound_default">استخدام الإعداد الافتراضي</string>
     <string name="contact_one_person">شخص آخر واحد</string>
     <string name="contact_add_people">إضافة أشخاص</string>
 </resources>

@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">Sicherungs-PIN eingeben</string>
     <string name="settings_pin_error_too_short">PIN muss mindestens 4 Ziffern haben</string>
     <string name="settings_pin_error_mismatch">PINs stimmen nicht überein</string>
-    <string name="settings_sound_arrival">Ton bei eingegangenen Nachrichten</string>
     <string name="convo_moved_to_trash">Unterhaltung in Papierkorb verschoben</string>
     <string name="convo_archived">Unterhaltung archiviert</string>
     <string name="action_undo">Rückgängig</string>

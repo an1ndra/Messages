@@ -45,7 +45,6 @@ object SettingsSearch {
 
         card(Route.SETTINGS, 0,
             R.string.settings_notif_title,
-            R.string.settings_pin_notification_sound,
             R.string.settings_delivery_reports_title,
             R.string.settings_mark_read_title)
         card(Route.SETTINGS, 1,

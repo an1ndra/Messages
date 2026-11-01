@@ -57,11 +57,16 @@ class NotificationChannelWiringTest {
     }
 
     @Test
-    fun settingsStoreCarriesAPerCategorySound() {
+    fun theAppNoLongerStoresATone() {
+        // The tone is the channel's, and the channel belongs to the system. A
+        // stored copy is the second source of truth that made the app and
+        // Android disagree about a chat's sound (#339).
         val store = src("data/SettingsStore.kt")
-        assertTrue(store.contains("fun notificationSoundFor("))
-        assertTrue(store.contains("fun setNotificationSoundFor("))
-        assertTrue(store.contains("fun hasNotificationSoundOverride("))
+        assertTrue("the stored tone is back", !store.contains("fun notificationSoundFor("))
+        assertTrue("the stored tone is back", !store.contains("fun setNotificationSoundFor("))
+        assertTrue("the stored tone is back", !store.contains("NOTIFY_SOUND_"))
+        val help = src("sms/SmsSupport.kt")
+        assertTrue("the in-app sound preview is back", !help.contains("previewNotificationSound"))
     }
 
     @Test
@@ -253,7 +258,6 @@ class NotificationChannelWiringTest {
             "notification_channel_convo_desc",
             "contact_custom_notifications",
             "contact_customize_notifications",
-            "contact_notification_sound_default",
             "settings_notif_manage_channels",
             "settings_notif_manage_channels_subtitle"
         )
