@@ -23,6 +23,11 @@
     <string name="chat_save_image">Сохранить изображение</string>
     <string name="chat_image_saved">Изображение сохранено в Pictures/Messages</string>
     <string name="chat_image_save_failed">Не удалось сохранить изображение</string>
+    <string name="chat_voice_slide_cancel">Сдвиньте, чтобы отменить</string>
+    <string name="chat_voice_release_cancel">Отпустите, чтобы отменить</string>
+    <string name="chat_voice_permission_denied">Для записи голосового сообщения нужен доступ к микрофону</string>
+    <string name="chat_voice_start_failed">Не удалось начать запись</string>
+    <string name="chat_voice_max_reached">Голосовое сообщение остановлено на пределе размера MMS</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Не удалось отправить сообщение</string>

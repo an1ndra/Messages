@@ -56,6 +56,7 @@
     <string name="notif_action_delete">Eliminar</string>
     <string name="notif_you">Tú</string>
     <string name="notif_photo">Foto</string>
+    <string name="notif_voice">Mensaje de voz</string>
     <string name="notif_send_fail_private">No se pudo enviar el mensaje. Toca para reintentar.</string>
     <string name="notif_send_fail">No se pudo enviar el mensaje a %s. Toca para reintentar.</string>
     <string name="notif_not_delivered">Mensaje no entregado</string>

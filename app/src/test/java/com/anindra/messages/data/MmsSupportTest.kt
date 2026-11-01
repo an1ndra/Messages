@@ -147,6 +147,84 @@ class MmsSupportTest {
     }
 
     @Test
+    fun readsAVoiceNotePartInsteadOfCallingItUnsupported() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(1, "application/smil"),
+            MmsSupport.Part(2, "text/plain", "Listen"),
+            MmsSupport.Part(3, "audio/mp4")
+        ))
+        assertEquals(3L, content.audioId)
+        assertEquals("audio/mp4", content.audioMime)
+        // Nothing is left over: a voice note is supported, so it must not also
+        // be reported as an attachment this app cannot show.
+        assertEquals(0, content.omittedParts)
+        assertEquals("Listen", content.body)
+        assertEquals("audio", content.mediaType)
+        assertEquals(3L, content.mediaId)
+        assertEquals(null, content.imageId)
+    }
+
+    @Test
+    fun anAmrVoiceNoteCountsAsAudioToo() {
+        val content = MmsSupport.content(listOf(MmsSupport.Part(9, "audio/amr")))
+        assertEquals("audio", content.mediaType)
+        assertEquals(9L, content.audioId)
+        assertTrue(MmsSupport.isAudio("AUDIO/3GPP; name=note.3gp"))
+        assertFalse(MmsSupport.isAudio("image/jpeg"))
+    }
+
+    @Test
+    fun aPictureStillWinsOverAVoiceNote() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(3, "audio/mp4"),
+            MmsSupport.Part(4, "image/jpeg")
+        ))
+        assertEquals("image", content.mediaType)
+        assertEquals(4L, content.mediaId)
+        // The audio part is still present, but only one attachment is shown, so
+        // it is reported rather than silently dropped.
+        assertEquals(1, content.omittedParts)
+    }
+
+    @Test
+    fun attachmentKindFollowsTheMimeType() {
+        assertEquals("image", MmsSupport.mediaKind("image/png"))
+        assertEquals("audio", MmsSupport.mediaKind("audio/mp4"))
+        assertEquals("file", MmsSupport.mediaKind("video/mp4"))
+    }
+
+    @Test
+    fun platformAliasesForTheRecordedContainerAreNormalised() {
+        // Android reports an .m4a as audio/mp4a-latm on some builds and
+        // audio/m4a on others; the carrier is told the RFC name either way.
+        assertEquals("audio/mp4", MmsSupport.canonicalMime("audio/mp4a-latm"))
+        assertEquals("audio/mp4", MmsSupport.canonicalMime("audio/m4a"))
+        assertEquals("audio/mp4", MmsSupport.canonicalMime("audio/x-m4a; charset=binary"))
+        assertEquals("image/jpeg", MmsSupport.canonicalMime("image/jpeg"))
+        assertEquals(
+            "audio/mp4",
+            MmsSupport.defaultAttachmentMime("audio/mp4a-latm", "content://voice/1.m4a")
+        )
+    }
+
+    @Test
+    fun aVoiceAttachmentIsNamedAsAudioInTheSmilLayout() {
+        val parts = MmsSupport.outgoingParts("audio/mp4", "")
+        assertEquals("audio", parts[0].name)
+        assertEquals("audio/mp4", parts[0].mimeType)
+        assertEquals("image", MmsSupport.outgoingParts("image/png", "")[0].name)
+    }
+
+    @Test
+    fun anInboundVoiceNoteIsMarkedAsSuch() {
+        val note = MmsSupport.InboundMms("+15551234567", "", 1L, audioUri = "content://mms/part/3")
+        assertTrue(note.isAudio)
+        assertFalse(
+            MmsSupport.InboundMms("+15551234567", "hi", 1L).isAudio
+        )
+    }
+
+    @Test
     fun boundsStreamedTextAndDecodesCharset() {
         assertTrue(MmsSupport.acceptsTextChunk(0, MmsSupport.MAX_TEXT_BYTES))
         assertFalse(MmsSupport.acceptsTextChunk(MmsSupport.MAX_TEXT_BYTES, 1))

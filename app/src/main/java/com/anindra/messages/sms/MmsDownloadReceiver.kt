@@ -32,7 +32,9 @@ class MmsDownloadReceiver : BroadcastReceiver() {
                 if (resultCode != android.app.Activity.RESULT_OK) return@launch
                 val repo = (context.applicationContext as com.anindra.messages.MessagesApplication).repository
                 for (mms in repo.importDownloadedMms()) {
-                    NotificationHelper.show(context, mms.address, mms.body, mms.imageUri)
+                    NotificationHelper.show(
+                        context, mms.address, mms.body, mms.imageUri, audio = mms.isAudio
+                    )
                 }
             } catch (t: Throwable) {
                 Log.w("MmsDownload", "import after download failed: ${t.message}")
