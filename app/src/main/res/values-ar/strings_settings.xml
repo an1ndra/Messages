@@ -24,7 +24,6 @@
     <string name="settings_pin_repeat">أعد إدخال الرقم السري</string>
     <string name="settings_pin_delete_permanently">حذف نهائيًا؟</string>
     <string name="settings_pin_delay">التأخير قبل الإرسال</string>
-    <string name="settings_pin_notification_sound">صوت الإشعار</string>
     <string name="settings_notif_manage_channels">الإدارة في إعدادات النظام</string>
     <string name="settings_notif_manage_channels_subtitle">الصوت والاهتزاز والأولوية لكل فئة</string>
     <string name="settings_pin_sim_card">شريحة SIM</string>
@@ -158,11 +157,6 @@
     <string name="settings_restore_title">استعادة (استبدال الكل)</string>
     <string name="settings_restore_subtitle">إزالة الرسائل الحالية واستعادة النسخة الاحتياطية</string>
     <string name="settings_delay_with_value">%d ثانية قبل الإرسال</string>
-    <string name="settings_sound_default">الافتراضي (النظام)</string>
-    <string name="settings_sound_classic">كلاسيكي</string>
-    <string name="settings_sound_dragon">Dragon Studio</string>
-    <string name="settings_sound_chime">رنين</string>
-    <string name="settings_sound_bubble">فقاعة</string>
     <string name="settings_theme_light">فاتح</string>
     <string name="settings_theme_dark">داكن</string>
     <string name="settings_theme_amoled">Amoled</string>

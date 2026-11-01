@@ -24,7 +24,6 @@
     <string name="settings_pin_repeat">PINを再入力</string>
     <string name="settings_pin_delete_permanently">完全に削除しますか？</string>
     <string name="settings_pin_delay">送信前の遅延</string>
-    <string name="settings_pin_notification_sound">通知サウンド</string>
     <string name="settings_notif_manage_channels">システム設定で管理</string>
     <string name="settings_notif_manage_channels_subtitle">カテゴリごとの通知音、振動、優先度</string>
     <string name="settings_pin_sim_card">SIMカード</string>
@@ -158,11 +157,6 @@
     <string name="settings_restore_title">復元（すべて置き換え）</string>
     <string name="settings_restore_subtitle">現在のメッセージを削除し、バックアップを復元</string>
     <string name="settings_delay_with_value">送信前に%d秒待機</string>
-    <string name="settings_sound_default">既定値（システム）</string>
-    <string name="settings_sound_classic">クラシック</string>
-    <string name="settings_sound_dragon">Dragon Studio</string>
-    <string name="settings_sound_chime">チャイム</string>
-    <string name="settings_sound_bubble">バブル</string>
     <string name="settings_theme_light">ライト</string>
     <string name="settings_theme_dark">ダーク</string>
     <string name="settings_theme_amoled">Amoled</string>

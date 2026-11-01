@@ -24,7 +24,6 @@
     <string name="settings_pin_repeat">再次输入密码</string>
     <string name="settings_pin_delete_permanently">永久删除？</string>
     <string name="settings_pin_delay">发送前延迟</string>
-    <string name="settings_pin_notification_sound">通知声音</string>
     <string name="settings_notif_manage_channels">在系统设置中管理</string>
     <string name="settings_notif_manage_channels_subtitle">每个类别的声音、振动和优先级</string>
     <string name="settings_pin_sim_card">SIM 卡</string>
@@ -158,11 +157,6 @@
     <string name="settings_restore_title">还原（替换所有）</string>
     <string name="settings_restore_subtitle">移除当前消息并还原备份</string>
     <string name="settings_delay_with_value">发送前等待 %s 秒</string>
-    <string name="settings_sound_default">默认（系统）</string>
-    <string name="settings_sound_classic">经典</string>
-    <string name="settings_sound_dragon">龙声音频工作室</string>
-    <string name="settings_sound_chime">风铃</string>
-    <string name="settings_sound_bubble">泡泡</string>
     <string name="settings_theme_light">浅色</string>
     <string name="settings_theme_dark">深色</string>
     <string name="settings_theme_amoled">Amoled</string>

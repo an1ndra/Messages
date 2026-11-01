@@ -874,7 +874,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Turns this chat's own notification channel on or off. On creates it with
-     * the chat's category tone; off deletes it, so the chat falls back to its
+     * the system default tone; off deletes it, so the chat falls back to its
      * category channel instead of going quiet.
      */
     fun setConversationCustomChannel(conversationId: Long, enabled: Boolean) {
@@ -888,7 +888,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             helper.ensureConversationChannel(
                 getApplication(),
                 target,
-                helper.categoryFor(target),
                 repo.settings.receiveSoundEnabled
             )
         }
@@ -902,7 +901,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val id = helper.ensureConversationChannel(
                 getApplication(),
                 target,
-                helper.categoryFor(target),
                 repo.settings.receiveSoundEnabled
             )
             withContext(Dispatchers.Main) {
