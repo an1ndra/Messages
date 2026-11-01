@@ -3607,11 +3607,21 @@ internal fun InputBar(
                 animationSpec = motionSpring(reduceMotion),
                 label = "micRecordScale"
             )
+            // The record button wears the field's own colour, not the accent:
+            // it belongs to the composer, and the accent is what Send means. Only
+            // an armed cancel repaints it, which is the moment it stops being a
+            // hold target and starts saying "let go".
             val micColor by animateColorAsState(
                 targetValue = if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.primary,
+                else MaterialTheme.colorScheme.inputPill,
                 animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
                 label = "micRecordColor"
+            )
+            val micInk by animateColorAsState(
+                targetValue = if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.onError
+                else MaterialTheme.colorScheme.primary,
+                animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
+                label = "micRecordInk"
             )
             Box(
                 Modifier
@@ -3679,7 +3689,7 @@ internal fun InputBar(
             ) {
                 Icon(
                     painterResource(R.drawable.ic_voice_wave), null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = micInk,
                     modifier = Modifier.size(28.dp)
                 )
             }
