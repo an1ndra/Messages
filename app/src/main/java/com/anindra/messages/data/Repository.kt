@@ -64,7 +64,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 30
+private const val DB_VERSION = 31
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -114,7 +114,12 @@ class Db(context: Context) :
         )
         db.execSQL("CREATE INDEX idx_messages_conversation ON messages(conversation_id)")
         db.execSQL("CREATE INDEX idx_messages_conv_ts ON messages(conversation_id, timestamp)")
-        db.execSQL("CREATE UNIQUE INDEX idx_messages_sys_id ON messages(transport, sys_id) WHERE sys_id>0")
+        // One provider MMS can carry several pictures, and each becomes a message
+        // row; the part URI is what stays unique per provider row (#398).
+        db.execSQL(
+            "CREATE UNIQUE INDEX idx_messages_sys_id " +
+                "ON messages(transport, sys_id, media_uri) WHERE sys_id>0"
+        )
         db.execSQL("CREATE INDEX idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
         db.execSQL("CREATE INDEX idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
         db.execSQL(
@@ -283,7 +288,7 @@ class Db(context: Context) :
             db.execSQL("DROP INDEX IF EXISTS idx_messages_sys_id")
             db.execSQL(
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_sys_id " +
-                    "ON messages(transport, sys_id) WHERE sys_id>0"
+                    "ON messages(transport, sys_id, media_uri) WHERE sys_id>0"
             )
         }
         if (oldVersion < 17) {
@@ -353,6 +358,16 @@ class Db(context: Context) :
             // sync inserts rows it does not already own.
             db.execSQL("ALTER TABLE messages ADD COLUMN starred INTEGER NOT NULL DEFAULT 0")
             db.execSQL("CREATE INDEX idx_messages_starred ON messages(starred, timestamp) WHERE starred=1")
+        }
+        if (oldVersion < 31) {
+            // A multi-picture MMS is imported as one message row per picture
+            // (#398), so a provider row is no longer unique on its own: the
+            // attachment is what makes a row distinct.
+            db.execSQL("DROP INDEX IF EXISTS idx_messages_sys_id")
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_sys_id " +
+                    "ON messages(transport, sys_id, media_uri) WHERE sys_id>0"
+            )
         }
     }
 
@@ -436,13 +451,17 @@ class Db(context: Context) :
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
     }
 
-    /** Collapses rows that share a system-provider id (legacy double-imports,
-     *  e.g. duplicated OTP texts), drops the unlinked local twin of any already
-     *  linked message, then enforces uniqueness going forward. */
+    /** Collapses rows that share a system-provider id *and* attachment (legacy
+     *  double-imports, e.g. duplicated OTP texts), drops the unlinked local twin
+     *  of any already linked message, then enforces uniqueness going forward.
+     *
+     * The part URI is part of the key: a multi-picture MMS is one provider row
+     * with one message row per picture, and grouping by sys_id alone would
+     * delete every picture but the first (#398). */
     private fun dedupeSysIds(db: SQLiteDatabase) {
         db.execSQL(
             """DELETE FROM messages WHERE sys_id>0 AND id NOT IN
-               (SELECT MIN(id) FROM messages WHERE sys_id>0 GROUP BY sys_id)"""
+               (SELECT MIN(id) FROM messages WHERE sys_id>0 GROUP BY sys_id, media_uri)"""
         )
         db.execSQL(
             """DELETE FROM messages WHERE sys_id=0 AND EXISTS(
@@ -3488,6 +3507,47 @@ class Repository(private val context: Context) {
         return if (id <= 0) null else messageByIdSuspend(id)
     }
 
+    /** How many voice notes the store holds, sent and received, for Diagnostics. */
+    suspend fun voiceNoteCounts(): Pair<Int, Int> = runOnIoAsync {
+        var sent = 0
+        var received = 0
+        db.readableDatabase.rawQuery(
+            "SELECT is_me, COUNT(*) FROM messages WHERE media_type='audio'" +
+                " AND deleted_at=0 GROUP BY is_me",
+            null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                if (cursor.getInt(0) != 0) sent = cursor.getInt(1) else received = cursor.getInt(1)
+            }
+        }
+        sent to received
+    }
+
+    /**
+     * Imported MMS rows: how many there are, how many provider messages they
+     * came from with two or more rows, and the largest number of rows one
+     * provider message produced.
+     *
+     * A multi-picture MMS is one provider row and several message rows, so
+     * "one picture showed" can be read straight off these three numbers (#398).
+     */
+    suspend fun mmsPartStats(): Triple<Int, Int, Int> = runOnIoAsync {
+        val database = db.readableDatabase
+        fun one(sql: String): Int = database.rawQuery(sql, null).use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+        val rows = one("SELECT COUNT(*) FROM messages WHERE transport='mms' AND deleted_at=0")
+        val multi = one(
+            "SELECT COUNT(*) FROM (SELECT sys_id FROM messages WHERE transport='mms'" +
+                " AND deleted_at=0 GROUP BY sys_id HAVING COUNT(*)>1)"
+        )
+        val max = one(
+            "SELECT COALESCE(MAX(c),0) FROM (SELECT COUNT(*) c FROM messages" +
+                " WHERE transport='mms' AND deleted_at=0 GROUP BY sys_id)"
+        )
+        Triple(rows, multi, max)
+    }
+
     suspend fun messageByIdSuspend(messageId: Long): Message? = runOnIoAsync {        var found: Message? = null
         db.readableDatabase.rawQuery(
             """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,reactions
@@ -4152,6 +4212,19 @@ class Repository(private val context: Context) {
     }
 
     private fun importProviderMms(): List<MmsSupport.InboundMms> {
+        val imported = importProviderMmsOnce(rescanAll = false)
+        if (!settings.mmsPartsBackfillDone) {
+            // MMS imported before multi-picture support carry only their first
+            // picture. Re-examine every provider row once; the per-part dedupe
+            // makes it idempotent, and nothing is notified — these are old
+            // messages (#398).
+            importProviderMmsOnce(rescanAll = true)
+            settings.mmsPartsBackfillDone = true
+        }
+        return imported
+    }
+
+    private fun importProviderMmsOnce(rescanAll: Boolean): List<MmsSupport.InboundMms> {
         val existing = mutableSetOf<Long>()
         db.readableDatabase.rawQuery("SELECT sys_id FROM messages WHERE transport='mms' AND sys_id>0", null)
             .use { cursor -> while (cursor.moveToNext()) existing.add(cursor.getLong(0)) }
@@ -4165,17 +4238,31 @@ class Repository(private val context: Context) {
         val refreshed = mutableSetOf<Long>()
         MmsTrace.i(TRACE, "MMS import: ${existing.size} provider row(s) already linked")
         try {
-            MmsProviderReader(context.contentResolver).read(existing) { message ->
+            MmsProviderReader(context.contentResolver)
+                .read(if (rescanAll) emptySet() else existing) { message ->
                 runOnIo {
                     offered++
                     val database = db.writableDatabase
                     database.beginTransaction()
                     try {
-                        val duplicate = database.rawQuery(
-                            "SELECT 1 FROM messages WHERE transport='mms' AND sys_id=?",
+                        // One provider MMS can carry several pictures. Each
+                        // becomes a message row of its own, grouped by sys_id, so
+                        // every picture is shown (#398). A row is missing when
+                        // its part URI is not linked yet, which also backfills
+                        // multi-picture MMS imported before this change.
+                        val mediaRows: List<Pair<String, Long?>> =
+                            message.content.mediaRows().ifEmpty { listOf("text" to null) }
+                        fun partUri(partId: Long?): String =
+                            partId?.let { "content://mms/part/$it" } ?: ""
+                        val present = mutableSetOf<String>()
+                        database.rawQuery(
+                            "SELECT media_uri FROM messages WHERE transport='mms' AND sys_id=?",
                             arrayOf(message.id.toString())
-                        ).use { it.moveToFirst() }
-                        if (!duplicate) {
+                        ).use { cursor ->
+                            while (cursor.moveToNext()) present.add(cursor.getString(0).orEmpty())
+                        }
+                        val missing = mediaRows.filter { partUri(it.second) !in present }
+                        if (missing.isNotEmpty()) {
                             val address = canonical(message.address).ifEmpty { message.address }
                             // Same routing as an inbound SMS: a 1:1 with the
                             // sender wins, otherwise the group they are in, and
@@ -4187,19 +4274,25 @@ class Repository(private val context: Context) {
                                         put("name", contactNameFor(address) ?: address)
                                     }
                                 )
-                            database.insertOrThrow("messages", null, ContentValues().apply {
-                                put("conversation_id", cid)
-                                put("body", message.content.body)
-                                put("timestamp", message.timestamp)
-                                put("is_me", if (message.isMe) 1 else 0)
-                                put("status", if (message.isMe) "sent" else "received")
-                                put("sys_id", message.id)
-                                put("transport", MmsSupport.TRANSPORT_MMS)
-                                put("sub_id", message.subId)
-                                put("media_type", message.content.mediaType)
-                                put("media_uri", message.content.mediaId?.let { "content://mms/part/$it" } ?: "")
-                                put("address", if (message.isMe) "" else address)
-                            })
+                            mediaRows.forEachIndexed { index, (mediaType, partId) ->
+                                val uri = partUri(partId)
+                                if (uri in present) return@forEachIndexed
+                                database.insertOrThrow("messages", null, ContentValues().apply {
+                                    put("conversation_id", cid)
+                                    // The caption belongs to the message, not to
+                                    // each of its pictures.
+                                    put("body", if (index == 0) message.content.body else "")
+                                    put("timestamp", message.timestamp)
+                                    put("is_me", if (message.isMe) 1 else 0)
+                                    put("status", if (message.isMe) "sent" else "received")
+                                    put("sys_id", message.id)
+                                    put("transport", MmsSupport.TRANSPORT_MMS)
+                                    put("sub_id", message.subId)
+                                    put("media_type", mediaType)
+                                    put("media_uri", uri)
+                                    put("address", if (message.isMe) "" else address)
+                                })
+                            }
                             if (!message.isMe && !message.read && cid != viewedConversationId) database.execSQL(
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
                             )
@@ -4218,7 +4311,7 @@ class Repository(private val context: Context) {
                                 TRACE,
                                 "imported provider MMS row=${message.id} " +
                                     "mine=${message.isMe} media=${message.content.mediaType} " +
-                                    "sub=${message.subId} read=${message.read}"
+                                    "parts=${mediaRows.size} sub=${message.subId} read=${message.read}"
                             )
                         } else {
                             linked++

@@ -29,9 +29,10 @@ object MmsSupport {
     /**
      * What one MMS carries, as far as this app can show it.
      *
-     * [imageId] and [audioId] are the part ids the provider will hand the bytes
-     * out under; only one of them is ever set, because the app sends and renders
-     * one attachment per message. [mediaType] is the label the message row is
+     * [imageId], [extraImageIds] and [audioId] are the part ids the provider
+     * will hand the bytes out under. Each one is imported as a message row of
+     * its own, so a four-picture MMS shows four pictures instead of one and a
+     * note about the rest (#398). [mediaType] is the label the first row is
      * stored under, so the bubble and the notification agree with what was read.
      */
     data class Content(
@@ -39,7 +40,9 @@ object MmsSupport {
         val imageId: Long?,
         val omittedParts: Int,
         val audioId: Long? = null,
-        val audioMime: String = ""
+        val audioMime: String = "",
+        /** The second and later pictures of a multi-picture MMS. */
+        val extraImageIds: List<Long> = emptyList()
     ) {
         val mediaType: String
             get() = when {
@@ -50,6 +53,14 @@ object MmsSupport {
 
         val mediaId: Long?
             get() = imageId ?: audioId
+
+        /** Every attachment this MMS carries, in the order it should be shown, as
+         *  (mediaType, partId). Empty for a text-only MMS. */
+        fun mediaRows(): List<Pair<String, Long>> = buildList {
+            imageId?.let { add("image" to it) }
+            extraImageIds.forEach { add("image" to it) }
+            audioId?.let { add("audio" to it) }
+        }
     }
 
     data class InboundMms(
@@ -238,24 +249,26 @@ object MmsSupport {
     }
 
     fun content(parts: List<Part>): Content {
-        // One attachment is shown per message, the picture if there is one. Any
-        // other media is reported rather than dropped silently, so an MMS that
-        // carried both a photo and a voice note says so instead of hiding one.
-        val image = parts.firstOrNull { it.id > 0 && isImage(it.mime) }
+        // Every attachment the provider can hand out gets a message row of its
+        // own, so a four-picture MMS arrives as four pictures rather than one
+        // picture and a note about the others (#398). Only media this app cannot
+        // show at all — video, documents, an extra voice note — is omitted.
+        val images = parts.filter { it.id > 0 && isImage(it.mime) }
         val audio = parts.firstOrNull { it.id > 0 && isAudio(it.mime) }
-        val shown = image ?: audio
         val text = parts.filter { mime(it.mime) == "text/plain" }.mapNotNull { it.text }
             .filter { it.isNotBlank() }.joinToString("\n")
+        val shownIds = images.map { it.id }.toSet() + listOfNotNull(audio?.id)
         val omitted = parts.count {
-            mime(it.mime) !in setOf("text/plain", "application/smil") && it !== shown
+            mime(it.mime) !in setOf("text/plain", "application/smil") && it.id !in shownIds
         }
         val notice = if (omitted > 0) "[MMS: $omitted additional/unsupported attachment(s) not displayed]" else ""
         return Content(
             body = listOf(text, notice).filter { it.isNotEmpty() }.joinToString("\n"),
-            imageId = image?.id,
+            imageId = images.firstOrNull()?.id,
             omittedParts = omitted,
-            audioId = if (image == null) audio?.id else null,
-            audioMime = if (image == null) audio?.let { mime(it.mime) } ?: "" else ""
+            audioId = audio?.id,
+            audioMime = audio?.let { mime(it.mime) } ?: "",
+            extraImageIds = images.drop(1).map { it.id }
         )
     }
 
