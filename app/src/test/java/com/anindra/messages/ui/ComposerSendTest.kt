@@ -39,6 +39,23 @@ class ComposerSendTest {
     }
 
     @Test
+    fun anEmptyComposerHandsTheCircleToTheMicrophone() {
+        assertTrue(showsVoiceButton(voiceEnabled = true, draft = "", hasAttachments = false))
+        assertTrue(showsVoiceButton(voiceEnabled = true, draft = "  ", hasAttachments = false))
+    }
+
+    @Test
+    fun typingBringsTheSendButtonBack() {
+        assertFalse(showsVoiceButton(voiceEnabled = true, draft = "hi", hasAttachments = false))
+        assertFalse(showsVoiceButton(voiceEnabled = true, draft = "", hasAttachments = true))
+    }
+
+    @Test
+    fun aDeviceWithoutAMicrophoneNeverShowsTheMic() {
+        assertFalse(showsVoiceButton(voiceEnabled = false, draft = "", hasAttachments = false))
+    }
+
+    @Test
     fun clearingTheDraftTurnsSendOffAgain() {
         assertTrue(canSend("draft", hasAttachments = false))
         assertFalse(canSend("", hasAttachments = false))

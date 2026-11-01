@@ -76,7 +76,8 @@ object NotificationHelper {
         senderName: String,
         fallbackText: String,
         imageUri: String? = null,
-        privacyMode: Boolean = false
+        privacyMode: Boolean = false,
+        audio: Boolean = false
     ): NotificationCompat.Style {
         val hideLinks = app.repository.settings.hideLinks
         val person = Person.Builder().setName(senderName)
@@ -94,12 +95,13 @@ object NotificationHelper {
         // A picture-only MMS has a blank body: it gets a label instead of an
         // empty row, and the picture itself rides along as message data.
         val photoLabel = context.getString(R.string.notif_photo)
+        val voiceLabel = context.getString(R.string.notif_voice)
         val lines = NotificationHistory.window(
             if (history.isEmpty()) {
                 listOf(
                     NotificationLine(
                         fallbackText, System.currentTimeMillis(), false,
-                        isImage = imageUri != null, imageUri = imageUri
+                        isImage = imageUri != null, imageUri = imageUri, isAudio = audio
                     )
                 )
             } else history.map {
@@ -108,7 +110,8 @@ object NotificationHelper {
                     it.timestamp,
                     fromMe = false,
                     isImage = it.isImage,
-                    imageUri = it.imageUri
+                    imageUri = it.imageUri,
+                    isAudio = it.isAudio
                 )
             }
         )
@@ -116,7 +119,12 @@ object NotificationHelper {
         // on a receiver thread for lines that sit below the visible one.
         val newestImage = lines.lastOrNull { it.isImage }
         lines.forEach {
-            val text = if (it.text.isBlank() && it.isImage) photoLabel else it.text
+            val text = when {
+                it.text.isNotBlank() -> it.text
+                it.isImage -> photoLabel
+                it.isAudio -> voiceLabel
+                else -> it.text
+            }
             val message = NotificationCompat.MessagingStyle.Message(
                 text, it.timestamp, if (it.fromMe) me else person
             )
@@ -362,7 +370,8 @@ object NotificationHelper {
         from: String,
         body: String,
         imageUri: String? = null,
-        silentRepost: Boolean = false
+        silentRepost: Boolean = false,
+        audio: Boolean = false
     ) {
         // Skip notification if user is already reading this conversation
         if (NotificationPolicy.skipForOpenThread(
@@ -478,9 +487,10 @@ object NotificationHelper {
         val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
             privacyMode -> context.getString(R.string.notif_body_private)
-            // A picture-only MMS has no text; an empty text is what made the
-            // whole notification blank.
+            // A picture- or voice-only MMS has no text; an empty text is what
+            // made the whole notification blank.
             body.isBlank() && imageUri != null -> context.getString(R.string.notif_photo)
+            body.isBlank() && audio -> context.getString(R.string.notif_voice)
             app.repository.settings.hideLinks -> hideUrls(body)
             else -> body
         }
@@ -516,7 +526,7 @@ object NotificationHelper {
             // across the app's live notifications.
             .setNumber(BadgePolicy.badgeCount(app.repository.unreadCountFor(convoId)))
             .setContentIntent(tap)
-            .setStyle(groupedStyle(context, app, convoId, senderName, text, imageUri, privacyMode))
+            .setStyle(groupedStyle(context, app, convoId, senderName, text, imageUri, privacyMode, audio))
         if (bubbleConversationId != null && bubbleReady) {
             try {
                 builder.setShortcutId(NotificationBubble.shortcutId(bubbleConversationId))
@@ -880,10 +890,13 @@ object SmsSender {
         addresses: List<String>,
         media: Uri,
         subscriptionId: Int = -1,
-        caption: String = ""
+        caption: String = "",
+        mimeType: String? = null
     ): Boolean {
-        val mime = com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
-            context.contentResolver.getType(media), media.toString()
+        val mime = com.anindra.messages.data.MmsSupport.canonicalMime(
+            mimeType ?: com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
+                context.contentResolver.getType(media), media.toString()
+            )
         )
         return MmsSender.send(
             context, messageId, addresses, media, mime, caption, subscriptionId

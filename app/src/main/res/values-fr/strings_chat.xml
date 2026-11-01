@@ -23,6 +23,11 @@
     <string name="chat_save_image">Enregistrer l\'image</string>
     <string name="chat_image_saved">Image enregistrée dans Pictures/Messages</string>
     <string name="chat_image_save_failed">Impossible d\'enregistrer l\'image</string>
+    <string name="chat_voice_slide_cancel">Glissez pour annuler</string>
+    <string name="chat_voice_release_cancel">Relâchez pour annuler</string>
+    <string name="chat_voice_permission_denied">L\'accès au micro est nécessaire pour enregistrer un message vocal</string>
+    <string name="chat_voice_start_failed">Impossible de démarrer l\'enregistrement</string>
+    <string name="chat_voice_max_reached">Message vocal arrêté à la limite de taille MMS</string>
     <!-- Status messages -->
     <string name="chat_cant_send">Impossible d\'envoyer le message</string>
     <string name="chat_archived">Conversation archivée</string>
