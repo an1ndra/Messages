@@ -23,6 +23,11 @@
     <string name="chat_save_image">Bild speichern</string>
     <string name="chat_image_saved">Bild in Pictures/Messages gespeichert</string>
     <string name="chat_image_save_failed">Bild konnte nicht gespeichert werden</string>
+    <string name="chat_voice_slide_cancel">Zum Abbrechen ziehen</string>
+    <string name="chat_voice_release_cancel">Zum Abbrechen loslassen</string>
+    <string name="chat_voice_permission_denied">Für eine Sprachnachricht wird Zugriff auf das Mikrofon benötigt</string>
+    <string name="chat_voice_start_failed">Aufnahme konnte nicht gestartet werden</string>
+    <string name="chat_voice_max_reached">Sprachnachricht beim MMS-Größenlimit gestoppt</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Nachricht kann nicht gesendet werden</string>

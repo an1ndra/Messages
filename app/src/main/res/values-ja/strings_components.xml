@@ -30,6 +30,9 @@
     <string name="access_start_chat">チャットを開始</string>
     <string name="access_loading_messages">メッセージを読み込み中</string>
     <string name="access_photo">写真</string>
+    <string name="access_voice">ボイス メッセージ</string>
+    <string name="access_voice_play">ボイス メッセージを再生</string>
+    <string name="access_voice_pause">ボイス メッセージを一時停止</string>
     <string name="action_call">電話</string>
     <string name="access_chat_top_bar">チャット上部バー</string>
     <string name="access_swipe_background">スワイプ背景</string>
@@ -44,6 +47,7 @@
     <string name="icon_attach">添付</string>
     <string name="icon_emoji">絵文字</string>
     <string name="icon_send">送信</string>
+    <string name="icon_voice">ボイス メッセージを録音</string>
     <string name="icon_close_search">検索を閉じる</string>
     <string name="icon_back_to_inbox">受信トレイに戻る</string>
     <string name="icon_search">検索</string>

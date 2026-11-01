@@ -34,8 +34,17 @@ class ForwardPlanTest {
     }
 
     @Test
-    fun nonImageMediaForwardsAsSms() {
-        val plan = ForwardPlan.of(msg("voice", "content://voice/7"), "hi")
+    fun aVoiceNoteForwardsAsMmsCarryingTheRecording() {
+        val plan = ForwardPlan.of(msg("audio", "content://voice/7"), "")
+        assertTrue(plan is ForwardPlan.Mms)
+        plan as ForwardPlan.Mms
+        assertEquals("content://voice/7", plan.mediaUri)
+        assertEquals("audio", plan.mediaType)
+    }
+
+    @Test
+    fun nothingThisAppCannotSendForwardsAsAnMms() {
+        val plan = ForwardPlan.of(msg("video", "content://video/7"), "hi")
         assertTrue(plan is ForwardPlan.Sms)
     }
 

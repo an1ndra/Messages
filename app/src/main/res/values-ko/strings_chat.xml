@@ -23,6 +23,11 @@
     <string name="chat_save_image">이미지 저장</string>
     <string name="chat_image_saved">이미지를 Pictures/Messages에 저장했습니다</string>
     <string name="chat_image_save_failed">이미지를 저장할 수 없습니다</string>
+    <string name="chat_voice_slide_cancel">밀어서 취소</string>
+    <string name="chat_voice_release_cancel">놓아서 취소</string>
+    <string name="chat_voice_permission_denied">음성 메시지를 녹음하려면 마이크 접근 권한이 필요합니다</string>
+    <string name="chat_voice_start_failed">녹음을 시작할 수 없습니다</string>
+    <string name="chat_voice_max_reached">MMS 크기 한도에 도달하여 음성 메시지를 중지했습니다</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">메시지를 보낼 수 없습니다</string>

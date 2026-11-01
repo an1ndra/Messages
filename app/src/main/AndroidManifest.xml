@@ -11,6 +11,10 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Recording a voice note. Requested at the first press of the mic, not at
+         launch: an app that only records when asked should not hold the
+         microphone at any other time. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
@@ -33,9 +37,14 @@
         tools:node="remove" />
 
     <!-- SMS/MMS/phone-state permissions imply telephony; this app degrades to a
-         simulated SIM on devices without a radio (ChromeOS, tablets). -->
+         simulated SIM on devices without a radio (ChromeOS, tablets). A device
+         with no microphone simply cannot record a voice note, which is why the
+         feature is optional rather than a hard requirement. -->
     <uses-feature
         android:name="android.hardware.telephony"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.microphone"
         android:required="false" />
 
     <application

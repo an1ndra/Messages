@@ -16,9 +16,15 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -40,6 +46,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.DragInteraction
@@ -47,6 +55,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -88,8 +98,11 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.MoreVert
@@ -152,9 +165,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -189,6 +204,9 @@ import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimSwitcher
+import com.anindra.messages.voice.VoiceNotePolicy
+import com.anindra.messages.voice.VoicePlayback
+import com.anindra.messages.voice.VoiceRecorder
 import com.anindra.messages.data.MessageLockCrypto
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -520,6 +538,15 @@ internal fun ChatBubble(
                             }
                         }
                     }
+                } else if (msg.mediaType == "audio" && msg.mediaUri.isNotBlank()) {
+                    VoiceBubble(
+                        uri = msg.mediaUri,
+                        isMe = msg.isMe,
+                        isSelected = isSelected,
+                        body = bodyText,
+                        bodyStyle = bodyStyle,
+                        onLongPress = { onLongPress() }
+                    )
                 } else {
                     Surface(
                         color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
@@ -971,6 +998,51 @@ fun ChatScreen(
     // Picked media waits here until the user sends it, so a picture can be
     // explained or dropped before it leaves — it is no longer sent on pick.
     val pendingMedia = remember { mutableStateListOf<Uri>() }
+
+    // A voice note is recorded while the finger holds the mic, so the recorder
+    // and the microphone grant have to outlive every recomposition of the row.
+    val recorder = remember { VoiceRecorder(context) }
+    val hasMicrophone = remember {
+        context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_MICROPHONE)
+    }
+    val voiceMaxSeconds = remember { vm.voiceNoteMaxSeconds() }
+    var recordPermission by remember {
+        mutableStateOf(
+            context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val recordPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        recordPermission = granted
+        if (!granted) {
+            Toast.makeText(
+                context, context.getString(R.string.chat_voice_permission_denied), Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+    fun startVoiceNote(): Boolean {
+        if (!recordPermission) {
+            recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return false
+        }
+        val started = recorder.start() != null
+        if (!started) {
+            Toast.makeText(
+                context, context.getString(R.string.chat_voice_start_failed), Toast.LENGTH_SHORT
+            ).show()
+        }
+        return started
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            // Leaving the chat must not leave a microphone open or a voice note
+            // playing behind the inbox.
+            recorder.cancel()
+            VoicePlayback.release()
+        }
+    }
 
     val selectedMessageIds = remember { mutableStateListOf<Long>() }
     var textCopyMessage by remember { mutableStateOf<Message?>(null) }
@@ -1807,7 +1879,27 @@ fun ChatScreen(
                         },
                         onEmojiToggle = { showEmoji = !showEmoji },
                         onAttach = { attachSheet = true },
-                        showEmojiButton = vm.settings.emojiButtonEnabled
+                        showEmojiButton = vm.settings.emojiButtonEnabled,
+                        voiceEnabled = hasMicrophone,
+                        voiceMaxSeconds = voiceMaxSeconds,
+                        onVoiceStart = { startVoiceNote() },
+                        onVoiceFinish = {
+                            val note = recorder.finish()
+                            if (note != null) {
+                                vm.sendMediaMessage(conversationId, note.uri, "", "audio")
+                                android.util.Log.d(
+                                    "VoiceNote",
+                                    "sent bytes=${note.bytes} durationMs=${note.durationMs} mime=${VoiceNotePolicy.MIME}"
+                                )
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.chat_voice_start_failed),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                        onVoiceCancel = { recorder.cancel() }
                     )
                 } else {
                     AlphanumericNotice(address = chatAddress)
@@ -3137,6 +3229,17 @@ fun MessageRow(
                         }
                     }
                 }
+            } else if (msg.mediaType == "audio" && msg.mediaUri.isNotBlank()) {
+                VoiceBubble(
+                    uri = msg.mediaUri,
+                    isMe = msg.isMe,
+                    isSelected = isSelected,
+                    body = bodyText,
+                    bodyStyle = MaterialTheme.typography.bodyLarge.merge(
+                        TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
+                    ),
+                    onLongPress = { onLongPress() }
+                )
             } else {
                 Surface(
                     color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
@@ -3328,8 +3431,45 @@ internal fun InputBar(
     hasAttachments: Boolean = false,
     sims: List<SimCard> = emptyList(),
     currentSimId: Int = -1,
-    onCycleSim: () -> Unit = {}
+    onCycleSim: () -> Unit = {},
+    voiceEnabled: Boolean = false,
+    voiceMaxSeconds: Int = VoiceNotePolicy.MAX_SECONDS,
+    onVoiceStart: () -> Boolean = { false },
+    onVoiceFinish: () -> Unit = {},
+    onVoiceCancel: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val reduceMotion = LocalReduceMotion.current
+    var recording by remember { mutableStateOf(false) }
+    var cancelArmed by remember { mutableStateOf(false) }
+    var elapsedMs by remember { mutableStateOf(0L) }
+
+    // Stops once, whichever comes first: the finger leaving the screen or the
+    // carrier's size budget running out. The flag is what keeps a release after
+    // an automatic stop from sending a second note.
+    fun stopRecording(send: Boolean) {
+        if (!recording) return
+        recording = false
+        cancelArmed = false
+        if (send) onVoiceFinish() else onVoiceCancel()
+    }
+
+    LaunchedEffect(recording) {
+        if (!recording) return@LaunchedEffect
+        elapsedMs = 0L
+        val startedAt = android.os.SystemClock.elapsedRealtime()
+        while (recording && android.os.SystemClock.elapsedRealtime() - startedAt < voiceMaxSeconds * 1000L) {
+            elapsedMs = android.os.SystemClock.elapsedRealtime() - startedAt
+            delay(100)
+        }
+        if (recording) {
+            elapsedMs = android.os.SystemClock.elapsedRealtime() - startedAt
+            android.widget.Toast.makeText(
+                context, context.getString(R.string.chat_voice_max_reached), android.widget.Toast.LENGTH_SHORT
+            ).show()
+            stopRecording(send = true)
+        }
+    }
     Row(
         modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -3339,14 +3479,18 @@ internal fun InputBar(
         // only: a message's own direction is decided differently (see
         // BidiText.direction), but flipping the caret mid-word would be worse
         // than the message's final alignment being imperfect.
-        val draftStyle = LocalTextStyle.current.copy(
+        val draftStyle = MaterialTheme.typography.bodyLarge.copy(
+            // BasicTextField does not inherit a colour the way TextField did; an
+            // unset ink rendered the draft almost invisible on the pill.
+            color = MaterialTheme.colorScheme.onSurface,
             textDirection = BidiText.firstStrongDirection(draft).toTextDirection()
         )
         LaunchedEffect(draftStyle.textDirection) {
             android.util.Log.d("ComposerDirection", "dir=${draftStyle.textDirection}")
         }
-        // GM's composer is a true pill: a 56dp field with a 28dp corner, which
-        // at 24dp still read as a rounded rectangle beside it.
+        // Google Messages' composer row is one 56dp-tall pill with a 28dp
+        // corner, beside a 56dp circle. Measured off its own dump: the field and
+        // both circle states are [..,2032][..,2186] on a 440dpi screen.
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.inputPill,
@@ -3357,107 +3501,182 @@ internal fun InputBar(
                     animationSpec = motionSpring<IntSize>(LocalReduceMotion.current)
                 )
         ) {
-            TextField(
-                value = draft,
-                onValueChange = onDraftChange,
-                placeholder = { Text(placeholder) },
-                leadingIcon = {
-                    IconButton(onClick = onAttach) {
-                        // GM badges the attach button with a dot that overlaps the
-                        // ring's top-right; the ring shows through as broken
-                        // because the dot carries a ring of field colour around it.
-                        Box {
-                            Icon(
-                                Icons.Rounded.AddCircleOutline,
-                                stringResource(R.string.icon_attach),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            val dot = MaterialTheme.colorScheme.composerAttachDot
-                            // A dot colour has no text equivalent, so it names
-                            // itself; scripts/test-composer-dot.sh uses this.
-                            LaunchedEffect(dot) {
-                                android.util.Log.d(
-                                    "ComposerDot",
-                                    "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
-                                )
-                            }
-                            Box(
-                                Modifier
-                                    .align(Alignment.TopEnd)
-                                    // Sits *on* the ring, not outside it: GM's
-                                    // dot centre is 0.99·r from the ring centre.
-                                    .offset(x = (-1).dp, y = 1.dp)
-                                    // GM's dot measures ~5dp across; the 8dp box
-                                    // is the cut-out ring plus that dot.
-                                    .size(8.dp)
-                                    .background(MaterialTheme.colorScheme.inputPill, CircleShape)
-                                    .padding(1.5.dp)
-                                    .background(dot, CircleShape)
-                            )
-                        }
+            if (recording) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 56.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // A blinking dot is what says "this is still recording"; it
+                    // holds still under reduce motion, where the counter alone
+                    // carries the message.
+                    val dotAlpha = if (reduceMotion) 1f else {
+                        val pulse = rememberInfiniteTransition(label = "recordPulse")
+                        pulse.animateFloat(
+                            initialValue = 0.25f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(650, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "recordDot"
+                        ).value
                     }
-                },
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Default,
-                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
-                ),
-                textStyle = draftStyle,
-                trailingIcon = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (SimSwitcher.shouldShowSwitch(sims.size)) {
-                            val simLabel = when {
-                                sims.size >= 3 -> "D"
-                                else -> "${SimSwitcher.selectedIndex(currentSimId, sims) + 1}"
-                            }
-                            Box(
-                                modifier = Modifier.size(40.dp).clickable { onCycleSim() },
-                                contentAlignment = Alignment.Center
-                            ) {
+                    Box(
+                        Modifier
+                            .size(10.dp)
+                            .background(MaterialTheme.colorScheme.error.copy(alpha = dotAlpha), CircleShape)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        VoiceNotePolicy.elapsedLabel(elapsedMs),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    val armed = if (cancelArmed) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    Icon(
+                        Icons.Rounded.DeleteOutline, null,
+                        tint = armed,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Icon(
+                        Icons.Rounded.ChevronLeft, null,
+                        tint = armed,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        stringResource(
+                            if (cancelArmed) R.string.chat_voice_release_cancel
+                            else R.string.chat_voice_slide_cancel
+                        ),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = armed
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Icon(
+                        Icons.Outlined.Mic, null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        IconButton(onClick = onAttach) {
+                            // GM badges the attach button with a dot that overlaps the
+                            // ring's top-right; the ring shows through as broken
+                            // because the dot carries a ring of field colour around it.
+                            Box {
                                 Icon(
-                                    painterResource(R.drawable.ic_sim_vector),
-                                    stringResource(R.string.chat_switch_sim),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Text(
-                                    text = simLabel,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.surface,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
-                        }
-                        if (showEmojiButton) {
-                            IconButton(onClick = onEmojiToggle, modifier = Modifier.size(40.dp)) {
-                                Icon(
-                                    Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
+                                    Icons.Rounded.AddCircleOutline,
+                                    stringResource(R.string.icon_attach),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                val dot = MaterialTheme.colorScheme.composerAttachDot
+                                // A dot colour has no text equivalent, so it names
+                                // itself; scripts/test-composer-dot.sh uses this.
+                                LaunchedEffect(dot) {
+                                    android.util.Log.d(
+                                        "ComposerDot",
+                                        "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
+                                    )
+                                }
+                                Box(
+                                    Modifier
+                                        .align(Alignment.TopEnd)
+                                        // Sits *on* the ring, not outside it: GM's
+                                        // dot centre is 0.99·r from the ring centre.
+                                        .offset(x = (-1).dp, y = 1.dp)
+                                        // GM's dot measures ~5dp across; the 8dp box
+                                        // is the cut-out ring plus that dot.
+                                        .size(8.dp)
+                                        .background(MaterialTheme.colorScheme.inputPill, CircleShape)
+                                        .padding(1.5.dp)
+                                        .background(dot, CircleShape)
+                                )
                             }
                         }
                     }
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                ),
-                maxLines = 4,
-                modifier = Modifier.fillMaxWidth()
-            )
+                    Box(Modifier.weight(1f)) {
+                        if (draft.isEmpty()) {
+                            Text(
+                                text = placeholder,
+                                style = draftStyle,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                modifier = Modifier.padding(vertical = 16.dp)
+                            )
+                        }
+                        BasicTextField(
+                            value = draft,
+                            onValueChange = onDraftChange,
+                            textStyle = draftStyle,
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = androidx.compose.ui.text.input.ImeAction.Default,
+                                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                            ),
+                            maxLines = 4,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                        )
+                    }
+                    if (SimSwitcher.shouldShowSwitch(sims.size)) {
+                        val simLabel = when {
+                            sims.size >= 3 -> "D"
+                            else -> "${SimSwitcher.selectedIndex(currentSimId, sims) + 1}"
+                        }
+                        Box(
+                            modifier = Modifier.size(40.dp).clickable { onCycleSim() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painterResource(R.drawable.ic_sim_vector),
+                                stringResource(R.string.chat_switch_sim),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = simLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+                    if (showEmojiButton) {
+                        IconButton(onClick = onEmojiToggle, modifier = Modifier.size(40.dp)) {
+                            Icon(
+                                Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+            }
         }
         // The send circle is always there, dimmed while there is nothing to
         // send, and inert until then — combinedClickable is gated on [ready], so
         // an empty tap cannot fire and holding it schedules nothing. Round 2 of
         // #347 hid it instead; the row then looked unfinished on an empty chat.
         val ready = canSend(draft, hasAttachments)
+        // An empty composer has nothing to send, so the circle is the way into a
+        // voice note instead — the same swap Google Messages makes, and the only
+        // affordance this adds to the row.
+        val micMode = showsVoiceButton(voiceEnabled, draft, hasAttachments)
         val sendLabel = stringResource(R.string.icon_send)
         val sendReduceMotion = LocalReduceMotion.current
         val present by animateFloatAsState(
-            targetValue = if (ready) 1f else 0.38f,
+            targetValue = if (ready || micMode) 1f else 0.38f,
             animationSpec = motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
             label = "sendPresence"
         )
@@ -3481,9 +3700,78 @@ internal fun InputBar(
             holding = false
         }
         Spacer(Modifier.width(8.dp))
+        if (micMode) {
+            val voiceLabel = stringResource(R.string.icon_voice)
+            // Recording is a state, so it moves: the circle swells while the
+            // note runs and turns red once the slide has armed the cancel.
+            val micScale by animateFloatAsState(
+                targetValue = if (recording) 1.12f else 1f,
+                animationSpec = motionSpring(reduceMotion),
+                label = "micRecordScale"
+            )
+            val micColor by animateColorAsState(
+                targetValue = if (cancelArmed) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary,
+                animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
+                label = "micRecordColor"
+            )
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .graphicsLayer {
+                        alpha = present
+                        scaleX = micScale
+                        scaleY = micScale
+                    }
+                    .background(micColor, CircleShape)
+                    // Press-and-hold records; sliding up or left arms the
+                    // cancel. Releasing then does one of the two, and nothing
+                    // is sent until the finger is up.
+                    .pointerInput(voiceMaxSeconds) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            down.consume()
+                            if (!onVoiceStart()) {
+                                // No microphone (or no permission): the gesture
+                                // ends here rather than leaving a stuck state.
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    if (event.changes.none { it.pressed }) break
+                                }
+                                return@awaitEachGesture
+                            }
+                            recording = true
+                            cancelArmed = false
+                            var drag = androidx.compose.ui.geometry.Offset.Zero
+                            val threshold = SLIDE_CANCEL_DP.dp.toPx()
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.first()
+                                if (!change.pressed) {
+                                    change.consume()
+                                    break
+                                }
+                                drag += change.positionChange()
+                                cancelArmed = drag.x < -threshold || drag.y < -threshold
+                                change.consume()
+                            }
+                            if (!recording) return@awaitEachGesture
+                            stopRecording(send = !cancelArmed)
+                        }
+                    }
+                    .semantics { contentDescription = voiceLabel },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Outlined.Mic, null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        } else {
         Box(
             Modifier
-                .size(48.dp)
+                .size(56.dp)
                 .graphicsLayer {
                     alpha = present
                     scaleX = holdScale
@@ -3504,11 +3792,15 @@ internal fun InputBar(
             Icon(
                 Icons.AutoMirrored.Rounded.Send, null,
                 tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(24.dp)
             )
+        }
         }
     }
 }
+
+/** How far a finger has to travel before releasing a recording cancels it. */
+private const val SLIDE_CANCEL_DP = 72
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
