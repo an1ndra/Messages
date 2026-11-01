@@ -28,6 +28,8 @@
     <string name="chat_voice_permission_denied">É preciso acesso ao microfone para gravar uma mensagem de voz</string>
     <string name="chat_voice_start_failed">Não foi possível iniciar a gravação</string>
     <string name="chat_voice_max_reached">Mensagem de voz interrompida no limite de tamanho do MMS</string>
+    <string name="chat_voice_cancel_recording">Cancelar gravação</string>
+    <string name="chat_voice_lock_hint">Deslize para cima para fixar a gravação</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Não é possível enviar mensagem</string>

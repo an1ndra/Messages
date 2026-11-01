@@ -28,6 +28,8 @@
     <string name="chat_voice_permission_denied">Для записи голосового сообщения нужен доступ к микрофону</string>
     <string name="chat_voice_start_failed">Не удалось начать запись</string>
     <string name="chat_voice_max_reached">Голосовое сообщение остановлено на пределе размера MMS</string>
+    <string name="chat_voice_cancel_recording">Отменить запись</string>
+    <string name="chat_voice_lock_hint">Сдвиньте вверх, чтобы закрепить запись</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Не удалось отправить сообщение</string>

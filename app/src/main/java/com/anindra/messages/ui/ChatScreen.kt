@@ -98,9 +98,9 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
-import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -3289,7 +3289,10 @@ internal fun InputBar(
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
     var recording by remember { mutableStateOf(false) }
-    var cancelArmed by remember { mutableStateOf(false) }
+    var arm by remember { mutableStateOf(VoiceArm.NONE) }
+    // Locked recording survives the finger: the note keeps running hands-free
+    // until send, cancel or the carrier's cap ends it.
+    var locked by remember { mutableStateOf(false) }
     var elapsedMs by remember { mutableStateOf(0L) }
 
     // Stops once, whichever comes first: the finger leaving the screen or the
@@ -3298,7 +3301,8 @@ internal fun InputBar(
     fun stopRecording(send: Boolean) {
         if (!recording) return
         recording = false
-        cancelArmed = false
+        arm = VoiceArm.NONE
+        locked = false
         if (send) onVoiceFinish() else onVoiceCancel()
     }
 
@@ -3494,33 +3498,49 @@ internal fun InputBar(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(Modifier.width(12.dp))
-                            val armed = if (cancelArmed) MaterialTheme.colorScheme.error
+                            val armed = if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.error
                             else MaterialTheme.colorScheme.onSurfaceVariant
-                            Icon(
-                                Icons.Rounded.DeleteOutline, null,
-                                tint = armed,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Icon(
-                                Icons.Rounded.ChevronLeft, null,
-                                tint = armed,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                stringResource(
-                                    if (cancelArmed) R.string.chat_voice_release_cancel
-                                    else R.string.chat_voice_slide_cancel
-                                ),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = armed
-                            )
-                            Spacer(Modifier.weight(1f))
-                            Icon(
-                                painterResource(R.drawable.ic_voice_wave), null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp)
-                            )
+                            if (locked) {
+                                // Hands-free: the finger is gone, so this is the
+                                // only way back out, and it is a real button now.
+                                Spacer(Modifier.weight(1f))
+                                IconButton(
+                                    onClick = { stopRecording(send = false) },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.DeleteOutline,
+                                        stringResource(R.string.chat_voice_cancel_recording),
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            } else {
+                                // The arrow says where the finger has to go; the
+                                // bin next to it read as a button, which nothing
+                                // can press while that same finger is holding.
+                                Icon(
+                                    Icons.Rounded.ChevronLeft, null,
+                                    tint = armed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    stringResource(
+                                        if (arm == VoiceArm.CANCEL) R.string.chat_voice_release_cancel
+                                        else R.string.chat_voice_slide_cancel
+                                    ),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = armed
+                                )
+                                Spacer(Modifier.weight(1f))
+                                Icon(
+                                    Icons.Rounded.KeyboardArrowUp,
+                                    stringResource(R.string.chat_voice_lock_hint),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
                         }
                 }
             }
@@ -3561,7 +3581,24 @@ internal fun InputBar(
             holding = false
         }
         Spacer(Modifier.width(8.dp))
-        if (micMode) {
+        if (micMode && locked) {
+            // Hands-free: the same circle sends, so there is one obvious way to
+            // finish and the bin in the bar is the one way to drop it.
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    .clickable { stopRecording(send = true) }
+                    .semantics { contentDescription = sendLabel },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.Send, null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        } else if (micMode) {
             val voiceLabel = stringResource(R.string.icon_voice)
             // Recording is a state, so it moves: the circle swells while the
             // note runs and turns red once the slide has armed the cancel.
@@ -3571,7 +3608,7 @@ internal fun InputBar(
                 label = "micRecordScale"
             )
             val micColor by animateColorAsState(
-                targetValue = if (cancelArmed) MaterialTheme.colorScheme.error
+                targetValue = if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.error
                 else MaterialTheme.colorScheme.primary,
                 animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
                 label = "micRecordColor"
@@ -3602,9 +3639,10 @@ internal fun InputBar(
                                 return@awaitEachGesture
                             }
                             recording = true
-                            cancelArmed = false
+                            arm = VoiceArm.NONE
+                            locked = false
                             var drag = androidx.compose.ui.geometry.Offset.Zero
-                            val threshold = SLIDE_CANCEL_DP.dp.toPx()
+                            val threshold = VoiceGesture.THRESHOLD_DP.dp.toPx()
                             while (true) {
                                 val event = awaitPointerEvent()
                                 val change = event.changes.first()
@@ -3613,11 +3651,27 @@ internal fun InputBar(
                                     break
                                 }
                                 drag += change.positionChange()
-                                cancelArmed = drag.x < -threshold || drag.y < -threshold
+                                arm = VoiceGesture.armFor(drag.x, drag.y, threshold)
                                 change.consume()
+                                if (arm == VoiceArm.LOCK) {
+                                    locked = true
+                                    arm = VoiceArm.NONE
+                                    break
+                                }
+                            }
+                            if (locked) {
+                                // The finger that lifted must not send the note:
+                                // swallow the rest of the gesture and leave the
+                                // recording running hands-free.
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    event.changes.forEach { it.consume() }
+                                    if (event.changes.none { it.pressed }) break
+                                }
+                                return@awaitEachGesture
                             }
                             if (!recording) return@awaitEachGesture
-                            stopRecording(send = !cancelArmed)
+                            stopRecording(send = arm != VoiceArm.CANCEL)
                         }
                     }
                     .semantics { contentDescription = voiceLabel },
