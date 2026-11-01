@@ -5,12 +5,12 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The record button wears the composer's own fill; Send keeps the accent.
+ * The record button follows Google Messages' own palette; Send keeps the accent.
  *
- * Two circles sit in the same slot, and giving both the accent made the record
- * button read as a send button. The fill is a theme role (`inputPill`, the same
- * one the pill beside it uses) rather than a colour, so dynamic colour repaints
- * both together.
+ * Measured off GM's composer: idle, the record disc is the inverse surface with
+ * an inverse-ink glyph; while recording it is red with white ink. Both are theme
+ * roles, so dynamic colour repaints them with the wallpaper, and the accent
+ * stays reserved for Send.
  */
 class ComposerRecordButtonTest {
 
@@ -26,18 +26,28 @@ class ComposerRecordButtonTest {
     ).readText()
 
     @Test
-    fun theRecordButtonUsesThePillsFill() {
+    fun theIdleRecordButtonMatchesThePill() {
+        // Google Messages' own idle composer: the record disc is the pill's own
+        // fill (#1A2025 on its dark theme) with a #C0C7CD glyph.
         assertTrue(
-            "the record circle must paint itself with the composer's fill role",
+            "the idle record disc must use the composer fill",
             chat.contains("else MaterialTheme.colorScheme.inputPill")
+        )
+        assertTrue(
+            "its glyph must be the light variant ink that reads on it",
+            chat.contains("else MaterialTheme.colorScheme.onSurfaceVariant")
         )
     }
 
     @Test
-    fun anArmedCancelRepaintsTheRecordButton() {
+    fun recordingRepaintsTheRecordButtonRed() {
         assertTrue(
-            "sliding to cancel must turn the record circle red",
-            chat.contains("if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.error")
+            "recording must turn the record circle red, as Google Messages does",
+            chat.contains("if (recording) MaterialTheme.colorScheme.recordActive")
+        )
+        assertTrue(
+            "the glyph must switch to the ink that reads on that red",
+            chat.contains("if (recording) MaterialTheme.colorScheme.onRecordActive")
         )
     }
 

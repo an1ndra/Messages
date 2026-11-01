@@ -14,6 +14,9 @@ internal object VoiceGesture {
     /** How far a finger travels before either exit arms. */
     const val THRESHOLD_DP = 72
 
+    /** The share of that distance at which the disc starts showing a padlock. */
+    const val LOCK_HINT_FRACTION = 0.35f
+
     /**
      * [dx] and [dy] are the drag so far in pixels, with the screen's axes: left
      * and up are negative.

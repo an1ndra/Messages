@@ -92,6 +92,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.rounded.AddCircleOutline
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
@@ -220,6 +221,8 @@ import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.ChatMetaWeight
 import com.anindra.messages.ui.theme.incomingBubble
 import com.anindra.messages.ui.theme.inputPill
+import com.anindra.messages.ui.theme.onRecordActive
+import com.anindra.messages.ui.theme.recordActive
 import com.anindra.messages.ui.theme.onSelectedBubble
 import com.anindra.messages.ui.theme.outgoingBubble
 import com.anindra.messages.ui.theme.selectedBubble
@@ -3293,6 +3296,9 @@ internal fun InputBar(
     // Locked recording survives the finger: the note keeps running hands-free
     // until send, cancel or the carrier's cap ends it.
     var locked by remember { mutableStateOf(false) }
+    // The disc shows a padlock while the finger is heading for the lock, which
+    // is the cue Google Messages gives before the recording is let go.
+    var lockHint by remember { mutableStateOf(false) }
     var elapsedMs by remember { mutableStateOf(0L) }
 
     // Stops once, whichever comes first: the finger leaving the screen or the
@@ -3303,6 +3309,7 @@ internal fun InputBar(
         recording = false
         arm = VoiceArm.NONE
         locked = false
+        lockHint = false
         if (send) onVoiceFinish() else onVoiceCancel()
     }
 
@@ -3471,76 +3478,74 @@ internal fun InputBar(
                                 .padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // A blinking dot is what says "this is still recording"; it
-                            // holds still under reduce motion, where the counter alone
-                            // carries the message.
-                            val dotAlpha = if (reduceMotion) 1f else {
-                                val pulse = rememberInfiniteTransition(label = "recordPulse")
-                                pulse.animateFloat(
-                                    initialValue = 0.25f,
-                                    targetValue = 1f,
-                                    animationSpec = infiniteRepeatable(
-                                        animation = tween(650, easing = LinearEasing),
-                                        repeatMode = RepeatMode.Reverse
-                                    ),
-                                    label = "recordDot"
-                                ).value
-                            }
+                            // Google Messages' bar, measured off its own composer:
+                            // a steady white dot, the counter, the discard bin, a
+                            // left chevron and "Slide to cancel", then the red
+                            // disc. The row stays at full contrast; only an armed
+                            // cancel changes its colour.
                             Box(
                                 Modifier
-                                    .size(10.dp)
-                                    .background(MaterialTheme.colorScheme.error.copy(alpha = dotAlpha), CircleShape)
+                                    .size(12.dp)
+                                    .background(MaterialTheme.colorScheme.onSurface, CircleShape)
                             )
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(10.dp))
                             Text(
                                 VoiceNotePolicy.elapsedLabel(elapsedMs),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(16.dp))
                             val armed = if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurface
+                            val cancelLabel = stringResource(R.string.chat_voice_cancel_recording)
                             if (locked) {
-                                // Hands-free: the finger is gone, so this is the
-                                // only way back out, and it is a real button now.
-                                Spacer(Modifier.weight(1f))
+                                // Hands-free: the finger is gone, so the bin is a
+                                // real button now.
                                 IconButton(
                                     onClick = { stopRecording(send = false) },
-                                    modifier = Modifier.size(40.dp)
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .semantics { contentDescription = cancelLabel }
                                 ) {
                                     Icon(
-                                        Icons.Rounded.DeleteOutline,
-                                        stringResource(R.string.chat_voice_cancel_recording),
-                                        tint = MaterialTheme.colorScheme.error,
+                                        Icons.Rounded.DeleteOutline, null,
+                                        tint = armed,
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
                             } else {
-                                // The arrow says where the finger has to go; the
-                                // bin next to it read as a button, which nothing
-                                // can press while that same finger is holding.
-                                Icon(
-                                    Icons.Rounded.ChevronLeft, null,
-                                    tint = armed,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    stringResource(
-                                        if (arm == VoiceArm.CANCEL) R.string.chat_voice_release_cancel
-                                        else R.string.chat_voice_slide_cancel
-                                    ),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = armed
-                                )
-                                Spacer(Modifier.weight(1f))
-                                Icon(
-                                    Icons.Rounded.KeyboardArrowUp,
-                                    stringResource(R.string.chat_voice_lock_hint),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                                // While the finger is holding, the bin is the
+                                // target the slide is aimed at, not a button: it
+                                // is drawn but not clickable, which is exactly how
+                                // Google Messages renders it mid-hold.
+                                Box(
+                                    Modifier
+                                        .size(40.dp)
+                                        .semantics { contentDescription = cancelLabel },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.DeleteOutline, null,
+                                        tint = armed,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
+                            Icon(
+                                Icons.Rounded.ChevronLeft, null,
+                                tint = armed,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                stringResource(
+                                    if (armed != MaterialTheme.colorScheme.onSurface) R.string.chat_voice_release_cancel
+                                    else R.string.chat_voice_slide_cancel
+                                ),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = armed
+                            )
+                            Spacer(Modifier.weight(1f))
                         }
                 }
             }
@@ -3600,29 +3605,40 @@ internal fun InputBar(
             }
         } else if (micMode) {
             val voiceLabel = stringResource(R.string.icon_voice)
-            // Recording is a state, so it moves: the circle swells while the
-            // note runs and turns red once the slide has armed the cancel.
-            val micScale by animateFloatAsState(
-                targetValue = if (recording) 1.12f else 1f,
-                animationSpec = motionSpring(reduceMotion),
-                label = "micRecordScale"
-            )
-            // The record button wears the field's own colour, not the accent:
-            // it belongs to the composer, and the accent is what Send means. Only
-            // an armed cancel repaints it, which is the moment it stops being a
-            // hold target and starts saying "let go".
+            // Google Messages keeps the disc exactly the pill's height while
+            // recording; growing it painted a lighter arc over the pill's edge
+            // that read as a ripple around the button. The colour change and the
+            // padlock are the motion here.
+            val micScale = 1f
+            // Google Messages' own palette, measured off its composer: idle, the
+            // record circle is the inverse surface (a light disc in the dark
+            // theme, dark in the light one) with the glyph in inverse ink; the
+            // moment recording starts it turns red. The accent therefore still
+            // means Send and nothing else. Both are theme roles, so dynamic
+            // colour moves them with the wallpaper.
             val micColor by animateColorAsState(
-                targetValue = if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.error
+                targetValue = if (recording) MaterialTheme.colorScheme.recordActive
                 else MaterialTheme.colorScheme.inputPill,
                 animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
                 label = "micRecordColor"
             )
             val micInk by animateColorAsState(
-                targetValue = if (arm == VoiceArm.CANCEL) MaterialTheme.colorScheme.onError
-                else MaterialTheme.colorScheme.primary,
+                targetValue = if (recording) MaterialTheme.colorScheme.onRecordActive
+                else MaterialTheme.colorScheme.onSurfaceVariant,
                 animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
                 label = "micRecordInk"
             )
+            // The disc's resolved colour has no text equivalent, so it names
+            // itself; scripts assert it against Google Messages' palette.
+            LaunchedEffect(micColor, micInk) {
+                android.util.Log.d(
+                    "VoiceButton",
+                    "fill=#%06X ink=#%06X recording=$recording".format(
+                        micColor.toArgb() and 0xFFFFFF,
+                        micInk.toArgb() and 0xFFFFFF
+                    )
+                )
+            }
             Box(
                 Modifier
                     .size(56.dp)
@@ -3651,6 +3667,7 @@ internal fun InputBar(
                             recording = true
                             arm = VoiceArm.NONE
                             locked = false
+                            lockHint = false
                             var drag = androidx.compose.ui.geometry.Offset.Zero
                             val threshold = VoiceGesture.THRESHOLD_DP.dp.toPx()
                             while (true) {
@@ -3662,6 +3679,8 @@ internal fun InputBar(
                                 }
                                 drag += change.positionChange()
                                 arm = VoiceGesture.armFor(drag.x, drag.y, threshold)
+                                lockHint = arm == VoiceArm.NONE &&
+                                    drag.y < -threshold * VoiceGesture.LOCK_HINT_FRACTION
                                 change.consume()
                                 if (arm == VoiceArm.LOCK) {
                                     locked = true
@@ -3687,11 +3706,20 @@ internal fun InputBar(
                     .semantics { contentDescription = voiceLabel },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painterResource(R.drawable.ic_voice_wave), null,
-                    tint = micInk,
-                    modifier = Modifier.size(28.dp)
-                )
+                if (lockHint && !locked) {
+                    Icon(
+                        Icons.Outlined.Lock,
+                        stringResource(R.string.chat_voice_lock_hint),
+                        tint = micInk,
+                        modifier = Modifier.size(24.dp)
+                    )
+                } else {
+                    Icon(
+                        painterResource(R.drawable.ic_voice_wave), null,
+                        tint = micInk,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
         } else {
         Box(
