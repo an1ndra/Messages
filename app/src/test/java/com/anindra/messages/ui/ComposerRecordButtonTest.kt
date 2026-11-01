@@ -52,6 +52,21 @@ class ComposerRecordButtonTest {
     }
 
     @Test
+    fun theCircleSwapsMeaningWithAMotion() {
+        // Record, Send and the locked Send are one slot; a hard `if/else` swap
+        // made them look like two widgets trading places, so the whole circle
+        // cross-fades and scales between them.
+        assertTrue(
+            "the circle must swap through AnimatedContent",
+            chat.contains("AnimatedContent(") && chat.contains("label = \"composerCircle\"")
+        )
+        assertTrue(
+            "the swap must fade and scale, not just cut",
+            chat.contains("fadeIn(spec)") && chat.contains("scaleIn(initialScale = CIRCLE_SWAP_SCALE")
+        )
+    }
+
+    @Test
     fun theSendCircleKeepsTheAccent() {
         assertTrue(
             "the send arrow must stay on primary, or it stops looking like Send",
