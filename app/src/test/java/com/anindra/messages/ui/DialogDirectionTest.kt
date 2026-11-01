@@ -30,11 +30,11 @@ class DialogDirectionTest {
     @Test
     fun dialogCopyCarriesItsOwnDirection() {
         assertTrue(
-            "directionalStyle must derive from BidiText.direction — the same " +
-                "rule the message bubbles paint by",
+            "directionalStyle must derive from BidiText.firstStrongDirection — the " +
+                "same first-strong rule the message bubbles paint by",
             Regex("""internal fun directionalStyle\(base: TextStyle, text: String\): TextStyle""")
                 .containsMatchIn(components) &&
-                components.contains("BidiText.direction(text)")
+                components.contains("BidiText.firstStrongDirection(text)")
         )
     }
 
