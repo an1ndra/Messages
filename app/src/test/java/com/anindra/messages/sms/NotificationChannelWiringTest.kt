@@ -219,10 +219,20 @@ class NotificationChannelWiringTest {
     @Test
     fun contactDetailsHandsTheSettingToTheSystem() {
         val screen = read("java/com/anindra/messages/ui/ContactDetailsScreen.kt")
-        assertTrue(screen.contains("R.string.contact_custom_notifications"))
+        assertTrue(screen.contains("R.string.contact_notifications"))
         assertTrue(screen.contains("R.string.contact_customize_notifications"))
         assertTrue(screen.contains("setConversationCustomChannel"))
         assertTrue(screen.contains("openConversationChannelSettings"))
+        // One control per chat: the app keeps no mute of its own, so the second
+        // switch and its stored flag are gone (#339 follow-up).
+        assertTrue(
+            "the app-side per-chat mute is back",
+            !screen.contains("setConversationNotificationsEnabled")
+        )
+        assertTrue(
+            "the app-side per-chat mute is back",
+            !screen.contains("contact_custom_notifications")
+        )
         // No second copy of the tone: the app cannot change a channel's sound
         // once it exists, so a picker here could only disagree with Android.
         assertTrue(
@@ -232,6 +242,34 @@ class NotificationChannelWiringTest {
         assertTrue(
             "the in-app per-chat sound picker is back",
             !screen.contains("contact_notification_sound\"")
+        )
+    }
+
+    @Test
+    fun thePosterObeysTheChannelInsteadOfAnAppSideMute() {
+        val s = src("sms/SmsSupport.kt")
+        assertTrue(
+            "the poster reads a stored per-chat mute again",
+            !s.contains("getConversationNotificationsEnabledBlocking")
+        )
+        // Turning the chat's channel off is the mute. The platform drops the
+        // notification, but the wake is the app's to decide.
+        assertTrue(
+            "a muted channel can still light the screen up",
+            s.contains("channelImportanceFor(context, channelId) == NotificationManager.IMPORTANCE_NONE")
+        )
+        assertTrue(
+            "the full-screen intent ignores the muted channel",
+            s.contains("!silentRepost && !channelMuted && shouldWake(")
+        )
+        val repo = src("data/Repository.kt")
+        assertTrue(
+            "the stored mute accessor is back",
+            !repo.contains("fun setConversationNotificationsEnabled(")
+        )
+        assertTrue(
+            "the stored mute reader is back",
+            !repo.contains("fun getConversationNotificationsEnabledBlocking(")
         )
     }
 
@@ -256,7 +294,7 @@ class NotificationChannelWiringTest {
             "notification_channel_group_title",
             "notification_channel_unknown_title",
             "notification_channel_convo_desc",
-            "contact_custom_notifications",
+            "contact_notifications",
             "contact_customize_notifications",
             "settings_notif_manage_channels",
             "settings_notif_manage_channels_subtitle"
