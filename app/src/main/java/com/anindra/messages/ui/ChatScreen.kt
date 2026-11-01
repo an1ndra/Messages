@@ -102,7 +102,6 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.MoreVert
@@ -3501,166 +3500,179 @@ internal fun InputBar(
                     animationSpec = motionSpring<IntSize>(LocalReduceMotion.current)
                 )
         ) {
-            if (recording) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // A blinking dot is what says "this is still recording"; it
-                    // holds still under reduce motion, where the counter alone
-                    // carries the message.
-                    val dotAlpha = if (reduceMotion) 1f else {
-                        val pulse = rememberInfiniteTransition(label = "recordPulse")
-                        pulse.animateFloat(
-                            initialValue = 0.25f,
-                            targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(650, easing = LinearEasing),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "recordDot"
-                        ).value
-                    }
-                    Box(
-                        Modifier
-                            .size(10.dp)
-                            .background(MaterialTheme.colorScheme.error.copy(alpha = dotAlpha), CircleShape)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        VoiceNotePolicy.elapsedLabel(elapsedMs),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    val armed = if (cancelArmed) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-                    Icon(
-                        Icons.Rounded.DeleteOutline, null,
-                        tint = armed,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Icon(
-                        Icons.Rounded.ChevronLeft, null,
-                        tint = armed,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        stringResource(
-                            if (cancelArmed) R.string.chat_voice_release_cancel
-                            else R.string.chat_voice_slide_cancel
-                        ),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = armed
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Icon(
-                        Icons.Outlined.Mic, null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            } else {
-                Row(
-                    Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                        IconButton(onClick = onAttach) {
-                            // GM badges the attach button with a dot that overlaps the
-                            // ring's top-right; the ring shows through as broken
-                            // because the dot carries a ring of field colour around it.
-                            Box {
-                                Icon(
-                                    Icons.Rounded.AddCircleOutline,
-                                    stringResource(R.string.icon_attach),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                val dot = MaterialTheme.colorScheme.composerAttachDot
-                                // A dot colour has no text equivalent, so it names
-                                // itself; scripts/test-composer-dot.sh uses this.
-                                LaunchedEffect(dot) {
-                                    android.util.Log.d(
-                                        "ComposerDot",
-                                        "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
+            Box {
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            IconButton(onClick = onAttach) {
+                                // GM badges the attach button with a dot that overlaps the
+                                // ring's top-right; the ring shows through as broken
+                                // because the dot carries a ring of field colour around it.
+                                Box {
+                                    Icon(
+                                        Icons.Rounded.AddCircleOutline,
+                                        stringResource(R.string.icon_attach),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    val dot = MaterialTheme.colorScheme.composerAttachDot
+                                    // A dot colour has no text equivalent, so it names
+                                    // itself; scripts/test-composer-dot.sh uses this.
+                                    LaunchedEffect(dot) {
+                                        android.util.Log.d(
+                                            "ComposerDot",
+                                            "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
+                                        )
+                                    }
+                                    Box(
+                                        Modifier
+                                            .align(Alignment.TopEnd)
+                                            // Sits *on* the ring, not outside it: GM's
+                                            // dot centre is 0.99·r from the ring centre.
+                                            .offset(x = (-1).dp, y = 1.dp)
+                                            // GM's dot measures ~5dp across; the 8dp box
+                                            // is the cut-out ring plus that dot.
+                                            .size(8.dp)
+                                            .background(MaterialTheme.colorScheme.inputPill, CircleShape)
+                                            .padding(1.5.dp)
+                                            .background(dot, CircleShape)
                                     )
                                 }
-                                Box(
-                                    Modifier
-                                        .align(Alignment.TopEnd)
-                                        // Sits *on* the ring, not outside it: GM's
-                                        // dot centre is 0.99·r from the ring centre.
-                                        .offset(x = (-1).dp, y = 1.dp)
-                                        // GM's dot measures ~5dp across; the 8dp box
-                                        // is the cut-out ring plus that dot.
-                                        .size(8.dp)
-                                        .background(MaterialTheme.colorScheme.inputPill, CircleShape)
-                                        .padding(1.5.dp)
-                                        .background(dot, CircleShape)
+                            }
+                        }
+                        Box(Modifier.weight(1f)) {
+                            if (draft.isEmpty()) {
+                                Text(
+                                    text = placeholder,
+                                    style = draftStyle,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(vertical = 16.dp)
+                                )
+                            }
+                            BasicTextField(
+                                value = draft,
+                                onValueChange = onDraftChange,
+                                textStyle = draftStyle,
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = androidx.compose.ui.text.input.ImeAction.Default,
+                                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                                ),
+                                maxLines = 4,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                            )
+                        }
+                        if (SimSwitcher.shouldShowSwitch(sims.size)) {
+                            val simLabel = when {
+                                sims.size >= 3 -> "D"
+                                else -> "${SimSwitcher.selectedIndex(currentSimId, sims) + 1}"
+                            }
+                            Box(
+                                modifier = Modifier.size(40.dp).clickable { onCycleSim() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.ic_sim_vector),
+                                    stringResource(R.string.chat_switch_sim),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = simLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.surface,
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
                         }
-                    }
-                    Box(Modifier.weight(1f)) {
-                        if (draft.isEmpty()) {
-                            Text(
-                                text = placeholder,
-                                style = draftStyle,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                modifier = Modifier.padding(vertical = 16.dp)
-                            )
+                        if (showEmojiButton) {
+                            IconButton(onClick = onEmojiToggle, modifier = Modifier.size(40.dp)) {
+                                Icon(
+                                    Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                        BasicTextField(
-                            value = draft,
-                            onValueChange = onDraftChange,
-                            textStyle = draftStyle,
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            keyboardOptions = KeyboardOptions(
-                                imeAction = androidx.compose.ui.text.input.ImeAction.Default,
-                                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
-                            ),
-                            maxLines = 4,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
-                        )
+                        Spacer(Modifier.width(8.dp))
                     }
-                    if (SimSwitcher.shouldShowSwitch(sims.size)) {
-                        val simLabel = when {
-                            sims.size >= 3 -> "D"
-                            else -> "${SimSwitcher.selectedIndex(currentSimId, sims) + 1}"
-                        }
-                        Box(
-                            modifier = Modifier.size(40.dp).clickable { onCycleSim() },
-                            contentAlignment = Alignment.Center
+                if (recording) {
+                        // Drawn over the field rather than in place of it: taking
+                        // the text field out of the composition drops its focus,
+                        // and the IME closes under a finger that is still
+                        // recording. The overlay swallows taps so the field
+                        // underneath cannot be edited mid-recording.
+                        Row(
+                            Modifier
+                                .matchParentSize()
+                                .background(MaterialTheme.colorScheme.inputPill)
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            awaitPointerEvent().changes.forEach { it.consume() }
+                                        }
+                                    }
+                                }
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                painterResource(R.drawable.ic_sim_vector),
-                                stringResource(R.string.chat_switch_sim),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(24.dp)
+                            // A blinking dot is what says "this is still recording"; it
+                            // holds still under reduce motion, where the counter alone
+                            // carries the message.
+                            val dotAlpha = if (reduceMotion) 1f else {
+                                val pulse = rememberInfiniteTransition(label = "recordPulse")
+                                pulse.animateFloat(
+                                    initialValue = 0.25f,
+                                    targetValue = 1f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(650, easing = LinearEasing),
+                                        repeatMode = RepeatMode.Reverse
+                                    ),
+                                    label = "recordDot"
+                                ).value
+                            }
+                            Box(
+                                Modifier
+                                    .size(10.dp)
+                                    .background(MaterialTheme.colorScheme.error.copy(alpha = dotAlpha), CircleShape)
                             )
+                            Spacer(Modifier.width(8.dp))
                             Text(
-                                text = simLabel,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.surface,
-                                modifier = Modifier.align(Alignment.Center)
+                                VoiceNotePolicy.elapsedLabel(elapsedMs),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                        }
-                    }
-                    if (showEmojiButton) {
-                        IconButton(onClick = onEmojiToggle, modifier = Modifier.size(40.dp)) {
+                            Spacer(Modifier.width(12.dp))
+                            val armed = if (cancelArmed) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                             Icon(
-                                Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                Icons.Rounded.DeleteOutline, null,
+                                tint = armed,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Icon(
+                                Icons.Rounded.ChevronLeft, null,
+                                tint = armed,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                stringResource(
+                                    if (cancelArmed) R.string.chat_voice_release_cancel
+                                    else R.string.chat_voice_slide_cancel
+                                ),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = armed
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Icon(
+                                painterResource(R.drawable.ic_voice_wave), null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
                             )
                         }
-                    }
-                    Spacer(Modifier.width(8.dp))
                 }
             }
         }
@@ -3763,9 +3775,9 @@ internal fun InputBar(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Outlined.Mic, null,
+                    painterResource(R.drawable.ic_voice_wave), null,
                     tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(28.dp)
                 )
             }
         } else {
