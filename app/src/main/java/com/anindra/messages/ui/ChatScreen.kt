@@ -3586,14 +3586,186 @@ internal fun InputBar(
             holding = false
         }
         Spacer(Modifier.width(8.dp))
-        if (micMode && locked) {
-            // Hands-free: the same circle sends, so there is one obvious way to
-            // finish and the bin in the bar is the one way to drop it.
+        // One slot, three meanings: record, send, and send-for-a-locked-note.
+        // Cross-fading the whole circle — not just its icon — is what makes the
+        // swap read as the button turning into the other one; a hard swap looked
+        // like two widgets trading places.
+        val circleMode = when {
+            !micMode -> ComposerCircle.Send
+            locked -> ComposerCircle.LockedSend
+            else -> ComposerCircle.Record
+        }
+        AnimatedContent(
+            targetState = circleMode,
+            transitionSpec = {
+                val spec = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
+                (fadeIn(spec) +
+                    scaleIn(initialScale = CIRCLE_SWAP_SCALE, animationSpec = spec))
+                    .togetherWith(
+                        fadeOut(spec) +
+                            scaleOut(targetScale = CIRCLE_SWAP_SCALE, animationSpec = spec)
+                    )
+            },
+            label = "composerCircle"
+        ) { mode ->
+            when (mode) {
+                ComposerCircle.LockedSend -> {
+                // Hands-free: the same circle sends, so there is one obvious way to
+                // finish and the bin in the bar is the one way to drop it.
+                Box(
+                    Modifier
+                        .size(56.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .clickable { stopRecording(send = true) }
+                        .semantics { contentDescription = sendLabel },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.Send, null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                }
+                ComposerCircle.Record -> {
+                val voiceLabel = stringResource(R.string.icon_voice)
+                // Google Messages keeps the disc exactly the pill's height while
+                // recording; growing it painted a lighter arc over the pill's edge
+                // that read as a ripple around the button. The colour change and the
+                // padlock are the motion here.
+                val micScale = 1f
+                // Google Messages' own palette, measured off its composer: idle, the
+                // record circle is the inverse surface (a light disc in the dark
+                // theme, dark in the light one) with the glyph in inverse ink; the
+                // moment recording starts it turns red. The accent therefore still
+                // means Send and nothing else. Both are theme roles, so dynamic
+                // colour moves them with the wallpaper.
+                val micColor by animateColorAsState(
+                    targetValue = if (recording) MaterialTheme.colorScheme.recordActive
+                    else MaterialTheme.colorScheme.inputPill,
+                    animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
+                    label = "micRecordColor"
+                )
+                val micInk by animateColorAsState(
+                    targetValue = if (recording) MaterialTheme.colorScheme.onRecordActive
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
+                    label = "micRecordInk"
+                )
+                // The disc's resolved colour has no text equivalent, so it names
+                // itself; scripts assert it against Google Messages' palette.
+                val pillColor = MaterialTheme.colorScheme.inputPill
+                LaunchedEffect(micColor, micInk, pillColor) {
+                    android.util.Log.d(
+                        "VoiceButton",
+                        "fill=#%06X ink=#%06X pill=#%06X recording=$recording".format(
+                            micColor.toArgb() and 0xFFFFFF,
+                            micInk.toArgb() and 0xFFFFFF,
+                            pillColor.toArgb() and 0xFFFFFF
+                        )
+                    )
+                }
+                Box(
+                    Modifier
+                        .size(56.dp)
+                        .graphicsLayer {
+                            alpha = present
+                            scaleX = micScale
+                            scaleY = micScale
+                        }
+                        .background(micColor, CircleShape)
+                        // Press-and-hold records; sliding up or left arms the
+                        // cancel. Releasing then does one of the two, and nothing
+                        // is sent until the finger is up.
+                        .pointerInput(voiceMaxSeconds) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                down.consume()
+                                if (!onVoiceStart()) {
+                                    // No microphone (or no permission): the gesture
+                                    // ends here rather than leaving a stuck state.
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        if (event.changes.none { it.pressed }) break
+                                    }
+                                    return@awaitEachGesture
+                                }
+                                recording = true
+                                arm = VoiceArm.NONE
+                                locked = false
+                                lockHint = false
+                                var drag = androidx.compose.ui.geometry.Offset.Zero
+                                val threshold = VoiceGesture.THRESHOLD_DP.dp.toPx()
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.first()
+                                    if (!change.pressed) {
+                                        change.consume()
+                                        break
+                                    }
+                                    drag += change.positionChange()
+                                    arm = VoiceGesture.armFor(drag.x, drag.y, threshold)
+                                    lockHint = arm == VoiceArm.NONE &&
+                                        drag.y < -threshold * VoiceGesture.LOCK_HINT_FRACTION
+                                    change.consume()
+                                    if (arm == VoiceArm.LOCK) {
+                                        locked = true
+                                        arm = VoiceArm.NONE
+                                        break
+                                    }
+                                }
+                                if (locked) {
+                                    // The finger that lifted must not send the note:
+                                    // swallow the rest of the gesture and leave the
+                                    // recording running hands-free.
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        event.changes.forEach { it.consume() }
+                                        if (event.changes.none { it.pressed }) break
+                                    }
+                                    return@awaitEachGesture
+                                }
+                                if (!recording) return@awaitEachGesture
+                                stopRecording(send = arm != VoiceArm.CANCEL)
+                            }
+                        }
+                        .semantics { contentDescription = voiceLabel },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (lockHint && !locked) {
+                        Icon(
+                            Icons.Outlined.Lock,
+                            stringResource(R.string.chat_voice_lock_hint),
+                            tint = micInk,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Icon(
+                            painterResource(R.drawable.ic_voice_wave), null,
+                            tint = micInk,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                }
+                ComposerCircle.Send -> {
             Box(
                 Modifier
                     .size(56.dp)
+                    .graphicsLayer {
+                        alpha = present
+                        scaleX = holdScale
+                        scaleY = holdScale
+                    }
                     .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .clickable { stopRecording(send = true) }
+                    // Holding Send is the only way in, as it was before #386: the
+                    // reporter was told where scheduling lives instead of being
+                    // given another button in the row.
+                    .combinedClickable(
+                        enabled = ready,
+                        onClick = onSend,
+                        onLongClick = if (schedulingEnabled) ({ holding = true }) else null
+                    )
                     .semantics { contentDescription = sendLabel },
                 contentAlignment = Alignment.Center
             ) {
@@ -3603,157 +3775,20 @@ internal fun InputBar(
                     modifier = Modifier.size(24.dp)
                 )
             }
-        } else if (micMode) {
-            val voiceLabel = stringResource(R.string.icon_voice)
-            // Google Messages keeps the disc exactly the pill's height while
-            // recording; growing it painted a lighter arc over the pill's edge
-            // that read as a ripple around the button. The colour change and the
-            // padlock are the motion here.
-            val micScale = 1f
-            // Google Messages' own palette, measured off its composer: idle, the
-            // record circle is the inverse surface (a light disc in the dark
-            // theme, dark in the light one) with the glyph in inverse ink; the
-            // moment recording starts it turns red. The accent therefore still
-            // means Send and nothing else. Both are theme roles, so dynamic
-            // colour moves them with the wallpaper.
-            val micColor by animateColorAsState(
-                targetValue = if (recording) MaterialTheme.colorScheme.recordActive
-                else MaterialTheme.colorScheme.inputPill,
-                animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
-                label = "micRecordColor"
-            )
-            val micInk by animateColorAsState(
-                targetValue = if (recording) MaterialTheme.colorScheme.onRecordActive
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-                animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
-                label = "micRecordInk"
-            )
-            // The disc's resolved colour has no text equivalent, so it names
-            // itself; scripts assert it against Google Messages' palette.
-            LaunchedEffect(micColor, micInk) {
-                android.util.Log.d(
-                    "VoiceButton",
-                    "fill=#%06X ink=#%06X recording=$recording".format(
-                        micColor.toArgb() and 0xFFFFFF,
-                        micInk.toArgb() and 0xFFFFFF
-                    )
-                )
-            }
-            Box(
-                Modifier
-                    .size(56.dp)
-                    .graphicsLayer {
-                        alpha = present
-                        scaleX = micScale
-                        scaleY = micScale
-                    }
-                    .background(micColor, CircleShape)
-                    // Press-and-hold records; sliding up or left arms the
-                    // cancel. Releasing then does one of the two, and nothing
-                    // is sent until the finger is up.
-                    .pointerInput(voiceMaxSeconds) {
-                        awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            down.consume()
-                            if (!onVoiceStart()) {
-                                // No microphone (or no permission): the gesture
-                                // ends here rather than leaving a stuck state.
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    if (event.changes.none { it.pressed }) break
-                                }
-                                return@awaitEachGesture
-                            }
-                            recording = true
-                            arm = VoiceArm.NONE
-                            locked = false
-                            lockHint = false
-                            var drag = androidx.compose.ui.geometry.Offset.Zero
-                            val threshold = VoiceGesture.THRESHOLD_DP.dp.toPx()
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.first()
-                                if (!change.pressed) {
-                                    change.consume()
-                                    break
-                                }
-                                drag += change.positionChange()
-                                arm = VoiceGesture.armFor(drag.x, drag.y, threshold)
-                                lockHint = arm == VoiceArm.NONE &&
-                                    drag.y < -threshold * VoiceGesture.LOCK_HINT_FRACTION
-                                change.consume()
-                                if (arm == VoiceArm.LOCK) {
-                                    locked = true
-                                    arm = VoiceArm.NONE
-                                    break
-                                }
-                            }
-                            if (locked) {
-                                // The finger that lifted must not send the note:
-                                // swallow the rest of the gesture and leave the
-                                // recording running hands-free.
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    event.changes.forEach { it.consume() }
-                                    if (event.changes.none { it.pressed }) break
-                                }
-                                return@awaitEachGesture
-                            }
-                            if (!recording) return@awaitEachGesture
-                            stopRecording(send = arm != VoiceArm.CANCEL)
-                        }
-                    }
-                    .semantics { contentDescription = voiceLabel },
-                contentAlignment = Alignment.Center
-            ) {
-                if (lockHint && !locked) {
-                    Icon(
-                        Icons.Outlined.Lock,
-                        stringResource(R.string.chat_voice_lock_hint),
-                        tint = micInk,
-                        modifier = Modifier.size(24.dp)
-                    )
-                } else {
-                    Icon(
-                        painterResource(R.drawable.ic_voice_wave), null,
-                        tint = micInk,
-                        modifier = Modifier.size(28.dp)
-                    )
                 }
             }
-        } else {
-        Box(
-            Modifier
-                .size(56.dp)
-                .graphicsLayer {
-                    alpha = present
-                    scaleX = holdScale
-                    scaleY = holdScale
-                }
-                .background(MaterialTheme.colorScheme.primary, CircleShape)
-                // Holding Send is the only way in, as it was before #386: the
-                // reporter was told where scheduling lives instead of being
-                // given another button in the row.
-                .combinedClickable(
-                    enabled = ready,
-                    onClick = onSend,
-                    onLongClick = if (schedulingEnabled) ({ holding = true }) else null
-                )
-                .semantics { contentDescription = sendLabel },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.AutoMirrored.Rounded.Send, null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
         }
     }
 }
 
+/** What the composer's single circle is currently for. */
+internal enum class ComposerCircle { Record, Send, LockedSend }
+
 /** How far a finger has to travel before releasing a recording cancels it. */
 private const val SLIDE_CANCEL_DP = 72
+
+/** How small the circle shrinks to (or grows from) while it swaps meaning. */
+private const val CIRCLE_SWAP_SCALE = 0.7f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
