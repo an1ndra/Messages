@@ -52,6 +52,20 @@ class ComposerRecordButtonTest {
     }
 
     @Test
+    fun theDiscBreathesWithTheVoice() {
+        // Silent recording looked frozen; the disc carries a live meter behind
+        // it, driven by the recorder's own amplitude.
+        assertTrue(
+            "the composer must take the microphone level",
+            chat.contains("voiceLevel: Float = 0f")
+        )
+        assertTrue(
+            "the meter must be drawn behind the disc while recording",
+            chat.contains("HALO_GROWTH * voiceLevel")
+        )
+    }
+
+    @Test
     fun theCircleSwapsMeaningWithAMotion() {
         // Record, Send and the locked Send are one slot; a hard `if/else` swap
         // made them look like two widgets trading places, so the whole circle

@@ -30,6 +30,11 @@
     <string name="chat_voice_max_reached">Message vocal arrêté à la limite de taille MMS</string>
     <string name="chat_voice_cancel_recording">Annuler l\'enregistrement</string>
     <string name="chat_voice_lock_hint">Glissez vers le haut pour verrouiller l\'enregistrement</string>
+    <string name="voice_guide_title">Envoyer un message vocal</string>
+    <string name="voice_guide_hold">Maintenez le bouton d\'onde pour enregistrer</string>
+    <string name="voice_guide_slide">Glissez à gauche pour annuler l\'enregistrement</string>
+    <string name="voice_guide_lock">Glissez vers le haut pour le verrouiller et enregistrer mains libres</string>
+    <string name="voice_guide_dismiss">Compris</string>
     <!-- Status messages -->
     <string name="chat_cant_send">Impossible d\'envoyer le message</string>
     <string name="chat_archived">Conversation archivée</string>

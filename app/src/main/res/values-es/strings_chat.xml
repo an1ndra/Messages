@@ -30,6 +30,11 @@
     <string name="chat_voice_max_reached">El mensaje de voz se detuvo en el límite de tamaño de MMS</string>
     <string name="chat_voice_cancel_recording">Cancelar grabación</string>
     <string name="chat_voice_lock_hint">Desliza hacia arriba para fijar la grabación</string>
+    <string name="voice_guide_title">Enviar un mensaje de voz</string>
+    <string name="voice_guide_hold">Mantén pulsado el botón de onda para grabar</string>
+    <string name="voice_guide_slide">Desliza a la izquierda para cancelar la grabación</string>
+    <string name="voice_guide_lock">Desliza hacia arriba para fijarla y grabar sin manos</string>
+    <string name="voice_guide_dismiss">Entendido</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">No se puede enviar el mensaje</string>
