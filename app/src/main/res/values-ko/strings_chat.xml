@@ -30,6 +30,11 @@
     <string name="chat_voice_max_reached">MMS 크기 한도에 도달하여 음성 메시지를 중지했습니다</string>
     <string name="chat_voice_cancel_recording">녹음 취소</string>
     <string name="chat_voice_lock_hint">위로 밀어 녹음 고정</string>
+    <string name="voice_guide_title">음성 메시지 보내기</string>
+    <string name="voice_guide_hold">파형 버튼을 길게 눌러 녹음</string>
+    <string name="voice_guide_slide">왼쪽으로 밀어 녹음 취소</string>
+    <string name="voice_guide_lock">위로 밀어 고정하고 핸즈프리로 녹음</string>
+    <string name="voice_guide_dismiss">확인</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">메시지를 보낼 수 없습니다</string>
