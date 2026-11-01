@@ -29,7 +29,6 @@
     <string name="chat_voice_start_failed">Impossible de démarrer l\'enregistrement</string>
     <string name="chat_voice_max_reached">Message vocal arrêté à la limite de taille MMS</string>
     <string name="chat_voice_cancel_recording">Annuler l\'enregistrement</string>
-    <string name="chat_voice_lock_short">Verrouiller</string>
     <string name="chat_voice_lock_hint">Glissez vers le haut pour verrouiller l\'enregistrement</string>
     <string name="voice_guide_title">Envoyer un message vocal</string>
     <string name="voice_guide_hold">Maintenez le bouton d\'onde pour enregistrer</string>
