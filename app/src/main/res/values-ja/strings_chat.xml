@@ -29,7 +29,6 @@
     <string name="chat_voice_start_failed">録音を開始できませんでした</string>
     <string name="chat_voice_max_reached">MMS のサイズ上限に達したため、ボイス メッセージを停止しました</string>
     <string name="chat_voice_cancel_recording">録音をキャンセル</string>
-    <string name="chat_voice_lock_short">固定</string>
     <string name="chat_voice_lock_hint">上にスワイプして録音を固定</string>
     <string name="voice_guide_title">ボイス メッセージを送信</string>
     <string name="voice_guide_hold">波形ボタンを長押しして録音</string>

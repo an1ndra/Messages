@@ -93,6 +93,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.rounded.AddCircleOutline
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Block
@@ -3739,29 +3740,7 @@ internal fun InputBar(
                                 // that one has no other way of being learned.
                                 modifier = Modifier.weight(1f)
                             )
-                            if (!locked) {
-                                // The lock has a hint of its own: the padlock on
-                                // the disc only appears once the finger is already
-                                // heading up, which is too late to teach it.
-                                val lockTint = if (lockHint) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Rounded.KeyboardArrowUp,
-                                        stringResource(R.string.chat_voice_lock_hint),
-                                        tint = lockTint,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        stringResource(R.string.chat_voice_lock_short),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = lockTint,
-                                        maxLines = 1,
-                                        softWrap = false
-                                    )
-                                }
-                                Spacer(Modifier.width(2.dp))
-                            }
+                            Spacer(Modifier.width(4.dp))
                         }
                 }
             }
@@ -3862,6 +3841,7 @@ internal fun InputBar(
                 }
                 ComposerCircle.Record -> {
                 val voiceLabel = stringResource(R.string.icon_voice)
+                val lockHintLabel = stringResource(R.string.chat_voice_lock_hint)
                 // Google Messages keeps the disc exactly the pill's height while
                 // recording; growing it painted a lighter arc over the pill's edge
                 // that read as a ripple around the button. The colour change and the
@@ -3898,6 +3878,42 @@ internal fun InputBar(
                     )
                 }
                 Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                // The lock hint lives above the button, on a little tab of its
+                // own — inside the pill it read as one more label in a row that
+                // already says "Slide to cancel". Drawn above the row so it costs
+                // the composer no height.
+                // Only while a note is running: idle, this tab floated over the
+                // chat with nothing to lock.
+                if (recording && !locked) {
+                    val lockTint = if (lockHint) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = LOCK_TAB_OFFSET_DP.dp)
+                            .semantics { contentDescription = lockHintLabel }
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .width(28.dp)
+                                .padding(vertical = 6.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Lock, null,
+                                tint = lockTint,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Icon(
+                                Icons.Rounded.KeyboardArrowUp, null,
+                                tint = lockTint,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
                 // The live meter: a translucent ring that grows with the voice,
                 // so a recording has motion even with the finger off the screen.
                 if (recording) {
@@ -4056,6 +4072,9 @@ internal enum class ComposerCircle { Record, Send, LockedSend }
 
 /** How far a finger has to travel before releasing a recording cancels it. */
 private const val SLIDE_CANCEL_DP = 72
+
+/** How far above the circle the lock tab sits. */
+private const val LOCK_TAB_OFFSET_DP = -42
 
 /** How far the circle turns while it swaps meaning. */
 private const val CIRCLE_SWAP_ROTATION = 45f
