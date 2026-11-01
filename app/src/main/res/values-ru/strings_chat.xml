@@ -21,8 +21,11 @@
     <string name="chat_select_all">Выбрать все</string>
     <string name="chat_select_text">Выделить текст</string>
     <string name="chat_save_image">Сохранить изображение</string>
+    <string name="chat_save_voice">Сохранить голосовое сообщение</string>
     <string name="chat_image_saved">Изображение сохранено в Pictures/Messages</string>
     <string name="chat_image_save_failed">Не удалось сохранить изображение</string>
+    <string name="chat_voice_saved">Голосовое сообщение сохранено в Music/Messages</string>
+    <string name="chat_voice_save_failed">Не удалось сохранить голосовое сообщение</string>
     <string name="chat_voice_slide_cancel">Сдвиньте, чтобы отменить</string>
     <string name="chat_voice_release_cancel">Отпустите, чтобы отменить</string>
     <string name="chat_voice_permission_denied">Для записи голосового сообщения нужен доступ к микрофону</string>
@@ -30,6 +33,7 @@
     <string name="chat_voice_max_reached">Голосовое сообщение остановлено на пределе размера MMS</string>
     <string name="chat_voice_cancel_recording">Отменить запись</string>
     <string name="chat_voice_lock_hint">Сдвиньте вверх, чтобы закрепить запись</string>
+    <string name="chat_voice_recording_locked">Идёт запись без рук</string>
     <string name="voice_guide_title">Отправить голосовое сообщение</string>
     <string name="voice_guide_hold">Нажмите и удерживайте кнопку волны, чтобы записать</string>
     <string name="voice_guide_slide">Сдвиньте влево, чтобы отменить запись</string>

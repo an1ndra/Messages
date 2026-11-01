@@ -21,8 +21,11 @@
     <string name="chat_select_all">सभी चुनें</string>
     <string name="chat_select_text">टेक्स्ट चुनें</string>
     <string name="chat_save_image">छवि सहेजें</string>
+    <string name="chat_save_voice">वॉइस संदेश सहेजें</string>
     <string name="chat_image_saved">छवि Pictures/Messages में सहेजी गई</string>
     <string name="chat_image_save_failed">छवि सहेजी नहीं जा सकी</string>
+    <string name="chat_voice_saved">वॉइस संदेश Music/Messages में सहेजा गया</string>
+    <string name="chat_voice_save_failed">वॉइस संदेश सहेजा नहीं जा सका</string>
     <string name="chat_voice_slide_cancel">रद्द करने के लिए स्लाइड करें</string>
     <string name="chat_voice_release_cancel">रद्द करने के लिए छोड़ें</string>
     <string name="chat_voice_permission_denied">वॉइस संदेश रिकॉर्ड करने के लिए माइक्रोफ़ोन की अनुमति आवश्यक है</string>
@@ -30,6 +33,7 @@
     <string name="chat_voice_max_reached">MMS आकार सीमा पर वॉइस संदेश रोका गया</string>
     <string name="chat_voice_cancel_recording">रिकॉर्डिंग रद्द करें</string>
     <string name="chat_voice_lock_hint">रिकॉर्डिंग लॉक करने के लिए ऊपर स्लाइड करें</string>
+    <string name="chat_voice_recording_locked">हैंड्स-फ़्री रिकॉर्डिंग जारी है</string>
     <string name="voice_guide_title">वॉइस संदेश भेजें</string>
     <string name="voice_guide_hold">रिकॉर्ड करने के लिए वेव बटन दबाकर रखें</string>
     <string name="voice_guide_slide">रिकॉर्डिंग रद्द करने के लिए बाईं ओर स्लाइड करें</string>

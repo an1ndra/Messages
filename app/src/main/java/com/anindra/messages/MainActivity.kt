@@ -573,10 +573,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Saves a message attachment (e.g. an MMS picture) to the gallery (#235).
-     *  Reads the bytes through the resolver so provider-backed
-     *  `content://mms/part/...` URIs and our own cache URIs both work. */
-    fun saveMessageImage(messageId: Long) {
+    /** Saves a message attachment (a picture to the gallery, a voice note to
+     *  Music) (#235, #364). Reads the bytes through the resolver so
+     *  provider-backed `content://mms/part/...` URIs and our own cache URIs both
+     *  work. The message's own kind decides the collection, never the menu item
+     *  that happened to be tapped. */
+    fun saveMessageAttachment(messageId: Long) {
         scope.launch {
             val app = getApplication<Application>()
             val resolver = app.contentResolver
@@ -585,23 +587,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Toast.makeText(app, R.string.chat_image_save_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
+            val target = MmsSupport.saveTargetFor(msg.mediaType)
+            val audio = target == MmsSupport.SaveTarget.AUDIO
             val uri = Uri.parse(msg.mediaUri)
             val bytes = runCatching { resolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
             val mime = MmsSupport.mimeForSavedAttachment(
-                msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
+                msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull(), target
             )
             val convo = repo.conversationByIdSuspend(msg.conversationId)
             val name = MmsSupport.savedAttachmentName(
-                convo?.name ?: convo?.address ?: "message", msg.timestamp, mime
+                convo?.name ?: convo?.address ?: "message", msg.timestamp, mime, target
             )
             val ok = bytes != null && bytes.isNotEmpty() &&
-                DownloadsStore.writeImage(app, name, mime, bytes)
+                DownloadsStore.writeMedia(app, name, mime, bytes, target)
+            // The toast is the only evidence a user gets, so the same outcome
+            // names itself for the regression script.
+            android.util.Log.d(
+                "AttachmentSave",
+                "target=$target mime=$mime name=$name ok=$ok"
+            )
             withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    app,
-                    if (ok) R.string.chat_image_saved else R.string.chat_image_save_failed,
-                    Toast.LENGTH_SHORT
-                ).show()
+                val message = when {
+                    audio && ok -> R.string.chat_voice_saved
+                    audio -> R.string.chat_voice_save_failed
+                    ok -> R.string.chat_image_saved
+                    else -> R.string.chat_image_save_failed
+                }
+                Toast.makeText(app, message, Toast.LENGTH_SHORT).show()
             }
         }
     }
