@@ -212,13 +212,12 @@ class BidiTextTest {
 
     @Test
     fun aLineOfOnlyEmojiIsPinnedLtrAndEmojiDoNotVote() {
-        // #362 follow-up: an emoji line in a Persian message is a line with no
-        // strong character, so it gets the same LTR pin as a bare amount.
+        // #362 follow-up: an emoji line has no strong character, so it is an LTR
+        // line and is pinned as one.
         val body = "کد تخفیف را ثبت کن\n🎁🎁"
         val iso = BidiText.isolateNumberRuns(body)
-        assertEquals(BidiText.Direction.RTL, iso.direction)
+        assertEquals(listOf(BidiText.Direction.RTL, BidiText.Direction.LTR), iso.lines)
         assertEquals("کد تخفیف را ثبت کن\n${lri}🎁🎁$pdi", iso.text)
-        assertEquals(1, iso.ltrLines)
     }
 
     @Test
@@ -232,24 +231,37 @@ class BidiTextTest {
     @Test
     fun aLineOfOnlyNumbersOrLinksIsPinnedLtr() {
         // #362 follow-up: inside a Persian message, a line that is nothing but a
-        // link (or a bare amount, or "@handle #123") must still read left to
-        // right — base RTL would otherwise put it on the wrong edge.
+        // link (or a bare amount, or "@handle #123") has no strong character
+        // outside the link, so it is an LTR line and is pinned as one.
         val body = "کد ورود به صرافی تبدیل:\n85904\n\n@tabdeal.org #85904\nلغو11"
-        val out = BidiText.isolateNumberRuns(body).text
+        val iso = BidiText.isolateNumberRuns(body)
         assertEquals(
             "کد ورود به صرافی تبدیل:\n${lri}85904$pdi\n\n${lri}@tabdeal.org #85904$pdi\nلغو11",
-            out
+            iso.text
         )
-        assertEquals(2, BidiText.isolateNumberRuns(body).ltrLines)
+        assertEquals(
+            listOf(
+                BidiText.Direction.RTL, BidiText.Direction.LTR,
+                BidiText.Direction.LTR, BidiText.Direction.RTL
+            ),
+            iso.lines
+        )
     }
 
     @Test
     fun aBareLinkLineInAPersianBroadcastIsPinnedLtr() {
         val body = "📣ارسال تپسی‌شاپ رایگان شد\nبه مدت محدود\nl.tpshp.co/3lDXoA\nلغو 11r.eu/t"
         val iso = BidiText.isolateNumberRuns(body)
-        assertEquals(BidiText.Direction.RTL, iso.direction)
-        assertEquals("📣ارسال تپسی‌شاپ رایگان شد\nبه مدت محدود\n${lri}l.tpshp.co/3lDXoA$pdi\nلغو 11r.eu/t", iso.text)
-        assertEquals(1, iso.ltrLines)
+        assertEquals(
+            "📣ارسال تپسی‌شاپ رایگان شد\nبه مدت محدود\n${lri}l.tpshp.co/3lDXoA$pdi\nلغو 11r.eu/t", iso.text
+        )
+        assertEquals(
+            listOf(
+                BidiText.Direction.RTL, BidiText.Direction.RTL,
+                BidiText.Direction.LTR, BidiText.Direction.RTL
+            ),
+            iso.lines
+        )
         // The link's digits stay where they are: the line isolate already pins
         // the whole line, and a second isolate inside it would nest for nothing.
         assertEquals("لغو 11r.eu/t", iso.text.substringAfterLast('\n'))
@@ -274,7 +286,7 @@ class BidiTextTest {
     @Test
     fun theGroupedAmountPaintsInReadingOrderInAnRtlBubble() {
         val iso = BidiText.isolateNumberRuns("مبلغ 20,980.01 ریال")
-        assertEquals(BidiText.Direction.RTL, iso.direction)
+        assertEquals(listOf(BidiText.Direction.RTL), iso.lines)
         assertTrue(painted(iso.text, rtl = true).contains("20,980.01"))
         assertFalse(painted(iso.text, rtl = true).contains("980.01,20"))
         // The split form is exactly what the report photographed: two isolates
@@ -284,6 +296,18 @@ class BidiTextTest {
         // once the invisible controls are dropped.
         val split = painted("مبلغ ${lri}20$pdi,${lri}980.01$pdi ریال", rtl = true).visible()
         assertTrue(split, split.contains("980.01,20"))
+    }
+
+    @Test
+    fun aMaskedCardKeepsItsTrailingStarWithTheDigits() {
+        // The issue's bank SMS ends a line on "کارت8217*". A run that stopped at
+        // the last digit left the "*" to the RTL base level, which painted it to
+        // the *left* of the digits ("کارت*8217"); Google Messages keeps it
+        // attached. Guard the star inside the isolate.
+        assertEquals(
+            "کارت${lri}8217*$pdi",
+            BidiText.isolateNumberRuns("کارت8217*").text
+        )
     }
 
     @Test

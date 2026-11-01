@@ -42,7 +42,8 @@ object BidiText {
      *
      *  Whitespace is horizontal only: a line break ends a run, so one message's
      *  amount is never isolated together with the next line's timestamp. */
-    private val NUMBER_RUN = Regex("""[-+]?\(?[$DIGITS][$DIGITS \t()./$NBSP,_:\u060C\u066B\u066CxX*-]*[$DIGITS]\)?""")
+    private val NUMBER_RUN =
+        Regex("""[-+]?\(?[$DIGITS][$DIGITS \t()./$NBSP,_:\u060C\u066B\u066CxX*-]*[$DIGITS]\)?\**""")
 
     /** A link, in the two shapes an SMS actually carries: with a scheme or
      *  "www.", or bare like "11r.eu/t" and "l.tpshp.co/3lDXoA". Latin letters
@@ -81,81 +82,61 @@ object BidiText {
         }
     }
 
-    /** Unicode P2: the paragraph direction is set by its first strong
-     *  character. No strong character (a bare number) counts as LTR. This is
-     *  what the composer follows — it must not flip under the cursor while the
-     *  user is still typing the first word (#362). */
-    fun firstStrongDirection(text: String): Direction {
-        var i = 0
-        while (i < text.length) {
-            val cp = text.codePointAt(i)
-            strongDirection(cp)?.let { return it }
-            i += Character.charCount(cp)
-        }
-        return Direction.LTR
-    }
-
-    /** The direction a whole message is laid out in (#362, matching Google
-     *  Messages): the first and last strong characters decide. Ignoring
-     *  punctuation and digits means a trailing "!" or a phone number never
-     *  votes. When the two ends disagree the last one wins, so a message that
-     *  ends in Persian is laid out as Persian even if it opens in English.
+    /** Unicode P2: the first strong character decides. Links never vote
+     *  (#362 follow-up) — a Persian broadcast that ends on "l.tpshp.co/…" is
+     *  still Persian — and neither do numbers, punctuation or emoji, so "123
+     *  سلام" is RTL and a bare number or URL is LTR.
      *
-     *  Links do not vote either (#362 follow-up): "…\nl.tpshp.co/3lDXoA" is a
-     *  Persian broadcast whose last Latin letter lives inside the link, and
-     *  letting that letter decide flipped the whole message out of RTL. */
-    fun direction(text: String): Direction {
+     *  Applied per line, because that is what Google Messages and Fossify both
+     *  do: each paragraph (line) is laid out in the direction its own first
+     *  strong character gives, and aligned accordingly, so "18.06" and "11:24
+     *  PM" sit at the left of an otherwise Persian bubble (#362). */
+    fun firstStrongDirection(text: String): Direction {
         val links = linkRanges(text)
-        var first: Direction? = null
-        var last: Direction? = null
         var l = 0
         var i = 0
         while (i < text.length) {
             val cp = text.codePointAt(i)
             while (l < links.size && links[l].last < i) l++
-            if (!(l < links.size && links[l].first <= i)) {
-                val d = strongDirection(cp)
-                if (d != null) {
-                    if (first == null) first = d
-                    last = d
-                }
-            }
+            if (!(l < links.size && links[l].first <= i)) strongDirection(cp)?.let { return it }
             i += Character.charCount(cp)
         }
-        val head = first ?: return Direction.LTR
-        return if (head == last) head else last!!
+        return Direction.LTR
     }
 
-    /** Lines of [text] with no strong character in them once links are
-     *  ignored: a bare amount, a bare link, or "@tabdeal.org #85904". Unicode
-     *  keeps such a line in the paragraph's direction, which reorders it
-     *  against its own reading order and pins a lone URL to the right edge of
-     *  a Persian bubble (#362 follow-up). */
-    private fun ltrOnlyLines(text: String, links: List<IntRange>): List<IntRange> {
-        val out = ArrayList<IntRange>()
+    /** A line of [text] and the direction it is laid out in. */
+    class Line internal constructor(val range: IntRange, val direction: Direction)
+
+    /** Every non-empty line of [text] with its own base direction. */
+    fun lines(text: String): List<Line> {
+        val links = linkRanges(text)
+        val out = ArrayList<Line>()
         var start = 0
         while (start <= text.length) {
             val newline = text.indexOf('\n', start)
             val end = if (newline < 0) text.length else newline
-            if (end > start) {
-                var l = 0
-                var i = start
-                var strong = false
-                while (i < end) {
-                    val cp = text.codePointAt(i)
-                    while (l < links.size && links[l].last < i) l++
-                    if (!(l < links.size && links[l].first <= i) && strongDirection(cp) != null) {
-                        strong = true
-                        break
-                    }
-                    i += Character.charCount(cp)
-                }
-                if (!strong) out += start..(end - 1)
-            }
+            if (end > start) out += Line(start..(end - 1), firstStrongDirection(text, start, end, links))
             if (newline < 0) break
             start = newline + 1
         }
         return out
+    }
+
+    private fun firstStrongDirection(
+        text: String,
+        start: Int,
+        end: Int,
+        links: List<IntRange>
+    ): Direction {
+        var l = 0
+        var i = start
+        while (i < end) {
+            val cp = text.codePointAt(i)
+            while (l < links.size && links[l].last < i) l++
+            if (!(l < links.size && links[l].first <= i)) strongDirection(cp)?.let { return it }
+            i += Character.charCount(cp)
+        }
+        return Direction.LTR
     }
 
     /** [value] as a single LTR run; idempotent. */
@@ -168,45 +149,51 @@ object BidiText {
     class Isolated internal constructor(
         val text: String,
         private val offsetMap: IntArray,
-        /** The base direction [text] should be painted in. */
-        val direction: Direction,
-        /** How many lines were pinned LTR by the transform. */
-        val ltrLines: Int
+        /** The base direction of each line of [text], in order. */
+        val lines: List<Direction>
     ) {
         /** Maps an inclusive range in the original string to its inclusive
          *  counterpart in [text], absorbing any isolates inserted at its edges. */
         fun remap(range: IntRange): IntRange =
             offsetMap[range.first]..(offsetMap[range.last + 1] - 1)
+
+        /** How many lines are painted right-to-left. */
+        val rtlLines: Int get() = lines.count { it == Direction.RTL }
     }
 
-    /** Isolates every number-like run in [text]. Runs intersecting [excluded]
-     *  (e.g. digits inside a link) are left untouched, and so are runs on a
-     *  line that is pinned LTR as a whole. No-op for LTR text: a single LTR
-     *  run already keeps its order, and splitting it into several isolated
-     *  runs would reorder them in an RTL layout.
+    /** Isolates every number-like run on a line that is laid out RTL, so
+     *  "0999 862 0453" or a masked card number keeps its order instead of
+     *  being split by the spaces around it, and pins every LTR line as one run
+     *  so a card mask or a bank timestamp cannot be reordered by the line next
+     *  to it. Runs intersecting [excluded] (e.g. digits inside a link) are left
+     *  alone, and a number on an LTR line needs no isolate — the line already
+     *  reads left to right.
      *
-     *  Decided by [direction], the same base direction the bubble renders in,
-     *  so a message cannot be isolated as if it were RTL and then painted LTR
-     *  (or the other way round). */
+     *  The line directions here are the rule the platform itself applies to the
+     *  painted text (`TextDirection.Content`), so the transform can never
+     *  isolate as if a line were RTL while it is painted LTR. */
     fun isolateNumberRuns(text: String, excluded: List<IntRange> = emptyList()): Isolated {
-        val direction = direction(text)
-        val identity = Isolated(text, IntArray(text.length + 1) { it }, direction, 0)
-        if (direction != Direction.RTL) return identity
-        val lines = ltrOnlyLines(text, linkRanges(text))
+        val lines = lines(text)
+        val identity = Isolated(text, IntArray(text.length + 1) { it }, lines.map { it.direction })
         val runs = NUMBER_RUN.findAll(text)
             .map { it.range }
+            .filter { r -> lines.firstOrNull { r.first in it.range }?.direction == Direction.RTL }
             .filter { needsIsolation(text.substring(it)) }
             .filter { r -> excluded.none { e -> r.first <= e.last && e.first <= r.last } }
-            .filter { r -> lines.none { l -> r.first >= l.first && r.last <= l.last } }
             .toList()
-        if (runs.isEmpty() && lines.isEmpty()) return identity
+        // An all-LTR message needs nothing: every line already reads left to
+        // right. The pins exist so that in a bubble that mixes both, an LTR
+        // line cannot be dragged around by an RTL neighbour.
+        val mixed = lines.any { it.direction == Direction.RTL }
+        val pinned = if (mixed) lines.filter { it.direction == Direction.LTR }.map { it.range } else emptyList()
+        if (runs.isEmpty() && pinned.isEmpty()) return identity
 
         val insert = HashMap<Int, MutableList<Char>>()
         for (r in runs) {
             insert.getOrPut(r.first) { ArrayList(1) }.add(LRI)
             insert.getOrPut(r.last + 1) { ArrayList(1) }.add(PDI)
         }
-        for (l in lines) {
+        for (l in pinned) {
             insert.getOrPut(l.first) { ArrayList(1) }.add(LRI)
             insert.getOrPut(l.last + 1) { ArrayList(1) }.add(PDI)
         }
@@ -226,6 +213,6 @@ object BidiText {
                 sb.append(text[o]); n++
             }
         }
-        return Isolated(sb.toString(), offsetMap, direction, lines.size)
+        return Isolated(sb.toString(), offsetMap, lines.map { it.direction })
     }
 }

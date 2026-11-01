@@ -399,7 +399,7 @@ fun SkeletonConversationRow() {
  *  start (#345). Logs DialogBidi so the regression scripts can assert the
  *  direction — the paint order itself is invisible to a uiautomator dump. */
 internal fun directionalStyle(base: TextStyle, text: String): TextStyle {
-    val direction = BidiText.direction(text)
+    val direction = BidiText.firstStrongDirection(text)
     android.util.Log.d("DialogBidi", "dir=${direction.toTextDirection()} len=${text.length}")
     return base.copy(textDirection = direction.toTextDirection())
 }
