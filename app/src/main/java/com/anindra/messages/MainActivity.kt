@@ -1045,11 +1045,34 @@ when (val plan = ForwardPlan.of(msg, text)) {
                     settings.simSubscriptionId,
                     settings,
                     repo.totalConversationCount(),
-                    repo.totalMessageCount()
+                    repo.totalMessageCount(),
+                    mmsDiagnostics()
                 )
             }
             onReady(text)
         }
+    }
+
+    /**
+     * The MMS shape for Diagnostics (#398): what the store holds per provider
+     * message, and what the newest multi-part provider MMS actually contains.
+     * Both halves are read from their owners — the database and the provider —
+     * never re-derived from what a bubble drew.
+     */
+    private suspend fun mmsDiagnostics(): com.anindra.messages.diagnostics.MmsDetails {
+        val app = getApplication<Application>()
+        val (rows, multi, max) = repo.mmsPartStats()
+        val probe = runCatching {
+            com.anindra.messages.data.MmsProviderReader(app.contentResolver).newestMultiPart()
+        }.getOrNull()
+        return com.anindra.messages.diagnostics.MmsDetails(
+            rows = rows,
+            multiPart = multi,
+            maxParts = max,
+            providerId = probe?.id ?: 0L,
+            scanned = probe?.scanned ?: 20,
+            parts = probe?.parts.orEmpty().map { "seq=${it.seq} ${it.mime}" }
+        )
     }
 }
 

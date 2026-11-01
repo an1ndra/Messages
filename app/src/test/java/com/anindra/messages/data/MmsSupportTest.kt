@@ -141,9 +141,39 @@ class MmsSupportTest {
             MmsSupport.Part(5, "video/mp4")
         ))
         assertEquals(3L, content.imageId)
-        assertEquals(2, content.omittedParts)
+        // The second picture is imported as its own row now, so only the video
+        // is left over (#398).
+        assertEquals(listOf(4L), content.extraImageIds)
+        assertEquals(1, content.omittedParts)
         assertTrue(content.body.startsWith("Caption\n"))
-        assertTrue(content.body.contains("2 additional/unsupported"))
+        assertTrue(content.body.contains("1 additional/unsupported"))
+    }
+
+    @Test
+    fun everyPictureOfAMultiPictureMmsIsKept() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(1, "application/smil"),
+            MmsSupport.Part(2, "image/jpeg"),
+            MmsSupport.Part(3, "image/png"),
+            MmsSupport.Part(4, "image/webp")
+        ))
+        assertEquals(2L, content.imageId)
+        assertEquals(listOf(3L, 4L), content.extraImageIds)
+        // Nothing is missing from the bubble any more, so there is no notice to
+        // print over the pictures.
+        assertEquals(0, content.omittedParts)
+        assertEquals("", content.body)
+        assertEquals(
+            listOf("image" to 2L, "image" to 3L, "image" to 4L),
+            content.mediaRows()
+        )
+    }
+
+    @Test
+    fun aTextOnlyMmsHasNoMediaRows() {
+        val content = MmsSupport.content(listOf(MmsSupport.Part(7, "text/plain", "hi")))
+        assertTrue(content.mediaRows().isEmpty())
+        assertEquals("hi", content.body)
     }
 
     @Test
