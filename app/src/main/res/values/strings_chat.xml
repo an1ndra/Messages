@@ -30,6 +30,8 @@
     <string name="chat_voice_permission_denied">Microphone access is needed to record a voice message</string>
     <string name="chat_voice_start_failed">Couldn\'t start recording</string>
     <string name="chat_voice_max_reached">Voice message stopped at the MMS size limit</string>
+    <string name="chat_voice_cancel_recording">Cancel recording</string>
+    <string name="chat_voice_lock_hint">Swipe up to lock recording</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Can\'t send message</string>
