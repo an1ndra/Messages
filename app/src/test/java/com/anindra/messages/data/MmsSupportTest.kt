@@ -77,6 +77,38 @@ class MmsSupportTest {
     }
 
     @Test
+    fun aVoiceNoteKeepsItsOwnNameAndType() {
+        // #364: a saved voice note was named ".jpg" because the extension table
+        // only knew pictures.
+        assertEquals(
+            "Sara_1700000000000.m4a",
+            MmsSupport.savedAttachmentName(
+                "Sara", 1_700_000_000_000L, "audio/mp4", MmsSupport.SaveTarget.AUDIO
+            )
+        )
+        assertEquals(
+            "audio/mp4",
+            MmsSupport.mimeForSavedAttachment(
+                "content://x/voice-1700.m4a", null, MmsSupport.SaveTarget.AUDIO
+            )
+        )
+        assertEquals(
+            "an audio save with no name still must not claim to be a picture",
+            "audio/mp4",
+            MmsSupport.mimeForSavedAttachment(
+                "content://x/voice-1700", null, MmsSupport.SaveTarget.AUDIO
+            )
+        )
+    }
+
+    @Test
+    fun theSaveTargetFollowsTheMessageNotTheMenu() {
+        assertEquals(MmsSupport.SaveTarget.AUDIO, MmsSupport.saveTargetFor("audio"))
+        assertEquals(MmsSupport.SaveTarget.IMAGE, MmsSupport.saveTargetFor("image"))
+        assertEquals(MmsSupport.SaveTarget.FILE, MmsSupport.saveTargetFor("text"))
+    }
+
+    @Test
     fun convertsSecondsWithoutOverflow() {
         assertEquals(1_700_000_000_000L, MmsSupport.milliseconds(1_700_000_000L))
         assertNull(MmsSupport.milliseconds(-1))

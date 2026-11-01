@@ -21,8 +21,11 @@
     <string name="chat_select_all">Select all</string>
     <string name="chat_select_text">Select text</string>
     <string name="chat_save_image">Save image</string>
+    <string name="chat_save_voice">Save voice message</string>
     <string name="chat_image_saved">Image saved to Pictures/Messages</string>
     <string name="chat_image_save_failed">Could not save the image</string>
+    <string name="chat_voice_saved">Voice message saved to Music/Messages</string>
+    <string name="chat_voice_save_failed">Could not save the voice message</string>
 
     <!-- Voice messages -->
     <string name="chat_voice_slide_cancel">Slide to cancel</string>
@@ -32,6 +35,7 @@
     <string name="chat_voice_max_reached">Voice message stopped at the MMS size limit</string>
     <string name="chat_voice_cancel_recording">Cancel recording</string>
     <string name="chat_voice_lock_hint">Swipe up to lock recording</string>
+    <string name="chat_voice_recording_locked">Recording hands-free</string>
     <string name="voice_guide_title">Send a voice message</string>
     <string name="voice_guide_hold">Press and hold the wave button to record</string>
     <string name="voice_guide_slide">Slide left to cancel the recording</string>
