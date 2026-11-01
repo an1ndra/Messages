@@ -21,8 +21,11 @@
     <string name="chat_select_all">すべて選択</string>
     <string name="chat_select_text">テキストを選択</string>
     <string name="chat_save_image">画像を保存</string>
+    <string name="chat_save_voice">ボイスメッセージを保存</string>
     <string name="chat_image_saved">画像を Pictures/Messages に保存しました</string>
     <string name="chat_image_save_failed">画像を保存できませんでした</string>
+    <string name="chat_voice_saved">ボイスメッセージを Music/Messages に保存しました</string>
+    <string name="chat_voice_save_failed">ボイスメッセージを保存できませんでした</string>
     <string name="chat_voice_slide_cancel">スライドしてキャンセル</string>
     <string name="chat_voice_release_cancel">離してキャンセル</string>
     <string name="chat_voice_permission_denied">ボイス メッセージを録音するにはマイクへのアクセスが必要です</string>
@@ -30,6 +33,7 @@
     <string name="chat_voice_max_reached">MMS のサイズ上限に達したため、ボイス メッセージを停止しました</string>
     <string name="chat_voice_cancel_recording">録音をキャンセル</string>
     <string name="chat_voice_lock_hint">上にスワイプして録音を固定</string>
+    <string name="chat_voice_recording_locked">ハンズフリーで録音中</string>
     <string name="voice_guide_title">ボイス メッセージを送信</string>
     <string name="voice_guide_hold">波形ボタンを長押しして録音</string>
     <string name="voice_guide_slide">左にスライドして録音をキャンセル</string>
