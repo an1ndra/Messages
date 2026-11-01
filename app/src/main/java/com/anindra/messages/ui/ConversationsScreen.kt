@@ -12,16 +12,20 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,6 +40,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
@@ -59,8 +64,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -81,6 +84,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ripple
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -100,9 +104,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.layout.onSizeChanged
@@ -113,12 +122,15 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.res.stringResource
@@ -1353,26 +1365,239 @@ internal enum class SearchScope(val labelRes: Int) {
     Starred(R.string.search_scope_starred)
 }
 
-/** Material 3 filter chips: one row, single select, 32dp tall. */
+/** Corner radii in dp, clockwise from the top-start corner. */
+data class ScopeCorners(val topStart: Float, val topEnd: Float, val bottomEnd: Float, val bottomStart: Float)
+
+/** The radii of the scope row. Pure so it is unit tested. */
+object SearchScopeCorners {
+    /** Half the 40dp pill height, so a rounded end is a true semicircle. */
+    const val EDGE = 20f
+    const val INNER = 4f
+
+    /** The selected scope is a stadium wherever it sits. */
+    fun selected() = ScopeCorners(EDGE, EDGE, EDGE, EDGE)
+
+    /** An unselected scope keeps the row connected: the first is round on the
+     *  left, the last on the right, every inner edge square-ish. */
+    fun radii(index: Int, lastIndex: Int): ScopeCorners {
+        val left = if (index == 0) EDGE else INNER
+        val right = if (index == lastIndex) EDGE else INNER
+        return ScopeCorners(left, right, right, left)
+    }
+}
+
+/** How the scope row sizes itself. Pure so it is unit tested. */
+object SearchScopeSizing {
+    const val SIDE = 16f
+    const val GAP = 4f
+    const val PILL_PADDING = 10f
+
+    /** The strip stops growing here on a very wide window: past this a segment
+     *  is mostly empty space, so the row is centred instead of stretched. */
+    const val MAX_TRACK = 600f
+
+    /** The widest share a label needs, text plus the pill's own side padding. */
+    fun widestPill(labelWidthDp: Float) = labelWidthDp + 2 * PILL_PADDING
+
+    /** The equal share every pill gets when the row stretches to fill the
+     *  screen. */
+    fun share(trackDp: Float, count: Int): Float =
+        (trackDp - 2 * SIDE - GAP * (count - 1)) / count
+
+    /** Stretch to fill the screen only when every label fits its equal share;
+     *  otherwise the row keeps its natural widths and scrolls, so a long
+     *  translation is never truncated. */
+    fun fills(maxPillDp: Float, trackDp: Float, count: Int): Boolean =
+        maxPillDp <= share(minOf(trackDp, MAX_TRACK), count)
+}
+
+/** One row of scope buttons, single select: the selected scope is a stadium,
+ *  the others keep the row's connected ends. On a screen wide enough for every
+ *  label the buttons stretch to fill it as equal segments; otherwise they keep
+ *  their natural widths and the row scrolls. */
 @Composable
 internal fun SearchScopeChips(selected: SearchScope, onSelect: (SearchScope) -> Unit) {
-    Row(
+    val scroll = rememberScrollState()
+    val fades by remember {
+        derivedStateOf { EdgeFades(start = scroll.canScrollBackward, end = scroll.canScrollForward) }
+    }
+    val labels = SearchScope.entries.map { stringResource(it.labelRes) }
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .edgeFade(fades),
+        contentAlignment = Alignment.Center
     ) {
-        SearchScope.entries.forEach { scope ->
-            FilterChip(
-                selected = scope == selected,
-                onClick = { onSelect(scope) },
-                label = { Text(stringResource(scope.labelRes)) },
-                shape = RoundedCornerShape(8.dp),
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+        val track = maxWidth
+        val measurer = rememberTextMeasurer()
+        val style = MaterialTheme.typography.labelLarge
+        val density = LocalDensity.current
+        val widest = labels.maxOf { label ->
+            with(density) {
+                SearchScopeSizing.widestPill(
+                    measurer.measure(
+                        text = AnnotatedString(label),
+                        style = style.copy(fontWeight = FontWeight.SemiBold)
+                    ).size.width.toDp().value
                 )
+            }
+        }
+        val fill = SearchScopeSizing.fills(widest, track.value, SearchScope.entries.size)
+        val lastIndex = SearchScope.entries.lastIndex
+
+        @Composable
+        fun pill(index: Int, modifier: Modifier) {
+            val scope = SearchScope.entries[index]
+            SearchScopePill(
+                label = labels[index],
+                selected = scope == selected,
+                corners = if (scope == selected) SearchScopeCorners.selected()
+                else SearchScopeCorners.radii(index, lastIndex),
+                onClick = { onSelect(scope) },
+                modifier = modifier
+            )
+        }
+
+        if (fill) {
+            Row(
+                // A fixed width, not widthIn: the parent hands down tight
+                // constraints, so a max-width modifier inside fillMaxWidth is
+                // ignored and the row would stretch to the whole window.
+                modifier = Modifier
+                    .width(minOf(track, SearchScopeSizing.MAX_TRACK.dp))
+                    .padding(horizontal = SearchScopeSizing.SIDE.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(SearchScopeSizing.GAP.dp)
+            ) {
+                SearchScope.entries.indices.forEach { index ->
+                    pill(index, Modifier.weight(1f))
+                }
+            }
+        } else {
+            // Centred in a full-width track, so both side margins match instead
+            // of the strip ending short of the right inset.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(scroll)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .widthIn(min = track)
+                        .padding(horizontal = SearchScopeSizing.SIDE.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        SearchScopeSizing.GAP.dp,
+                        Alignment.CenterHorizontally
+                    )
+                ) {
+                    SearchScope.entries.indices.forEach { index ->
+                        pill(index, Modifier)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Which ends of a scrolling row are hiding content. */
+internal data class EdgeFades(val start: Boolean, val end: Boolean) {
+    val any get() = start || end
+}
+
+/** Fades the given ends of the scrolling row to transparent, so a pill cut by
+ *  the screen edge reads as "scrolls further" instead of clipped. Masking, not
+ *  an overlay: it needs no knowledge of what is painted behind the row. */
+private fun Modifier.edgeFade(fades: EdgeFades, width: Dp = 24.dp): Modifier =
+    if (!fades.any) this else this
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val stop = (width.toPx() / size.width).coerceIn(0f, 0.5f)
+            val transparent = Color.Transparent
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to if (fades.start) transparent else Color.Black,
+                    stop to Color.Black,
+                    1f - stop to Color.Black,
+                    1f to if (fades.end) transparent else Color.Black
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
+
+/** A compact pill: primary-filled when selected, the secondary container
+ *  otherwise. Both halves are M3 role pairs, so a wallpaper palette cannot
+ *  make the label and its fill converge. */
+@Composable
+internal fun SearchScopePill(
+    label: String,
+    selected: Boolean,
+    corners: ScopeCorners,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val reduceMotion = LocalReduceMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.96f else 1f,
+        animationSpec = if (reduceMotion) snap() else spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Motion.SPATIAL_STIFFNESS_MEDIUM
+        ),
+        label = "scopePillScale"
+    )
+    val colourSpec = motionTween<Color>(reduceMotion, Motion.DURATION_SHORT4)
+    val cornerSpec = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
+    val container by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.secondaryContainer,
+        animationSpec = colourSpec,
+        label = "scopePillContainer"
+    )
+    val content by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSecondaryContainer,
+        animationSpec = colourSpec,
+        label = "scopePillContent"
+    )
+    // The corners morph with the fill instead of snapping, so selecting reads as
+    // one motion rather than a colour change plus a shape change.
+    val topStart by animateFloatAsState(corners.topStart, cornerSpec, label = "scopePillTopStart")
+    val topEnd by animateFloatAsState(corners.topEnd, cornerSpec, label = "scopePillTopEnd")
+    val bottomEnd by animateFloatAsState(corners.bottomEnd, cornerSpec, label = "scopePillBottomEnd")
+    val bottomStart by animateFloatAsState(corners.bottomStart, cornerSpec, label = "scopePillBottomStart")
+    Surface(
+        modifier = modifier
+            .height(40.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .selectable(
+                selected = selected,
+                role = Role.Tab,
+                interactionSource = interaction,
+                indication = ripple(),
+                onClick = onClick
+            ),
+        shape = RoundedCornerShape(
+            topStart = topStart.dp, topEnd = topEnd.dp,
+            bottomEnd = bottomEnd.dp, bottomStart = bottomStart.dp
+        ),
+        color = container,
+        contentColor = content
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

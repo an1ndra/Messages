@@ -30,6 +30,8 @@ import com.anindra.messages.ui.ExpressiveTabs
 import com.anindra.messages.data.StarredMessage
 import com.anindra.messages.ui.SearchScope
 import com.anindra.messages.ui.SearchScopeChips
+import com.anindra.messages.ui.ScopeCorners
+import com.anindra.messages.ui.SearchScopePill
 import com.anindra.messages.ui.SheetActionRow
 import com.anindra.messages.ui.StarredHitRow
 import com.anindra.messages.ui.StartChatFab
@@ -228,6 +230,34 @@ private fun SearchScopeChipsPreview() {
     Stage {
         SearchScopeChips(selected = SearchScope.Starred, onSelect = {})
         SearchScopeChips(selected = SearchScope.All, onSelect = {})
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Search scope pill", showBackground = true, widthDp = 380)
+@Composable
+private fun SearchScopePillPreview() {
+    Stage {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            SearchScopePill(
+                label = "Unread",
+                selected = true,
+                corners = ScopeCorners(20f, 20f, 20f, 20f),
+                onClick = {}
+            )
+            SearchScopePill(
+                label = "Starred",
+                selected = false,
+                corners = ScopeCorners(4f, 4f, 4f, 4f),
+                onClick = {}
+            )
+            SearchScopePill(
+                label = "All",
+                selected = false,
+                corners = ScopeCorners(4f, 20f, 20f, 4f),
+                onClick = {}
+            )
+        }
     }
 }
 
