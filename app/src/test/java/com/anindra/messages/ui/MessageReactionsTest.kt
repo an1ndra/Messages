@@ -85,7 +85,7 @@ class MessageReactionsTest {
         )
         assertTrue(
             "the picker is for the single selected message only",
-            src.contains("selectedMessageIds.size == 1") &&
+            src.contains("rowIds.size == 1") &&
                 src.contains("msg.id in selectedMessageIds")
         )
     }

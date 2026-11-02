@@ -54,10 +54,86 @@ sealed interface ChatRow {
         override val key get() = "sent_${message.id}"
     }
 
+    /**
+     * The pictures one provider MMS carried, drawn as a single bubble.
+     *
+     * A multi-picture MMS is stored as one message row per attachment so no
+     * picture is lost (#398); showing each row separately made one message read
+     * as three. They are one MMS, so they get one bubble, one timestamp and one
+     * long-press (#398 follow-up).
+     */
+    data class Album(val messages: List<Message>) : ChatRow {
+        init {
+            require(messages.isNotEmpty()) { "an album needs at least one picture" }
+        }
+
+        val first: Message get() = messages.first()
+
+        override val timestamp get() = first.timestamp
+        override val key get() = "album_${first.sysId}"
+    }
+
     data class Pending(val scheduled: ScheduledMessage) : ChatRow {
         override val timestamp get() = scheduled.timestamp
         override val key get() = "pending_${scheduled.id}"
     }
+}
+
+/**
+ * The provider MMS a picture row belongs to, or null when the row is a message
+ * of its own.
+ *
+ * Only picture rows group: a text row is the caption, and a voice note is a
+ * message in its own right.
+ */
+fun albumKey(message: Message): Long? =
+    message.sysId.takeIf {
+        it > 0 && message.transport == "mms" && message.mediaType == "image"
+    }
+
+/**
+ * Folds [rows] so consecutive picture rows of the same provider MMS become one
+ * [ChatRow.Album]. A lone picture stays a plain [ChatRow.Sent], so an ordinary
+ * photo MMS renders exactly as before.
+ */
+fun foldAlbums(rows: List<ChatRow>): List<ChatRow> {
+    val out = mutableListOf<ChatRow>()
+    val pictures = mutableListOf<Message>()
+    var currentKey: Long? = null
+    fun flush() {
+        if (pictures.isEmpty()) return
+        out += if (pictures.size == 1) ChatRow.Sent(pictures[0]) else ChatRow.Album(pictures.toList())
+        pictures.clear()
+        currentKey = null
+    }
+    for (row in rows) {
+        val message = (row as? ChatRow.Sent)?.message
+        val key = message?.let { albumKey(it) }
+        if (message == null || key == null) {
+            flush()
+            out += row
+            continue
+        }
+        if (key != currentKey) flush()
+        currentKey = key
+        pictures += message
+    }
+    flush()
+    return out
+}
+
+/** The message a row shows first, or null for a scheduled row. */
+fun ChatRow.firstMessage(): Message? = when (this) {
+    is ChatRow.Sent -> message
+    is ChatRow.Album -> first
+    is ChatRow.Pending -> null
+}
+
+/** Every message id a row stands for: one for a bubble, all the pictures for an album. */
+fun ChatRow.messageIds(): List<Long> = when (this) {
+    is ChatRow.Sent -> listOf(message.id)
+    is ChatRow.Album -> messages.map { it.id }
+    is ChatRow.Pending -> emptyList()
 }
 
 /** Chat rows for [conversationId], scheduled ones folded in by send time. */
@@ -71,20 +147,29 @@ fun rememberChatRows(
         allScheduled.filter { it.conversationId == conversationId }
     }
     return remember(messages, scheduledHere) {
-        (messages.map { ChatRow.Sent(it) } + scheduledHere.map { ChatRow.Pending(it) })
-            .sortedBy { it.timestamp }
+        foldAlbums(
+            (messages.map { ChatRow.Sent(it) } + scheduledHere.map { ChatRow.Pending(it) })
+                .sortedBy { it.timestamp }
+        )
     }
 }
 
 /**
  * Row index -> its position in `messages`, or -1 for a pending row. Row indices
- * and message indices stop agreeing once scheduled rows interleave, so without
- * this a pending row above a message shifts every bubble tail below it.
+ * and message indices stop agreeing once scheduled rows interleave *or* an
+ * album folds several messages into one row, so without this a pending row above
+ * a message shifts every bubble tail below it.
  */
 @Composable
 fun rememberSentIndexAt(rows: List<ChatRow>): List<Int> = remember(rows) {
     var n = 0
-    rows.map { if (it is ChatRow.Sent) n++ else -1 }
+    rows.map {
+        when (it) {
+            is ChatRow.Sent -> n++
+            is ChatRow.Album -> { val at = n; n += it.messages.size; at }
+            is ChatRow.Pending -> -1
+        }
+    }
 }
 
 /**

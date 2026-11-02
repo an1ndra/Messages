@@ -353,6 +353,12 @@ internal fun TextCopyDialog(
 @Composable
 internal fun ChatBubble(
     msg: Message,
+    /**
+     * Every picture the message carries. More than one draws a grid inside the
+     * single bubble a multi-picture MMS gets (#398); one or none keeps the
+     * ordinary [ImageBubble].
+     */
+    albumUris: List<String> = emptyList(),
     showTime: Boolean,
     senderName: String? = null,
     onTap: () -> Unit,
@@ -490,7 +496,16 @@ internal fun ChatBubble(
                             onLongClick = { onLongPress() }
                         )
                     ) {
-                        ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
+                        if (albumUris.size > 1) {
+                            AlbumGrid(
+                                uris = albumUris,
+                                isMe = msg.isMe,
+                                onImageTap = onImageTap,
+                                onLongPress = onLongPress
+                            )
+                        } else {
+                            ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
+                        }
                         if (msg.body.isNotBlank()) {
                             Surface(
                                 color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
@@ -896,7 +911,7 @@ fun ChatScreen(
     // A hit older than the loaded window is not a row yet; the scroll and flash
     // effects below re-run when the pager grows it into one.
     val focusedRowLoaded = focusedSearchId != null &&
-        chatRows.any { it is ChatRow.Sent && it.message.id == focusedSearchId }
+        chatRows.any { focusedSearchId in it.messageIds() }
     fun navigateMatch(delta: Int) {
         if (searchMatches.isEmpty()) return
         val from = focusedMatchIndex.takeIf { it >= 0 } ?: -1
@@ -1134,6 +1149,13 @@ fun ChatScreen(
         if (id in selectedMessageIds) selectedMessageIds.remove(id) else selectedMessageIds.add(id)
     }
 
+    /** A multi-picture album is one message, so it is selected as a whole. */
+    fun toggleRowSelection(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        if (ids.all { it in selectedMessageIds }) selectedMessageIds.removeAll(ids.toSet())
+        else selectedMessageIds.addAll(ids)
+    }
+
     fun clearSelection() {
         selectedMessageIds.clear()
     }
@@ -1339,7 +1361,7 @@ fun ChatScreen(
     LaunchedEffect(focusedSearchId, focusedRowLoaded) {
         val id = focusedSearchId ?: return@LaunchedEffect
         if (scrolledToFocusedId == id) return@LaunchedEffect
-        val target = chatRows.indexOfFirst { it is ChatRow.Sent && it.message.id == id }
+        val target = chatRows.indexOfFirst { id in it.messageIds() }
         if (target >= 0) {
             listState.scrollToItem(target)
             hasScrolledToBottom = true
@@ -1853,12 +1875,16 @@ fun ChatScreen(
                         )
                         return@itemsIndexed
                     }
-                    val msg = (row as ChatRow.Sent).message
+                    val msg = row.firstMessage() ?: return@itemsIndexed
+                    val rowIds = row.messageIds()
+                    // A multi-picture MMS is one message stored as a row per
+                    // picture; the bubble draws them together (#398).
+                    val albumUris = (row as? ChatRow.Album)?.messages?.map { it.mediaUri }.orEmpty()
                     val prevRow = chatRows.getOrNull(idx - 1)
-                    val prev = (prevRow as? ChatRow.Sent)?.message
+                    val prev = prevRow?.firstMessage()
                     val groupStart = prev == null || startsNewGroup(prev, msg)
                     val isLastMessage = idx == lastSentRow
-                    val isRevealed = msg.id in revealed
+                    val isRevealed = rowIds.any { it in revealed }
 
                     // Bubbles glide into place on send/receive and when an older
                     // page is prepended, instead of the list jumping a row.
@@ -1890,6 +1916,7 @@ fun ChatScreen(
                         }
                         ChatBubble(
                             msg = msg,
+                            albumUris = albumUris,
                             showTime = isLastMessage || isRevealed,
                             // Only a group needs a sender: in a 1:1 chat there is
                             // only one other person and the header names them.
@@ -1900,23 +1927,24 @@ fun ChatScreen(
                                 null
                             },
                             onTap = {
-                                if (selectionActive) toggleSelection(msg.id)
-                                else if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
+                                if (selectionActive) toggleRowSelection(rowIds)
+                                else if (isRevealed) revealed.removeAll(rowIds.toSet())
+                                else revealed.addAll(rowIds)
                             },
                             // Selection still wins over the preview, otherwise a
                             // tap while selecting would open a full-screen view
                             // instead of marking the message.
                             onImageTap = { uri ->
-                                if (selectionActive) toggleSelection(msg.id)
+                                if (selectionActive) toggleRowSelection(rowIds)
                                 else previewImageUri = uri
                             },
                             deliveryReports = deliveryReports,
                             highlightLinks = vm.settings.highlightLinks,
                             linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
                             hideLinks = vm.settings.hideLinks,
-                            isUnlocked = unlockedIds.contains(msg.id),
+                            isUnlocked = rowIds.any { it in unlockedIds },
                             showSimIndicator = vm.settings.showSimIndicator,
-                            isSelected = msg.id in selectedMessageIds,
+                            isSelected = rowIds.all { it in selectedMessageIds },
                             searchQuery = if (msg.id == focusedSearchId) activeSearch else null,
                             isSearchFocus = msg.id == focusedSearchId,
                             searchHighlightAlpha = if (msg.id == focusedSearchId) searchFlashAlpha else 0f,
@@ -1926,10 +1954,10 @@ fun ChatScreen(
                                 reduceMotion = LocalReduceMotion.current
                             ),
                             onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
-                            onLongPress = { toggleSelection(msg.id) },
+                            onLongPress = { toggleRowSelection(rowIds) },
                             onReact = { emoji -> applyReaction(msg, emoji) },
                             showReactionBar = canReact &&
-                                selectedMessageIds.size == 1 &&
+                                rowIds.size == 1 &&
                                 msg.id in selectedMessageIds,
                             onRetry = { vm.retryMessage(msg.id) }
                         )

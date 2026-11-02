@@ -9,6 +9,17 @@ object MmsSupport {
     const val PROVIDER_SELECTION = "(msg_box=1 AND m_type=132) OR (msg_box=2 AND m_type=128)"
     const val MAX_TEXT_BYTES = 1_048_576
 
+    /**
+     * The last one-time provider re-scan the import applies, recorded in
+     * `SettingsStore.mmsImportVersion`.
+     *
+     * 1 filled in the extra pictures of an MMS imported before every attachment
+     * got a row of its own. 2 also rewrites the first row's body, which still
+     * carried "[MMS: N additional/unsupported attachment(s) not displayed]" over
+     * pictures the conversation now shows (#398).
+     */
+    const val MMS_IMPORT_VERSION = 2
+
     /** Inbox/outbox PDU types. 130 is an incoming MMS the carrier has only
      *  announced; it has no parts until the default SMS app downloads it. */
     const val PDU_SEND_REQ = 128
@@ -272,8 +283,21 @@ object MmsSupport {
         )
     }
 
-    fun decodeText(bytes: ByteArray, charset: Int): String {
-        val name = when (charset) {
+    /**
+     * The body an already-imported MMS row should carry after a re-scan.
+     *
+     * Rows written before #398 stored "[MMS: N additional/unsupported
+     * attachment(s) not displayed]" beside the first picture, and every picture
+     * has a row of its own now, so the sentence contradicts the screen. The
+     * freshly computed body is authoritative — including an empty one, which is
+     * what a picture-only MMS has — except when the provider row yields nothing
+     * at all (its parts were deleted after import): then the stored text is the
+     * only copy left.
+     */
+    fun refreshedBody(stored: String, fresh: String, providerEmpty: Boolean): String =
+        if (providerEmpty) stored else fresh
+
+    fun decodeText(bytes: ByteArray, charset: Int): String {        val name = when (charset) {
             0, 106 -> "UTF-8"
             3 -> "US-ASCII"
             4 -> "ISO-8859-1"

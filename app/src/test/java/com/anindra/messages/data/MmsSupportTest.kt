@@ -202,6 +202,27 @@ class MmsSupportTest {
     }
 
     @Test
+    fun aRescanReplacesABodyThatStillSaysPicturesAreNotDisplayed() {
+        // What the import stored before #398: the first picture plus the notice
+        // over the two it left out. A picture-only MMS has no caption at all, so
+        // the fresh body is empty and that empty body is what clears the notice.
+        val stored = "[MMS: 2 additional/unsupported attachment(s) not displayed]"
+        assertEquals("", MmsSupport.refreshedBody(stored, "", providerEmpty = false))
+        assertEquals("Caption", MmsSupport.refreshedBody("Caption\n$stored", "Caption", providerEmpty = false))
+        // A notice an MMS still deserves (a video part this app cannot show) is
+        // the freshly computed one, count included.
+        val withVideo = "[MMS: 1 additional/unsupported attachment(s) not displayed]"
+        assertEquals(withVideo, MmsSupport.refreshedBody(stored, withVideo, providerEmpty = false))
+    }
+
+    @Test
+    fun aRescanKeepsTheStoredBodyWhenTheProviderHasNothingLeft() {
+        // Clearing the provider must not wipe the only copy of the message.
+        assertEquals("hello", MmsSupport.refreshedBody("hello", "", providerEmpty = true))
+        assertEquals("", MmsSupport.refreshedBody("", "", providerEmpty = true))
+    }
+
+    @Test
     fun aTextOnlyMmsHasNoMediaRows() {
         val content = MmsSupport.content(listOf(MmsSupport.Part(7, "text/plain", "hi")))
         assertTrue(content.mediaRows().isEmpty())
