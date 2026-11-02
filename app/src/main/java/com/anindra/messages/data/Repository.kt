@@ -691,8 +691,8 @@ class Repository(private val context: Context) {
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
             """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id,
-               transport,delivered_at,address,starred FROM messages
-               WHERE conversation_id=? AND deleted_at=0 ORDER BY timestamp DESC LIMIT ? OFFSET ?""",
+               transport,delivered_at,address,starred,sys_id FROM messages
+               WHERE conversation_id=? AND deleted_at=0 ORDER BY timestamp DESC, id DESC LIMIT ? OFFSET ?""",
             arrayOf(conversationId.toString(), limit.toString(), offset.toString())
         ).use { c ->
             while (c.moveToNext()) {
@@ -712,7 +712,8 @@ class Repository(private val context: Context) {
                         transport = c.getString(10),
                         deliveredAt = c.getLong(11),
                         address = c.getString(12).orEmpty(),
-                        starred = c.getInt(13) == 1
+                        starred = c.getInt(13) == 1,
+                        sysId = c.getLong(14)
                     )
                 )
             }
@@ -4213,13 +4214,13 @@ class Repository(private val context: Context) {
 
     private fun importProviderMms(): List<MmsSupport.InboundMms> {
         val imported = importProviderMmsOnce(rescanAll = false)
-        if (!settings.mmsPartsBackfillDone) {
-            // MMS imported before multi-picture support carry only their first
-            // picture. Re-examine every provider row once; the per-part dedupe
-            // makes it idempotent, and nothing is notified — these are old
-            // messages (#398).
+        if (settings.mmsImportVersion < MmsSupport.MMS_IMPORT_VERSION) {
+            // A re-scan fills in what an older import left out — the extra
+            // pictures of a multi-picture MMS, and the body that still counted
+            // them as undisplayed (#398). The per-part dedupe makes it
+            // idempotent, and nothing is notified: these are old messages.
             importProviderMmsOnce(rescanAll = true)
-            settings.mmsPartsBackfillDone = true
+            settings.mmsImportVersion = MmsSupport.MMS_IMPORT_VERSION
         }
         return imported
     }
@@ -4316,6 +4317,42 @@ class Repository(private val context: Context) {
                         } else {
                             linked++
                             MmsTrace.i(TRACE, "provider MMS row=${message.id} already present, skipped")
+                        }
+                        // The first row carries the message's caption and, on an
+                        // import older than #398, the "N additional attachments
+                        // not displayed" notice. The provider is the source of
+                        // truth, so a re-scan rewrites a body that no longer
+                        // matches what the app can show.
+                        val firstUri = partUri(mediaRows.firstOrNull()?.second)
+                        val freshBody = message.content.body
+                        // A row the provider no longer describes at all keeps
+                        // whatever it already says.
+                        val providerEmpty = freshBody.isBlank() &&
+                            message.content.mediaRows().isEmpty()
+                        database.rawQuery(
+                            "SELECT id,body FROM messages WHERE transport='mms' AND sys_id=?" +
+                                " AND media_uri=? LIMIT 1",
+                            arrayOf(message.id.toString(), firstUri)
+                        ).use { cursor ->
+                            if (cursor.moveToFirst()) {
+                                val rowId = cursor.getLong(0)
+                                val stored = cursor.getString(1).orEmpty()
+                                val refreshedBody =
+                                    MmsSupport.refreshedBody(stored, freshBody, providerEmpty)
+                                if (refreshedBody != stored) {
+                                    database.execSQL(
+                                        "UPDATE messages SET body=? WHERE id=?",
+                                        arrayOf(refreshedBody, rowId)
+                                    )
+                                    refreshed.add(
+                                        database.rawQuery(
+                                            "SELECT conversation_id FROM messages WHERE id=?",
+                                            arrayOf(rowId.toString())
+                                        ).use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+                                    )
+                                    MmsTrace.i(TRACE, "refreshed provider MMS row=${message.id} body")
+                                }
+                            }
                         }
                         database.setTransactionSuccessful()
                     } finally {

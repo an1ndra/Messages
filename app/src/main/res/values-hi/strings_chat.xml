@@ -122,4 +122,5 @@
     <string name="chat_starred">संदेश स्टार किया गया</string>
     <string name="chat_unstarred">स्टार हटाया गया</string>
     <string name="chat_message_starred">स्टार किया गया संदेश</string>
+    <string name="chat_album_photos">%1$d फ़ोटो</string>
 </resources>
