@@ -106,4 +106,5 @@
     <string name="chat_starred">Message starred</string>
     <string name="chat_unstarred">Star removed</string>
     <string name="chat_message_starred">Starred message</string>
+    <string name="chat_album_photos">%1$d photos</string>
 </resources>

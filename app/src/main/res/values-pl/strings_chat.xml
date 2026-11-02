@@ -106,4 +106,5 @@
     <string name="chat_starred">Wiadomość oznaczona gwiazdką</string>
     <string name="chat_unstarred">Usunięto gwiazdkę</string>
     <string name="chat_message_starred">Wiadomość z gwiazdką</string>
+    <string name="chat_album_photos">%1$d zdjęć</string>
 </resources>

@@ -106,4 +106,5 @@
     <string name="chat_starred">메시지에 별표를 추가했습니다</string>
     <string name="chat_unstarred">별표를 제거했습니다</string>
     <string name="chat_message_starred">별표 표시된 메시지</string>
+    <string name="chat_album_photos">사진 %1$d장</string>
 </resources>

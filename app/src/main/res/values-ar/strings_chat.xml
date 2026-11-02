@@ -106,4 +106,5 @@
     <string name="chat_starred">تم تمييز الرسالة</string>
     <string name="chat_unstarred">أُزيل التمييز</string>
     <string name="chat_message_starred">رسالة مميزة</string>
+    <string name="chat_album_photos">%1$d صور</string>
 </resources>
