@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="conversations_search">جستجوی گفتگوها</string>
+    <string name="conversations_retry_loading">تلاش مجدد برای بارگذاری</string>
+    <string name="conversations_allow_access">اجازه دسترسی</string>
+    <string name="conversations_open_settings">باز کردن تنظیمات برنامه</string>
+    <string name="conversations_press_back_exit">برای خروج دوباره دکمه بازگشت را بزنید</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">گفتگوی جدید</string>
+    <string name="new_chat_hint">نام یا شماره تلفن را وارد کنید</string>
+    <string name="new_chat_only_phone">فقط به شماره‌های تلفن می‌توان پیام فرستاد</string>
+    <string name="new_chat_send_to">ارسال به «%s»</string>
+    <string name="text_placeholder">پیام</string>
+    <string name="conversations_archived">بایگانی‌شده</string>
+    <string name="conversations_spam_blocked">هرزنامه و مسدود</string>
+    <string name="conversations_spam_blocked_empty">هیچ گفتگوی هرزنامه یا مسدودی نیست</string>
+    <string name="spam_tab_conversations">گفتگوها</string>
+    <string name="spam_tab_messages">پیام‌ها</string>
+    <string name="spam_blocked_messages_empty">هیچ پیام مسدودی نیست</string>
+    <string name="spam_message_deleted">پیام حذف شد</string>
+    <string name="conversations_messages">پیام‌ها</string>
+    <string name="conversations_me">من</string>
+    <string name="conversations_allow_sms_access">اجازه دسترسی به SMS</string>
+    <string name="conversations_sms_permission">پیام‌ها برای نمایش گفتگوها در اینجا به اجازه خواندن پیامک‌های شما نیاز دارد.</string>
+
+    <string name="convo_close_search">بستن جستجو</string>
+    <string name="convo_back_to_inbox">بازگشت به صندوق ورودی</string>
+    <string name="spam_empty">خالی</string>
+    <string name="spam_empty_confirm">این کار همه %d مورد را از این زبانه حذف می‌کند. قابل بازگشت نیست.</string>
+    <string name="spam_conversation_deleted">گفتگوی مسدود حذف شد</string>
+    <string name="spam_conversations_cleared">گفتگوهای مسدود پاک شدند</string>
+    <string name="spam_messages_cleared">پیام‌های مسدود پاک شدند</string>
+    <string name="convo_marked_read">به‌عنوان خوانده‌شده علامت خورد</string>
+    <string name="convo_marked_unread">به‌عنوان خوانده‌نشده علامت خورد</string>
+    <string name="convo_pinned">سنجاق شد</string>
+    <string name="convo_unpinned">سنجاق برداشته شد</string>
+    <string name="convo_blocked">شماره مسدود شد</string>
+    <string name="search_scope_all">همه</string>
+    <string name="search_scope_unread">خوانده‌نشده</string>
+    <string name="search_scope_starred">ستاره‌دار</string>
+    <string name="starred_empty">هنوز هیچ پیام ستاره‌داری نیست</string>
+    <string name="starred_empty_hint">روی یک پیام نگه دارید و ستاره را بزنید تا اینجا بماند</string>
+    <string name="search_scope_unread_empty">هیچ گفتگوی خوانده‌نشده‌ای نیست</string>
+    <string name="search_scope_contacts">مخاطبان</string>
+    <string name="search_scope_messages">پیام‌ها</string>
+    <string name="search_scope_no_results">نتیجه‌ای پیدا نشد</string>
+</resources>

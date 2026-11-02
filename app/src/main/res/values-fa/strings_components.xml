@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared action labels -->
+    <string name="common_cancel">لغو</string>
+    <string name="common_continue">ادامه</string>
+    <string name="common_ok">تأیید</string>
+    <string name="common_delete">حذف</string>
+    <string name="common_open">باز کردن</string>
+    <string name="common_close">بستن</string>
+    <string name="common_next">بعدی</string>
+
+    <!-- Time formatting -->
+    <string name="time_now">اکنون</string>
+    <string name="time_today">امروز</string>
+    <string name="time_minutes">%s دقیقه</string>
+    <string name="time_format_hour">h:mm a</string>
+    <string name="time_format_date">MMM d</string>
+    <string name="time_format_divider">EEE, MMM d</string>
+
+    <!-- Contacts -->
+    <string name="contact_work_profile">مخاطب نمایه کاری</string>
+
+    <!-- Accessibility -->
+    <string name="access_restore">بازیابی</string>
+    <string name="access_delete_forever">حذف برای همیشه</string>
+    <string name="access_delete">حذف</string>
+    <string name="access_archive">بایگانی</string>
+    <string name="access_pinned">سنجاق‌شده</string>
+    <string name="access_blocked">مسدود</string>
+    <string name="access_start_chat">شروع گفتگو</string>
+    <string name="access_loading_messages">در حال بارگذاری پیام‌ها</string>
+    <string name="access_photo">عکس</string>
+    <string name="action_call">تماس</string>
+    <string name="access_chat_top_bar">نوار بالای گفتگو</string>
+    <string name="access_swipe_background">پس‌زمینه کشیدن</string>
+    <string name="access_nav">کشوی ناوبری</string>
+    <!-- Icon content descriptions -->
+    <string name="icon_back">بازگشت</string>
+    <string name="icon_cancel_selection">لغو انتخاب</string>
+    <string name="icon_copy">کپی</string>
+    <string name="icon_delete">حذف</string>
+    <string name="icon_more_options">گزینه‌های بیشتر</string>
+    <string name="icon_call">تماس</string>
+    <string name="icon_attach">پیوست</string>
+    <string name="icon_emoji">ایموجی</string>
+    <string name="icon_send">ارسال</string>
+    <string name="icon_close_search">بستن جستجو</string>
+    <string name="icon_back_to_inbox">بازگشت به صندوق ورودی</string>
+    <string name="icon_search">جستجو</string>
+    <string name="icon_cancel">لغو</string>
+    <!-- Message statuses -->
+    <string name="status_delivered">تحویل شد</string>
+    <string name="status_sending">در حال ارسال…</string>
+    <string name="status_sms">SMS</string>
+    <!-- Sheet actions -->
+    <string name="sheet_unarchive">خروج از بایگانی</string>
+    <string name="sheet_unpin">برداشتن سنجاق</string>
+    <string name="sheet_pin">سنجاق کردن</string>
+    <string name="sheet_archive">بایگانی</string>
+    <string name="sheet_delete">حذف</string>
+    <string name="sheet_block">مسدود کردن</string>
+    <!-- Detail row labels -->
+    <string name="detail_phone_number">شماره تلفن</string>
+    <string name="detail_messages">پیام‌ها</string>
+    <string name="common_unblock">رفع مسدودی</string>
+    <string name="swipe_action_pin">سنجاق</string>
+    <string name="access_mark_read">علامت‌گذاری به‌عنوان خوانده‌شده</string>
+    <string name="access_mark_unread">علامت‌گذاری به‌عنوان خوانده‌نشده</string>
+    <string name="action_contact">مخاطب</string>
+    <string name="action_info">اطلاعات</string>
+    <string name="common_add">افزودن</string>
+    <string name="contact_people_selected">%1$d انتخاب‌شده</string>
+    <string name="contact_people_count">%1$d نفر</string>
+    <string name="contact_selected">انتخاب‌شده</string>
+    <string name="contact_remove_people">حذف از گروه</string>
+    <string name="contact_group_name">نام گروه</string>
+    <string name="contact_create_group">ایجاد گروه</string>
+    <string name="contact_group_name_optional">اختیاری - ما نامش را می‌گذاریم</string>
+    <string name="action_add">افزودن</string>
+</resources>
