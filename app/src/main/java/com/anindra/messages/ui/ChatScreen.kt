@@ -671,6 +671,20 @@ internal fun ChatBubble(
 }
 
 
+/**
+ * Whether the long-press bar belongs on this bubble.
+ *
+ * The bar acts on one message, so it is offered only while this bubble is the
+ * whole selection: selecting a second message hides it (#5c7e694). A
+ * multi-picture MMS is several rows behind one bubble and its long-press
+ * selects all of them, so the bubble counts as one message (#364 M6) — asking
+ * for a single row instead made albums unable to carry a reaction at all.
+ */
+internal fun bubbleIsTheWholeSelection(rowIds: List<Long>, selected: Collection<Long>): Boolean =
+    rowIds.isNotEmpty() &&
+        selected.size == rowIds.size &&
+        rowIds.all { it in selected }
+
 /** The tap-to-toggle emoji bar shown on a long-pressed message (issue #188). */
 @Composable
 internal fun ReactionBar(
@@ -754,11 +768,13 @@ fun ChatScreen(
     searchQuery: String? = null,
     initialDraft: String = "",
     initialMedia: List<android.net.Uri> = emptyList(),
+    initialStagedMedia: List<android.net.Uri> = emptyList(),
     onBack: () -> Unit,
     onOpenDetails: () -> Unit = {},
     onAddPeople: () -> Unit = {},
     onInitialDraftConsumed: () -> Unit = {},
-    onInitialMediaConsumed: () -> Unit = {}
+    onInitialMediaConsumed: () -> Unit = {},
+    onInitialStagedMediaConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -952,7 +968,6 @@ fun ChatScreen(
     val hasMicrophone = remember {
         context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_MICROPHONE)
     }
-    val voiceMaxSeconds = remember { vm.voiceNoteMaxSeconds() }
     var recordPermission by remember {
         mutableStateOf(
             context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
@@ -1013,6 +1028,9 @@ fun ChatScreen(
 
     var currentSimId by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
     var sims by remember { mutableStateOf(emptyList<SimCard>()) }
+    // The cap belongs to the line, not to the chat: switching SIM has to
+    // re-read the profile instead of keeping the first line's length.
+    val voiceMaxSeconds = remember(currentSimId) { vm.voiceNoteMaxSeconds() }
 
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
@@ -1136,13 +1154,18 @@ fun ChatScreen(
         }
         if (addr.isBlank()) return
         val caption = draft.trim()
-        pendingMedia.toList().forEachIndexed { index, uri ->
-            vm.sendMediaMessage(conversationId, uri, if (index == 0) caption else "")
+        val awaiting = pendingMedia.toList()
+        // One send for all of them: they leave in a single PDU, so the recipient
+        // sees one message with several pictures rather than one each (#364).
+        vm.sendMediaAlbum(conversationId, awaiting, caption) { stored ->
+            // A send that stored nothing leaves the tray and the caption alone,
+            // so the user can retry (#364).
+            if (stored == 0) return@sendMediaAlbum
+            pendingMedia.clear()
+            draft = ""
+            vm.saveDraft(conversationId, "")
+            showEmoji = false
         }
-        pendingMedia.clear()
-        draft = ""
-        vm.saveDraft(conversationId, "")
-        showEmoji = false
     }
 
     fun toggleSelection(id: Long) {
@@ -1186,7 +1209,9 @@ fun ChatScreen(
     fun selectAllMessages() {
         val locked = messages.filter { it.locked }.map { it.id }.toSet()
         selectedMessageIds.clear()
-        selectedMessageIds.addAll(SelectionToolbar.selectAllCandidates(messages.map { it.id }, locked))
+        selectedMessageIds.addAll(
+            SelectionToolbar.selectAllCandidates(selectionGroups(messages), locked)
+        )
     }
 
     /** Partial-text copy (#231). A dialog is used instead of turning the bubble
@@ -1524,12 +1549,20 @@ fun ChatScreen(
     // callbacks, which re-runs this effect with nothing to do.
     LaunchedEffect(conversationId, initialDraft, initialMedia) {
         if (initialMedia.isNotEmpty()) {
-            initialMedia.forEach { vm.sendMediaMessage(conversationId, it, initialDraft) }
+            // Several shared pictures are one message with one caption, the same
+            // way the composer sends them.
+            vm.sendMediaAlbum(conversationId, initialMedia, initialDraft)
             onInitialMediaConsumed()
             onInitialDraftConsumed()
         } else if (initialDraft.isNotBlank()) {
             draft = initialDraft
             onInitialDraftConsumed()
+        }
+    }
+    LaunchedEffect(conversationId, initialStagedMedia) {
+        if (initialStagedMedia.isNotEmpty()) {
+            initialStagedMedia.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
+            onInitialStagedMediaConsumed()
         }
     }
     LaunchedEffect(convo?.address) {
@@ -1572,9 +1605,9 @@ fun ChatScreen(
             ) { mode ->
             when (mode) {
             "select" -> {
-                val saveTarget = messages.firstOrNull { it.id in selectedMessageIds }
-                    ?.takeIf { it.mediaUri.isNotBlank() }
-                    ?.let { m -> SelectionToolbar.saveTargetFor(m.mediaType)?.let { it to m.id } }
+                val saveTargets = SelectionToolbar.saveTargets(messages, selectedMessageIds)
+                val saveTarget = saveTargets.firstOrNull()
+                    ?.let { m -> SelectionToolbar.saveTargetFor(m.mediaType) }
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
@@ -1584,8 +1617,8 @@ fun ChatScreen(
                     onSelectText = messages.firstOrNull { it.id in selectedMessageIds }
                         ?.takeIf { it.body.isNotBlank() }
                         ?.let { m -> { startTextSelection(m.id) } },
-                    saveTarget = saveTarget?.first,
-                    onSaveMedia = { saveTarget?.second?.let { saveMessageAttachment(it) } },
+                    saveTarget = saveTarget,
+                    onSaveMedia = { saveTargets.forEach { saveMessageAttachment(it.id) } },
                     onClose = { clearSelection() },
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
@@ -1819,19 +1852,31 @@ fun ChatScreen(
                         voiceMaxSeconds = voiceMaxSeconds,
                         onVoiceStart = { startVoiceNote() },
                         onVoiceFinish = {
-                            val note = recorder.finish()
-                            if (note != null) {
-                                vm.sendMediaMessage(conversationId, note.uri, "", "audio")
-                                android.util.Log.d(
-                                    "VoiceNote",
-                                    "sent bytes=${note.bytes} durationMs=${note.durationMs} mime=${VoiceNotePolicy.MIME}"
-                                )
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.chat_voice_start_failed),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                            when (val finished = recorder.finish()) {
+                                is VoiceRecorder.FinishResult.Recorded -> {
+                                    val note = finished.note
+                                    vm.sendMediaMessage(conversationId, note.uri, "", "audio")
+                                    android.util.Log.d(
+                                        "VoiceNote",
+                                        "sent bytes=${note.bytes} durationMs=${note.durationMs} mime=${VoiceNotePolicy.MIME}"
+                                    )
+                                }
+                                VoiceRecorder.FinishResult.TooShort -> {
+                                    android.util.Log.d("VoiceNote", "finish tooShort")
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.chat_voice_too_short),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                VoiceRecorder.FinishResult.Failed -> {
+                                    android.util.Log.d("VoiceNote", "finish failed")
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.chat_voice_start_failed),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         },
                         onVoiceCancel = { recorder.cancel() },
@@ -1957,8 +2002,7 @@ fun ChatScreen(
                             onLongPress = { toggleRowSelection(rowIds) },
                             onReact = { emoji -> applyReaction(msg, emoji) },
                             showReactionBar = canReact &&
-                                rowIds.size == 1 &&
-                                msg.id in selectedMessageIds,
+                                bubbleIsTheWholeSelection(rowIds, selectedMessageIds),
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
@@ -2143,7 +2187,7 @@ fun ChatScreen(
                 showForwardPicker = false
                 val targets = forwardingMessageIds
                 vm.openOrCreate(address, name) { targetId ->
-                    targets.forEach { vm.forwardMessage(it, targetId) }
+                    vm.forwardMessages(targets, targetId)
                     forwardingMessageIds = emptyList()
                     Toast.makeText(context, context.getString(R.string.chat_forwarded), Toast.LENGTH_SHORT).show()
                 }
@@ -3975,9 +4019,9 @@ internal fun InputBar(
                             scaleY = micScale
                         }
                         .background(micColor, CircleShape)
-                        // Press-and-hold records; sliding up or left arms the
-                        // cancel. Releasing then does one of the two, and nothing
-                        // is sent until the finger is up.
+                        // Press-and-hold records; sliding left arms the cancel and
+                        // resting on the padlock arms the lock. Releasing then does
+                        // one of the two, and nothing is sent until the finger is up.
                         .pointerInput(voiceMaxSeconds) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
@@ -4034,7 +4078,8 @@ internal fun InputBar(
                                     return@awaitEachGesture
                                 }
                                 if (!recording) return@awaitEachGesture
-                                stopRecording(send = arm != VoiceArm.CANCEL)                            }
+                                stopRecording(send = arm != VoiceArm.CANCEL)
+                            }
                         }
                         .semantics { contentDescription = voiceLabel },
                     contentAlignment = Alignment.Center

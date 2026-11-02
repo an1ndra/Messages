@@ -30,6 +30,7 @@
     <string name="chat_voice_release_cancel">Relâchez pour annuler</string>
     <string name="chat_voice_permission_denied">L\'accès au micro est nécessaire pour enregistrer un message vocal</string>
     <string name="chat_voice_start_failed">Impossible de démarrer l\'enregistrement</string>
+    <string name="chat_voice_too_short">L’enregistrement est trop court. Maintenez le micro enfoncé pour enregistrer.</string>
     <string name="chat_voice_max_reached">Message vocal arrêté à la limite de taille MMS</string>
     <string name="chat_voice_cancel_recording">Annuler l\'enregistrement</string>
     <string name="chat_voice_lock_hint">Glissez vers le haut pour verrouiller l\'enregistrement</string>

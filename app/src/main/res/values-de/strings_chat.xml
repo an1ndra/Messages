@@ -30,6 +30,7 @@
     <string name="chat_voice_release_cancel">Zum Abbrechen loslassen</string>
     <string name="chat_voice_permission_denied">Für eine Sprachnachricht wird Zugriff auf das Mikrofon benötigt</string>
     <string name="chat_voice_start_failed">Aufnahme konnte nicht gestartet werden</string>
+    <string name="chat_voice_too_short">Die Aufnahme war zu kurz. Halte das Mikrofon gedrückt, um aufzunehmen.</string>
     <string name="chat_voice_max_reached">Sprachnachricht beim MMS-Größenlimit gestoppt</string>
     <string name="chat_voice_cancel_recording">Aufnahme verwerfen</string>
     <string name="chat_voice_lock_hint">Zum Fixieren nach oben ziehen</string>

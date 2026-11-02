@@ -76,7 +76,6 @@ class SettingsStore(context: Context) {
         const val KEY_FIRST_IMPORT_DONE = "first_import_done"
         const val KEY_PARTICIPANTS_MIGRATED = "participants_migrated"
         const val KEY_ALPHANUMERIC_REPAIR_DONE = "alphanumeric_repair_done"
-        const val KEY_MMS_IMPORT_VERSION = "mms_import_version"
         const val KEY_PHONE_REGION = "phone_region"
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
@@ -197,17 +196,6 @@ class SettingsStore(context: Context) {
     var alphanumericRepairDone: Boolean
         get() = prefs.getBoolean(KEY_ALPHANUMERIC_REPAIR_DONE, false)
         set(v) { prefs.edit().putBoolean(KEY_ALPHANUMERIC_REPAIR_DONE, v).apply() }
-
-    /**
-     * The last one-time MMS re-scan applied, against [MmsSupport.MMS_IMPORT_VERSION].
-     *
-     * A version rather than a set of booleans: each new pass over the provider
-     * costs a part query per stored MMS, so an install that is already up to date
-     * must not pay for every earlier pass again (#398).
-     */
-    var mmsImportVersion: Int
-        get() = prefs.getInt(KEY_MMS_IMPORT_VERSION, 0)
-        set(v) { prefs.edit().putInt(KEY_MMS_IMPORT_VERSION, v).apply() }
 
     var phoneRegion: String
         get() = prefs.getString(KEY_PHONE_REGION, "") ?: ""

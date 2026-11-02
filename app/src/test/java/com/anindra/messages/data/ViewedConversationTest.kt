@@ -29,7 +29,12 @@ class ViewedConversationTest {
 
     @Test
     fun importProviderMmsGuardsUnreadWithViewedConversationId() {
-        assertTrue(repositorySrc.contains("!message.isMe && !message.read && cid != viewedConversationId"))
+        // The gate now also asks whether the MMS was already stored, so the
+        // anchor allows the multi-line call rather than pinning one line.
+        assertTrue(
+            Regex("countsAsNewUnread\\([\\s\\S]{0,160}?&& cid != viewedConversationId")
+                .containsMatchIn(repositorySrc)
+        )
     }
 
     @Test
