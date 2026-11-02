@@ -44,25 +44,40 @@ class NotificationActionSettingsTest {
     }
 
     @Test
-    fun theSoundPickerAndReplyActionShareOneGroup() {
-        // "Notification sound" and "Reply action" are neighbours in the list and
-        // belong to one card; a SettingsGroup boundary between them left a gap
-        // that split two related rows across two blocks. Asserted structurally:
-        // no `}` closing a group may sit between the two keys.
+    fun theChannelLinkAndTheActionTogglesShareOneGroup() {
+        // The tone is set on Android's channel page, so the row that reaches it
+        // is the sound affordance now. It sits in the same card as the action
+        // toggles; a SettingsGroup boundary between them splits two related rows
+        // across two blocks. Asserted structurally, as the picker row was.
         val newUi = read("java/com/anindra/messages/ui/AdvancedSubScreens.kt")
-        val sound = newUi.indexOf("R.string.settings_pin_notification_sound")
+        val channels = newUi.indexOf("R.string.settings_notif_manage_channels")
         val reply = newUi.indexOf("R.string.settings_notif_action_reply_title")
-        assertTrue("Notification sound row not found in the new UI", sound >= 0)
+        assertTrue("channel settings row not found in the new UI", channels >= 0)
         assertTrue("Reply action row not found in the new UI", reply >= 0)
+        assertTrue("Reply action must come after the channel row", reply > channels)
+        val between = newUi.substring(channels, reply)
         assertTrue(
-            "Reply action must come after Notification sound",
-            reply > sound
-        )
-        val between = newUi.substring(sound, reply)
-        assertTrue(
-            "Notification sound and Reply action are split across two groups",
+            "the channel row and the action toggles are split across two groups",
             !between.contains("SettingsGroup {")
         )
+    }
+
+    @Test
+    fun noScreenOffersAnInAppTonePicker() {
+        // #339: a second sound list is what let the app and Android disagree
+        // about what a category plays. Android owns the tone from the moment the
+        // channel exists, so nothing in the app may set one again.
+        listOf(
+            "java/com/anindra/messages/ui/AdvancedSubScreens.kt",
+            "java/com/anindra/messages/ui/SettingsScreen.kt",
+            "java/com/anindra/messages/ui/legacy/LegacySettingsScreen.kt",
+        ).forEach { file ->
+            val src = read(file)
+            assertTrue("$file still offers a tone picker",
+                !src.contains("settings_pin_notification_sound"))
+            assertTrue("$file still previews a tone",
+                !src.contains("previewNotificationSound"))
+        }
     }
 
     @Test
