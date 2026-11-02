@@ -1,12 +1,18 @@
 package com.anindra.messages.voice
 
+import com.anindra.messages.mms.SendReqBuilder
+import com.anindra.messages.mms.spi.BudgetPolicy
+
 /**
  * How long a voice note may be, and how big it will be when it is not.
  *
  * A voice note leaves as an MMS attachment, so the carrier's message-size cap —
- * not the clock — is what decides where recording stops. Both the recorder and
- * the Diagnostics sheet read this one object, so the cap the app reports is the
- * cap it enforces.
+ * not the clock — is what decides where recording stops. The cap the recorder
+ * enforces is the *attachment* budget, not the raw carrier cap: the send path
+ * pays for the PDU header, the SMIL part and the framing out of that same cap
+ * before it hands bytes to the fitter. Both the recorder and the Diagnostics
+ * sheet read [maxSecondsForCarrier], so the cap the app reports is the cap it
+ * enforces.
  */
 object VoiceNotePolicy {
 
@@ -35,6 +41,24 @@ object VoiceNotePolicy {
     fun maxSeconds(carrierBudgetBytes: Int): Int {
         if (carrierBudgetBytes <= 0) return MAX_SECONDS
         return (carrierBudgetBytes / bytesPerSecond()).coerceIn(MIN_SECONDS, MAX_SECONDS)
+    }
+
+    /**
+     * The longest recording the send path can actually carry under
+     * [carrierMaxBytes].
+     *
+     * A voice note has no caption, so the send path budgets for the media part
+     * and the SMIL part only ([SendReqBuilder.partCount]). Deriving the cap from
+     * [BudgetPolicy] is what keeps the recorder from advertising a length the
+     * fitter then rejects as `ATTACHMENT_TOO_LARGE`.
+     */
+    fun maxSecondsForCarrier(carrierMaxBytes: Int): Int {
+        val budget = BudgetPolicy.attachmentBudget(
+            carrierMaxMessageSize = carrierMaxBytes,
+            captionBytes = 0,
+            partCount = SendReqBuilder.partCount(""),
+        )
+        return maxSeconds(budget.toInt())
     }
 
     fun estimatedBytes(seconds: Int): Int = seconds.coerceAtLeast(0) * bytesPerSecond()

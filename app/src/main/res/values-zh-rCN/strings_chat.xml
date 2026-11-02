@@ -29,6 +29,7 @@
     <string name="chat_voice_release_cancel">松开取消</string>
     <string name="chat_voice_permission_denied">录制语音消息需要访问麦克风</string>
     <string name="chat_voice_start_failed">无法开始录音</string>
+    <string name="chat_voice_too_short">录音太短。请按住麦克风进行录音。</string>
     <string name="chat_voice_max_reached">语音消息已达 MMS 大小上限并停止</string>
     <string name="chat_voice_cancel_recording">取消录音</string>
     <string name="chat_voice_lock_hint">上滑以锁定录音</string>

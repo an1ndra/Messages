@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import com.anindra.messages.R
+import com.anindra.messages.data.Message
 import com.anindra.messages.data.MmsSupport
 
 /**
@@ -34,15 +35,29 @@ object SelectionToolbar {
 
     fun isSelectionActive(count: Int): Boolean = count > 0
 
+    /** Every selected row that carries a file. A multi-picture album is several
+     *  rows sharing one bubble, so Save has to cover all of them; taking the
+     *  first row silently saved one picture and reported success (#364). */
+    fun saveTargets(messages: List<Message>, selected: Collection<Long>): List<Message> =
+        messages.filter { it.id in selected && it.mediaUri.isNotBlank() }
+
     /** The overflow is reachable for any non-empty selection: it carries
      *  "Select all" even once several messages are picked, so the user can still
      *  extend a multi-message selection in one tap (#232). */
     fun showMore(count: Int): Boolean = count >= 1
 
-    /** "Select all" takes every message that is not locked; a locked message
-     *  must never end up in a bulk delete/trash. */
-    fun selectAllCandidates(allIds: List<Long>, lockedIds: Set<Long>): List<Long> =
-        allIds.filter { it !in lockedIds }
+    /**
+     * "Select all" takes every message that is not locked; a locked message
+     * must never end up in a bulk delete/trash.
+     *
+     * [groups] holds the ids that stand for one message — a single id, or every
+     * picture of one album. A group is taken whole or not at all: selecting two
+     * pictures of a locked three-picture MMS left the album looking unselected
+     * while a delete would take those two, which is the silent partial-loss
+     * bug this signature exists to make impossible.
+     */
+    fun selectAllCandidates(groups: List<List<Long>>, lockedIds: Set<Long>): List<Long> =
+        groups.filter { group -> group.isNotEmpty() && group.none { it in lockedIds } }.flatten()
 
     /** Whether Save is offered for this message, and which of the two it is.
      *  A voice note is never offered as "Save image" (#364). */
@@ -55,6 +70,12 @@ object SelectionToolbar {
     fun saveLabelRes(target: MmsSupport.SaveTarget): Int = when (target) {
         MmsSupport.SaveTarget.AUDIO -> R.string.chat_save_voice
         else -> R.string.chat_save_image
+    }
+
+    /** The failure toast names the same kind the menu does (#364). */
+    fun saveFailureRes(target: MmsSupport.SaveTarget): Int = when (target) {
+        MmsSupport.SaveTarget.AUDIO -> R.string.chat_voice_save_failed
+        else -> R.string.chat_image_save_failed
     }
 
     /** Whether an action dismisses the selection afterwards. Non-destructive

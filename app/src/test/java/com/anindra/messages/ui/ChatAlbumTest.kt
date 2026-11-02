@@ -77,20 +77,25 @@ class ChatAlbumTest {
     }
 
     @Test
-    fun aPictureAfterAnotherMessageIsANewBubble() {
-        // Only consecutive rows fold: a caption sent between two pictures of the
-        // same MMS would otherwise be swallowed into the grid.
+    fun anAlbumFoldsEvenWhenAnotherMessageSortsBetweenItsPictures() {
+        // Every row of one MMS carries the same timestamp, so a message in that
+        // second can sit between two of its pictures. The album must stay one
+        // message — adjacency let it split into two `LazyColumn` items with the
+        // same key, which Compose rejects outright.
         val rows = listOf(
             ChatRow.Sent(message(1, sysId = 90)),
             ChatRow.Sent(message(2, sysId = 0, mediaType = "text", transport = "sms")),
             ChatRow.Sent(message(3, sysId = 90))
         )
         val folded = foldAlbums(rows)
-        assertEquals(3, folded.size)
+        assertEquals(2, folded.size)
+        val album = folded[0] as ChatRow.Album
+        assertEquals(listOf(1L, 3L), album.messages.map { it.id })
+        assertEquals(2L, (folded[1] as ChatRow.Sent).message.id)
     }
 
     @Test
-    fun aScheduledRowBetweenPicturesBreaksTheAlbum() {
+    fun aScheduledRowBetweenPicturesDoesNotSplitTheAlbum() {
         val rows = listOf(
             ChatRow.Sent(message(1, sysId = 90)),
             ChatRow.Pending(
@@ -104,7 +109,24 @@ class ChatAlbumTest {
             ),
             ChatRow.Sent(message(3, sysId = 90))
         )
-        assertEquals(3, foldAlbums(rows).size)
+        val folded = foldAlbums(rows)
+        assertEquals(2, folded.size)
+        assertEquals(listOf(1L, 3L), (folded[0] as ChatRow.Album).messages.map { it.id })
+        assertTrue(folded[1] is ChatRow.Pending)
+    }
+
+    @Test
+    fun interleavedAlbumsKeepDistinctKeys() {
+        val rows = listOf(
+            ChatRow.Sent(message(1, sysId = 90)),
+            ChatRow.Sent(message(2, sysId = 91)),
+            ChatRow.Sent(message(3, sysId = 90)),
+            ChatRow.Sent(message(4, sysId = 91))
+        )
+        val folded = foldAlbums(rows)
+        val keys = folded.map { it.key }
+        assertEquals(keys.size, keys.distinct().size)
+        assertEquals(listOf("album_90", "album_91"), keys)
     }
 
     @Test

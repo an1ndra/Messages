@@ -9,16 +9,37 @@ object MmsSupport {
     const val PROVIDER_SELECTION = "(msg_box=1 AND m_type=132) OR (msg_box=2 AND m_type=128)"
     const val MAX_TEXT_BYTES = 1_048_576
 
+    /** The URI a provider part's bytes are read from, and the value an imported
+     *  message row stores in `media_uri`. */
+    fun partUri(partId: Long): String = "content://mms/part/$partId"
+
     /**
-     * The last one-time provider re-scan the import applies, recorded in
-     * `SettingsStore.mmsImportVersion`.
+     * The provider MMS rows whose stored pictures and voice notes already cover
+     * everything the provider holds, so the import can skip them without reading
+     * their addresses or opening a transaction.
      *
-     * 1 filled in the extra pictures of an MMS imported before every attachment
-     * got a row of its own. 2 also rewrites the first row's body, which still
-     * carried "[MMS: N additional/unsupported attachment(s) not displayed]" over
-     * pictures the conversation now shows (#398).
+     * A row is complete only when every media part the provider lists has its
+     * own message row. An MMS imported before every attachment got a row of its
+     * own therefore re-enters the import and is backfilled, without needing a
+     * one-shot version gate that every later patch would have to bump (#364).
      */
-    const val MMS_IMPORT_VERSION = 2
+    fun completeMmsIds(
+        stored: Map<Long, Set<String>>,
+        mediaPartIds: Map<Long, List<Long>>
+    ): Set<Long> = stored.filter { (sysId, uris) ->
+        mediaPartIds[sysId].orEmpty().all { partUri(it) in uris }
+    }.keys
+
+    /**
+     * Whether an imported MMS should raise its conversation's unread badge.
+     *
+     * Only a message the store did not have yet counts. Backfilling a missing
+     * picture into an MMS already on screen is not new mail, and this app never
+     * writes the provider's read flag — so counting the backfill would make
+     * every old unread conversation bump again on upgrade.
+     */
+    fun countsAsNewUnread(isMe: Boolean, read: Boolean, alreadyStored: Boolean): Boolean =
+        !isMe && !read && !alreadyStored
 
     /** Inbox/outbox PDU types. 130 is an incoming MMS the carrier has only
      *  announced; it has no parts until the default SMS app downloads it. */

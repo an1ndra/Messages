@@ -1291,22 +1291,53 @@ class Repository(private val context: Context) {
         return Message(id, conversationId, clean, now, true, "sending", subId = subId)
     }
 
-    fun sendMedia(conversationId: Long, mediaType: String, uri: String, caption: String = ""): Message? {
+    fun sendMedia(conversationId: Long, mediaType: String, uri: String, caption: String = ""): Message? =
+        sendMediaAlbum(conversationId, listOf(mediaType), listOf(uri), caption).firstOrNull()
+
+    /**
+     * Stores one message per attachment under a single conversation entry.
+     *
+     * They are one message to the user: the send path links every row to the
+     * same provider MMS, and [com.anindra.messages.ui.ChatRow.foldAlbums] draws
+     * them as one bubble (#364). Only the first row carries the caption, which
+     * is where the album reads it from.
+     */
+    fun sendMediaAlbum(
+        conversationId: Long,
+        mediaTypes: List<String>,
+        uris: List<String>,
+        caption: String = ""
+    ): List<Message> {
+        if (uris.isEmpty()) return emptyList()
         val now = System.currentTimeMillis()
         val clean = MessageBody.normalize(caption)
-        val cv = ContentValues().apply {
-            put("conversation_id", conversationId)
-            put("body", clean)
-            put("timestamp", now)
-            put("is_me", 1)
-            put("status", "sending")
-            put("media_type", mediaType)
-            put("media_uri", uri)
-            put("transport", MmsSupport.TRANSPORT_SMS)
+        val out = ArrayList<Message>(uris.size)
+        val database = db.writableDatabase
+        database.beginTransaction()
+        try {
+            uris.forEachIndexed { index, uri ->
+                val kind = mediaTypes.getOrNull(index) ?: "image"
+                val body = if (index == 0) clean else ""
+                val cv = ContentValues().apply {
+                    put("conversation_id", conversationId)
+                    put("body", body)
+                    put("timestamp", now)
+                    put("is_me", 1)
+                    put("status", "sending")
+                    put("media_type", kind)
+                    put("media_uri", uri)
+                    put("transport", MmsSupport.TRANSPORT_SMS)
+                }
+                val id = database.insertOrThrow("messages", null, cv)
+                out.add(Message(id, conversationId, body, now, true, "sending", kind, uri))
+            }
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
         }
-        val id = db.writableDatabase.insertOrThrow("messages", null, cv)
-        touchConversation(conversationId, if (mediaType == "image") "Photo" else "Voice message", now, isMe = true)
-        return Message(id, conversationId, clean, now, true, "sending", mediaType, uri)
+        val firstKind = mediaTypes.firstOrNull() ?: "image"
+        touchConversation(conversationId, if (firstKind == "image") "Photo" else "Voice message", now, isMe = true)
+        return out
     }
 
     /**
@@ -1322,24 +1353,48 @@ class Repository(private val context: Context) {
      * picture is read from.
      */
     fun adoptProviderMedia(messageId: Long, outboxRowId: Long, mediaType: String) {
-        if (messageId <= 0 || outboxRowId <= 0) return
-        val prefix = "$mediaType/"
-        val partId = runCatching {
+        adoptProviderMediaRows(outboxRowId, listOf(messageId))
+    }
+
+    /**
+     * Points every row of an outgoing album at its own part of the outbox row.
+     *
+     * Order, not media type, is what matches a row to a part: every picture of a
+     * three-picture MMS has `ct=image/...`, so picking the first image for each
+     * row left all three bubbles showing the same picture (#364). The builder
+     * writes the parts in the order the rows were staged, and the provider
+     * returns them in `seq` order.
+     */
+    fun adoptProviderMediaRows(outboxRowId: Long, messageIds: List<Long>) {
+        if (outboxRowId <= 0 || messageIds.isEmpty()) return
+        val partIds = runCatching {
             context.contentResolver.query(
                 android.net.Uri.parse("content://mms/$outboxRowId/part"),
-                arrayOf("_id", "ct"), null, null, null
+                arrayOf("_id", "ct"), null, null, "seq ASC, _id ASC"
             )?.use { c ->
-                var found: Long? = null
-                while (c.moveToNext() && found == null) {
-                    if (c.getString(1)?.startsWith(prefix) == true) found = c.getLong(0)
+                val ids = mutableListOf<Long>()
+                while (c.moveToNext()) {
+                    val mime = c.getString(1).orEmpty()
+                    if (MmsSupport.isImage(mime) || MmsSupport.isAudio(mime)) ids.add(c.getLong(0))
                 }
-                found
+                ids
             }
-        }.getOrNull() ?: return
-        db.writableDatabase.execSQL(
-            "UPDATE messages SET media_uri=? WHERE id=? AND media_type=?",
-            arrayOf<Any?>("content://mms/part/$partId", messageId, mediaType)
-        )
+        }.getOrNull().orEmpty()
+        if (partIds.isEmpty()) return
+        val database = db.writableDatabase
+        database.beginTransaction()
+        try {
+            messageIds.forEachIndexed { index, messageId ->
+                val partId = partIds.getOrNull(index) ?: return@forEachIndexed
+                database.execSQL(
+                    "UPDATE messages SET media_uri=? WHERE id=?",
+                    arrayOf<Any?>(MmsSupport.partUri(partId), messageId)
+                )
+            }
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
     }
 
     /**
@@ -1369,6 +1424,30 @@ class Repository(private val context: Context) {
             )
         }.onFailure {
             MmsTrace.w(TRACE, "could not record provider row $sysId for message $messageId", it)
+        }
+        notifyChanged()
+    }
+
+    /**
+     * Undoes [linkMmsRow] when the platform refused the hand-off.
+     *
+     * The stack deletes the outbox row after a refusal, so leaving the app
+     * message pointing at it would make Retry read a dead part URI and could
+     * hide a later provider row that reused the id (#364).
+     */
+    fun unlinkMmsRow(messageId: Long, sysId: Long) {
+        if (messageId <= 0 || sysId <= 0) return
+        db.writableDatabase.execSQL(
+            "UPDATE messages SET sys_id=0 WHERE id=? AND sys_id=?",
+            arrayOf<Any?>(messageId, sysId)
+        )
+        runCatching {
+            db.writableDatabase.execSQL(
+                "DELETE FROM message_provider_ids WHERE message_id=? AND transport=? AND sys_id=?",
+                arrayOf<Any?>(messageId, MmsSupport.TRANSPORT_MMS, sysId)
+            )
+        }.onFailure {
+            MmsTrace.w(TRACE, "could not drop provider row $sysId for message $messageId", it)
         }
         notifyChanged()
     }
@@ -1955,14 +2034,19 @@ class Repository(private val context: Context) {
     }
 
     fun markMessageStatusSuspend(messageId: Long, status: String) {
+        // An album is several rows behind one provider MMS, and the status
+        // broadcast names the one row that was remembered. Updating every row
+        // that shares its sys_id keeps the bubble's status line truthful.
+        val idsClause = "id=? OR (sys_id>0 AND sys_id=(SELECT sys_id FROM messages WHERE id=?))"
         if (status == "delivered") {
             db.writableDatabase.execSQL(
-                "UPDATE messages SET status=?, delivered_at=? WHERE id=?",
-                arrayOf<Any?>(status, System.currentTimeMillis(), messageId)
+                "UPDATE messages SET status=?, delivered_at=? WHERE $idsClause",
+                arrayOf<Any?>(status, System.currentTimeMillis(), messageId, messageId)
             )
         } else {
             db.writableDatabase.execSQL(
-                "UPDATE messages SET status=? WHERE id=?", arrayOf<Any?>(status, messageId)
+                "UPDATE messages SET status=? WHERE $idsClause",
+                arrayOf<Any?>(status, messageId, messageId)
             )
         }
         notifyChanged()
@@ -3551,7 +3635,7 @@ class Repository(private val context: Context) {
 
     suspend fun messageByIdSuspend(messageId: Long): Message? = runOnIoAsync {        var found: Message? = null
         db.readableDatabase.rawQuery(
-            """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,reactions
+            """SELECT conversation_id,body,timestamp,is_me,status,media_type,media_uri,reactions,sys_id
                FROM messages WHERE id=?""",
             arrayOf(messageId.toString())
         ).use { c ->
@@ -3564,10 +3648,44 @@ class Repository(private val context: Context) {
                 status = c.getString(4),
                 mediaType = c.getString(5),
                 mediaUri = c.getString(6),
-                reactions = parseReactions(c.getString(7))
+                reactions = parseReactions(c.getString(7)),
+                sysId = c.getLong(8)
             )
         }
         found
+    }
+
+    /**
+     * The rows that make up one provider MMS, in the order they were stored.
+     *
+     * A multi-picture message is several rows sharing a `sys_id`; forwarding or
+     * retrying it means acting on all of them, not on whichever one was tapped
+     * (#364).
+     */
+    suspend fun messagesBySysId(sysId: Long): List<Message> = runOnIoAsync {
+        if (sysId <= 0) return@runOnIoAsync emptyList()
+        val rows = mutableListOf<Message>()
+        db.readableDatabase.rawQuery(
+            """SELECT id,conversation_id,body,timestamp,is_me,status,media_type,media_uri,reactions,sys_id
+               FROM messages WHERE sys_id=? ORDER BY id ASC""",
+            arrayOf(sysId.toString())
+        ).use { c ->
+            while (c.moveToNext()) rows.add(
+                Message(
+                    id = c.getLong(0),
+                    conversationId = c.getLong(1),
+                    body = c.getString(2),
+                    timestamp = c.getLong(3),
+                    isMe = c.getInt(4) == 1,
+                    status = c.getString(5),
+                    mediaType = c.getString(6),
+                    mediaUri = c.getString(7),
+                    reactions = parseReactions(c.getString(8)),
+                    sysId = c.getLong(9)
+                )
+            )
+        }
+        rows
     }
 
     /**
@@ -4212,23 +4330,19 @@ class Repository(private val context: Context) {
         return false
     }
 
-    private fun importProviderMms(): List<MmsSupport.InboundMms> {
-        val imported = importProviderMmsOnce(rescanAll = false)
-        if (settings.mmsImportVersion < MmsSupport.MMS_IMPORT_VERSION) {
-            // A re-scan fills in what an older import left out — the extra
-            // pictures of a multi-picture MMS, and the body that still counted
-            // them as undisplayed (#398). The per-part dedupe makes it
-            // idempotent, and nothing is notified: these are old messages.
-            importProviderMmsOnce(rescanAll = true)
-            settings.mmsImportVersion = MmsSupport.MMS_IMPORT_VERSION
-        }
-        return imported
-    }
+    private fun importProviderMms(): List<MmsSupport.InboundMms> = importProviderMmsOnce()
 
-    private fun importProviderMmsOnce(rescanAll: Boolean): List<MmsSupport.InboundMms> {
-        val existing = mutableSetOf<Long>()
-        db.readableDatabase.rawQuery("SELECT sys_id FROM messages WHERE transport='mms' AND sys_id>0", null)
-            .use { cursor -> while (cursor.moveToNext()) existing.add(cursor.getLong(0)) }
+    private fun importProviderMmsOnce(): List<MmsSupport.InboundMms> {
+        val storedParts = mutableMapOf<Long, MutableSet<String>>()
+        db.readableDatabase.rawQuery(
+            "SELECT sys_id, media_uri FROM messages WHERE transport='mms' AND sys_id>0", null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                storedParts.getOrPut(cursor.getLong(0)) { mutableSetOf() }
+                    .add(cursor.getString(1).orEmpty())
+            }
+        }
+        val existing: Set<Long> = storedParts.keys
         val imported = mutableListOf<MmsSupport.InboundMms>()
         // Counts of what the provider offered and what was taken, because the
         // difference is the whole duplicate story: a sent picture whose outbox
@@ -4237,10 +4351,26 @@ class Repository(private val context: Context) {
         var offered = 0
         var linked = 0
         val refreshed = mutableSetOf<Long>()
-        MmsTrace.i(TRACE, "MMS import: ${existing.size} provider row(s) already linked")
+        val reader = MmsProviderReader(context.contentResolver)
+        // A provider MMS whose parts are all stored is skipped without reading
+        // its addresses or opening a transaction. One part is enough to tell,
+        // because the batch part index carries every media part id (#364).
+        // If that index cannot be read, skip everything already linked instead
+        // of re-reading the whole provider; the next sync retries the backfill.
+        val skip = try {
+            val mediaParts = reader.mediaPartsById()
+            if (mediaParts == null) existing
+            else MmsSupport.completeMmsIds(storedParts, mediaParts)
+        } catch (e: Exception) {
+            MmsTrace.w(TRACE, "MMS part index unavailable; skipping linked rows only", e)
+            existing
+        }
+        MmsTrace.i(
+            TRACE,
+            "MMS import: ${existing.size} provider row(s) linked, ${skip.size} complete"
+        )
         try {
-            MmsProviderReader(context.contentResolver)
-                .read(if (rescanAll) emptySet() else existing) { message ->
+            reader.read(skip) { message ->
                 runOnIo {
                     offered++
                     val database = db.writableDatabase
@@ -4294,12 +4424,19 @@ class Repository(private val context: Context) {
                                     put("address", if (message.isMe) "" else address)
                                 })
                             }
-                            if (!message.isMe && !message.read && cid != viewedConversationId) database.execSQL(
+                            // A backfilled picture must not resurrect an old
+                            // conversation as unread: the provider's read flag
+                            // never gets set by this app, so every old unread
+                            // message would bump its badge again on upgrade.
+                            if (MmsSupport.countsAsNewUnread(
+                                    message.isMe, message.read, alreadyStored = present.isNotEmpty()
+                                ) && cid != viewedConversationId
+                            ) database.execSQL(
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
                             )
                             refreshed.add(cid)
                             upsertParticipant(database, address, message.subId)
-                            if (!message.isMe) imported.add(
+                            if (!message.isMe && present.isEmpty()) imported.add(
                                 MmsSupport.InboundMms(
                                     address,
                                     message.content.body,
@@ -4361,10 +4498,10 @@ class Repository(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            MmsTrace.w(TRACE, "MMS import incomplete after $offered row(s); retry on next sync", e)
+            MmsTrace.w(TRACE, "MMS import stopped after $offered row(s); retry on next sync", e)
         }
         refreshed.forEach { refreshConversationSnippetFor(it) }
-        MmsTrace.i(TRACE, "MMS import done: $offered offered, $imported.size imported, $linked already present")
+        MmsTrace.i(TRACE, "MMS import done: $offered offered, $imported.size imported, $linked complete")
         return imported
     }
 

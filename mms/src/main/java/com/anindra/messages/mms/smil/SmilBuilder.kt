@@ -37,8 +37,10 @@ object SmilBuilder {
             // Media and text share a par until it holds both, then the next item
             // starts a new one. That is what makes a caption appear with its
             // image rather than as a following slide, and it is the grouping the
-            // AOSP helper this replaces produces.
+            // AOSP helper this replaces produces. Two pictures never share a
+            // par: a multi-picture MMS is a slideshow, one picture per slide.
             if (hasText && hasMedia) flush()
+            if (item !is SmilText && hasMedia) flush()
             current.add(item)
             if (item is SmilText) hasText = true else hasMedia = true
         }

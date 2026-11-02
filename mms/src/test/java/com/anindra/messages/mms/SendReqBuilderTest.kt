@@ -32,7 +32,7 @@ class SendReqBuilderTest {
     ) = SendReqRequest(
         addresses = addresses,
         caption = caption,
-        attachment = FittedAttachment("image/jpeg", attachmentBytes),
+        attachments = listOf(FittedAttachment("image/jpeg", attachmentBytes)),
         profile = profile,
         subscriptionId = Wire.SUBSCRIPTION_ID,
         headers = headers,
@@ -114,6 +114,52 @@ class SendReqBuilderTest {
     }
 
     @Test
+    fun partCountGrowsWithEachAttachment() {
+        assertEquals(2, SendReqBuilder.partCount(""))
+        assertEquals(3, SendReqBuilder.partCount("cap"))
+        assertEquals(4, SendReqBuilder.partCount("", 3))
+        assertEquals(5, SendReqBuilder.partCount("cap", 3))
+    }
+
+    @Test
+    fun everyPictureGetsItsOwnSlideAndItsOwnPart() {
+        val pdu = multiBuilt(3)
+        val body = pdu.body!!
+        assertEquals(SendReqBuilder.partCount("hello", 3), body.size)
+        val media = body.attachments
+        assertEquals(3, media.size)
+        assertEquals(
+            "each picture must be addressable on its own",
+            3,
+            media.map { it.name }.distinct().size,
+        )
+        val smil = String(body.smil!!.data!!)
+        // One slide per picture: all three in one par would show as one.
+        assertEquals(3, Regex("<par ").findAll(smil).count())
+        val sources = Regex("src=\"([^\"]+)\"").findAll(smil).map { it.groupValues[1] }.toSet()
+        assertTrue(
+            "every SMIL src must name a part that was written: $sources",
+            sources.containsAll(media.map { it.name }),
+        )
+    }
+
+    private fun multiBuilt(count: Int): Pdu {
+        val request = SendReqRequest(
+            addresses = listOf("+15551230000"),
+            caption = "hello",
+            attachments = List(count) {
+                FittedAttachment("image/jpeg", ByteArray(16) { b -> (b + it).toByte() })
+            },
+            profile = profileOf(CarrierProfile.KEY_MAX_MESSAGE_SIZE to 300_000),
+            subscriptionId = Wire.SUBSCRIPTION_ID,
+            headers = SendHeaderPolicy.DEFAULT,
+        )
+        val outcome = SendReqBuilder.build(request, noSender, now)
+        assertTrue("expected a built PDU, got $outcome", outcome is SendReqOutcome.Built)
+        return (outcome as SendReqOutcome.Built).pdu
+    }
+
+    @Test
     fun theMessageDeclaresAMultipartContentType() {
         val pdu = built()
         assertTrue(ContentTypes.isMultipart(pdu.contentType!!))
@@ -164,7 +210,7 @@ class SendReqBuilderTest {
     @Test
     fun aMediaTypeWithNoSmilElementIsRefusedRatherThanSentBlank() {
         val outcome = SendReqBuilder.build(
-            request().copy(attachment = FittedAttachment("application/octet-stream", ByteArray(8)), caption = ""),
+            request().copy(attachments = listOf(FittedAttachment("application/octet-stream", ByteArray(8))), caption = ""),
             noSender,
             now,
         )
