@@ -29,7 +29,7 @@ class SettingsFooterStringsTest {
         ),
         "settings_notif_footer" to listOf(
             "settings_notif_title", "settings_notif_subtitle",
-            "settings_pin_notification_sound", "settings_sound_default",
+            "settings_receive_sound_title", "settings_notif_manage_channels",
         ),
         "settings_auto_delete_footer" to listOf(
             "settings_retention_title", "settings_retention_blocked",

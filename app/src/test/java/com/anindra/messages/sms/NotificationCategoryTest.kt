@@ -41,30 +41,30 @@ class NotificationCategoryTest {
     }
 
     @Test
-    fun eachCategoryHasItsOwnChannelIdPerSound() {
-        // The id carries both the category and the sound selection, because a
-        // channel's sound cannot be changed after creation.
+    fun aCategoryHasExactlyTwoIdsAndNeitherCarriesATone() {
+        // The id used to carry the tone, so the app could change a category's
+        // sound by minting a new channel — at the cost of everything the user
+        // had set on the old one. The tone now belongs to the channel's owner,
+        // and only the receive-sound switch still needs a second id.
         assertEquals(
             "messages_direct_default",
-            NotificationChannels.forCategory(NotificationCategory.DIRECT, "default", true)
+            NotificationChannels.forCategory(NotificationCategory.DIRECT, true)
         )
         assertEquals(
             "messages_group_default",
-            NotificationChannels.forCategory(NotificationCategory.GROUP, "default", true)
+            NotificationChannels.forCategory(NotificationCategory.GROUP, true)
         )
         assertEquals(
             "messages_unknown_default",
-            NotificationChannels.forCategory(NotificationCategory.UNKNOWN, "default", true)
+            NotificationChannels.forCategory(NotificationCategory.UNKNOWN, true)
         )
-        assertEquals(
-            "messages_direct_uf09",
-            NotificationChannels.forCategory(NotificationCategory.DIRECT, "universfield_09", true)
-        )
-        // Receive sound off always lands on the silent variant.
         assertEquals(
             "messages_direct_silent",
-            NotificationChannels.forCategory(NotificationCategory.DIRECT, "universfield_09", false)
+            NotificationChannels.forCategory(NotificationCategory.DIRECT, false)
         )
+        val live = NotificationCategory.entries
+            .flatMap { listOf(NotificationChannels.forCategory(it, true), NotificationChannels.forCategory(it, false)) }
+        assertEquals("a category owns a tone-specific id again", 6, live.toSet().size)
     }
 
     @Test
@@ -83,16 +83,16 @@ class NotificationCategoryTest {
     fun onlyAnOptedInChatPostsOnItsOwnChannel() {
         assertEquals(
             "messages_convo_7",
-            NotificationChannels.forMessage(NotificationCategory.GROUP, "default", true, 7, true)
+            NotificationChannels.forMessage(NotificationCategory.GROUP, true, 7, true)
         )
         // No channel of its own: the chat posts on its category channel.
         assertEquals(
             "messages_group_default",
-            NotificationChannels.forMessage(NotificationCategory.GROUP, "default", true, 7, false)
+            NotificationChannels.forMessage(NotificationCategory.GROUP, true, 7, false)
         )
         assertEquals(
             "messages_group_default",
-            NotificationChannels.forMessage(NotificationCategory.GROUP, "default", true, null, false)
+            NotificationChannels.forMessage(NotificationCategory.GROUP, true, null, false)
         )
     }
 
