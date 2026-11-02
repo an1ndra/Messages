@@ -52,6 +52,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1087,6 +1088,15 @@ open class MainActivity : FragmentActivity() {
     /** The conversation this activity is showing inside a notification bubble, if any. */
     private var bubbleConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
 
+    /**
+     * Whether this window is behind App lock, held in Compose state rather than
+     * in a local: the gate turns the setting off when the device has no
+     * credential, and the probe that enables it on an emulator lands on the
+     * running instance through `onNewIntent`. A value captured once would leave
+     * the gate deciding on a setting that no longer exists.
+     */
+    private var appLockEnabled by androidx.compose.runtime.mutableStateOf(false)
+
     private fun isBubbleLaunch(intent: Intent?): Boolean =
         intent?.getBooleanExtra(
             com.anindra.messages.sms.NotificationBubble.EXTRA_OPEN_IN_BUBBLE, false
@@ -1127,7 +1137,8 @@ open class MainActivity : FragmentActivity() {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         }
 
-        val appLockEnabled = bootVm.settings.appLockEnabled
+        applyAppLockProbe(intent, bootVm)
+        appLockEnabled = bootVm.settings.appLockEnabled
 
         // Script hooks: --es set_theme dark|light|system|amoled|dynamic, --ez open_settings true, --ez privacy_mode true|false
         when (intent.getStringExtra("set_theme")) {
@@ -1160,9 +1171,39 @@ open class MainActivity : FragmentActivity() {
             // follow-up): opening a bubble, sharing a text or rotating the
             // screen used to ask for a fingerprint again.
             var appUnlocked by remember {
-                mutableStateOf(!appLockEnabled || com.anindra.messages.data.LockSession.isUnlocked())
+                mutableStateOf(
+                    com.anindra.messages.data.AppLockGate.allowsContent(
+                        appLockEnabled,
+                        com.anindra.messages.data.LockSession.isUnlocked()
+                    )
+                )
             }
             var lockNotAvailable by remember { mutableStateOf(false) }
+
+            // The session can end while this window is open: the screen going off
+            // does exactly that, and an activity that is already built is never
+            // rebuilt by it. Re-reading the session on resume re-arms the gate.
+            // Resume, not the screen-off broadcast itself: flipping this while the
+            // window is stopped would put a BiometricPrompt on a paused activity,
+            // whose error path finishes — it would take the bubble down with it.
+            val lockLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+            DisposableEffect(lockLifecycle) {
+                val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME &&
+                        !com.anindra.messages.data.AppLockGate.allowsContent(
+                            appLockEnabled,
+                            com.anindra.messages.data.LockSession.isUnlocked()
+                        )
+                    ) {
+                        android.util.Log.d("LockSession", "regate=true")
+                        appUnlocked = false
+                    }
+                }
+                lockLifecycle.lifecycle.addObserver(observer)
+                onDispose {
+                    lockLifecycle.lifecycle.removeObserver(observer)
+                }
+            }
 
             if (appLockEnabled && !appUnlocked) {
                 LaunchedEffect(Unit) {
@@ -1202,6 +1243,7 @@ open class MainActivity : FragmentActivity() {
                         // lock that "anyone could turn off" — there is no working lock
                         // to bypass, and never fake one.
                         bootVm.settings.appLockEnabled = false
+                        appLockEnabled = false
                         lockNotAvailable = true
                     }
                 }
@@ -1951,6 +1993,25 @@ onOpenAccessibility = { navRoute = "accessibility" },
         }
     }
 
+    /**
+     * Debug builds only: `--es app_lock_probe enable|disable` sets App lock
+     * without the credential check the settings toggle goes through, so a script
+     * can drive the gate on an emulator that has no fingerprint or PIN enrolled.
+     * It writes the real setting, exactly as the toggle does — nothing here
+     * pretends an authentication happened.
+     */
+    private fun applyAppLockProbe(intent: Intent, vm: AppViewModel) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val probe = intent.getStringExtra("app_lock_probe") ?: return
+        if (probe != "enable" && probe != "disable") return
+        val enabled = probe == "enable"
+        vm.settings.appLockEnabled = enabled
+        appLockEnabled = enabled
+        android.util.Log.d("AppLockProbe", "appLockEnabled=$enabled")
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -1967,6 +2028,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
         }
         intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { vm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, vm)
+        applyAppLockProbe(intent, vm)
         applyLockSessionProbe(intent)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
