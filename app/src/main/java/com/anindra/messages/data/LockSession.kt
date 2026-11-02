@@ -29,3 +29,18 @@ object LockSession {
         unlocked = false
     }
 }
+
+/**
+ * Whether a window may show its content right now (#354 follow-up).
+ *
+ * Read twice per window — once when it is built, and again on every resume — so
+ * the rule lives in one place instead of being re-derived at the second call
+ * site. The resume read is what re-arms a window the session ended underneath:
+ * `MessagesApplication` locks on `ACTION_SCREEN_OFF`, and an activity that is
+ * already on screen is never rebuilt by that, so nothing else would notice.
+ */
+object AppLockGate {
+
+    fun allowsContent(appLockEnabled: Boolean, sessionUnlocked: Boolean): Boolean =
+        !appLockEnabled || sessionUnlocked
+}
