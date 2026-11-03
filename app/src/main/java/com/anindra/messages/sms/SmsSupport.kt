@@ -387,7 +387,6 @@ object NotificationHelper {
 
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val convoId = app.repository.conversationIdForAddress(from)
-        if (convoId != null && !app.repository.getConversationNotificationsEnabledBlocking(convoId)) return
 
         val replyable = com.anindra.messages.data.AddressIdentity.isReplyable(from)
         val contactName = app.repository.contactNameFor(from)
@@ -406,6 +405,11 @@ object NotificationHelper {
             convoId,
             convoId != null && conversationChannelExists(context, convoId)
         )
+        // Turning a chat's channel off in Android is that chat's mute. The
+        // platform drops the post itself, but the wake is ours to decide, so a
+        // muted chat must not light the screen up either.
+        val channelMuted =
+            channelImportanceFor(context, channelId) == NotificationManager.IMPORTANCE_NONE
 
         // stable per-conversation id: hashCode collisions between different
         // senders would otherwise overwrite each other's PendingIntents and
@@ -561,7 +565,7 @@ object NotificationHelper {
         // is what turns the screen on. Privacy mode suppresses it because the
         // trampoline would otherwise surface content over the keyguard. A boot
         // re-post wakes nobody — the message is old news by then.
-        if (!silentRepost && shouldWake(app.repository.settings, keyguardLocked(context))) {
+        if (!silentRepost && !channelMuted && shouldWake(app.repository.settings, keyguardLocked(context))) {
             builder.setFullScreenIntent(fullScreenIntent(context, reqCode), true)
         }
 
@@ -580,7 +584,8 @@ object NotificationHelper {
      *  numbers of the app's live notifications, so unread messages that
      *  survived in the database lost their badge with them (#345). One silent
      *  re-post per unread conversation — [show]'s own guards still decide:
-     *  blocked senders, muted conversations and POST_NOTIFICATIONS all opt out. */
+     *  blocked senders and POST_NOTIFICATIONS opt out, and a chat whose channel
+     *  the user turned off in Android is dropped by the platform at notify(). */
     fun repostUnread(context: Context) {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         val settings = app.repository.settings

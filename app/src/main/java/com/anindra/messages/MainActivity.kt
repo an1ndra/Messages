@@ -966,13 +966,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun blockedNumbers() = repo.blockedNumbers()
 
-    fun conversationNotificationsEnabledFlow(conversationId: Long): Flow<Boolean> =
-        repo.conversationNotificationsEnabledFlow(conversationId)
-
-    fun setConversationNotificationsEnabled(conversationId: Long, enabled: Boolean) {
-        scope.launch(Dispatchers.IO) { repo.setConversationNotificationsEnabled(conversationId, enabled) }
-    }
-
     /** Whether this chat has overcome its category channel with one of its own. */
     fun conversationCustomChannel(conversationId: Long): Boolean =
         com.anindra.messages.sms.NotificationHelper
