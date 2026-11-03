@@ -74,7 +74,7 @@ class PersianLocaleTest {
             .filterKeys { it !in latinByDesign }
             .filterValues { value -> value.none { it in 'a'..'z' || it in 'A'..'Z' } }
             .filterValues { value -> value.any { it in '\u0600'..'\u06FF' } }
-            .filterValues { value -> BidiText.direction(value) != BidiText.Direction.RTL }
+            .filterValues { value -> BidiText.firstStrongDirection(value) != BidiText.Direction.RTL }
             .keys
         assertEquals(emptyList<String>(), problems.sorted())
     }
