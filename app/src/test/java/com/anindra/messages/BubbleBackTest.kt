@@ -3,6 +3,7 @@ package com.anindra.messages
 import com.anindra.messages.i18n.LocaleCatalog
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,6 +28,27 @@ class BubbleBackTest {
         // Outside a bubble the setting is irrelevant: Back never finishes the app.
         assertEquals(BubbleBack.SHOW_LIST, bubbleBackAction(bubbleMode = false, backClosesBubble = false))
         assertEquals(BubbleBack.SHOW_LIST, bubbleBackAction(bubbleMode = false, backClosesBubble = true))
+    }
+
+    @Test
+    fun choosingAChatInsideABubbleDoesNotRetireIt() {
+        assertFalse(
+            "the bubble window retired itself when its own list was used",
+            retiresBubbleForChatSelection(bubbleMode = true)
+        )
+        assertTrue(
+            "a full-screen open must still retire the duplicate bubble",
+            retiresBubbleForChatSelection(bubbleMode = false)
+        )
+    }
+
+    @Test
+    fun theChatListAsksThatDecision() {
+        val activity = src("java/com/anindra/messages/MainActivity.kt")
+        assertTrue(
+            "opening a chat from a list retires the bubble unconditionally again",
+            activity.contains("retiresBubbleForChatSelection(bubbleMode)")
+        )
     }
 
     @Test

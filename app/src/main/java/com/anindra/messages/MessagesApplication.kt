@@ -15,6 +15,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
+/** Debug-only script hook: ends the app-lock session with no activity transition (#354). */
+private const val ACTION_DEBUG_LOCK_SESSION = "com.anindra.messages.DEBUG_LOCK_SESSION"
+
 class MessagesApplication : Application() {
     lateinit var repository: Repository
         private set
@@ -38,6 +41,26 @@ class MessagesApplication : Application() {
             },
             android.content.IntentFilter(Intent.ACTION_SCREEN_OFF)
         )
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            // A regression needs the session to end *without* the window being
+            // paused and resumed: that is the ordering a delayed screen-off
+            // broadcast produces, and the one an ON_RESUME re-check missed.
+            // Debug builds only, and it can only end the session — it never
+            // grants access.
+            androidx.core.content.ContextCompat.registerReceiver(
+                this,
+                object : android.content.BroadcastReceiver() {
+                    override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                        if (intent?.action == ACTION_DEBUG_LOCK_SESSION) {
+                            LockSession.lock()
+                            android.util.Log.d("LockSession", "unlocked=false reason=debug_broadcast")
+                        }
+                    }
+                },
+                android.content.IntentFilter(ACTION_DEBUG_LOCK_SESSION),
+                androidx.core.content.ContextCompat.RECEIVER_EXPORTED
+            )
+        }
         // Repair a restore that died mid-swap before anything opens the database.
         // Synchronous and before the first Activity, so the recovery cannot race
         // a reader that is about to open (and recreate) the live file.

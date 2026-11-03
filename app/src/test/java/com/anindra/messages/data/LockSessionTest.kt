@@ -43,6 +43,36 @@ class LockSessionTest {
     }
 
     @Test
+    fun aSessionChangeNotifiesItsObservers() {
+        LockSession.lock()
+        var notified = 0
+        val observer: () -> Unit = { notified++ }
+        LockSession.addObserver(observer)
+        try {
+            LockSession.unlock()
+            assertTrue("unlocking did not reach an open window", notified == 1)
+            LockSession.lock()
+            assertTrue("locking did not reach an open window", notified == 2)
+            LockSession.lock()
+            assertTrue("a no-op lock still notified observers", notified == 2)
+        } finally {
+            LockSession.removeObserver(observer)
+            LockSession.lock()
+        }
+    }
+
+    @Test
+    fun aRemovedObserverIsNoLongerNotified() {
+        var notified = 0
+        val observer: () -> Unit = { notified++ }
+        LockSession.addObserver(observer)
+        LockSession.removeObserver(observer)
+        LockSession.unlock()
+        assertTrue("a removed window still reacted to the session", notified == 0)
+        LockSession.lock()
+    }
+
+    @Test
     fun theSessionEndsWhenTheScreenGoesOff() {
         val app = src("java/com/anindra/messages/MessagesApplication.kt")
         assertTrue(
