@@ -24,7 +24,6 @@
     <string name="settings_pin_repeat">تکرار پین</string>
     <string name="settings_pin_delete_permanently">برای همیشه حذف شود؟</string>
     <string name="settings_pin_delay">تأخیر پیش از ارسال</string>
-    <string name="settings_pin_notification_sound">صدای اعلان</string>
     <string name="settings_notif_manage_channels">مدیریت در تنظیمات سیستم</string>
     <string name="settings_notif_manage_channels_subtitle">صدا، لرزش و اولویت برای هر دسته</string>
     <string name="settings_pin_sim_card">سیم‌کارت</string>
@@ -115,7 +114,6 @@
     <string name="settings_trash_subtitle">گفتگوهای حذف‌شده اینجا نگه داشته می‌شوند</string>
     <string name="settings_spam_blocked_subtitle">گفتگوهای مسدود اینجا نگه داشته می‌شوند</string>
     <string name="settings_retention_title">حذف خودکار</string>
-
     <string name="settings_choose_retention">روی سطل زباله، پیام‌های مسدود و فرستنده‌های مسدود اعمال می‌شود:</string>
     <string name="settings_retention_subtitle">سطل زباله، پیام‌های مسدود و فرستنده‌های مسدود خودکار حذف می‌شوند</string>
     <string name="settings_retention_days">%d روز</string>
@@ -161,11 +159,6 @@
     <string name="settings_restore_title">بازیابی (جایگزینی همه)</string>
     <string name="settings_restore_subtitle">حذف پیام‌های فعلی و بازیابی پشتیبان</string>
     <string name="settings_delay_with_value">%d ثانیه پیش از ارسال</string>
-    <string name="settings_sound_default">پیش‌فرض (سیستم)</string>
-    <string name="settings_sound_classic">کلاسیک</string>
-    <string name="settings_sound_dragon">Dragon Studio</string>
-    <string name="settings_sound_chime">زنگ</string>
-    <string name="settings_sound_bubble">حباب</string>
     <string name="settings_theme_light">روشن</string>
     <string name="settings_theme_dark">تیره</string>
     <string name="settings_theme_amoled">Amoled</string>
