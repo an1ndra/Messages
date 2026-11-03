@@ -59,6 +59,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anindra.messages.data.AddressIdentity
 import com.anindra.messages.data.Conversation
@@ -1064,6 +1065,17 @@ internal enum class BubbleBack {
 internal fun bubbleBackAction(bubbleMode: Boolean, backClosesBubble: Boolean): BubbleBack =
     if (bubbleMode && backClosesBubble) BubbleBack.FINISH else BubbleBack.SHOW_LIST
 
+/**
+ * Whether opening a chat from a list should retire that chat's floating bubble
+ * (#354 follow-up).
+ *
+ * A full-screen open duplicates the bubble that is already floating over it,
+ * so the bubble is retired. A bubble window's own list is rendered *inside*
+ * the bubble: retiring there cancelled the notification that hosts the window,
+ * so choosing a chat closed the bubble the user was looking at.
+ */
+internal fun retiresBubbleForChatSelection(bubbleMode: Boolean): Boolean = !bubbleMode
+
 open class MainActivity : FragmentActivity() {
 
     private val permissionLauncher =
@@ -1087,6 +1099,23 @@ open class MainActivity : FragmentActivity() {
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
     private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
     private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
+
+    // The destination's own state lives beside navRoute, not inside the gated
+    // composition. The app-lock gate removes that composition to re-lock a
+    // window, which discards a `remember` but not the route on the Activity:
+    // unlocking an open conversation then recomposed on "chat" with no
+    // conversation and showed it blank (#354 follow-up).
+    private var chatId by androidx.compose.runtime.mutableStateOf(-1L)
+
+    // The home-list query that opened the chat, so the chat can highlight and
+    // scroll to the matching message. Null for every other way into a chat
+    // (new, scheduled, spam, intent).
+    private var chatSearchQuery by androidx.compose.runtime.mutableStateOf<String?>(null)
+    private var detailsId by androidx.compose.runtime.mutableStateOf(-1L)
+
+    // Where the add-people picker returns to. Opened from a chat it goes back
+    // to the chat; from contact details, to the details.
+    private var addPeopleReturn by androidx.compose.runtime.mutableStateOf("details")
 
     /** The conversation this activity is showing inside a notification bubble, if any. */
     private var bubbleConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
@@ -1183,17 +1212,16 @@ open class MainActivity : FragmentActivity() {
             }
             var lockNotAvailable by remember { mutableStateOf(false) }
 
-            // The session can end while this window is open: the screen going off
-            // does exactly that, and an activity that is already built is never
-            // rebuilt by it. Re-reading the session on resume re-arms the gate.
-            // Resume, not the screen-off broadcast itself: flipping this while the
-            // window is stopped would put a BiometricPrompt on a paused activity,
-            // whose error path finishes — it would take the bubble down with it.
-            val lockLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
-            DisposableEffect(lockLifecycle) {
-                val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-                    if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME &&
-                        !com.anindra.messages.data.AppLockGate.allowsContent(
+            // The session can end while this window is open: the screen going
+            // off does exactly that, and an activity that is already built is
+            // never rebuilt by it. Observing the session, rather than re-reading
+            // it on ON_RESUME, also catches a lock that arrives after the window
+            // resumed — a delayed screen-off broadcast, or a bubble the platform
+            // keeps resumed — where no resume event follows and the chat would
+            // have stayed readable (#354 follow-up).
+            DisposableEffect(Unit) {
+                val observer: () -> Unit = {
+                    if (!com.anindra.messages.data.AppLockGate.allowsContent(
                             appLockEnabled,
                             com.anindra.messages.data.LockSession.isUnlocked()
                         )
@@ -1202,52 +1230,61 @@ open class MainActivity : FragmentActivity() {
                         appUnlocked = false
                     }
                 }
-                lockLifecycle.lifecycle.addObserver(observer)
+                com.anindra.messages.data.LockSession.addObserver(observer)
                 onDispose {
-                    lockLifecycle.lifecycle.removeObserver(observer)
+                    com.anindra.messages.data.LockSession.removeObserver(observer)
                 }
             }
 
+            val lockLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
             if (appLockEnabled && !appUnlocked) {
                 LaunchedEffect(Unit) {
-                    if (com.anindra.messages.data.LockSession.isUnlocked()) {
-                        android.util.Log.d("LockSession", "prompt=skipped")
-                        appUnlocked = true
-                        return@LaunchedEffect
-                    }
-                    android.util.Log.d("LockSession", "prompt=shown")
-                    val biometricManager = BiometricManager.from(this@MainActivity)
-                    val canAuth = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                    if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
-                        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
-                        val prompt = BiometricPrompt(this@MainActivity, executor,
-                            object : BiometricPrompt.AuthenticationCallback() {
-                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                    result.cryptoObject
-                                    com.anindra.messages.data.LockSession.unlock()
-                                    android.util.Log.d("LockSession", "unlocked=true")
-                                    runOnUiThread { appUnlocked = true }
-                                }
-                                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                                    runOnUiThread { finish() }
-                                }
-                            })
-                        prompt.authenticate(
-                            BiometricPrompt.PromptInfo.Builder()
-                                .setTitle(getString(R.string.lock_unlock_title))
-                                .setSubtitle(getString(R.string.lock_title))
-                                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                                .build()
-                        )
-                    } else {
-                        // No credential to verify against (no fingerprint/PIN, or no
-                        // auth hardware): the lock could not actually protect anything,
-                        // so disable it instead of stranding the user behind an inert
-                        // lock that "anyone could turn off" — there is no working lock
-                        // to bypass, and never fake one.
-                        bootVm.settings.appLockEnabled = false
-                        appLockEnabled = false
-                        lockNotAvailable = true
+                    // Only prompt while the window is in front: a lock can be
+                    // observed while the window is stopped, and a BiometricPrompt
+                    // on a paused activity finishes on error — taking a bubble
+                    // down with it.
+                    lockLifecycle.lifecycle.repeatOnLifecycle(
+                        androidx.lifecycle.Lifecycle.State.RESUMED
+                    ) {
+                        if (com.anindra.messages.data.LockSession.isUnlocked()) {
+                            android.util.Log.d("LockSession", "prompt=skipped")
+                            appUnlocked = true
+                            return@repeatOnLifecycle
+                        }
+                        android.util.Log.d("LockSession", "prompt=shown")
+                        val biometricManager = BiometricManager.from(this@MainActivity)
+                        val canAuth = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                        if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                            val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+                            val prompt = BiometricPrompt(this@MainActivity, executor,
+                                object : BiometricPrompt.AuthenticationCallback() {
+                                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                        result.cryptoObject
+                                        com.anindra.messages.data.LockSession.unlock()
+                                        android.util.Log.d("LockSession", "unlocked=true")
+                                        runOnUiThread { appUnlocked = true }
+                                    }
+                                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                                        runOnUiThread { finish() }
+                                    }
+                                })
+                            prompt.authenticate(
+                                BiometricPrompt.PromptInfo.Builder()
+                                    .setTitle(getString(R.string.lock_unlock_title))
+                                    .setSubtitle(getString(R.string.lock_title))
+                                    .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                                    .build()
+                            )
+                        } else {
+                            // No credential to verify against (no fingerprint/PIN, or no
+                            // auth hardware): the lock could not actually protect anything,
+                            // so disable it instead of stranding the user behind an inert
+                            // lock that "anyone could turn off" — there is no working lock
+                            // to bypass, and never fake one.
+                            bootVm.settings.appLockEnabled = false
+                            appLockEnabled = false
+                            lockNotAvailable = true
+                        }
                     }
                 }
             }
@@ -1314,15 +1351,6 @@ open class MainActivity : FragmentActivity() {
             font = vm.fontFamily,
             a11y = vm.a11y,
         ) {
-                var chatId by remember { mutableStateOf(-1L) }
-                // The home-list query that opened the chat, so the chat can
-                // highlight and scroll to the matching message. Null for every
-                // other way into a chat (new, scheduled, spam, intent).
-                var chatSearchQuery by remember { mutableStateOf<String?>(null) }
-                var detailsId by remember { mutableStateOf(-1L) }
-                // Where the add-people picker returns to. Opened from a chat it
-                // goes back to the chat; from contact details, to the details.
-                var addPeopleReturn by remember { mutableStateOf("details") }
                 var showDefaultSmsDialog by remember { mutableStateOf(false) }
                 var defaultSmsChecked by remember { mutableStateOf(false) }
                 // Hoisted above the AnimatedContent so every settings screen keeps
@@ -1497,10 +1525,12 @@ open class MainActivity : FragmentActivity() {
                     if (useNewUi) ConversationsScreen(
                         vm = vm,
                         onOpenConversation = { id, query ->
-                            com.anindra.messages.sms.NotificationHelper
-                                .clearConversationNotification(this@MainActivity, id)
-                            com.anindra.messages.sms.NotificationHelper
-                                .retireBubbleForFullChat(this@MainActivity, id)
+                            if (retiresBubbleForChatSelection(bubbleMode)) {
+                                com.anindra.messages.sms.NotificationHelper
+                                    .clearConversationNotification(this@MainActivity, id)
+                                com.anindra.messages.sms.NotificationHelper
+                                    .retireBubbleForFullChat(this@MainActivity, id)
+                            }
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
@@ -1510,10 +1540,12 @@ open class MainActivity : FragmentActivity() {
                     ) else com.anindra.messages.ui.legacy.ConversationsScreen(
                         vm = vm,
                         onOpenConversation = { id, query ->
-                            com.anindra.messages.sms.NotificationHelper
-                                .clearConversationNotification(this@MainActivity, id)
-                            com.anindra.messages.sms.NotificationHelper
-                                .retireBubbleForFullChat(this@MainActivity, id)
+                            if (retiresBubbleForChatSelection(bubbleMode)) {
+                                com.anindra.messages.sms.NotificationHelper
+                                    .clearConversationNotification(this@MainActivity, id)
+                                com.anindra.messages.sms.NotificationHelper
+                                    .retireBubbleForFullChat(this@MainActivity, id)
+                            }
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"

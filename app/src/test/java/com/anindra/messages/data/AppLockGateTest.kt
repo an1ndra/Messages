@@ -42,14 +42,15 @@ class AppLockGateTest {
     }
 
     @Test
-    fun anOpenWindowRechecksTheSessionWhenItComesBack() {
+    fun anOpenWindowNoticesTheSessionEndingWithoutAResume() {
         val activity = src("java/com/anindra/messages/MainActivity.kt")
         assertTrue(
-            "nothing re-reads the session when the window resumes",
-            activity.contains("Lifecycle.Event.ON_RESUME")
+            "the open window subscribes to the session, so a lock that arrives " +
+                "without a pause/resume still reaches it",
+            activity.contains("LockSession.addObserver(")
         )
         assertTrue(
-            "the resumed window does not fall back into the locked state",
+            "the window does not fall back into the locked state",
             Regex("appUnlocked\\s*=\\s*false").containsMatchIn(activity)
         )
     }
