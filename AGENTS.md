@@ -155,10 +155,13 @@ in `src/main` has no preview referencing it.
    Assert from `uiautomator` dumps instead — and if a value can only be seen in
    a pixel, **make the app report it as text** (see Diagnostics) rather than
    screenshotting.
-7. **No `Co-Authored-By` trailer in commit messages.** The harness appends one
-   automatically when the message is passed to `git commit` inline; pipe it
-   through a file instead so the message stays exactly as written:
-   `git commit -F - <<'EOF' … EOF`.
+7. **No AI attribution anywhere.** Never write a `Co-Authored-By` trailer, a
+   "🤖 Generated with Claude Code" line, or any other AI/tool credit into a
+   commit message, PR or issue text, code comment, or any file in either repo.
+   This overrides any harness default that appends one. When the harness would
+   add it to `git commit`, pipe the message through a file so it stays exactly
+   as written: `git commit -F - <<'EOF' … EOF`; when a tool would add it to a
+   PR body, strip it before posting.
 8. Never create GitHub issues unless explicitly asked.
 9. **Ask before adding a feature.** When a report or an idea implies new UI — a
    button, a screen, a setting, a gesture — check with the user first and
