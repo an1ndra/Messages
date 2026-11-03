@@ -3,17 +3,12 @@ package com.anindra.messages.sms
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.Person
-import androidx.core.content.ContextCompat
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
-import com.anindra.messages.MainActivity
-import com.anindra.messages.R
 
 /**
  * Turns a conversation's notification into a conversation bubble (#354).
@@ -34,7 +29,6 @@ object NotificationBubble {
     internal const val CATEGORY = "com.anindra.messages.category.CONVERSATION"
 
     private const val BUBBLE_HEIGHT_DP = 600
-    private const val ICON_SIZE_PX = 108
 
     /** A bubble needs a conversation id to key the shortcut on, and a replyable sender. */
     internal fun shouldAttach(conversationId: Long?, replyable: Boolean): Boolean =
@@ -70,7 +64,10 @@ object NotificationBubble {
         } else {
             val shortcut = ShortcutInfoCompat.Builder(context, id)
                 .setShortLabel(name)
-                .setIcon(icon(context))
+                // The chat's own picture, not the app's: the bubble and the
+                // shortcut both show this, and one launcher icon for every
+                // conversation is what the reporter saw (#354 follow-up).
+                .setIcon(ConversationAvatar.forAddress(context, address).icon)
                 .setPerson(
                     Person.Builder().setName(name).setKey(address).setImportant(true).build()
                 )
@@ -103,7 +100,9 @@ object NotificationBubble {
             launchIntent(context, address, conversationId),
             PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        return NotificationCompat.BubbleMetadata.Builder(pending, icon(context))
+        return NotificationCompat.BubbleMetadata.Builder(
+            pending, ConversationAvatar.forAddress(context, address).icon
+        )
             .setDesiredHeight(BUBBLE_HEIGHT_DP)
             .setAutoExpandBubble(false)
             .setSuppressNotification(false)
@@ -114,34 +113,26 @@ object NotificationBubble {
      * The data URI is what keeps the bubble PendingIntents apart: PendingIntent
      * equality ignores extras, so two conversations sharing a request code would
      * otherwise open each other's thread.
+     *
+     * NEW_DOCUMENT + MULTIPLE_TASK is what makes the bubble own a task. Without
+     * them MainActivity's singleTop handed the launch to the instance already on
+     * screen: the app navigated and the expanded bubble had nothing to host, so
+     * it showed blank (#354). These are the flags Google Messages' own bubble
+     * launch carries.
      */
     private fun launchIntent(context: Context, address: String, conversationId: Long): Intent =
-        Intent(context, MainActivity::class.java).apply {
+        Intent(context, com.anindra.messages.BubbleChatActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             data = Uri.parse("messages://conversation/$conversationId")
             setPackage(context.packageName)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
+                    Intent.FLAG_ACTIVITY_NEW_DOCUMENT
+            )
             putExtra("open_conversation_address", address)
             putExtra(EXTRA_OPEN_IN_BUBBLE, true)
         }
-
-    @Volatile
-    private var cachedIcon: IconCompat? = null
-
-    /** Bubbles and shortcuts need a bitmap icon; the launcher's adaptive icon is drawn once into one. */
-    private fun icon(context: Context): IconCompat = cachedIcon ?: synchronized(this) {
-        cachedIcon ?: bitmapIcon(context).also { cachedIcon = it }
-    }
-
-    private fun bitmapIcon(context: Context): IconCompat {
-        val bitmap = Bitmap.createBitmap(ICON_SIZE_PX, ICON_SIZE_PX, Bitmap.Config.ARGB_8888)
-        ContextCompat.getDrawable(context, R.mipmap.ic_launcher)?.let { drawable ->
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, ICON_SIZE_PX, ICON_SIZE_PX)
-            drawable.draw(canvas)
-        }
-        return IconCompat.createWithBitmap(bitmap)
-    }
 }
 
 /**

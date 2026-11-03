@@ -380,7 +380,7 @@ internal fun ChatBubble(
     val bodyStyle = MaterialTheme.typography.bodyLarge.merge(
         TextStyle(
             color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface,
-            textDirection = BidiText.direction(displayBody).toTextDirection()
+            textDirection = TextDirection.Content
         )
     )
     LaunchedEffect(msg.id, bodyStyle.textDirection) {
@@ -507,16 +507,13 @@ internal fun ChatBubble(
                                 }
                         )
                     }
-                    if (msg.starred) {
-                        Icon(
-                            Icons.Filled.Star,
-                            contentDescription = stringResource(R.string.chat_message_starred),
-                            tint = cs.primary,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .size(14.dp)
-                        )
-                    }
+                }
+                if (msg.starred) {
+                    StarBadge(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 2.dp, y = 2.dp)
+                    )
                 }
 
             }
@@ -689,6 +686,38 @@ internal fun ReactionChips(
                     color = cs.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+/**
+ * #394: the marker on a starred bubble. A framed circle rather than a bare
+ * glyph, so it reads as a badge pinned to the bubble's corner instead of
+ * another word in the message. The description is on this node, not on the
+ * icon inside it, so the badge reports its own size to accessibility.
+ */
+@Composable
+internal fun StarBadge(
+    modifier: Modifier = Modifier
+) {
+    val cs = MaterialTheme.colorScheme
+    val desc = stringResource(R.string.chat_message_starred)
+    Surface(
+        shape = CircleShape,
+        color = cs.surface,
+        border = BorderStroke(1.dp, cs.outlineVariant),
+        shadowElevation = 2.dp,
+        modifier = modifier
+            .size(20.dp)
+            .semantics { contentDescription = desc }
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                Icons.Filled.Star,
+                contentDescription = null,
+                tint = cs.primary,
+                modifier = Modifier.size(12.dp)
+            )
         }
     }
 }
@@ -966,10 +995,12 @@ fun ChatScreen(
     val activity = context as? androidx.fragment.app.FragmentActivity
     val biometricExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
     DisposableEffect(Unit) {
-        onDispose {
-            biometricExecutor.shutdown()
-            com.anindra.messages.sms.ForegroundTracker.setOpenConversation(null)
-        }
+        onDispose { biometricExecutor.shutdown() }
+    }
+    DisposableEffect(convo?.address) {
+        val address = convo?.address
+        com.anindra.messages.sms.ForegroundTracker.openConversation(address)
+        onDispose { com.anindra.messages.sms.ForegroundTracker.closeConversation(address) }
     }
 
     fun cycleSim() {
@@ -1412,9 +1443,6 @@ fun ChatScreen(
             draft = initialDraft
             onInitialDraftConsumed()
         }
-    }
-    LaunchedEffect(convo?.address) {
-        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(convo?.address)
     }
     LaunchedEffect(convo) {
         val current = convo

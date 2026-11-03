@@ -69,6 +69,7 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     var actionReply by remember(revision) { mutableStateOf(vm.settings.notifActionReply) }
     var actionMarkRead by remember(revision) { mutableStateOf(vm.settings.notifActionMarkRead) }
     var actionDelete by remember(revision) { mutableStateOf(vm.settings.notifActionDelete) }
+    var bubbleBackCloses by remember(revision) { mutableStateOf(vm.settings.bubbleBackCloses) }
 
     SettingsScaffold(
         title = stringResource(R.string.settings_notif_title),
@@ -113,11 +114,18 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 onChecked = { actionMarkRead = it; vm.settings.notifActionMarkRead = it }
             )
             SettingsRow(
-                position = RowPosition.LAST,
+                position = RowPosition.MIDDLE,
                 title = stringResource(R.string.settings_notif_action_delete_title),
                 subtitle = stringResource(R.string.settings_notif_action_delete_subtitle),
                 checked = actionDelete,
                 onChecked = { actionDelete = it; vm.settings.notifActionDelete = it }
+            )
+            SettingsRow(
+                position = RowPosition.LAST,
+                title = stringResource(R.string.settings_bubble_back_closes_title),
+                subtitle = stringResource(R.string.settings_bubble_back_closes_subtitle),
+                checked = bubbleBackCloses,
+                onChecked = { bubbleBackCloses = it; vm.settings.bubbleBackCloses = it }
             )
         }
 
