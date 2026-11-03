@@ -137,6 +137,20 @@
             </intent-filter>
         </activity>
 
+        <!-- The bubble's own window. A plain subclass of MainActivity so it can
+             carry a launch mode and task affinity MainActivity cannot: a
+             bubble tapped while the app is on screen must get a task of its own
+             instead of being folded into the resumed singleTop one (#354). -->
+        <activity
+            android:name=".BubbleChatActivity"
+            android:allowEmbedded="true"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="standard"
+            android:resizeableActivity="true"
+            android:taskAffinity="com.anindra.messages.bubble"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name=".sms.FullScreenSmsActivity"
             android:excludeFromRecents="true"

@@ -82,6 +82,7 @@ class SettingsStore(context: Context) {
         const val KEY_NOTIF_ACTION_REPLY = "notif_action_reply"
         const val KEY_NOTIF_ACTION_MARK_READ = "notif_action_mark_read"
         const val KEY_NOTIF_ACTION_DELETE = "notif_action_delete"
+        const val KEY_BUBBLE_BACK_CLOSES = "bubble_back_closes"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
         const val KEY_EMOJI_BUTTON = "emoji_button_enabled"
         const val KEY_VOICE_GUIDE_SEEN = "voice_guide_seen"
@@ -386,6 +387,16 @@ class SettingsStore(context: Context) {
     var notifActionDelete: Boolean
         get() = prefs.getBoolean(KEY_NOTIF_ACTION_DELETE, true)
         set(v) { prefs.edit().putBoolean(KEY_NOTIF_ACTION_DELETE, v).apply(); _revision.value++ }
+
+    /**
+     * Whether Back closes a conversation bubble (#354 follow-up). Off by
+     * default: Back inside a bubble returns to the conversation list and leaves
+     * the bubble on screen, because closing the chat is what the bubble exists
+     * to avoid. Turning it on restores the plain "Back dismisses it" behaviour.
+     */
+    var bubbleBackCloses: Boolean
+        get() = prefs.getBoolean(KEY_BUBBLE_BACK_CLOSES, false)
+        set(v) { prefs.edit().putBoolean(KEY_BUBBLE_BACK_CLOSES, v).apply(); _revision.value++ }
 
     var showSimIndicator: Boolean
         get() = prefs.getBoolean(KEY_SHOW_SIM_INDICATOR, true)

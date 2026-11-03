@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen reader (TalkBack) labels -->
+    <string name="access_open_conversation">باز کردن گفتگو</string>
+    <string name="access_conversation_options">گزینه‌های گفتگو</string>
+    <string name="access_unread">%1$d خوانده‌نشده</string>
+
+    <!-- Accessibility mode (Advanced settings) -->
+    <string name="settings_accessibility_title">حالت دسترس‌پذیری</string>
+    <string name="settings_accessibility_subtitle">متن بزرگ‌تر، کنتراست بالا و کاهش حرکت</string>
+    <string name="accessibility_options_title">گزینه‌های دسترس‌پذیری</string>
+    <string name="accessibility_options_subtitle">متن، کنتراست و حرکت را سفارشی کنید</string>
+    <string name="accessibility_title">دسترس‌پذیری</string>
+
+    <!-- Text -->
+    <string name="a11y_font_size_title">اندازه فونت</string>
+    <string name="a11y_font_size_desc">مقیاس متن در کل برنامه، علاوه بر اندازه سیستمی</string>
+    <string name="a11y_choose_font_size">انتخاب اندازه فونت</string>
+    <string name="a11y_font_85">کوچک (85%)</string>
+    <string name="a11y_font_100">پیش‌فرض (100%)</string>
+    <string name="a11y_font_115">بزرگ (115%)</string>
+    <string name="a11y_font_130">بزرگ‌ترین (130%)</string>
+    <string name="a11y_bold_title">متن پررنگ</string>
+    <string name="a11y_bold_desc">استفاده از وزن‌های سنگین‌تر فونت</string>
+
+    <!-- Display -->
+    <string name="a11y_high_contrast_title">کنتراست بالا</string>
+    <string name="a11y_high_contrast_desc">رنگ‌ها و خطوط واضح‌تر</string>
+    <string name="a11y_large_touch_title">ناحیه‌های لمسی بزرگ‌تر</string>
+    <string name="a11y_large_touch_desc">ناحیه لمس بزرگ‌تر برای دکمه‌ها و ردیف‌ها</string>
+
+    <!-- Motion -->
+    <string name="a11y_reduce_motion_title">کاهش حرکت</string>
+    <string name="a11y_reduce_motion_desc">خاموش کردن پویانمایی‌ها و گذارها</string>
+    <string name="access_clear_selection">پاک کردن انتخاب</string>
+</resources>

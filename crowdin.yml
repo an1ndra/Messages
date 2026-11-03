@@ -24,6 +24,7 @@ files:
         ar: ar
         de: de
         es-ES: es
+        fa: fa
         fr: fr
         hi: hi
         ja: ja
@@ -34,7 +35,7 @@ files:
         zh-CN: zh-rCN
         zh-TW: zh-rTW
 
-# The 12 locales already in the repo are shipped, so import them as approved
+# The 13 locales already in the repo are shipped, so import them as approved
 # rather than as fresh untranslated strings.
 import_eq_suggestions: false
 auto_approve_imported: true

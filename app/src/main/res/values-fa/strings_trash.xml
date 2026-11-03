@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trash_title">سطل زباله</string>
+    <string name="trash_empty">خالی کردن سطل زباله</string>
+    <string name="trash_emptied">سطل زباله خالی شد</string>
+    <string name="toast_trash_deleted">حذف شد</string>
+    <string name="trash_delete_conversation">حذف گفتگو</string>
+    <string name="trash_delete_message">حذف پیام</string>
+    <string name="trash_tab_conversations">گفتگوها</string>
+    <string name="trash_tab_messages">پیام‌ها</string>
+    <string name="trash_messages_empty">هیچ پیام حذف‌شده‌ای نیست</string>
+    <string name="trash_messages_empty_message">پیام‌هایی که حذف می‌کنید تا وقتی پاکشان نکنید اینجا می‌مانند</string>
+
+    <string name="trash_empty_is_empty">سطل زباله خالی است</string>
+    <string name="trash_empty_message">گفتگوهای حذف‌شده پس از 30 روز برای همیشه پاک می‌شوند</string>
+    <string name="trash_empty_confirm">همه %d مورد سطل زباله برای همیشه حذف شوند؟ قابل بازگشت نیست.</string>
+    <string name="trash_delete_forever_confirm">%s برای همیشه حذف شود؟ قابل بازگشت نیست.</string>
+    <string name="trash_deleted_on">حذف‌شده در %s</string>
+    <string name="trash_reason_blocked">کلیدواژه</string>
+</resources>
