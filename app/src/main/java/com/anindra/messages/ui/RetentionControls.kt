@@ -70,7 +70,7 @@ fun AutoDeleteDurationAction(
             title = { Text(stringResource(R.string.settings_retention_after)) },
             text = {
                 Column {
-                    Text(
+                    DialogText(
                         stringResource(R.string.settings_choose_retention),
                         modifier = Modifier.padding(bottom = 8.dp)
                     )

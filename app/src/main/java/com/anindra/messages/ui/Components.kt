@@ -403,3 +403,24 @@ internal fun directionalStyle(base: TextStyle, text: String): TextStyle {
     android.util.Log.d("DialogBidi", "dir=${direction.toTextDirection()} len=${text.length}")
     return base.copy(textDirection = direction.toTextDirection())
 }
+
+/** [androidx.compose.material3.Text] for a dialog's title or body: the copy is
+ *  painted in its own strong direction, whatever direction the window runs in.
+ *  The dialogs whose sentence copy ends in "?", "." or ":" all use this, so a
+ *  new dialog has one obvious thing to reach for (#405). */
+@Composable
+internal fun DialogText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+    style: TextStyle = androidx.compose.material3.LocalTextStyle.current,
+    textAlign: androidx.compose.ui.text.style.TextAlign? = null
+) {
+    androidx.compose.material3.Text(
+        text = text,
+        modifier = modifier,
+        color = color,
+        style = directionalStyle(style, text),
+        textAlign = textAlign
+    )
+}

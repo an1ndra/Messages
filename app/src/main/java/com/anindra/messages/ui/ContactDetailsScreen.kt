@@ -496,7 +496,7 @@ onBack: () -> Unit,
         AlertDialog(
             onDismissRequest = { showBlockDialog = false },
             title = { Text(stringResource(R.string.contact_block_report)) },
-            text = { Text(context.getString(R.string.contact_block_confirm, formatPhoneNumber(address))) },
+            text = { DialogText(context.getString(R.string.contact_block_confirm, formatPhoneNumber(address))) },
             confirmButton = {
                 TextButton(onClick = {
                     showBlockDialog = false

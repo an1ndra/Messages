@@ -53,6 +53,7 @@ import com.anindra.messages.diagnostics.DiagnosticsDialog
 import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.ui.theme.AppFonts
 import com.anindra.messages.ui.BlockedKeywordsDialog
+import com.anindra.messages.ui.DialogText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -427,7 +428,7 @@ fun AdvancedSettingsScreen(
             title = { Text(stringResource(R.string.settings_retention_after)) },
             text = {
                 Column {
-                    Text(
+                    DialogText(
                         stringResource(R.string.settings_choose_retention),
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -559,10 +560,10 @@ fun PermanentDeleteConfirmDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
-        title = { Text(stringResource(R.string.settings_advanced_delete_permanently)) },
+        title = { DialogText(stringResource(R.string.settings_advanced_delete_permanently)) },
         text = {
             Column(Modifier.fillMaxWidth()) {
-                Text(
+                DialogText(
                     stringResource(R.string.settings_advanced_permanent_delete_on)
                 )
                 Spacer(Modifier.height(4.dp))
@@ -573,7 +574,7 @@ fun PermanentDeleteConfirmDialog(
                 ) {
                     Checkbox(checked = dontShowAgain, onCheckedChange = { dontShowAgain = it })
                     Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.settings_advanced_warning))
+                    DialogText(stringResource(R.string.settings_advanced_warning))
                 }
             }
         },

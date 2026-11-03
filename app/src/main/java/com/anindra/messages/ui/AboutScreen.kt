@@ -316,7 +316,7 @@ internal fun AboutScreen(
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(Modifier.height(16.dp))
-                    Text(
+                    DialogText(
                         stringResource(R.string.about_diagnostics_body),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -371,7 +371,7 @@ internal fun AboutScreen(
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(Modifier.height(8.dp))
-                    Text(
+                    DialogText(
                         stringResource(R.string.about_licences_intro),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

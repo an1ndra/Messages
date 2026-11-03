@@ -11,6 +11,7 @@ object BidiText {
     const val PDI = '\u2069'
 
     private const val NBSP = '\u00A0'
+    private const val NON_BREAKING_HYPHEN = '\u2011'
 
     /** Base direction a message is laid out in. */
     enum class Direction { LTR, RTL }
@@ -169,24 +170,40 @@ object BidiText {
      *  alone, and a number on an LTR line needs no isolate — the line already
      *  reads left to right.
      *
+     *  An isolate fixes order only: the spaces inside it are still ordinary
+     *  break opportunities, so a card number could wrap across two lines (#405).
+     *  Inside every transformed run, then, a space becomes U+00A0 and a hyphen
+     *  U+2011 — both one character for one, so [Isolated.remap] and every span
+     *  built on it keep their offsets. The copy paths read the raw body, so
+     *  nothing persisted gains these characters.
+     *
      *  The line directions here are the rule the platform itself applies to the
      *  painted text (`TextDirection.Content`), so the transform can never
      *  isolate as if a line were RTL while it is painted LTR. */
     fun isolateNumberRuns(text: String, excluded: List<IntRange> = emptyList()): Isolated {
         val lines = lines(text)
         val identity = Isolated(text, IntArray(text.length + 1) { it }, lines.map { it.direction })
-        val runs = NUMBER_RUN.findAll(text)
+        val numberRuns = NUMBER_RUN.findAll(text)
             .map { it.range }
-            .filter { r -> lines.firstOrNull { r.first in it.range }?.direction == Direction.RTL }
             .filter { needsIsolation(text.substring(it)) }
             .filter { r -> excluded.none { e -> r.first <= e.last && e.first <= r.last } }
             .toList()
+        val runs = numberRuns
+            .filter { r -> lines.firstOrNull { r.first in it.range }?.direction == Direction.RTL }
         // An all-LTR message needs nothing: every line already reads left to
         // right. The pins exist so that in a bubble that mixes both, an LTR
         // line cannot be dragged around by an RTL neighbour.
         val mixed = lines.any { it.direction == Direction.RTL }
         val pinned = if (mixed) lines.filter { it.direction == Direction.LTR }.map { it.range } else emptyList()
         if (runs.isEmpty() && pinned.isEmpty()) return identity
+
+        val nonBreaking = HashMap<Int, Char>()
+        for (r in numberRuns) for (i in r) {
+            when (text[i]) {
+                ' ' -> nonBreaking[i] = NBSP
+                '-' -> nonBreaking[i] = NON_BREAKING_HYPHEN
+            }
+        }
 
         val insert = HashMap<Int, MutableList<Char>>()
         for (r in runs) {
@@ -210,7 +227,7 @@ object BidiText {
             }
             if (closing) offsetMap[o] = n
             if (o < text.length) {
-                sb.append(text[o]); n++
+                sb.append(nonBreaking[o] ?: text[o]); n++
             }
         }
         return Isolated(sb.toString(), offsetMap, lines.map { it.direction })
