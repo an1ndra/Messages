@@ -5,10 +5,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/** #345: on a Persian-locale device every window is RTL while this app's
- *  strings are English (no values-fa yet), so an English dialog sentence's
- *  trailing "?" parked at its visual start. Dialog copy must paint in its own
- *  strong direction, and report it as DialogBidi for the regression scripts. */
+/** #345/#405: an RTL window can host English copy (a locale the app does not
+ *  ship falls back to `values/`, or the window predates `values-fa`; he, ur,
+ *  ckb and ps still fall back today). An English sentence in an RTL paragraph
+ *  parks its trailing "?" or "." at the visual start, so dialog copy must paint
+ *  in its own strong direction and report it as DialogBidi for the regression
+ *  scripts. */
 class DialogDirectionTest {
 
     private val main: File by lazy {
@@ -80,6 +82,75 @@ class DialogDirectionTest {
                 .findAll(dialog).count()
         )
     }
+
+    /** #405's general guard: any AlertDialog title or body whose English copy
+     *  ends in "?", "." or ":" must paint through [DialogText] (or
+     *  directionalStyle). A new dialog with punctuated copy therefore fails
+     *  here instead of parking its punctuation at the visual start on an RTL
+     *  phone. Slots that only compose dynamic values have no resource to read,
+     *  so they are left to their renderer. */
+    @Test
+    fun everyPunctuatedAlertDialogSlotPaintsDirectionally() {
+        val strings = englishStrings()
+        val offenders = mutableListOf<String>()
+        File(main, "java").walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .forEach { file ->
+                val src = file.readText()
+                var at = src.indexOf("AlertDialog(")
+                while (at >= 0) {
+                    val dialog = balancedBlock(src, src.indexOf('{', at))
+                    for (slot in listOf("title", "text")) {
+                        val marker = Regex("""\b$slot\s*=\s*\{""").find(dialog) ?: continue
+                        val block = balancedBlock(dialog, marker.range.last)
+                        val punctuated = Regex("""R\.string\.(\w+)""")
+                            .findAll(block)
+                            .map { it.groupValues[1] }
+                            .filter { endsWithPunctuation(strings[it]) }
+                            .distinct()
+                            .toList()
+                        if (punctuated.isNotEmpty() &&
+                            !block.contains("DialogText(") &&
+                            !block.contains("directionalStyle(")
+                        ) {
+                            offenders += "${file.name}: $slot -> ${punctuated.joinToString()}"
+                        }
+                    }
+                    at = src.indexOf("AlertDialog(", at + 1)
+                }
+            }
+        assertEquals(
+            "punctuated dialog copy must paint in its own strong direction",
+            emptyList<String>(),
+            offenders
+        )
+    }
+
+    /** About's two dialogs are full-window Dialog + Surface (three buttons do
+     *  not fit an AlertDialog row), so the sweep above cannot see them. */
+    @Test
+    fun aboutDialogsPaintTheirBodiesDirectionally() {
+        val src = File(main, "java/com/anindra/messages/ui/AboutScreen.kt").readText()
+        assertEquals(
+            "the diagnostics and licences bodies must both use DialogText",
+            2,
+            Regex("""DialogText\(""").findAll(src).count()
+        )
+    }
+
+    private fun englishStrings(): Map<String, String> {
+        val out = HashMap<String, String>()
+        val xml = Regex("""<string name="([^"]+)"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+        File(main, "res/values").listFiles { f ->
+            f.isFile && f.name.startsWith("strings") && f.extension == "xml"
+        }?.forEach { file ->
+            xml.findAll(file.readText()).forEach { out[it.groupValues[1]] = it.groupValues[2] }
+        }
+        return out
+    }
+
+    private fun endsWithPunctuation(value: String?): Boolean =
+        value?.trim()?.lastOrNull() in setOf('?', '.', ':', '؟')
 
     private fun balancedBlock(src: String, openBrace: Int): String {
         var depth = 0

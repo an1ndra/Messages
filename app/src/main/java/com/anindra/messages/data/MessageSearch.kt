@@ -41,18 +41,29 @@ object MessageSearch {
      * Every occurrence of [query] in [body], case-insensitively, as inclusive
      * ranges the bubble can style. Matching without folding the string keeps
      * the offsets valid for characters whose lowercase form changes length.
+     *
+     * The bubble paints number runs with non-breaking spaces and hyphens so a
+     * card number cannot wrap (#405); a query typed with ordinary ones still
+     * has to hit them. Both substitutions are one character for one, so the
+     * ranges stay valid for the painted string.
      */
     fun ranges(body: String, query: String): List<IntRange> {
         if (query.isBlank()) return emptyList()
+        val text = foldNonBreaking(body)
         val out = mutableListOf<IntRange>()
         var start = 0
         while (true) {
-            val at = body.indexOf(query, start, ignoreCase = true)
+            val at = text.indexOf(query, start, ignoreCase = true)
             if (at < 0) break
             out += at until at + query.length
             start = at + query.length
         }
         return out
+    }
+
+    private fun foldNonBreaking(text: String): String {
+        if (text.none { it == ' ' || it == '‑' }) return text
+        return text.replace(' ', ' ').replace('‑', '-')
     }
 
     /**

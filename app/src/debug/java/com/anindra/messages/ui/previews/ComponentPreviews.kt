@@ -23,6 +23,7 @@ import com.anindra.messages.data.SwipeAction
 import com.anindra.messages.ui.AttachSheet
 import com.anindra.messages.ui.BubblePosition
 import com.anindra.messages.ui.ChatBubble
+import com.anindra.messages.ui.DialogText
 import com.anindra.messages.ui.ReactionBar
 import com.anindra.messages.ui.ReactionChips
 import com.anindra.messages.ui.InputBar
@@ -643,6 +644,21 @@ private fun SkeletonRowsPreview() {
     }
 }
 
+
+/** Dialog copy carries its own direction, shown here as the title/body pair
+ *  the backup-without-a-PIN warning paints (#405). */
+@PreviewLightDark
+@Preview(name = "Dialog text", showBackground = true, widthDp = 320)
+@Composable
+private fun DialogTextPreview() {
+    Stage() {
+        Column(Modifier.padding(24.dp)) {
+            DialogText("Back up without a PIN?")
+            Spacer(Modifier.height(12.dp))
+            DialogText("This backup will not be encrypted.")
+        }
+    }
+}
 
 /** The owner's avatar: profile photo when the device has one, else the silhouette. */
 @PreviewLightDark
