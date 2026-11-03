@@ -107,4 +107,6 @@
     <string name="chat_unstarred">Estrela removida</string>
     <string name="chat_message_starred">Mensagem com estrela</string>
     <string name="chat_album_photos">%1$d fotos</string>
+    <string name="chat_album_more">Mais %1$d fotos</string>
+    <string name="chat_album_previous">Fotos anteriores</string>
 </resources>
