@@ -96,6 +96,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Schedule
 
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -157,6 +158,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -225,7 +228,7 @@ import androidx.compose.runtime.mutableStateListOf
 private val EMOJIS = MessageReactions.EMOJI
 
 private const val INITIAL_CHUNK = 40
-private const val AUTO_CHUNK = 40
+internal const val AUTO_CHUNK = 40
 /**
  * Whether older history should be loaded now.
  *
@@ -282,14 +285,36 @@ internal fun restoredDraft(saved: String?, alreadyLoaded: Boolean): String? =
 /** Rows of slack above the first loaded message that count as "at the top". */
 private const val EARLIER_EDGE_ROWS = 3
 
-private const val AUTO_CAP = 400
-private const val LOAD_EARLIER_STEP = 200
+/**
+ * Rows of older history a search jump loads around its hit. Older history is no
+ * longer capped at 400 rows (issue #406): scrolling up keeps paging until the
+ * thread's beginning.
+ */
+internal const val SEARCH_CONTEXT_ROWS = 60
+
+/** The page size after one more scroll-up load: monotonic, never above [total]. */
+internal fun grownPageLimit(current: Int, total: Int, step: Int = AUTO_CHUNK): Int =
+    (current + step).coerceAtMost(maxOf(total, current))
+
+/**
+ * The page size that reaches a hit [newerCount] rows from the newest message,
+ * plus context. A search jump asks for this once instead of walking the thread
+ * in fixed steps, which made a hit thousands of rows back take seconds.
+ */
+internal fun searchPageLimit(newerCount: Int, total: Int): Int =
+    (newerCount + SEARCH_CONTEXT_ROWS).coerceIn(0, total)
+
+/** Whether the loaded window still excludes part of the thread. */
+internal fun hasEarlierMessages(totalCount: Int, pageLimit: Int): Boolean =
+    totalCount > pageLimit
 
 /** The first visible chat row at the moment the pager grows, restored once the
  *  older rows land. LazyColumn re-anchors by key itself, but only within a
- *  bounded window around the previous index, so a LOAD_EARLIER_STEP prepend
- *  pushes that key out of the window and the view drifts up the thread. */
-private class PrependAnchor(val key: Any, val offset: Int)
+ *  bounded window around the previous index, so a large prepend pushes that key
+ *  out of the window and the view drifts up the thread. */
+/** What to restore once a requested page lands. [key] is null for a search
+ *  jump, which has no row to hold. */
+private class PendingLoad(val key: Any?, val offset: Int, val rowsBefore: Int)
 
 /** The visible rows in the shape [ChatZoom.anchorAt] takes. */
 private fun LazyListState.zoomItems(): List<ChatZoom.Item> =
@@ -351,6 +376,10 @@ internal fun ChatBubble(
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
+    // The bubble is aligned by logical Start/End, so "mine" sits on the physical
+    // right in LTR and on the physical left in RTL. The reaction bar has to hug
+    // the same outer edge as the bubble or it overflows the screen.
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val searchResultLabel = stringResource(R.string.chat_search_result)
     val slidePx = with(LocalDensity.current) { BubbleEntrance.SLIDE_DP.dp.toPx() }
     val bubbleReduceMotion = LocalReduceMotion.current
@@ -545,8 +574,10 @@ internal fun ChatBubble(
                 layout(bubble.width, bubble.height) {
                     bubble.place(0, 0)
                     bar?.let {
-                        val x = if (msg.isMe) bubble.width - it.width else 0
-                        it.place(x, -it.height - barGapPx)
+                        it.place(
+                            reactionBarX(msg.isMe, isRtl, bubble.width, it.width),
+                            -it.height - barGapPx
+                        )
                     }
                 }
             }
@@ -620,10 +651,19 @@ internal fun ChatBubble(
 }
 
 
+/**
+ * X offset of the reaction bar inside the bubble's layout: it hugs the same
+ * physical outer edge as the bubble. In LTR that is the right edge for an
+ * outgoing bubble and the left edge for an incoming one; RTL is the mirror.
+ * Without the mirror the bar kept its left edge on an incoming RTL bubble and
+ * ran off the right side of the screen (issue #408).
+ */
+internal fun reactionBarX(isMe: Boolean, isRtl: Boolean, bubbleWidth: Int, barWidth: Int): Int =
+    if (isMe != isRtl) bubbleWidth - barWidth else 0
+
 /** The tap-to-toggle emoji bar shown on a long-pressed message (issue #188). */
 @Composable
-internal fun ReactionBar(
-    selected: Set<String>,
+internal fun ReactionBar(    selected: Set<String>,
     onReact: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -873,9 +913,9 @@ fun ChatScreen(
         (if (searchOpen) chatQuery else searchQuery)?.trim()?.takeIf { it.isNotEmpty() }
     }
     // The matches come from the whole thread, not just the loaded window: the
-    // home list surfaces a thread on a hit buried past the 400-message auto-load
-    // cap, so the chat has to be able to reach it too (the pager grows on
-    // demand while a hit is older than what it holds).
+    // home list surfaces a thread on a hit buried deep in its history, so the
+    // chat has to be able to reach it too (the pager grows on demand while a hit
+    // is older than what it holds).
     val hideLinks = vm.settings.hideLinks
     val searchMatches by remember(conversationId, activeSearch, hideLinks) {
         if (activeSearch == null) flowOf(emptyList())
@@ -908,12 +948,17 @@ fun ChatScreen(
             entranceBaseline = messages.maxOfOrNull { it.id } ?: 0L
         }
     }
-    val pendingEarlier = messagesLoaded && totalCount > pageLimit && pageLimit < AUTO_CAP
-    // The focused hit older than everything loaded needs the pager past AUTO_CAP;
-    // without this the home list surfaces a thread the chat can never reach.
+    // Until the whole thread is loaded. There used to be an AUTO_CAP of 400
+    // here, so a long conversation simply stopped loading older history
+    // (issue #406). The open-stability rules — no load until the reader has
+    // reached the top themselves — are what keep the extra pages from firing
+    // on open, so the cap is not what was preventing the flicker.
+    val pendingEarlier = messagesLoaded && hasEarlierMessages(totalCount, pageLimit)
+    // A search hit older than the loaded window: jump straight to it rather
+    // than walking the history in fixed steps.
     // Follows the *focused* hit, not the oldest match: keying on the oldest made
-    // one ancient hit anywhere in the thread walk the whole history in 200-row
-    // steps while the view sat on a hit that was already loaded (issue #284).
+    // one ancient hit anywhere in the thread walk the whole history while the
+    // view sat on a hit that was already loaded (issue #284).
     val oldestLoadedId = messages.minOfOrNull { it.id }
     val searchWantsOlder = activeSearch != null && focusedSearchId != null &&
         oldestLoadedId != null && focusedSearchId < oldestLoadedId
@@ -1381,6 +1426,12 @@ fun ChatScreen(
     // not count as a new request, or every load would ask for the next one and
     // the chat would page in its whole history on open again.
     var handledRequest by remember(conversationId) { mutableIntStateOf(0) }
+    // Drives the spinner at the top of the list. It is part of the list, so the
+    // prepend anchor below has to count it as a row while it is showing.
+    var loadingEarlier by remember(conversationId) { mutableStateOf(false) }
+    // Row to hold and window size to wait for; survives the effect restart that
+    // the pageLimit write causes.
+    var pendingLoad by remember(conversationId) { mutableStateOf<PendingLoad?>(null) }
     LaunchedEffect(conversationId) {
         snapshotFlow {
             val info = listState.layoutInfo
@@ -1388,34 +1439,78 @@ fun ChatScreen(
         }.collect { (total, first) ->
             // Not before the open has landed on the newest message: until then
             // the list still sits at the top of the rows that just loaded, which
-            // is exactly the state that used to trigger a preload.
-            if (hasScrolledToBottom && shouldLoadEarlier(total, first)) earlierRequest++
+            // is exactly the state that used to trigger a preload. The spinner
+            // is row 0 while it shows, so it must not count as reaching the top.
+            if (hasScrolledToBottom && !loadingEarlier && shouldLoadEarlier(total, first)) {
+                earlierRequest++
+            }
         }
     }
-    LaunchedEffect(pageLimit, totalCount, searchWantsOlder, earlierRequest) {
-        if (!searchWantsOlder) {
-            if (earlierRequest == handledRequest || !pendingEarlier) return@LaunchedEffect
-            handledRequest = earlierRequest
+    LaunchedEffect(searchWantsOlder, earlierRequest, focusedSearchId) {
+        if (searchWantsOlder) {
+            // One query and one page, wherever the hit is: a hit thousands of
+            // rows back used to be reached in fixed 200-row steps, each behind
+            // the same settling delay.
+            val id = focusedSearchId ?: return@LaunchedEffect
+            val newer = vm.messageCountNewerThan(conversationId, id)
+            val wanted = searchPageLimit(newer, totalCount)
+            if (wanted <= pageLimit) return@LaunchedEffect
+            loadingEarlier = true
+            pendingLoad = PendingLoad(key = null, offset = 0, rowsBefore = chatRows.size)
+            android.util.Log.d("ChatPaging", "search jump newer=$newer limit=$wanted")
+            pageLimit = wanted
+            return@LaunchedEffect
         }
+        if (earlierRequest == handledRequest || !pendingEarlier) return@LaunchedEffect
         delay(240)
+        // Marked only after the settling delay: the effect is restarted whenever
+        // its keys change, and a request that arrived while the previous one was
+        // waiting used to be marked handled by a run that then got cancelled —
+        // leaving the request unserved and the pager parked at its old limit.
+        if (earlierRequest == handledRequest) return@LaunchedEffect
+        handledRequest = earlierRequest
         // Hold the first visible row across the prepend. LazyColumn re-anchors by
         // key, but only within a bounded window around the previous index, so a
-        // LOAD_EARLIER_STEP prepend pushes that key out of the window and the
-        // view silently drifts up the thread (issue #284). Without this the
-        // search fix alone leaves an intermittent few-row drift.
+        // large prepend pushes that key out of the window and the view silently
+        // drifts up the thread (issue #284).
         val first = listState.layoutInfo.visibleItemsInfo.firstOrNull()
-        val anchor = first?.let { PrependAnchor(it.key, it.offset) }
         val rowsBefore = chatRows.size
         // Permanent report: older history must not load while a chat is merely
         // being opened. scripts/test-chat-open-stability.sh asserts this stays
         // silent for a conversation opened at the bottom.
-        if (!searchWantsOlder) android.util.Log.d("ChatPreload", "scroll-up load rowsBefore=$rowsBefore")
-        pageLimit = (pageLimit + if (searchWantsOlder) LOAD_EARLIER_STEP else AUTO_CHUNK)
-            .coerceAtMost(if (searchWantsOlder) totalCount else AUTO_CAP)
-        if (anchor != null) {
-            snapshotFlow { chatRows.size }.first { it > rowsBefore }
-            val idx = chatRows.indexOfFirst { it.key == anchor.key }
-            if (idx >= 0) listState.scrollToItem(idx, anchor.offset)
+        android.util.Log.d("ChatPreload", "scroll-up load rowsBefore=$rowsBefore")
+        val next = grownPageLimit(pageLimit, totalCount)
+        android.util.Log.d("ChatPaging", "scroll-up load limit=$next of $totalCount")
+        loadingEarlier = true
+        // The restore runs in its own effect: changing pageLimit restarts this
+        // one (it is read through composition), and the old inline wait was
+        // cancelled before it could put the view back or clear the spinner —
+        // which left the spinner up and blocked every later scroll-up load.
+        pendingLoad = PendingLoad(first?.key, first?.offset ?: 0, rowsBefore)
+        pageLimit = next
+    }
+    // Finishes a page load once its rows are in: restores the row the reader was
+    // looking at and takes the spinner down.
+    LaunchedEffect(chatRows.size, pendingLoad) {
+        val load = pendingLoad ?: return@LaunchedEffect
+        if (chatRows.size <= load.rowsBefore) return@LaunchedEffect
+        pendingLoad = null
+        val key = load.key
+        if (key != null) {
+            val idx = chatRows.indexOfFirst { it.key == key }
+            // The spinner occupies index 0 for as long as loadingEarlier is set.
+            if (idx >= 0) listState.scrollToItem(idx + 1, load.offset)
+        }
+        loadingEarlier = false
+    }
+    // A page that never grew the window (the rows were all already loaded)
+    // must not leave the spinner up and the pager blocked forever.
+    LaunchedEffect(pendingLoad) {
+        if (pendingLoad == null) return@LaunchedEffect
+        delay(2500)
+        if (pendingLoad != null) {
+            pendingLoad = null
+            loadingEarlier = false
         }
     }
     LaunchedEffect(conversationId) {
@@ -1742,6 +1837,29 @@ fun ChatScreen(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
+                // The spinner is the first row while an older page is being
+                // fetched (issue #406). It is placed before the messages so the
+                // top of the list does not appear to end.
+                if (loadingEarlier) {
+                    item(key = "loading_earlier") {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .semantics {
+                                        contentDescription =
+                                            context.getString(R.string.chat_loading_earlier)
+                                    },
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
+                }
                 itemsIndexed(chatRows, key = { _, row -> row.key }) { idx, row ->
                     if (row is ChatRow.Pending) {
                         ScheduledBubble(
@@ -1963,7 +2081,7 @@ fun ChatScreen(
         AlertDialog(
             onDismissRequest = { showBlockedDialog = false },
             title = { Text(stringResource(R.string.chat_number_blocked)) },
-            text = { Text(stringResource(R.string.chat_blocked_send)) },
+            text = { DialogText(stringResource(R.string.chat_blocked_send)) },
             confirmButton = {
                 TextButton(onClick = {
                     showBlockedDialog = false
@@ -2791,7 +2909,7 @@ internal fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () ->
         title = { Text(stringResource(R.string.chat_link_caution)) },
         text = {
             Column {
-                Text(stringResource(R.string.chat_link_warning))
+                DialogText(stringResource(R.string.chat_link_warning))
                 Spacer(Modifier.height(12.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,

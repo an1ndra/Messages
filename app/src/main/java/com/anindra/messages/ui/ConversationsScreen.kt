@@ -117,6 +117,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -862,13 +864,16 @@ internal fun SwipeConversationItem(
         }
     )
     dismissStateRef = dismissState
+    // Compose's settle values follow the layout's start/end edges, so in RTL
+    // StartToEnd is a leftward drag. The configured actions are physical.
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     SwipeToDismissBox(
         state = dismissState,
         modifier = modifier,
         backgroundContent = {
             val direction = dismissState.dismissDirection
-            val action = direction.action(settings)
+            val action = direction.action(settings, isRtl)
 
             val bgColor by animateColorAsState(
                 targetValue = action.background(),
@@ -900,10 +905,12 @@ internal fun SwipeConversationItem(
         },
         // A direction set to OFF must not be swipeable at all, not just inert.
         enableDismissFromStartToEnd = swipeActionFor(
-            travelsRight = true, settings.swipeLeftAction, settings.swipeRightAction
+            travelsRight = SwipeToDismissBoxValue.StartToEnd.travelsRight(isRtl),
+            settings.swipeLeftAction, settings.swipeRightAction
         ) != SwipeAction.OFF,
         enableDismissFromEndToStart = swipeActionFor(
-            travelsRight = false, settings.swipeLeftAction, settings.swipeRightAction
+            travelsRight = SwipeToDismissBoxValue.EndToStart.travelsRight(isRtl),
+            settings.swipeLeftAction, settings.swipeRightAction
         ) != SwipeAction.OFF
     ) {
         ConversationRow(
@@ -922,7 +929,7 @@ internal fun SwipeConversationItem(
     }
 
     LaunchedEffect(dismissState.currentValue) {
-        when (dismissState.currentValue.action(settings)) {
+        when (dismissState.currentValue.action(settings, isRtl)) {
             SwipeAction.ARCHIVE -> onArchive()
             SwipeAction.DELETE -> onDelete()
             SwipeAction.MARK_READ_UNREAD -> onToggleRead()
@@ -937,15 +944,12 @@ internal fun SwipeConversationItem(
 }
 
 /** The action a swipe in [this] direction performs, per the user's configuration. */
-private fun SwipeToDismissBoxValue.action(settings: RowSettings): SwipeAction = when (this) {
-    SwipeToDismissBoxValue.StartToEnd -> swipeActionFor(
-        travelsRight = true, settings.swipeLeftAction, settings.swipeRightAction
-    )
-    SwipeToDismissBoxValue.EndToStart -> swipeActionFor(
-        travelsRight = false, settings.swipeLeftAction, settings.swipeRightAction
-    )
-    else -> SwipeAction.OFF
-}
+private fun SwipeToDismissBoxValue.action(settings: RowSettings, isRtl: Boolean): SwipeAction =
+    when (this) {
+        SwipeToDismissBoxValue.StartToEnd, SwipeToDismissBoxValue.EndToStart ->
+            swipeActionFor(travelsRight(isRtl), settings.swipeLeftAction, settings.swipeRightAction)
+        else -> SwipeAction.OFF
+    }
 
 @Composable
 private fun SwipeAction.background() = when (this) {
@@ -985,13 +989,23 @@ private fun SwipeAction.icon(unread: Boolean): ImageVector = when (this) {
  */
 @Composable
 fun SwipeActionPreview(direction: SwipeDirection, action: SwipeAction) {
-    val blockAtEnd = direction.revealsTrailingEdge
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    // The gesture is physical: a leftward finger slides the row left and
+    // uncovers its right edge in every layout direction. Logical Start/End
+    // placement mirrored this preview in RTL, so it advertised the block on the
+    // side the real swipe would *not* reveal, and the action read as swapped.
+    val side = direction.revealedSide()
+    val blockOnPhysicalRight = side == RevealSide.RIGHT
+    // A logical start in this layout: the first child of the Row.
+    val blockFirstInRow = blockOnPhysicalRight == isRtl
     val shape = RoundedCornerShape(SettingsLayout.PREVIEW_RADIUS)
-    // The action colour is drawn on whichever edge the row slides in from.
-    val blockShape = if (blockAtEnd) {
-        RoundedCornerShape(topEnd = SettingsLayout.PREVIEW_RADIUS, bottomEnd = SettingsLayout.PREVIEW_RADIUS)
+    val radius = SettingsLayout.PREVIEW_RADIUS
+    // Round only the corners on the physical edge the block hugs.
+    val roundStart = blockOnPhysicalRight == isRtl
+    val blockShape = if (roundStart) {
+        RoundedCornerShape(topStart = radius, bottomStart = radius)
     } else {
-        RoundedCornerShape(topStart = SettingsLayout.PREVIEW_RADIUS, bottomStart = SettingsLayout.PREVIEW_RADIUS)
+        RoundedCornerShape(topEnd = radius, bottomEnd = radius)
     }
 
     Row(
@@ -1002,7 +1016,9 @@ fun SwipeActionPreview(direction: SwipeDirection, action: SwipeAction) {
             .clip(shape)
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f))
     ) {
-        if (!blockAtEnd) IconBlock(action, blockShape, atEnd = false)
+        if (blockFirstInRow) {
+            IconBlock(action, blockShape, onPhysicalRight = blockOnPhysicalRight, isRtl = isRtl)
+        }
         // The mock row takes the slack so the colour block always sits flush
         // against the edge the swipe uncovers.
         Row(
@@ -1036,27 +1052,36 @@ fun SwipeActionPreview(direction: SwipeDirection, action: SwipeAction) {
                 )
             }
         }
-        if (blockAtEnd) IconBlock(action, blockShape, atEnd = true)
+        if (!blockFirstInRow) {
+            IconBlock(action, blockShape, onPhysicalRight = blockOnPhysicalRight, isRtl = isRtl)
+        }
     }
 }
 
 /**
  * The revealed colour block with the action's icon. Hidden when there is no
- * action. The icon hugs the row's outer edge, matching the real gesture.
+ * action. The icon hugs the row's physical outer edge, matching the real
+ * gesture.
  */
 @Composable
-private fun RowScope.IconBlock(action: SwipeAction, shape: Shape, atEnd: Boolean) {
+private fun RowScope.IconBlock(
+    action: SwipeAction,
+    shape: Shape,
+    onPhysicalRight: Boolean,
+    isRtl: Boolean
+) {
     if (action == SwipeAction.OFF) {
         Spacer(Modifier.width(SettingsLayout.PREVIEW_BLOCK_WIDTH))
         return
     }
+    val hugStart = onPhysicalRight == isRtl
     Box(
         modifier = Modifier
             .width(SettingsLayout.PREVIEW_BLOCK_WIDTH)
             .fillMaxHeight()
             .clip(shape)
             .background(action.background()),
-        contentAlignment = if (atEnd) Alignment.CenterEnd else Alignment.CenterStart
+        contentAlignment = if (hugStart) Alignment.CenterStart else Alignment.CenterEnd
     ) {
         Icon(
             imageVector = action.icon(unread = false),
@@ -1314,10 +1339,14 @@ internal fun StartChatFab(
             .clip(RoundedCornerShape(16.dp))
             .background(cs.startChatContainer)
             .clickable(onClick = onClick)
-            .semantics { contentDescription = context.getString(R.string.access_start_chat) },
+            .semantics { contentDescription = context.getString(R.string.access_start_chat) }
+            // Padding, not spacers: a spacer can be squeezed to zero while the
+            // pill animates, leaving the label flush against the clipped edge
+            // (the RTL report showed the text touching the pill's end). At the
+            // collapsed 56dp width this leaves exactly the 24dp icon.
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Spacer(Modifier.width(16.dp))
         Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null, tint = cs.startChatContent)
         if (p > 0.01f) {
             Spacer(Modifier.width(8.dp))
@@ -1332,7 +1361,6 @@ internal fun StartChatFab(
                 maxLines = 1,
                 softWrap = false
             )
-            Spacer(Modifier.width(16.dp))
         }
     }
 }
