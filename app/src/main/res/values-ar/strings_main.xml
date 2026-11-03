@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">أدخل الرقم السري للنسخة الاحتياطية</string>
     <string name="settings_pin_error_too_short">يجب أن يتألف الرقم السري من 4 أرقام على الأقل</string>
     <string name="settings_pin_error_mismatch">الأرقام السرية غير متطابقة</string>
-    <string name="settings_sound_arrival">الصوت الذي يُشغَّل عند وصول رسالة</string>
     <string name="convo_moved_to_trash">تم نقل المحادثة إلى سلة المحذوفات</string>
     <string name="convo_archived">تم أرشفت المحادثة</string>
     <string name="action_undo">تراجع</string>

@@ -123,17 +123,7 @@ fun SettingsScreen(
 
     var themeDialog by remember { mutableStateOf(false) }
     var markReadDialog by remember { mutableStateOf(false) }
-    var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
-    val notificationSoundOptions = listOf(
-        SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
-        SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
-        SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
-    )
     val themeMode = vm.themeMode
-
-    var soundDialog by remember { mutableStateOf(false) }
 
     var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
@@ -561,55 +551,6 @@ fun SettingsScreen(
                 TextButton(onClick = { markReadDialog = false }) {
                     Text(stringResource(R.string.common_cancel))
                 }
-            }
-        )
-    }
-
-    if (soundDialog) {
-        AlertDialog(
-            onDismissRequest = { soundDialog = false },
-            title = { Text(stringResource(R.string.settings_pin_notification_sound)) },
-            text = {
-                Column {
-                    Text(
-                        stringResource(R.string.settings_sound_arrival),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    notificationSoundOptions.forEach { (value, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    notificationSound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                                .padding(vertical = 2.dp)
-                        ) {
-                            RadioButton(
-                                selected = notificationSound == value,
-                                onClick = {
-                                    notificationSound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(label)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.settings.notificationSound = notificationSound
-                    NotificationHelper.ensureChannels(context)
-                    soundDialog = false
-                }) { Text(stringResource(R.string.common_ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { soundDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -1139,9 +1080,6 @@ private fun themeLabel(mode: String, context: android.content.Context) = when (m
 }
 
 
-
-private fun notificationSoundLabel(value: String, options: List<Pair<String, String>>, context: android.content.Context) =
-    options.firstOrNull { it.first == value }?.second ?: context.getString(R.string.settings_sound_default)
 
 /**
  * A single-choice group of [options] (label to optional supporting text),

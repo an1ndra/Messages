@@ -24,7 +24,6 @@
     <string name="settings_pin_repeat">PIN दोबारा दर्ज करें</string>
     <string name="settings_pin_delete_permanently">स्थायी रूप से हटाएं?</string>
     <string name="settings_pin_delay">भेजने से पहले देरी</string>
-    <string name="settings_pin_notification_sound">सूचना ध्वनि</string>
     <string name="settings_notif_manage_channels">सिस्टम सेटिंग में प्रबंधित करें</string>
     <string name="settings_notif_manage_channels_subtitle">प्रति श्रेणी ध्वनि, कंपन और प्राथमिकता</string>
     <string name="settings_pin_sim_card">SIM कार्ड</string>
@@ -160,11 +159,6 @@
     <string name="settings_restore_title">बहाल करें (सभी बदलें)</string>
     <string name="settings_restore_subtitle">मौजूदा संदेश हटाएं और बैकअप बहाल करें</string>
     <string name="settings_delay_with_value">%ds बाद भेजें</string>
-    <string name="settings_sound_default">डिफ़ॉल्ट (सिस्टम)</string>
-    <string name="settings_sound_classic">क्लासिक</string>
-    <string name="settings_sound_dragon">Dragon Studio</string>
-    <string name="settings_sound_chime">चिम</string>
-    <string name="settings_sound_bubble">बबल</string>
     <string name="settings_theme_light">लाइट</string>
     <string name="settings_theme_dark">डार्क</string>
     <string name="settings_theme_amoled">Amoled</string>
