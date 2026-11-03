@@ -1,5 +1,6 @@
 package com.anindra.messages.ui
 
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.data.SwipeAction
@@ -153,6 +154,30 @@ enum class SwipeDirection { LEFT, RIGHT }
  */
 fun swipeActionFor(travelsRight: Boolean, left: SwipeAction, right: SwipeAction): SwipeAction =
     if (travelsRight) right else left
+
+/**
+ * Whether a settle value means the finger/row travelled to the physical right.
+ *
+ * Compose anchors [SwipeToDismissBoxValue.StartToEnd] at the layout's *start*
+ * edge, so the same value is a rightward drag in LTR and a leftward one in RTL.
+ * The settings labels ("Swipe left" / "Swipe right") and the actions they
+ * configure are physical, so the two have to be translated through this.
+ */
+fun SwipeToDismissBoxValue.travelsRight(isRtl: Boolean): Boolean = when (this) {
+    SwipeToDismissBoxValue.StartToEnd -> !isRtl
+    SwipeToDismissBoxValue.EndToStart -> isRtl
+    else -> false
+}
+
+/** A physical side of the screen; unaffected by layout direction. */
+enum class RevealSide { LEFT, RIGHT }
+
+/**
+ * The physical side a swipe uncovers: the row slides away from it. A leftward
+ * finger leaves the exposed block on the right, in every layout direction.
+ */
+fun SwipeDirection.revealedSide(): RevealSide =
+    if (this == SwipeDirection.LEFT) RevealSide.RIGHT else RevealSide.LEFT
 
 /**
  * The action a swipe in this direction performs. A direction set to
