@@ -36,6 +36,7 @@ import com.anindra.messages.ui.MessageRow
 import com.anindra.messages.ui.ScheduledBubble
 import com.anindra.messages.ui.SimPickerDialog
 import com.anindra.messages.ui.SkeletonMessageRow
+import com.anindra.messages.ui.StarBadge
 import com.anindra.messages.ui.TextCopyDialog
 import com.anindra.messages.ui.ForwardPicker
 import com.anindra.messages.ui.ImagePreview
@@ -214,6 +215,13 @@ private fun ScheduledBubblePreview() {
             onCancel = {}
         )
     }
+}
+
+@PreviewLightDark
+@Preview(name = "Starred badge", showBackground = true, widthDp = 120)
+@Composable
+private fun StarBadgePreview() {
+    Stage { StarBadge() }
 }
 
 @PreviewLightDark
