@@ -385,6 +385,32 @@ class MmsSupportTest {
     }
 
     @Test
+    fun aCompleteMmsThatStillCarriesTheNoticeIsReadAgain() {
+        val first = MmsSupport.partUri(11)
+        val second = MmsSupport.partUri(12)
+        val stored = mapOf(7L to setOf(first, second), 8L to setOf(first))
+        val parts = mapOf(7L to listOf(11L, 12L), 8L to listOf(11L, 12L))
+        assertEquals(setOf(7L), MmsSupport.completeMmsIds(stored, parts))
+        // 7 has every part, but its body still says pictures are not displayed,
+        // which only the provider can disprove.
+        assertEquals(emptySet<Long>(), MmsSupport.skippableMmsIds(stored, parts, setOf(7L)))
+        // A notice on an incomplete row does not drag a complete sibling down.
+        assertEquals(setOf(7L), MmsSupport.skippableMmsIds(stored, parts, setOf(8L)))
+    }
+
+    @Test
+    fun theBodyNoticeIsRecognisable() {
+        val notice = MmsSupport.content(listOf(
+            MmsSupport.Part(1, "image/png"),
+            MmsSupport.Part(2, "video/mp4")
+        )).body
+        assertEquals("[MMS: 1 additional/unsupported attachment(s) not displayed]", notice)
+        assertTrue(MmsSupport.carriesNotice(notice))
+        assertTrue(MmsSupport.carriesNotice("Caption\n$notice"))
+        assertFalse(MmsSupport.carriesNotice("Caption"))
+    }
+
+    @Test
     fun onlyANewUnreadInboundMmsBumpsTheBadge() {
         assertTrue(MmsSupport.countsAsNewUnread(isMe = false, read = false, alreadyStored = false))
         assertFalse(MmsSupport.countsAsNewUnread(isMe = true, read = false, alreadyStored = false))

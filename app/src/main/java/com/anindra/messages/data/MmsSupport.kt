@@ -31,6 +31,22 @@ object MmsSupport {
     }.keys
 
     /**
+     * The provider MMS the import can skip this pass.
+     *
+     * Every part being stored is not enough: the first row's body can still
+     * carry the notice an older import wrote over pictures that now have rows of
+     * their own. Whether its count is still true is only visible in the
+     * provider's parts, so a row that still makes the claim always goes through
+     * the import again — a genuinely unsupported attachment (a video)
+     * reproduces the same notice and the row is left alone.
+     */
+    fun skippableMmsIds(
+        stored: Map<Long, Set<String>>,
+        mediaPartIds: Map<Long, List<Long>>,
+        withNotice: Set<Long>
+    ): Set<Long> = completeMmsIds(stored, mediaPartIds) - withNotice
+
+    /**
      * Whether an imported MMS should raise its conversation's unread badge.
      *
      * Only a message the store did not have yet counts. Backfilling a missing
@@ -280,6 +296,12 @@ object MmsSupport {
         else -> "file"
     }
 
+    /** The sentence [content] writes when it could not show every attachment.
+     *  Only the provider's parts can say whether it is still true. */
+    private const val NOTICE_MARKER = "additional/unsupported attachment(s) not displayed"
+
+    fun carriesNotice(body: String): Boolean = body.contains(NOTICE_MARKER)
+
     fun content(parts: List<Part>): Content {
         // Every attachment the provider can hand out gets a message row of its
         // own, so a four-picture MMS arrives as four pictures rather than one
@@ -293,7 +315,7 @@ object MmsSupport {
         val omitted = parts.count {
             mime(it.mime) !in setOf("text/plain", "application/smil") && it.id !in shownIds
         }
-        val notice = if (omitted > 0) "[MMS: $omitted additional/unsupported attachment(s) not displayed]" else ""
+        val notice = if (omitted > 0) "[MMS: $omitted $NOTICE_MARKER]" else ""
         return Content(
             body = listOf(text, notice).filter { it.isNotEmpty() }.joinToString("\n"),
             imageId = images.firstOrNull()?.id,
