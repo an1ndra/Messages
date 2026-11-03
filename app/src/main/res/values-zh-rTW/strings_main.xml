@@ -36,7 +36,6 @@
     <string name="settings_pin_dialog_enter">輸入備份 PIN</string>
     <string name="settings_pin_error_too_short">PIN 碼至少需要 4 位數</string>
     <string name="settings_pin_error_mismatch">PIN 碼不一致</string>
-    <string name="settings_sound_arrival">收到訊息時播放的聲音</string>
     <string name="convo_moved_to_trash">對話已移至垃圾桶</string>
     <string name="convo_archived">對話已封存</string>
     <string name="action_undo">復原</string>

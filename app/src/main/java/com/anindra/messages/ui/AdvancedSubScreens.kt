@@ -49,25 +49,13 @@ import com.anindra.messages.sms.NotificationCategory
 import com.anindra.messages.sms.NotificationChannels
 import com.anindra.messages.sms.SimMmsProbe
 
-/** Bundled message tones, shared by the category sound pickers. */
-internal fun contactSoundOptions(context: android.content.Context): List<Pair<String, String>> = listOf(
-    SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
-    SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
-    SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
-    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
-    SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
-)
-
-internal fun contactSoundLabel(context: android.content.Context, value: String): String =
-    contactSoundOptions(context).firstOrNull { it.first == value }?.second
-        ?: context.getString(R.string.settings_sound_default)
-
 private const val DAYS_TRASH = "trash"
 private const val DAYS_SPAM = "spam"
 
 /**
- * Sound and delivery options. This is where the notification *sound* lives, so
- * the picker has to stay reachable; it used to sit on General settings.
+ * Sound and delivery options. The tone itself lives in Android's channel page:
+ * a channel's sound cannot be changed once it exists, so an app-side picker
+ * could only disagree with what the channel actually plays (#339).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,22 +66,10 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
 
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
-    var sound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
-    var soundDialog by remember { mutableStateOf(false) }
-    var categoryDialog by remember { mutableStateOf<NotificationCategory?>(null) }
-    var pendingCategorySound by remember { mutableStateOf(SettingsStore.NOTIFY_SOUND_DEFAULT) }
     var actionReply by remember(revision) { mutableStateOf(vm.settings.notifActionReply) }
     var actionMarkRead by remember(revision) { mutableStateOf(vm.settings.notifActionMarkRead) }
     var actionDelete by remember(revision) { mutableStateOf(vm.settings.notifActionDelete) }
     var bubbleBackCloses by remember(revision) { mutableStateOf(vm.settings.bubbleBackCloses) }
-
-    val options = listOf(
-        SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
-        SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
-        SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
-    )
 
     SettingsScaffold(
         title = stringResource(R.string.settings_notif_title),
@@ -117,32 +93,6 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                     NotificationHelper.reconcileAsync(context)
                 }
             )
-            SettingsRow(
-                position = RowPosition.MIDDLE,
-                title = stringResource(R.string.settings_pin_notification_sound),
-                subtitle = options.firstOrNull { it.first == sound }?.second
-                    ?: context.getString(R.string.settings_sound_default),
-                enabled = receiveSound,
-                onClick = { soundDialog = true }
-            )
-            NotificationCategory.entries.forEach { category ->
-                val key = NotificationCategory.keyOf(category)
-                SettingsRow(
-                    position = RowPosition.MIDDLE,
-                    title = stringResource(NotificationChannels.titleRes(category)),
-                    subtitle = contactSoundLabel(context, vm.settings.notificationSoundFor(key)),
-                    enabled = receiveSound,
-                    onClick = {
-                        categoryDialog = category
-                        pendingCategorySound =
-                            if (vm.settings.hasNotificationSoundOverride(key)) {
-                                vm.settings.notificationSoundFor(key)
-                            } else {
-                                ""
-                            }
-                    }
-                )
-            }
             SettingsRow(
                 position = RowPosition.MIDDLE,
                 title = stringResource(R.string.settings_notif_manage_channels),
@@ -180,106 +130,6 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
         }
 
         SettingsFooter(stringResource(R.string.settings_notif_footer))
-    }
-
-    if (soundDialog) {
-        AlertDialog(
-            onDismissRequest = { soundDialog = false },
-            title = { Text(stringResource(R.string.settings_pin_notification_sound)) },
-            text = {
-                Column {
-                    options.forEach { (value, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    sound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                                .padding(vertical = 2.dp)
-                        ) {
-                            RadioButton(
-                                selected = sound == value,
-                                onClick = {
-                                    sound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                            )
-                            Spacer(Modifier.padding(start = 8.dp))
-                            Text(label)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.settings.notificationSound = sound
-                    NotificationHelper.ensureChannels(context)
-                    NotificationHelper.reconcileAsync(context)
-                    soundDialog = false
-                }) { Text(stringResource(R.string.common_ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { soundDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
-        )
-    }
-
-    categoryDialog?.let { category ->
-        val key = NotificationCategory.keyOf(category)
-        val categoryOptions = listOf(
-            "" to context.getString(R.string.contact_notification_sound_default)
-        ) + options
-        AlertDialog(
-            onDismissRequest = { categoryDialog = null },
-            title = { Text(stringResource(NotificationChannels.titleRes(category))) },
-            text = {
-                Column {
-                    categoryOptions.forEach { (value, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    pendingCategorySound = value
-                                    if (value.isNotEmpty()) {
-                                        NotificationHelper.previewNotificationSound(context, value)
-                                    }
-                                }
-                                .padding(vertical = 2.dp)
-                        ) {
-                            RadioButton(
-                                selected = pendingCategorySound == value,
-                                onClick = {
-                                    pendingCategorySound = value
-                                    if (value.isNotEmpty()) {
-                                        NotificationHelper.previewNotificationSound(context, value)
-                                    }
-                                }
-                            )
-                            Spacer(Modifier.padding(start = 8.dp))
-                            Text(label)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.settings.setNotificationSoundFor(key, pendingCategorySound)
-                    NotificationHelper.ensureChannels(context)
-                    NotificationHelper.reconcileAsync(context)
-                    categoryDialog = null
-                }) { Text(stringResource(R.string.common_ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { categoryDialog = null }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
-        )
     }
 }
 

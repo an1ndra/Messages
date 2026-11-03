@@ -24,7 +24,6 @@
     <string name="settings_pin_repeat">PIN wiederholen</string>
     <string name="settings_pin_delete_permanently">Immer löschen?</string>
     <string name="settings_pin_delay">Verzögerung vor dem Senden</string>
-    <string name="settings_pin_notification_sound">Benachrichtigungston</string>
     <string name="settings_notif_manage_channels">In den Systemeinstellungen verwalten</string>
     <string name="settings_notif_manage_channels_subtitle">Ton, Vibration und Priorität pro Kategorie</string>
     <string name="settings_pin_sim_card">SIM-Karte</string>
@@ -160,11 +159,6 @@
     <string name="settings_restore_title">Wiederherstellen (alles ersetzen)</string>
     <string name="settings_restore_subtitle">Aktuelle Nachrichten entfernen und Sicherung wiederherstellen</string>
     <string name="settings_delay_with_value">%s Sekunden vor dem Senden</string>
-    <string name="settings_sound_default">Standard (System)</string>
-    <string name="settings_sound_classic">Klassisch</string>
-    <string name="settings_sound_dragon">Dragon Studio</string>
-    <string name="settings_sound_chime">Tönend</string>
-    <string name="settings_sound_bubble">Blase</string>
     <string name="settings_theme_light">Hell</string>
     <string name="settings_theme_dark">Dunkel</string>
     <string name="settings_theme_amoled">Amoled</string>

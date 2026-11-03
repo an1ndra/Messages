@@ -65,7 +65,7 @@ class BadgeRepostWiringTest {
         )
         assertTrue(
             "a re-post must not attach the full-screen wake intent",
-            sms.contains("if (!silentRepost && shouldWake(")
+            Regex("""if \(!silentRepost && !channelMuted && shouldWake\(""").containsMatchIn(sms)
         )
         assertTrue(
             "the re-post feeds from the unread summaries, silently",
