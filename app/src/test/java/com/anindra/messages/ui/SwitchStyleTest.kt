@@ -45,7 +45,10 @@ class SwitchStyleTest {
     @Test
     fun theDetailsScreenStillHasItsSwitches() {
         val details = read("src/main/java/com/anindra/messages/ui/ContactDetailsScreen.kt")
-        assertTrue("the notification switch stays", details.contains("checked = notifState"))
+        assertTrue(
+            "the notification switch stays",
+            details.contains("checked = channelOn")
+        )
         assertTrue("and the bubble one", details.contains("checked = bubbleEnabled"))
     }
 }

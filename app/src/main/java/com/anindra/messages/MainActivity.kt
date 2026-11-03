@@ -860,13 +860,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun blockedNumbers() = repo.blockedNumbers()
 
-    fun conversationNotificationsEnabledFlow(conversationId: Long): Flow<Boolean> =
-        repo.conversationNotificationsEnabledFlow(conversationId)
-
-    fun setConversationNotificationsEnabled(conversationId: Long, enabled: Boolean) {
-        scope.launch(Dispatchers.IO) { repo.setConversationNotificationsEnabled(conversationId, enabled) }
-    }
-
     /** Whether this chat has overcome its category channel with one of its own. */
     fun conversationCustomChannel(conversationId: Long): Boolean =
         com.anindra.messages.sms.NotificationHelper
@@ -874,7 +867,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Turns this chat's own notification channel on or off. On creates it with
-     * the chat's category tone; off deletes it, so the chat falls back to its
+     * the system default tone; off deletes it, so the chat falls back to its
      * category channel instead of going quiet.
      */
     fun setConversationCustomChannel(conversationId: Long, enabled: Boolean) {
@@ -888,7 +881,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             helper.ensureConversationChannel(
                 getApplication(),
                 target,
-                helper.categoryFor(target),
                 repo.settings.receiveSoundEnabled
             )
         }
@@ -902,7 +894,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val id = helper.ensureConversationChannel(
                 getApplication(),
                 target,
-                helper.categoryFor(target),
                 repo.settings.receiveSoundEnabled
             )
             withContext(Dispatchers.Main) {

@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">バックアップPINを入力</string>
     <string name="settings_pin_error_too_short">PINは4桁以上である必要があります</string>
     <string name="settings_pin_error_mismatch">PINが一致しません</string>
-    <string name="settings_sound_arrival">メッセージ受信時に再生されるサウンド</string>
     <string name="convo_moved_to_trash">会話がゴミ箱に移動されました</string>
     <string name="convo_archived">会話がアーカイブされました</string>
     <string name="action_undo">元に戻す</string>

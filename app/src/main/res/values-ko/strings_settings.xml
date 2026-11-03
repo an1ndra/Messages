@@ -24,7 +24,6 @@
     <string name="settings_pin_repeat">PIN 다시 입력</string>
     <string name="settings_pin_delete_permanently">영구 삭제하시겠습니까?</string>
     <string name="settings_pin_delay">보내기 전 지연 시간</string>
-    <string name="settings_pin_notification_sound">알림 소리</string>
     <string name="settings_notif_manage_channels">시스템 설정에서 관리</string>
     <string name="settings_notif_manage_channels_subtitle">카테고리별 소리, 진동 및 우선순위</string>
     <string name="settings_pin_sim_card">SIM 카드</string>
@@ -158,11 +157,6 @@
     <string name="settings_restore_title">복원 (모두 교체)</string>
     <string name="settings_restore_subtitle">현재 메시지를 제거하고 백업 복원</string>
     <string name="settings_delay_with_value">전송 전 %d초 대기</string>
-    <string name="settings_sound_default">기본 (시스템)</string>
-    <string name="settings_sound_classic">클래식</string>
-    <string name="settings_sound_dragon">드래곤 스튜디오</string>
-    <string name="settings_sound_chime">차임</string>
-    <string name="settings_sound_bubble">버블</string>
     <string name="settings_theme_light">밝게</string>
     <string name="settings_theme_dark">어둡게</string>
     <string name="settings_theme_amoled">Amoled</string>

@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">백업 PIN 입력</string>
     <string name="settings_pin_error_too_short">PIN은 최소 4자리여야 합니다</string>
     <string name="settings_pin_error_mismatch">PIN이 일치하지 않습니다</string>
-    <string name="settings_sound_arrival">메시지 수신 시 재생되는 소리</string>
     <string name="convo_moved_to_trash">대화가 휴지통으로 이동되었습니다</string>
     <string name="convo_archived">대화 보관됨</string>
     <string name="action_undo">실행 취소</string>

@@ -32,7 +32,6 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -107,22 +106,18 @@ onBack: () -> Unit,
     val display = BidiText.ltr(convo!!.display)
     val workProfile = phoneKey(address).let { it.isNotEmpty() && it in workNums }
 
-    // flows (not sync SELECTs) for notify/block state; VM retains last value
-    val notificationsEnabled by vm.conversationNotificationsEnabledFlow(conversationId)
-        .collectAsState(initial = true)
-    var notifState by remember(notificationsEnabled) { mutableStateOf(notificationsEnabled) }
     // A chat's own channel exists only if the user asked for it, and Android
     // keeps that channel's sound — so the switch mirrors the channel rather than
     // a stored copy of the setting. Re-read on resume: the user may have removed
     // it from system settings while this screen was in the background.
-    var customChannel by remember(conversationId) {
+    var channelOn by remember(conversationId) {
         mutableStateOf(vm.conversationCustomChannel(conversationId))
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, conversationId) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                customChannel = vm.conversationCustomChannel(conversationId)
+                channelOn = vm.conversationCustomChannel(conversationId)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -348,37 +343,26 @@ onBack: () -> Unit,
             // One card, not two: notifications and blocking are the same block of
             // per-conversation controls, split by a hairline like Google's.
             GroupedRowList(Modifier.padding(horizontal = SettingsLayout.SCREEN_PADDING)) {
+                // One control per chat, not two: this switch is whether the chat
+                // owns a channel, and Android's page for that channel is off,
+                // silent, sound and vibration. A second in-app mute could only
+                // ever disagree with it (#339).
                 DetailCardRow(
                     icon = Icons.Rounded.Notifications,
                     title = stringResource(R.string.contact_notifications),
                     trailing = {
                         Switch(
-                            checked = notifState,
+                            checked = channelOn,
                             onCheckedChange = {
-                                notifState = it
-                                vm.setConversationNotificationsEnabled(conversationId, it)
-                            },
-                        )
-                    }
-                )
-                DetailCardRow(
-                    icon = Icons.AutoMirrored.Rounded.VolumeUp,
-                    title = stringResource(R.string.contact_custom_notifications),
-                    titleColor = MaterialTheme.colorScheme.onSurface,
-                    trailing = {
-                        Switch(
-                            checked = customChannel,
-                            onCheckedChange = {
-                                customChannel = it
+                                channelOn = it
                                 vm.setConversationCustomChannel(conversationId, it)
                             },
                         )
                     }
                 )
-                // Only meaningful once the chat has a channel of its own, and it
-                // is a link rather than a second copy of the setting: Android
-                // owns the sound from the moment the channel exists.
-                if (customChannel) {
+                // The way into that channel's settings, not a second copy of the
+                // setting: Android owns the sound from the moment it exists.
+                if (channelOn) {
                     DetailCardRow(
                         icon = Icons.Rounded.Tune,
                         title = stringResource(R.string.contact_customize_notifications),

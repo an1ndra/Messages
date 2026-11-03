@@ -79,16 +79,9 @@ class SettingsStore(context: Context) {
         const val KEY_PHONE_REGION = "phone_region"
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
-        const val KEY_NOTIFICATION_SOUND = "notification_sound"
-        const val KEY_NOTIFICATION_SOUND_CATEGORY_PREFIX = "notification_sound_category_"
         const val KEY_NOTIF_ACTION_REPLY = "notif_action_reply"
         const val KEY_NOTIF_ACTION_MARK_READ = "notif_action_mark_read"
         const val KEY_NOTIF_ACTION_DELETE = "notif_action_delete"
-        const val NOTIFY_SOUND_DEFAULT = "default"
-        const val NOTIFY_SOUND_APP = "app_sound"
-        const val NOTIFY_SOUND_DRAGON = "dragon_studio"
-        const val NOTIFY_SOUND_UNIVERSFIELD_09 = "universfield_09"
-        const val NOTIFY_SOUND_UNIVERSFIELD_062 = "universfield_062"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
         const val KEY_EMOJI_BUTTON = "emoji_button_enabled"
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
@@ -379,33 +372,6 @@ class SettingsStore(context: Context) {
     var receiveSoundEnabled: Boolean
         get() = prefs.getBoolean(KEY_RECEIVE_SOUND, DEFAULTS_SOUNDS)
         set(v) { prefs.edit().putBoolean(KEY_RECEIVE_SOUND, v).apply(); _revision.value++ }
-
-    var notificationSound: String
-        get() = prefs.getString(KEY_NOTIFICATION_SOUND, NOTIFY_SOUND_DEFAULT) ?: NOTIFY_SOUND_DEFAULT
-        set(v) { prefs.edit().putString(KEY_NOTIFICATION_SOUND, v).apply(); _revision.value++ }
-
-    /**
-     * The sound a message category posts with, falling back to the global
-     * [notificationSound] when the category has no override. [categoryKey] is a
-     * stable key, not the enum name, so renaming the enum never migrates prefs.
-     */
-    fun notificationSoundFor(categoryKey: String): String {
-        val override = prefs.getString(KEY_NOTIFICATION_SOUND_CATEGORY_PREFIX + categoryKey, "") ?: ""
-        return override.ifEmpty { notificationSound }
-    }
-
-    /** True when the category carries an explicit sound rather than the global one. */
-    fun hasNotificationSoundOverride(categoryKey: String): Boolean =
-        !(prefs.getString(KEY_NOTIFICATION_SOUND_CATEGORY_PREFIX + categoryKey, "") ?: "").isEmpty()
-
-    /** Sets a category override; an empty [sound] clears it back to the global one. */
-    fun setNotificationSoundFor(categoryKey: String, sound: String) {
-        val editor = prefs.edit()
-        if (sound.isEmpty()) editor.remove(KEY_NOTIFICATION_SOUND_CATEGORY_PREFIX + categoryKey)
-        else editor.putString(KEY_NOTIFICATION_SOUND_CATEGORY_PREFIX + categoryKey, sound)
-        editor.apply()
-        _revision.value++
-    }
 
     /** Which actions an incoming-message notification offers. All on by default. */
     var notifActionReply: Boolean

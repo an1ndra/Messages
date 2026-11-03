@@ -139,18 +139,8 @@ fun SettingsScreen(
     var markReadDialog by remember { mutableStateOf(false) }
     var notifications by remember(revision) { mutableStateOf(vm.settings.notificationsEnabled) }
     var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
-    var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
-    val notificationSoundOptions = listOf(
-        SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
-        SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
-        SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
-    )
     var showSim by remember(revision) { mutableStateOf(vm.settings.showSimIndicator) }
     val themeMode = vm.themeMode
-
-    var soundDialog by remember { mutableStateOf(false) }
 
     var pinned by remember(revision) { mutableStateOf(vm.settings.pinnedEnabled) }
     var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
@@ -403,14 +393,6 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_notif_subtitle),
                     checked = notifications,
                     onChecked = { notifications = it; vm.settings.notificationsEnabled = it }
-                )
-                SettingsRow(
-                    title = stringResource(R.string.settings_pin_notification_sound),
-                    subtitle = notificationSoundLabel(notificationSound, notificationSoundOptions, context),
-                    onClick = {
-                        notificationSound = vm.settings.notificationSound
-                        soundDialog = true
-                    }
                 )
                 SettingsRow(
                     title = stringResource(R.string.settings_delivery_reports_title),
@@ -708,55 +690,6 @@ fun SettingsScreen(
                 TextButton(onClick = { markReadDialog = false }) {
                     Text(stringResource(R.string.common_cancel))
                 }
-            }
-        )
-    }
-
-    if (soundDialog) {
-        AlertDialog(
-            onDismissRequest = { soundDialog = false },
-            title = { Text(stringResource(R.string.settings_pin_notification_sound)) },
-            text = {
-                Column {
-                    Text(
-                        stringResource(R.string.settings_sound_arrival),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    notificationSoundOptions.forEach { (value, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    notificationSound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                                .padding(vertical = 2.dp)
-                        ) {
-                            RadioButton(
-                                selected = notificationSound == value,
-                                onClick = {
-                                    notificationSound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(label)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.settings.notificationSound = notificationSound
-                    NotificationHelper.ensureChannels(context)
-                    soundDialog = false
-                }) { Text(stringResource(R.string.common_ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { soundDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -1287,11 +1220,6 @@ private fun themeLabel(mode: String, context: android.content.Context) = when (m
     "dynamic" -> context.getString(R.string.settings_theme_dynamic)
     else -> context.getString(R.string.settings_theme_system)
 }
-
-
-
-private fun notificationSoundLabel(value: String, options: List<Pair<String, String>>, context: android.content.Context) =
-    options.firstOrNull { it.first == value }?.second ?: context.getString(R.string.settings_sound_default)
 
 /**
  * A single-choice group of [options] (label to optional supporting text),
