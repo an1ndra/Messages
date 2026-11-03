@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -54,6 +55,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.R
+import com.anindra.messages.ui.theme.AppMarkBlue
 
 /**
  * Every destination the About screen can reach, in one place.
@@ -415,7 +417,7 @@ internal fun AboutScreen(
 
 /** Plate and glyph size of the launcher icon on the About screen. */
 private val ICON_PLATE = 136.dp
-private val ICON_GLYPH = 96.dp
+private val ICON_GLYPH = 88.dp
 
 @Composable
 internal fun Identity(
@@ -437,13 +439,13 @@ internal fun Identity(
             modifier = Modifier
                 .size(ICON_PLATE)
                 .clip(RoundedCornerShape(38.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(AppMarkBlue),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_about_app),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = Color.White,
                 modifier = Modifier.size(ICON_GLYPH)
             )
         }

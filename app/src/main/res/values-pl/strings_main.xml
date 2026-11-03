@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">Wprowadź hasło PIN do kopii zapasowej</string>
     <string name="settings_pin_error_too_short">PIN musi mieć co najmniej 4 cyfry</string>
     <string name="settings_pin_error_mismatch">Hasła PIN nie są zgodne</string>
-    <string name="settings_sound_arrival">Dźwięk odtwarzany przy odbiorze wiadomości</string>
     <string name="convo_moved_to_trash">Rozmowa przeniesiona do kosza</string>
     <string name="convo_archived">Rozmowa zarchiwizowana</string>
     <string name="action_undo">Cofnij</string>

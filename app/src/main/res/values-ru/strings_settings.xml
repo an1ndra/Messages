@@ -24,7 +24,6 @@
     <string name="settings_pin_repeat">Повторите PIN-код</string>
     <string name="settings_pin_delete_permanently">Удалить безвозвратно?</string>
     <string name="settings_pin_delay">Задержка перед отправкой</string>
-    <string name="settings_pin_notification_sound">Звук уведомлений</string>
     <string name="settings_notif_manage_channels">Управление в настройках системы</string>
     <string name="settings_notif_manage_channels_subtitle">Звук, вибрация и приоритет по категориям</string>
     <string name="settings_pin_sim_card">SIM-карта</string>
@@ -158,11 +157,6 @@
     <string name="settings_restore_title">Восстановить (заменить все)</string>
     <string name="settings_restore_subtitle">Удалить текущие сообщения и восстановить резервную копию</string>
     <string name="settings_delay_with_value">%d сек до отправки</string>
-    <string name="settings_sound_default">По умолчанию (системный)</string>
-    <string name="settings_sound_classic">Классический</string>
-    <string name="settings_sound_dragon">Dragon Studio</string>
-    <string name="settings_sound_chime">Колокольчик</string>
-    <string name="settings_sound_bubble">Пузырёк</string>
     <string name="settings_theme_light">Светлая</string>
     <string name="settings_theme_dark">Тёмная</string>
     <string name="settings_theme_amoled">Amoled</string>

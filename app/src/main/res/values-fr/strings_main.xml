@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">Saisir le PIN de sauvegarde</string>
     <string name="settings_pin_error_too_short">Le PIN doit comporter au moins 4 chiffres</string>
     <string name="settings_pin_error_mismatch">Les PIN ne correspondent pas</string>
-    <string name="settings_sound_arrival">Son joué lors de l\'arrivée d\'un message</string>
     <string name="convo_moved_to_trash">Conversation déplacée dans la corbeille</string>
     <string name="convo_archived">Conversation archivée</string>
     <string name="action_undo">Annuler</string>

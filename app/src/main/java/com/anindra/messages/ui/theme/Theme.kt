@@ -244,6 +244,14 @@ private val DarkHighContrastColors = darkColorScheme(
     surfaceContainerHighest = Color(0xFF333537)
 )
 
+/**
+ * The launcher mark's own blue (ic_launcher_background). The one colour that
+ * must not follow the theme: About draws the same mark, so a wallpaper palette
+ * cannot repaint the app's own icon. Kept here so the drawable and the screen
+ * cannot drift apart.
+ */
+val AppMarkBlue = Color(0xFF0B57D0)
+
 // Semantic aliases so screens express intent, not raw colors.
 val ColorScheme.outgoingBubble: Color get() = primaryContainer          // GM blue bubble
 val ColorScheme.incomingBubble: Color get() = surfaceContainerHighest   // GM grey bubble

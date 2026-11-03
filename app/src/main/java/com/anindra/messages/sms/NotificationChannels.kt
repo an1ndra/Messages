@@ -1,7 +1,5 @@
 package com.anindra.messages.sms
 
-import com.anindra.messages.data.SettingsStore
-
 /**
  * Which notification channel an incoming message belongs to.
  *
@@ -41,35 +39,22 @@ enum class NotificationCategory {
  * Channel ids, in one place so the poster, the settings screen and Diagnostics
  * cannot drift apart.
  *
- * A channel's sound cannot be changed once the channel exists, so — exactly as
- * the pre-category app did for its one channel — each category carries one
- * channel id per sound selection. Changing a category's sound switches to a
- * fresh id and the app deletes the stale variant.
+ * A channel's sound cannot be changed once the channel exists, and it belongs to
+ * the user from then on: the app seeds the system default once and never moves
+ * the id again. Only the receive-sound switch needs a second id, because
+ * Android gives an app no way to mute a channel it already created. The per-tone
+ * ids the app used to mint are kept in [SOUND_SUFFIXES] only so a sweep can
+ * delete them.
  */
 object NotificationChannels {
     const val PREFIX = "messages"
 
-    /** Per-sound suffixes; "silent" is the receive-sound-off case. */
+    /** "default" is the audible channel; "silent" is the receive-sound-off case. */
     const val SUFFIX_DEFAULT = "default"
-    const val SUFFIX_APP = "app"
-    const val SUFFIX_DRAGON = "dragon"
-    const val SUFFIX_UF09 = "uf09"
-    const val SUFFIX_UF062 = "uf062"
     const val SUFFIX_SILENT = "silent"
 
-    private val SOUND_SUFFIXES = listOf(
-        SUFFIX_DEFAULT, SUFFIX_APP, SUFFIX_DRAGON, SUFFIX_UF09, SUFFIX_UF062, SUFFIX_SILENT
-    )
-
-    /** The suffix for a sound selection, or "silent" when receive sound is off. */
-    fun soundSuffix(selection: String, soundOn: Boolean): String = when {
-        !soundOn -> SUFFIX_SILENT
-        selection == SettingsStore.NOTIFY_SOUND_APP -> SUFFIX_APP
-        selection == SettingsStore.NOTIFY_SOUND_DRAGON -> SUFFIX_DRAGON
-        selection == SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 -> SUFFIX_UF09
-        selection == SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 -> SUFFIX_UF062
-        else -> SUFFIX_DEFAULT
-    }
+    /** Every suffix an id has carried, live and retired, for the cleanup sweep. */
+    private val SOUND_SUFFIXES = listOf(SUFFIX_DEFAULT, SUFFIX_SILENT, "app", "dragon", "uf09", "uf062")
 
     private fun categoryPrefix(category: NotificationCategory): String = when (category) {
         NotificationCategory.DIRECT -> "${PREFIX}_direct"
@@ -77,9 +62,9 @@ object NotificationChannels {
         NotificationCategory.UNKNOWN -> "${PREFIX}_unknown"
     }
 
-    /** The live channel for a category, given its sound selection. */
-    fun forCategory(category: NotificationCategory, selection: String, soundOn: Boolean): String =
-        "${categoryPrefix(category)}_${soundSuffix(selection, soundOn)}"
+    /** The live channel for a category. */
+    fun forCategory(category: NotificationCategory, soundOn: Boolean): String =
+        "${categoryPrefix(category)}_${if (soundOn) SUFFIX_DEFAULT else SUFFIX_SILENT}"
 
     /** Every id a category could own, so the stale ones can be cleaned up. */
     fun categoryVariants(category: NotificationCategory): List<String> =
@@ -93,7 +78,6 @@ object NotificationChannels {
      */
     fun forMessage(
         category: NotificationCategory,
-        selection: String,
         soundOn: Boolean,
         conversationId: Long?,
         customChannelOn: Boolean
@@ -101,7 +85,7 @@ object NotificationChannels {
         if (conversationId != null && customChannelOn) {
             forConversation(conversationId)
         } else {
-            forCategory(category, selection, soundOn)
+            forCategory(category, soundOn)
         }
 
     fun conversationPrefix(conversationId: Long): String = "${PREFIX}_convo_$conversationId"
