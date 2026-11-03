@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">Ingresar PIN de copia de seguridad</string>
     <string name="settings_pin_error_too_short">El PIN debe tener al menos 4 dígitos</string>
     <string name="settings_pin_error_mismatch">Los PIN no coinciden</string>
-    <string name="settings_sound_arrival">Sonido al recibir un mensaje</string>
     <string name="convo_moved_to_trash">Conversación movida a la papelera</string>
     <string name="convo_archived">Conversación archivada</string>
     <string name="action_undo">Deshacer</string>

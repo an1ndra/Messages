@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">Enter backup PIN</string>
     <string name="settings_pin_error_too_short">PIN must be at least 4 digits</string>
     <string name="settings_pin_error_mismatch">PINs do not match</string>
-    <string name="settings_sound_arrival">Sound played when a message arrives</string>
     <string name="convo_moved_to_trash">Conversation moved to trash</string>
     <string name="convo_archived">Conversation archived</string>
     <string name="action_undo">Undo</string>
