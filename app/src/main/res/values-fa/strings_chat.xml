@@ -21,9 +21,25 @@
     <string name="chat_select_all">انتخاب همه</string>
     <string name="chat_select_text">انتخاب متن</string>
     <string name="chat_save_image">ذخیره تصویر</string>
+    <string name="chat_save_voice">ذخیره پیام صوتی</string>
     <string name="chat_image_saved">تصویر در Pictures/Messages ذخیره شد</string>
     <string name="chat_image_save_failed">تصویر ذخیره نشد</string>
-
+    <string name="chat_voice_saved">پیام صوتی در Music/Messages ذخیره شد</string>
+    <string name="chat_voice_save_failed">ذخیره پیام صوتی ممکن نشد</string>
+    <string name="chat_voice_slide_cancel">برای لغو بکشید</string>
+    <string name="chat_voice_release_cancel">برای لغو رها کنید</string>
+    <string name="chat_voice_permission_denied">برای ضبط پیام صوتی دسترسی به میکروفون لازم است</string>
+    <string name="chat_voice_start_failed">شروع ضبط ممکن نشد</string>
+    <string name="chat_voice_too_short">ضبط بسیار کوتاه بود. برای ضبط، دکمه میکروفون را نگه دارید.</string>
+    <string name="chat_voice_max_reached">پیام صوتی در محدودیت حجم MMS متوقف شد</string>
+    <string name="chat_voice_cancel_recording">لغو ضبط</string>
+    <string name="chat_voice_lock_hint">برای قفل کردن ضبط، به بالا بکشید</string>
+    <string name="chat_voice_recording_locked">ضبط بدون استفاده از دست</string>
+    <string name="voice_guide_title">ارسال پیام صوتی</string>
+    <string name="voice_guide_hold">برای ضبط، دکمه موج را نگه دارید</string>
+    <string name="voice_guide_slide">برای لغو ضبط، به چپ بکشید</string>
+    <string name="voice_guide_lock">برای قفل کردن و ضبط بدون دست، به بالا بکشید</string>
+    <string name="voice_guide_dismiss">متوجه شدم</string>
     <!-- Status messages -->
     <string name="chat_cant_send">نمی‌توان پیام فرستاد</string>
     <string name="chat_archived">گفتگو بایگانی شد</string>
@@ -48,7 +64,6 @@
     <string name="chat_add_people">افزودن افراد</string>
     <string name="chat_reaction_fallback_failed">واکنش برای طرف مقابل فرستاده نشد</string>
     <string name="chat_locked">قفل‌شده</string>
-
     <!-- Copy & links -->
     <string name="chat_copied">کپی شد</string>
     <string name="chat_link_copied">پیوند کپی شد</string>
@@ -58,7 +73,6 @@
     <string name="chat_link_no_dont_show">دیگر این هشدار را نشان نده</string>
     <string name="chat_link_label">پیوند</string>
     <string name="chat_messages_label">پیام‌ها</string>
-
     <!-- General -->
     <string name="chat_close">بستن</string>
     <string name="chat_open">باز کردن</string>
@@ -79,7 +93,6 @@
     <string name="message_status_delivered">تحویل شد</string>
     <string name="message_status_received">دریافت شد</string>
     <string name="message_status_failed">ارسال نشد</string>
-
     <string name="chat_status_not_sent">ارسال نشد</string>
     <string name="chat_status_retry">برای تلاش مجدد ضربه بزنید</string>
     <string name="chat_draft_prefix">"پیش‌نویس: "</string>
@@ -106,4 +119,5 @@
     <string name="chat_starred">پیام ستاره‌دار شد</string>
     <string name="chat_unstarred">ستاره حذف شد</string>
     <string name="chat_message_starred">پیام ستاره‌دار</string>
+    <string name="chat_album_photos">%1$d عکس</string>
 </resources>

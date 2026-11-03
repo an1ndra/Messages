@@ -20,8 +20,25 @@
     <string name="chat_select_all">全选</string>
     <string name="chat_select_text">选择文本</string>
     <string name="chat_save_image">保存图片</string>
+    <string name="chat_save_voice">保存语音消息</string>
     <string name="chat_image_saved">图片已保存到 Pictures/Messages</string>
     <string name="chat_image_save_failed">无法保存图片</string>
+    <string name="chat_voice_saved">语音消息已保存到 Music/Messages</string>
+    <string name="chat_voice_save_failed">无法保存语音消息</string>
+    <string name="chat_voice_slide_cancel">滑动取消</string>
+    <string name="chat_voice_release_cancel">松开取消</string>
+    <string name="chat_voice_permission_denied">录制语音消息需要访问麦克风</string>
+    <string name="chat_voice_start_failed">无法开始录音</string>
+    <string name="chat_voice_too_short">录音太短。请按住麦克风进行录音。</string>
+    <string name="chat_voice_max_reached">语音消息已达 MMS 大小上限并停止</string>
+    <string name="chat_voice_cancel_recording">取消录音</string>
+    <string name="chat_voice_lock_hint">上滑以锁定录音</string>
+    <string name="chat_voice_recording_locked">正在免提录音</string>
+    <string name="voice_guide_title">发送语音消息</string>
+    <string name="voice_guide_hold">长按波形按钮开始录音</string>
+    <string name="voice_guide_slide">向左滑动可取消录音</string>
+    <string name="voice_guide_lock">上滑可锁定并免提录音</string>
+    <string name="voice_guide_dismiss">知道了</string>
 
     <string name="chat_cant_send">无法发送消息</string>
     <string name="chat_archived">对话已归档</string>
@@ -102,4 +119,5 @@
     <string name="chat_starred">已加星标</string>
     <string name="chat_unstarred">已取消星标</string>
     <string name="chat_message_starred">已加星标的消息</string>
+    <string name="chat_album_photos">%1$d 张照片</string>
 </resources>

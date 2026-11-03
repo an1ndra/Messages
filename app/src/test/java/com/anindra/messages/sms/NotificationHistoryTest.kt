@@ -31,6 +31,15 @@ class NotificationHistoryTest {
     }
 
     @Test
+    fun keepsAVoiceNoteLineWithBlankText() {
+        // A voice-only MMS is blank in the body column too; the caller gives it
+        // a label, so the line has to survive the blank-text filter.
+        val note = NotificationLine("", 2L, false, isAudio = true)
+        val out = NotificationHistory.window(listOf(line(""), note, line("   ")))
+        assertEquals(listOf(note), out)
+    }
+
+    @Test
     fun keepsAPictureLineWithBlankText() {
         // A picture-only MMS has a blank body. Dropping it left the whole
         // notification empty (issue #328).

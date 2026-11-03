@@ -15,7 +15,8 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 ## Features
 
-- **Real SMS + MMS**: Send/receive SMS with multi-SIM support; imports and displays MMS (text + photos) from the system provider
+- **Real SMS + MMS**: Send/receive SMS with multi-SIM support; imports and displays MMS (text, photos and voice notes) from the system provider
+- **Voice Messages**: An empty composer turns the send circle into a record button — hold it to record, slide to cancel, release to send as an MMS; received voice notes play back as a waveform in the bubble
 - **Google Messages UI**: Material 3 design, dark/light themes, conversation avatars, animated message bubbles
 - **Backup & Restore**: PIN-encrypted backup/restore with a chosen save location (including external SD cards)
 - **Message Management**: Pin, archive, delete, block numbers, trash with 30-day auto-purge

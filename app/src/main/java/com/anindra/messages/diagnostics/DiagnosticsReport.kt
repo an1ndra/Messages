@@ -47,6 +47,69 @@ data class PermissionState(
     val granted: Boolean
 )
 
+/**
+ * The voice-note facts a text dump can assert: what the recorder produces, how
+ * long the carrier lets it run, and how large the newest note actually was.
+ */
+data class VoiceNoteDetails(
+    val mime: String = "",
+    val maxSeconds: Int = 0,
+    val carrierCapBytes: Int = 0,
+    val lastBytes: Long = 0,
+    val lastUri: String = "",
+    val sent: Int = 0,
+    val received: Int = 0,
+    /** What the player is doing right now: "idle", or "playing 1.2s / 4.1s". */
+    val playback: String = "idle",
+    /** Whether the last note's waveform decoded, or the placeholder stood in. */
+    val waveform: String = "unknown"
+) {
+    fun summary(): String =
+        if (mime.isBlank()) "unavailable"
+        else "$mime, up to ${maxSeconds}s (carrier cap ${carrierCapBytes}B)"
+
+    fun lastLine(): String = when {
+        lastBytes > 0 -> "$lastBytes B ${lastUri.takeIf { it.isNotBlank() }?.let { "($it)" } ?: ""}".trim()
+        else -> "none"
+    }
+
+    /** How many notes the store holds, by direction. */
+    fun storeLine(): String = "$sent sent, $received received"
+
+    fun playbackLine(): String = playback
+
+    fun waveformLine(): String = waveform
+}
+
+/**
+ * Imported versus provider MMS shape, for reports like "only one picture of
+ * four showed" (#398).
+ *
+ * [multiPart] and [maxParts] come from the message store: one provider MMS is
+ * several message rows there, so a picture that is stored but not drawn shows
+ * up as rows > 1. [parts] is the newest provider MMS with two or more parts, so
+ * "the provider only had one part" and "we lost the others" look different.
+ */
+data class MmsDetails(
+    val rows: Int = 0,
+    val multiPart: Int = 0,
+    val maxParts: Int = 0,
+    val providerId: Long = 0,
+    val scanned: Int = 0,
+    val parts: List<String> = emptyList()
+) {
+    fun storeLine(): String =
+        "$rows row(s), $multiPart from multi-part MMS" +
+            if (maxParts > 1) " (max $maxParts row(s))" else ""
+
+    fun providerLines(): List<String> = when {
+        providerId > 0 -> listOf("Provider MMS: newest multi-part #$providerId, ${parts.size} part(s)") +
+            parts.map { "  $it" }
+        scanned > 0 -> listOf("Provider MMS: no multi-part MMS among the newest $scanned")
+        else -> listOf("Provider MMS: unreadable")
+    }
+}
+
 data class AppDetails(
     val defaultSms: Boolean,
     val permissions: List<PermissionState>,
@@ -81,6 +144,15 @@ data class AppDetails(
     /** The silhouette ink an avatar resolves to under the current scheme. */
     val resolvedAvatarInk: String = "",
     val notificationsEnabled: Boolean,
+    /**
+     * What the voice-note recorder writes and how long it may run.
+     *
+     * Read from the same policy the recorder enforces and the same carrier cap
+     * the send path checks, so the report cannot claim a limit that is not the
+     * one in force. The size of the newest note is included because a recording
+     * has no text a UI dump could show.
+     */
+    val voiceNote: VoiceNoteDetails = VoiceNoteDetails(),
     val fontFamily: String = "",
     val sendSound: Boolean = false,
     val receiveSound: Boolean = false,
@@ -215,6 +287,8 @@ data class DiagnosticsData(
     val timestamp: Long,
     /** MMS carrier-config values per subscriptionId; see SimMmsProbe.carrierFacts. */
     val mmsFacts: Map<Int, List<String>> = emptyMap(),
+    /** Imported versus provider MMS shape; see [MmsDetails]. */
+    val mms: MmsDetails = MmsDetails(),
     /**
      * Recent MMS stack events, oldest first.
      *
@@ -282,6 +356,11 @@ object DiagnosticsReport {
             }
             appendLine("Notifications enabled: ${data.appDetails.notificationsEnabled}")
             appendLine("Full-screen intent: ${if (data.appDetails.fullScreenIntentGranted) "granted" else "denied"}")
+            appendLine("Voice note: ${data.appDetails.voiceNote.summary()}")
+            appendLine("Last voice note: ${data.appDetails.voiceNote.lastLine()}")
+            appendLine("Voice messages: ${data.appDetails.voiceNote.storeLine()}")
+            appendLine("Voice playback: ${data.appDetails.voiceNote.playbackLine()}")
+            appendLine("Voice waveform: ${data.appDetails.voiceNote.waveformLine()}")
             appendLine("Channel importance: ${data.appDetails.channelImportanceLabel}")
             if (data.appDetails.channels.isEmpty()) {
                 appendLine("Channels: none created yet")
@@ -410,6 +489,10 @@ object DiagnosticsReport {
                 }
             }
             appendLine()
+            appendLine("--- MMS ---")
+            appendLine("Imported: ${data.mms.storeLine()}")
+            data.mms.providerLines().forEach { appendLine(it) }
+            appendLine()
             appendLine("--- MMS activity ---")
             if (data.mmsTrace.isEmpty()) {
                 appendLine("No MMS events recorded this session.")
@@ -452,7 +535,9 @@ object DiagnosticsReport {
         selectedSubId: Int,
         settings: SettingsStore,
         conversationCount: Int,
-        messageCount: Int
+        messageCount: Int,
+        voiceNote: VoiceNoteDetails = VoiceNoteDetails(),
+        mms: MmsDetails = MmsDetails()
     ): String {
         val phoneStateGranted = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
             PackageManager.PERMISSION_GRANTED
@@ -508,7 +593,7 @@ object DiagnosticsReport {
             DiagnosticsData(
                 device = CrashReporter.deviceInfo(),
                 app = CrashReporter.appInfo(context),
-                appDetails = appDetails(context, settings),
+                appDetails = appDetails(context, settings, voiceNote),
                 deviceExtra = DeviceExtra(
                     release = Build.VERSION.RELEASE ?: "",
                     codename = Build.VERSION.CODENAME ?: "",
@@ -568,6 +653,7 @@ object DiagnosticsReport {
                     s.subscriptionId to
                         com.anindra.messages.sms.SimMmsProbe.carrierFacts(context, s.subscriptionId)
                 },
+                mms = mms,
                 mmsTrace = com.anindra.messages.sms.MmsFacade.trace().map { it.toString() },
                 transfers = TransferLogStore.read(context),
                 backupHealth = BackupHealthInfo(
@@ -601,7 +687,11 @@ object DiagnosticsReport {
         context.checkSelfPermission(Manifest.permission.USE_FULL_SCREEN_INTENT) ==
             PackageManager.PERMISSION_GRANTED
 
-    private fun appDetails(context: Context, settings: SettingsStore): AppDetails {
+    private fun appDetails(
+        context: Context,
+        settings: SettingsStore,
+        voiceNote: VoiceNoteDetails
+    ): AppDetails {
         val defaultSms = try {
             val rm = context.getSystemService(RoleManager::class.java)
             (rm?.isRoleHeld(RoleManager.ROLE_SMS) ?: false) ||
@@ -664,6 +754,7 @@ object DiagnosticsReport {
                 )
             ),
             notificationsEnabled = settings.notificationsEnabled,
+            voiceNote = voiceNote,
             fontFamily = settings.fontFamily,
             sendSound = settings.sendSoundEnabled,
             receiveSound = settings.receiveSoundEnabled,

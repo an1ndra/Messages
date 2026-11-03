@@ -304,6 +304,21 @@ val ChatMetaWeight: FontWeight = FontWeight.Medium
 val ColorScheme.composerAttachDot: Color get() = primary
 
 /**
+ * The disc under the composer's record button while a note is being recorded.
+ *
+ * Measured off Google Messages' own composer at record time: #DC362E with a
+ * white glyph. It is deliberately not a scheme role like `error` — in a dark M3
+ * scheme `error` is a pale salmon meant for text on a dark surface, and a salmon
+ * disc with dark ink reads as a disabled button rather than a live microphone.
+ * The tone is the same in both schemes, as it is in GM: recording is not a
+ * surface, it is a state, and it must look identical against a black or a white
+ * page.
+ */
+private val RecordRed = Color(0xFFDC362E)
+val ColorScheme.recordActive: Color get() = RecordRed
+val ColorScheme.onRecordActive: Color get() = Color.White
+
+/**
  * Whether a theme mode renders as a dark scheme.
  *
  * AMOLED counts as dark: it is a dark scheme that simply starts from true

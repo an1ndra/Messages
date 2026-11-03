@@ -16,11 +16,18 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -40,6 +47,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.DragInteraction
@@ -47,6 +56,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,6 +69,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -82,13 +94,17 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.rounded.AddCircleOutline
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -145,15 +161,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -164,7 +183,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
@@ -177,15 +199,20 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.anindra.messages.AppViewModel
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.MessageSearch
+import com.anindra.messages.data.MmsSupport
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimSwitcher
+import com.anindra.messages.voice.VoiceNotePolicy
+import com.anindra.messages.voice.VoicePlayback
+import com.anindra.messages.voice.VoiceRecorder
 import com.anindra.messages.data.MessageLockCrypto
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -203,6 +230,8 @@ import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.ChatMetaWeight
 import com.anindra.messages.ui.theme.incomingBubble
 import com.anindra.messages.ui.theme.inputPill
+import com.anindra.messages.ui.theme.onRecordActive
+import com.anindra.messages.ui.theme.recordActive
 import com.anindra.messages.ui.theme.onSelectedBubble
 import com.anindra.messages.ui.theme.outgoingBubble
 import com.anindra.messages.ui.theme.selectedBubble
@@ -324,6 +353,12 @@ internal fun TextCopyDialog(
 @Composable
 internal fun ChatBubble(
     msg: Message,
+    /**
+     * Every picture the message carries. More than one draws a grid inside the
+     * single bubble a multi-picture MMS gets (#398); one or none keeps the
+     * ordinary [ImageBubble].
+     */
+    albumUris: List<String> = emptyList(),
     showTime: Boolean,
     senderName: String? = null,
     onTap: () -> Unit,
@@ -461,7 +496,16 @@ internal fun ChatBubble(
                             onLongClick = { onLongPress() }
                         )
                     ) {
-                        ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
+                        if (albumUris.size > 1) {
+                            AlbumGrid(
+                                uris = albumUris,
+                                isMe = msg.isMe,
+                                onImageTap = onImageTap,
+                                onLongPress = onLongPress
+                            )
+                        } else {
+                            ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
+                        }
                         if (msg.body.isNotBlank()) {
                             Surface(
                                 color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
@@ -486,6 +530,15 @@ internal fun ChatBubble(
                             }
                         }
                     }
+                } else if (msg.mediaType == "audio" && msg.mediaUri.isNotBlank()) {
+                    VoiceBubble(
+                        uri = msg.mediaUri,
+                        isMe = msg.isMe,
+                        isSelected = isSelected,
+                        body = bodyText,
+                        bodyStyle = bodyStyle,
+                        onLongPress = { onLongPress() }
+                    )
                 } else {
                     Surface(
                         color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
@@ -615,6 +668,20 @@ internal fun ChatBubble(
 }
 
 
+/**
+ * Whether the long-press bar belongs on this bubble.
+ *
+ * The bar acts on one message, so it is offered only while this bubble is the
+ * whole selection: selecting a second message hides it (#5c7e694). A
+ * multi-picture MMS is several rows behind one bubble and its long-press
+ * selects all of them, so the bubble counts as one message (#364 M6) — asking
+ * for a single row instead made albums unable to carry a reaction at all.
+ */
+internal fun bubbleIsTheWholeSelection(rowIds: List<Long>, selected: Collection<Long>): Boolean =
+    rowIds.isNotEmpty() &&
+        selected.size == rowIds.size &&
+        rowIds.all { it in selected }
+
 /** The tap-to-toggle emoji bar shown on a long-pressed message (issue #188). */
 @Composable
 internal fun ReactionBar(
@@ -730,11 +797,13 @@ fun ChatScreen(
     searchQuery: String? = null,
     initialDraft: String = "",
     initialMedia: List<android.net.Uri> = emptyList(),
+    initialStagedMedia: List<android.net.Uri> = emptyList(),
     onBack: () -> Unit,
     onOpenDetails: () -> Unit = {},
     onAddPeople: () -> Unit = {},
     onInitialDraftConsumed: () -> Unit = {},
-    onInitialMediaConsumed: () -> Unit = {}
+    onInitialMediaConsumed: () -> Unit = {},
+    onInitialStagedMediaConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -887,7 +956,7 @@ fun ChatScreen(
     // A hit older than the loaded window is not a row yet; the scroll and flash
     // effects below re-run when the pager grows it into one.
     val focusedRowLoaded = focusedSearchId != null &&
-        chatRows.any { it is ChatRow.Sent && it.message.id == focusedSearchId }
+        chatRows.any { focusedSearchId in it.messageIds() }
     fun navigateMatch(delta: Int) {
         if (searchMatches.isEmpty()) return
         val from = focusedMatchIndex.takeIf { it >= 0 } ?: -1
@@ -922,6 +991,64 @@ fun ChatScreen(
     // explained or dropped before it leaves — it is no longer sent on pick.
     val pendingMedia = remember { mutableStateListOf<Uri>() }
 
+    // A voice note is recorded while the finger holds the mic, so the recorder
+    // and the microphone grant have to outlive every recomposition of the row.
+    val recorder = remember { VoiceRecorder(context) }
+    val hasMicrophone = remember {
+        context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_MICROPHONE)
+    }
+    var recordPermission by remember {
+        mutableStateOf(
+            context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val recordPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        recordPermission = granted
+        if (!granted) {
+            Toast.makeText(
+                context, context.getString(R.string.chat_voice_permission_denied), Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+    fun startVoiceNote(): Boolean {
+        if (!recordPermission) {
+            recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return false
+        }
+        val started = recorder.start() != null
+        if (!started) {
+            Toast.makeText(
+                context, context.getString(R.string.chat_voice_start_failed), Toast.LENGTH_SHORT
+            ).show()
+        }
+        return started
+    }
+    var recordingNow by remember { mutableStateOf(false) }
+    var voiceLevel by remember { mutableStateOf(0f) }
+    LaunchedEffect(recordingNow) {
+        if (!recordingNow) {
+            voiceLevel = 0f
+            return@LaunchedEffect
+        }
+        // The disc breathes with what the microphone hears; ~12 Hz is enough for
+        // a meter and cheap enough to run while a note is being spoken.
+        while (true) {
+            voiceLevel = recorder.level()
+            delay(80)
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            // Leaving the chat must not leave a microphone open or a voice note
+            // playing behind the inbox.
+            recorder.cancel()
+            VoicePlayback.release()
+        }
+    }
+
     val selectedMessageIds = remember { mutableStateListOf<Long>() }
     var textCopyMessage by remember { mutableStateOf<Message?>(null) }
     val selectionActive = selectedMessageIds.isNotEmpty()
@@ -930,6 +1057,9 @@ fun ChatScreen(
 
     var currentSimId by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
     var sims by remember { mutableStateOf(emptyList<SimCard>()) }
+    // The cap belongs to the line, not to the chat: switching SIM has to
+    // re-read the profile instead of keeping the first line's length.
+    val voiceMaxSeconds = remember(currentSimId) { vm.voiceNoteMaxSeconds() }
 
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
@@ -1055,17 +1185,29 @@ fun ChatScreen(
         }
         if (addr.isBlank()) return
         val caption = draft.trim()
-        pendingMedia.toList().forEachIndexed { index, uri ->
-            vm.sendMediaMessage(conversationId, uri, if (index == 0) caption else "")
+        val awaiting = pendingMedia.toList()
+        // One send for all of them: they leave in a single PDU, so the recipient
+        // sees one message with several pictures rather than one each (#364).
+        vm.sendMediaAlbum(conversationId, awaiting, caption) { stored ->
+            // A send that stored nothing leaves the tray and the caption alone,
+            // so the user can retry (#364).
+            if (stored == 0) return@sendMediaAlbum
+            pendingMedia.clear()
+            draft = ""
+            vm.saveDraft(conversationId, "")
+            showEmoji = false
         }
-        pendingMedia.clear()
-        draft = ""
-        vm.saveDraft(conversationId, "")
-        showEmoji = false
     }
 
     fun toggleSelection(id: Long) {
         if (id in selectedMessageIds) selectedMessageIds.remove(id) else selectedMessageIds.add(id)
+    }
+
+    /** A multi-picture album is one message, so it is selected as a whole. */
+    fun toggleRowSelection(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        if (ids.all { it in selectedMessageIds }) selectedMessageIds.removeAll(ids.toSet())
+        else selectedMessageIds.addAll(ids)
     }
 
     fun clearSelection() {
@@ -1098,7 +1240,9 @@ fun ChatScreen(
     fun selectAllMessages() {
         val locked = messages.filter { it.locked }.map { it.id }.toSet()
         selectedMessageIds.clear()
-        selectedMessageIds.addAll(SelectionToolbar.selectAllCandidates(messages.map { it.id }, locked))
+        selectedMessageIds.addAll(
+            SelectionToolbar.selectAllCandidates(selectionGroups(messages), locked)
+        )
     }
 
     /** Partial-text copy (#231). A dialog is used instead of turning the bubble
@@ -1114,8 +1258,8 @@ fun ChatScreen(
         }
     }
 
-    fun saveMessageImage(id: Long) {
-        vm.saveMessageImage(id)
+    fun saveMessageAttachment(id: Long) {
+        vm.saveMessageAttachment(id)
         clearSelection()
     }
 
@@ -1273,7 +1417,7 @@ fun ChatScreen(
     LaunchedEffect(focusedSearchId, focusedRowLoaded) {
         val id = focusedSearchId ?: return@LaunchedEffect
         if (scrolledToFocusedId == id) return@LaunchedEffect
-        val target = chatRows.indexOfFirst { it is ChatRow.Sent && it.message.id == id }
+        val target = chatRows.indexOfFirst { id in it.messageIds() }
         if (target >= 0) {
             listState.scrollToItem(target)
             hasScrolledToBottom = true
@@ -1436,12 +1580,20 @@ fun ChatScreen(
     // callbacks, which re-runs this effect with nothing to do.
     LaunchedEffect(conversationId, initialDraft, initialMedia) {
         if (initialMedia.isNotEmpty()) {
-            initialMedia.forEach { vm.sendMediaMessage(conversationId, it, initialDraft) }
+            // Several shared pictures are one message with one caption, the same
+            // way the composer sends them.
+            vm.sendMediaAlbum(conversationId, initialMedia, initialDraft)
             onInitialMediaConsumed()
             onInitialDraftConsumed()
         } else if (initialDraft.isNotBlank()) {
             draft = initialDraft
             onInitialDraftConsumed()
+        }
+    }
+    LaunchedEffect(conversationId, initialStagedMedia) {
+        if (initialStagedMedia.isNotEmpty()) {
+            initialStagedMedia.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
+            onInitialStagedMediaConsumed()
         }
     }
     LaunchedEffect(convo) {
@@ -1481,6 +1633,9 @@ fun ChatScreen(
             ) { mode ->
             when (mode) {
             "select" -> {
+                val saveTargets = SelectionToolbar.saveTargets(messages, selectedMessageIds)
+                val saveTarget = saveTargets.firstOrNull()
+                    ?.let { m -> SelectionToolbar.saveTargetFor(m.mediaType) }
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
@@ -1490,9 +1645,8 @@ fun ChatScreen(
                     onSelectText = messages.firstOrNull { it.id in selectedMessageIds }
                         ?.takeIf { it.body.isNotBlank() }
                         ?.let { m -> { startTextSelection(m.id) } },
-                    onSaveImage = messages.firstOrNull { it.id in selectedMessageIds }
-                        ?.takeIf { it.mediaUri.isNotBlank() }
-                        ?.let { m -> { saveMessageImage(m.id) } },
+                    saveTarget = saveTarget,
+                    onSaveMedia = { saveTargets.forEach { saveMessageAttachment(it.id) } },
                     onClose = { clearSelection() },
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
@@ -1658,6 +1812,20 @@ fun ChatScreen(
                 }
                 val chatAddress = convo?.address ?: ""
                 if (chatAddress.isBlank() || isPhoneNumber(chatAddress)) {
+                    // First run only: a hold-to-record button with two sliding
+                    // exits is not discoverable from the icon alone.
+                    // `settings` is a plain store, not observable state, so the
+                    // dismissal is mirrored locally: writing the flag alone would
+                    // leave the card on screen until the chat was reopened.
+                    var guideDismissed by remember { mutableStateOf(false) }
+                    if (hasMicrophone && !vm.settings.voiceGuideSeen && !guideDismissed) {
+                        VoiceGuideCard(
+                            onDismiss = {
+                                vm.settings.voiceGuideSeen = true
+                                guideDismissed = true
+                            }
+                        )
+                    }
                     InputBar(
                         draft = draft,
                         placeholder = stringResource(R.string.text_placeholder),
@@ -1707,7 +1875,41 @@ fun ChatScreen(
                         },
                         onEmojiToggle = { showEmoji = !showEmoji },
                         onAttach = { attachSheet = true },
-                        showEmojiButton = vm.settings.emojiButtonEnabled
+                        showEmojiButton = vm.settings.emojiButtonEnabled,
+                        voiceEnabled = hasMicrophone,
+                        voiceMaxSeconds = voiceMaxSeconds,
+                        onVoiceStart = { startVoiceNote() },
+                        onVoiceFinish = {
+                            when (val finished = recorder.finish()) {
+                                is VoiceRecorder.FinishResult.Recorded -> {
+                                    val note = finished.note
+                                    vm.sendMediaMessage(conversationId, note.uri, "", "audio")
+                                    android.util.Log.d(
+                                        "VoiceNote",
+                                        "sent bytes=${note.bytes} durationMs=${note.durationMs} mime=${VoiceNotePolicy.MIME}"
+                                    )
+                                }
+                                VoiceRecorder.FinishResult.TooShort -> {
+                                    android.util.Log.d("VoiceNote", "finish tooShort")
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.chat_voice_too_short),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                VoiceRecorder.FinishResult.Failed -> {
+                                    android.util.Log.d("VoiceNote", "finish failed")
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.chat_voice_start_failed),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        },
+                        onVoiceCancel = { recorder.cancel() },
+                        voiceLevel = voiceLevel,
+                        onRecordingChanged = { recordingNow = it }
                     )
                 } else {
                     AlphanumericNotice(address = chatAddress)
@@ -1746,12 +1948,16 @@ fun ChatScreen(
                         )
                         return@itemsIndexed
                     }
-                    val msg = (row as ChatRow.Sent).message
+                    val msg = row.firstMessage() ?: return@itemsIndexed
+                    val rowIds = row.messageIds()
+                    // A multi-picture MMS is one message stored as a row per
+                    // picture; the bubble draws them together (#398).
+                    val albumUris = (row as? ChatRow.Album)?.messages?.map { it.mediaUri }.orEmpty()
                     val prevRow = chatRows.getOrNull(idx - 1)
-                    val prev = (prevRow as? ChatRow.Sent)?.message
+                    val prev = prevRow?.firstMessage()
                     val groupStart = prev == null || startsNewGroup(prev, msg)
                     val isLastMessage = idx == lastSentRow
-                    val isRevealed = msg.id in revealed
+                    val isRevealed = rowIds.any { it in revealed }
 
                     // Bubbles glide into place on send/receive and when an older
                     // page is prepended, instead of the list jumping a row.
@@ -1783,6 +1989,7 @@ fun ChatScreen(
                         }
                         ChatBubble(
                             msg = msg,
+                            albumUris = albumUris,
                             showTime = isLastMessage || isRevealed,
                             // Only a group needs a sender: in a 1:1 chat there is
                             // only one other person and the header names them.
@@ -1793,23 +2000,24 @@ fun ChatScreen(
                                 null
                             },
                             onTap = {
-                                if (selectionActive) toggleSelection(msg.id)
-                                else if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
+                                if (selectionActive) toggleRowSelection(rowIds)
+                                else if (isRevealed) revealed.removeAll(rowIds.toSet())
+                                else revealed.addAll(rowIds)
                             },
                             // Selection still wins over the preview, otherwise a
                             // tap while selecting would open a full-screen view
                             // instead of marking the message.
                             onImageTap = { uri ->
-                                if (selectionActive) toggleSelection(msg.id)
+                                if (selectionActive) toggleRowSelection(rowIds)
                                 else previewImageUri = uri
                             },
                             deliveryReports = deliveryReports,
                             highlightLinks = vm.settings.highlightLinks,
                             linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
                             hideLinks = vm.settings.hideLinks,
-                            isUnlocked = unlockedIds.contains(msg.id),
+                            isUnlocked = rowIds.any { it in unlockedIds },
                             showSimIndicator = vm.settings.showSimIndicator,
-                            isSelected = msg.id in selectedMessageIds,
+                            isSelected = rowIds.all { it in selectedMessageIds },
                             searchQuery = if (msg.id == focusedSearchId) activeSearch else null,
                             isSearchFocus = msg.id == focusedSearchId,
                             searchHighlightAlpha = if (msg.id == focusedSearchId) searchFlashAlpha else 0f,
@@ -1819,11 +2027,10 @@ fun ChatScreen(
                                 reduceMotion = LocalReduceMotion.current
                             ),
                             onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
-                            onLongPress = { toggleSelection(msg.id) },
+                            onLongPress = { toggleRowSelection(rowIds) },
                             onReact = { emoji -> applyReaction(msg, emoji) },
                             showReactionBar = canReact &&
-                                selectedMessageIds.size == 1 &&
-                                msg.id in selectedMessageIds,
+                                bubbleIsTheWholeSelection(rowIds, selectedMessageIds),
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
@@ -2008,7 +2215,7 @@ fun ChatScreen(
                 showForwardPicker = false
                 val targets = forwardingMessageIds
                 vm.openOrCreate(address, name) { targetId ->
-                    targets.forEach { vm.forwardMessage(it, targetId) }
+                    vm.forwardMessages(targets, targetId)
                     forwardingMessageIds = emptyList()
                     Toast.makeText(context, context.getString(R.string.chat_forwarded), Toast.LENGTH_SHORT).show()
                 }
@@ -2080,7 +2287,8 @@ internal fun MessageSelectionToolbar(
     allStarred: Boolean,
     onSelectAll: () -> Unit,
     onSelectText: (() -> Unit)?,
-    onSaveImage: (() -> Unit)?,
+    onSaveMedia: () -> Unit,
+    saveTarget: MmsSupport.SaveTarget?,
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
@@ -2155,10 +2363,10 @@ internal fun MessageSelectionToolbar(
                                 onClick = { overflow = false; onSelectText() }
                             )
                         }
-                        if (onSaveImage != null) {
+                        if (saveTarget != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_save_image)) },
-                                onClick = { overflow = false; onSaveImage() }
+                                text = { Text(stringResource(SelectionToolbar.saveLabelRes(saveTarget))) },
+                                onClick = { overflow = false; onSaveMedia() }
                             )
                         }
                         if (SelectionToolbar.showSingleMessageActions(count)) {
@@ -3014,6 +3222,17 @@ fun MessageRow(
                         }
                     }
                 }
+            } else if (msg.mediaType == "audio" && msg.mediaUri.isNotBlank()) {
+                VoiceBubble(
+                    uri = msg.mediaUri,
+                    isMe = msg.isMe,
+                    isSelected = isSelected,
+                    body = bodyText,
+                    bodyStyle = MaterialTheme.typography.bodyLarge.merge(
+                        TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
+                    ),
+                    onLongPress = { onLongPress() }
+                )
             } else {
                 Surface(
                     color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
@@ -3205,8 +3424,114 @@ internal fun InputBar(
     hasAttachments: Boolean = false,
     sims: List<SimCard> = emptyList(),
     currentSimId: Int = -1,
-    onCycleSim: () -> Unit = {}
+    onCycleSim: () -> Unit = {},
+    voiceEnabled: Boolean = false,
+    voiceMaxSeconds: Int = VoiceNotePolicy.MAX_SECONDS,
+    onVoiceStart: () -> Boolean = { false },
+    onVoiceFinish: () -> Unit = {},
+    onVoiceCancel: () -> Unit = {},
+    /** What the microphone is hearing, 0..1, for the button's live meter. */
+    voiceLevel: Float = 0f,
+    /** Told when a recording starts and stops, so the caller can poll the mic. */
+    onRecordingChanged: (Boolean) -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val reduceMotion = LocalReduceMotion.current
+    var recording by remember { mutableStateOf(false) }
+    var arm by remember { mutableStateOf(VoiceArm.NONE) }
+    // Locked recording survives the finger: the note keeps running hands-free
+    // until send, cancel or the carrier's cap ends it.
+    var locked by remember { mutableStateOf(false) }
+    // How far the slide has carried the bar's contents, in pixels; read only by
+    // the offset lambda so a drag costs a layout pass, not a recomposition.
+    var slideDx by remember { mutableFloatStateOf(0f) }
+    // Where the padlock stalk and the button actually are on screen, measured
+    // from the views that draw them: a hit area derived from the button's
+    // position drifts off the icon whenever the stalk's layout shifts, and a
+    // lock that arms below the padlock is the sensitivity #364 keeps hitting.
+    var lockTabLeft by remember { mutableFloatStateOf(0f) }
+    var lockTabTop by remember { mutableFloatStateOf(0f) }
+    var lockTabWidth by remember { mutableFloatStateOf(0f) }
+    var micLeft by remember { mutableFloatStateOf(0f) }
+    var micTop by remember { mutableFloatStateOf(0f) }
+    val layoutDensity = LocalDensity.current.density
+    // The padlock's hit area has no text equivalent, so it names itself:
+    // scripts/test-voice-message.sh drags to exactly this rectangle.
+    // The armed state decides the disc's glyph, which has no text equivalent;
+    // it names itself so a script can prove a lift is not a lock. Logged on
+    // every recording, not only on change, or a cleared log hides the state.
+    LaunchedEffect(arm, recording) {
+        if (recording) android.util.Log.d("VoiceLock", "arm=$arm")
+    }
+    // The finger is down on the circle. The microphone only opens once that
+    // press has become a hold, so tapping the button records nothing. Named
+    // apart from the send circle's own schedule-hold, which shadows a plain
+    // `holding` further down this composable.
+    var micHeld by remember { mutableStateOf(false) }
+    var elapsedMs by remember { mutableStateOf(0L) }
+
+    // Stops once, whichever comes first: the finger leaving the screen or the
+    // carrier's size budget running out. The flag is what keeps a release after
+    // an automatic stop from sending a second note.
+    fun stopRecording(send: Boolean) {
+        if (!recording) return
+        recording = false
+        arm = VoiceArm.NONE
+        locked = false
+        slideDx = 0f
+        if (send) onVoiceFinish() else onVoiceCancel()
+    }
+
+    LaunchedEffect(micHeld) {
+        if (!micHeld || recording) return@LaunchedEffect
+        // A tap is not a recording: the press has to last before the microphone
+        // opens. Releasing first cancels this effect, so no file is ever made.
+        delay(VoiceGesture.HOLD_DELAY_MS)
+        if (!micHeld || recording) return@LaunchedEffect
+        if (!onVoiceStart()) {
+            // No microphone, or no permission for one: end the press rather
+            // than leaving a stuck bar behind.
+            micHeld = false
+            return@LaunchedEffect
+        }
+        recording = true
+        arm = VoiceArm.NONE
+        locked = false
+        slideDx = 0f
+    }
+
+    // A lock is committed by dwelling in the lock zone, not by crossing it: the
+    // finger that drifts up mid-sentence keeps recording and sends on release,
+    // while a deliberate "up and hold" goes hands-free.
+    LaunchedEffect(arm, locked, recording) {
+        if (arm != VoiceArm.LOCK || locked || !recording) return@LaunchedEffect
+        delay(VoiceGesture.LOCK_DWELL_MS)
+        if (arm != VoiceArm.LOCK || locked || !recording) return@LaunchedEffect
+        locked = true
+        arm = VoiceArm.NONE
+        slideDx = 0f
+        // The circle swaps to Send on the next frame, which disposes the gesture
+        // handler mid-drag; release the press here so the next tap can record.
+        micHeld = false
+    }
+
+    LaunchedEffect(recording) {
+        onRecordingChanged(recording)
+        if (!recording) return@LaunchedEffect
+        elapsedMs = 0L
+        val startedAt = android.os.SystemClock.elapsedRealtime()
+        while (recording && android.os.SystemClock.elapsedRealtime() - startedAt < voiceMaxSeconds * 1000L) {
+            elapsedMs = android.os.SystemClock.elapsedRealtime() - startedAt
+            delay(100)
+        }
+        if (recording) {
+            elapsedMs = android.os.SystemClock.elapsedRealtime() - startedAt
+            android.widget.Toast.makeText(
+                context, context.getString(R.string.chat_voice_max_reached), android.widget.Toast.LENGTH_SHORT
+            ).show()
+            stopRecording(send = true)
+        }
+    }
     Row(
         modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -3216,14 +3541,18 @@ internal fun InputBar(
         // only: a message's own direction is decided differently (see
         // BidiText.direction), but flipping the caret mid-word would be worse
         // than the message's final alignment being imperfect.
-        val draftStyle = LocalTextStyle.current.copy(
+        val draftStyle = MaterialTheme.typography.bodyLarge.copy(
+            // BasicTextField does not inherit a colour the way TextField did; an
+            // unset ink rendered the draft almost invisible on the pill.
+            color = MaterialTheme.colorScheme.onSurface,
             textDirection = BidiText.firstStrongDirection(draft).toTextDirection()
         )
         LaunchedEffect(draftStyle.textDirection) {
             android.util.Log.d("ComposerDirection", "dir=${draftStyle.textDirection}")
         }
-        // GM's composer is a true pill: a 56dp field with a 28dp corner, which
-        // at 24dp still read as a rounded rectangle beside it.
+        // Google Messages' composer row is one 56dp-tall pill with a 28dp
+        // corner, beside a 56dp circle. Measured off its own dump: the field and
+        // both circle states are [..,2032][..,2186] on a 440dpi screen.
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.inputPill,
@@ -3234,53 +3563,70 @@ internal fun InputBar(
                     animationSpec = motionSpring<IntSize>(LocalReduceMotion.current)
                 )
         ) {
-            TextField(
-                value = draft,
-                onValueChange = onDraftChange,
-                placeholder = { Text(placeholder) },
-                leadingIcon = {
-                    IconButton(onClick = onAttach) {
-                        // GM badges the attach button with a dot that overlaps the
-                        // ring's top-right; the ring shows through as broken
-                        // because the dot carries a ring of field colour around it.
-                        Box {
-                            Icon(
-                                Icons.Rounded.AddCircleOutline,
-                                stringResource(R.string.icon_attach),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            val dot = MaterialTheme.colorScheme.composerAttachDot
-                            // A dot colour has no text equivalent, so it names
-                            // itself; scripts/test-composer-dot.sh uses this.
-                            LaunchedEffect(dot) {
-                                android.util.Log.d(
-                                    "ComposerDot",
-                                    "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
+            Box {
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            IconButton(onClick = onAttach) {
+                                // GM badges the attach button with a dot that overlaps the
+                                // ring's top-right; the ring shows through as broken
+                                // because the dot carries a ring of field colour around it.
+                                Box {
+                                    Icon(
+                                        Icons.Rounded.AddCircleOutline,
+                                        stringResource(R.string.icon_attach),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    val dot = MaterialTheme.colorScheme.composerAttachDot
+                                    // A dot colour has no text equivalent, so it names
+                                    // itself; scripts/test-composer-dot.sh uses this.
+                                    LaunchedEffect(dot) {
+                                        android.util.Log.d(
+                                            "ComposerDot",
+                                            "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
+                                        )
+                                    }
+                                    Box(
+                                        Modifier
+                                            .align(Alignment.TopEnd)
+                                            // Sits *on* the ring, not outside it: GM's
+                                            // dot centre is 0.99·r from the ring centre.
+                                            .offset(x = (-1).dp, y = 1.dp)
+                                            // GM's dot measures ~5dp across; the 8dp box
+                                            // is the cut-out ring plus that dot.
+                                            .size(8.dp)
+                                            .background(MaterialTheme.colorScheme.inputPill, CircleShape)
+                                            .padding(1.5.dp)
+                                            .background(dot, CircleShape)
+                                    )
+                                }
+                            }
+                        }
+                        Box(Modifier.weight(1f)) {
+                            if (draft.isEmpty()) {
+                                Text(
+                                    text = placeholder,
+                                    style = draftStyle,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(vertical = 16.dp)
                                 )
                             }
-                            Box(
-                                Modifier
-                                    .align(Alignment.TopEnd)
-                                    // Sits *on* the ring, not outside it: GM's
-                                    // dot centre is 0.99·r from the ring centre.
-                                    .offset(x = (-1).dp, y = 1.dp)
-                                    // GM's dot measures ~5dp across; the 8dp box
-                                    // is the cut-out ring plus that dot.
-                                    .size(8.dp)
-                                    .background(MaterialTheme.colorScheme.inputPill, CircleShape)
-                                    .padding(1.5.dp)
-                                    .background(dot, CircleShape)
+                            BasicTextField(
+                                value = draft,
+                                onValueChange = onDraftChange,
+                                textStyle = draftStyle,
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = androidx.compose.ui.text.input.ImeAction.Default,
+                                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                                ),
+                                maxLines = 4,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
                             )
                         }
-                    }
-                },
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Default,
-                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
-                ),
-                textStyle = draftStyle,
-                trailingIcon = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
                         if (SimSwitcher.shouldShowSwitch(sims.size)) {
                             val simLabel = when {
                                 sims.size >= 3 -> "D"
@@ -3313,28 +3659,158 @@ internal fun InputBar(
                                 )
                             }
                         }
+                        Spacer(Modifier.width(8.dp))
                     }
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                ),
-                maxLines = 4,
-                modifier = Modifier.fillMaxWidth()
-            )
+                if (recording) {
+                        // Drawn over the field rather than in place of it: taking
+                        // the text field out of the composition drops its focus,
+                        // and the IME closes under a finger that is still
+                        // recording. The overlay swallows taps so the field
+                        // underneath cannot be edited mid-recording.
+                        val barMode = VoiceBar.modeFor(locked, arm)
+                        val slideCap = with(LocalDensity.current) { 40.dp.toPx() }
+                        Row(
+                            Modifier
+                                .matchParentSize()
+                                .background(MaterialTheme.colorScheme.inputPill)
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            awaitPointerEvent().changes.forEach { it.consume() }
+                                        }
+                                    }
+                                }
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Google Messages' bar, measured off its own composer:
+                            // a steady white dot, the counter, the discard bin, a
+                            // left chevron and "Slide to cancel", then the red
+                            // disc. The row stays at full contrast; only an armed
+                            // cancel changes its colour. A locked note has no
+                            // finger to slide, so the chevron becomes a lock and
+                            // the bar says it is recording hands-free (#364).
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    // Follows the finger with a layout-only read,
+                                    // so a drag does not recompose the bar.
+                                    .offset {
+                                        IntOffset(
+                                            VoiceBar.slideOffset(slideDx, slideCap).roundToInt(),
+                                            0
+                                        )
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                            // Hands-free, nobody is touching the screen; a pulse
+                            // is what says the note is still running.
+                            val dotAlpha = if (barMode == VoiceBarMode.LOCKED && !reduceMotion) {
+                                val pulse = rememberInfiniteTransition(label = "recordDot")
+                                pulse.animateFloat(
+                                    initialValue = 0.35f,
+                                    targetValue = 1f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(700, easing = LinearEasing),
+                                        repeatMode = RepeatMode.Reverse
+                                    ),
+                                    label = "recordDotAlpha"
+                                ).value
+                            } else 1f
+                            Box(
+                                Modifier
+                                    .size(12.dp)
+                                    .alpha(dotAlpha)
+                                    .background(MaterialTheme.colorScheme.onSurface, CircleShape)
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                VoiceNotePolicy.elapsedLabel(elapsedMs),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            val armed = if (barMode == VoiceBarMode.CANCEL) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurface
+                            val cancelLabel = stringResource(R.string.chat_voice_cancel_recording)
+                            if (VoiceBar.binIsButton(barMode)) {
+                                // Hands-free: the finger is gone, so the bin is a
+                                // real button now.
+                                IconButton(
+                                    onClick = { stopRecording(send = false) },
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .semantics { contentDescription = cancelLabel }
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.DeleteOutline, null,
+                                        tint = armed,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            } else {
+                                // While the finger holds, the bin is the target
+                                // the slide is aimed at, not a button: it is drawn
+                                // but not clickable, which is exactly how Google
+                                // Messages renders it mid-hold.
+                                Box(
+                                    Modifier
+                                        .size(28.dp)
+                                        .semantics { contentDescription = cancelLabel },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.DeleteOutline, null,
+                                        tint = armed,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                            if (VoiceBar.showsLock(barMode)) {
+                                Icon(
+                                    Icons.Filled.Lock, null,
+                                    tint = armed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Rounded.ChevronLeft, null,
+                                    tint = armed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                stringResource(VoiceBar.hintRes(barMode)),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = armed,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                // The hint shares one row with the counter; when
+                                // space runs out the hint gives way, never the
+                                // lock stalk — that one has no other way of being
+                                // learned.
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            }
+                        }
+                }
+            }
         }
         // The send circle is always there, dimmed while there is nothing to
         // send, and inert until then — combinedClickable is gated on [ready], so
         // an empty tap cannot fire and holding it schedules nothing. Round 2 of
         // #347 hid it instead; the row then looked unfinished on an empty chat.
         val ready = canSend(draft, hasAttachments)
+        // An empty composer has nothing to send, so the circle is the way into a
+        // voice note instead — the same swap Google Messages makes, and the only
+        // affordance this adds to the row.
+        val micMode = showsVoiceButton(voiceEnabled, draft, hasAttachments)
         val sendLabel = stringResource(R.string.icon_send)
         val sendReduceMotion = LocalReduceMotion.current
         val present by animateFloatAsState(
-            targetValue = if (ready) 1f else 0.38f,
+            targetValue = if (ready || micMode) 1f else 0.38f,
             animationSpec = motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
             label = "sendPresence"
         )
@@ -3358,34 +3834,355 @@ internal fun InputBar(
             holding = false
         }
         Spacer(Modifier.width(8.dp))
-        Box(
-            Modifier
-                .size(48.dp)
-                .graphicsLayer {
-                    alpha = present
-                    scaleX = holdScale
-                    scaleY = holdScale
+        // One slot, three meanings: record, send, and send-for-a-locked-note.
+        // Cross-fading the whole circle — not just its icon — is what makes the
+        // swap read as the button turning into the other one; a hard swap looked
+        // like two widgets trading places.
+        val circleMode = when {
+            !micMode -> ComposerCircle.Send
+            locked -> ComposerCircle.LockedSend
+            else -> ComposerCircle.Record
+        }
+        AnimatedContent(
+            targetState = circleMode,
+            transitionSpec = {
+                val spec = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
+                (fadeIn(spec) +
+                    scaleIn(initialScale = CIRCLE_SWAP_SCALE, animationSpec = spec))
+                    .togetherWith(
+                        fadeOut(spec) +
+                            scaleOut(targetScale = CIRCLE_SWAP_SCALE, animationSpec = spec)
+                    )
+            },
+            label = "composerCircle"
+        ) { mode ->
+            // This Compose version has no rotateIn/rotateOut, so the turn comes
+            // from the content scope's own transition: the outgoing circle spins
+            // away and the incoming one unwinds into place, which is what makes
+            // the swap read as one circle turning over rather than two swapping.
+            val turn by transition.animateFloat(
+                transitionSpec = { motionTween(reduceMotion, Motion.DURATION_SHORT4) },
+                label = "composerCircleTurn"
+            ) { state ->
+                // The incoming circle unwinds from one side, the outgoing one
+                // spins away to the other.
+                when (state) {
+                    EnterExitState.PreEnter -> -CIRCLE_SWAP_ROTATION
+                    EnterExitState.PostExit -> CIRCLE_SWAP_ROTATION
+                    else -> 0f
                 }
-                .background(MaterialTheme.colorScheme.primary, CircleShape)
-                // Holding Send is the only way in, as it was before #386: the
-                // reporter was told where scheduling lives instead of being
-                // given another button in the row.
-                .combinedClickable(
-                    enabled = ready,
-                    onClick = onSend,
-                    onLongClick = if (schedulingEnabled) ({ holding = true }) else null
+            }
+            Box(Modifier.graphicsLayer { rotationZ = turn }) {
+            when (mode) {
+                ComposerCircle.LockedSend -> {
+                // Hands-free: the same circle sends, so there is one obvious way to
+                // finish and the bin in the bar is the one way to drop it.
+                Box(
+                    Modifier
+                        .size(56.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .clickable { stopRecording(send = true) }
+                        .semantics { contentDescription = sendLabel },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.Send, null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                }
+                ComposerCircle.Record -> {
+                val voiceLabel = stringResource(R.string.icon_voice)
+                val lockHintLabel = stringResource(R.string.chat_voice_lock_hint)
+                // Google Messages keeps the disc exactly the pill's height while
+                // recording; growing it painted a lighter arc over the pill's edge
+                // that read as a ripple around the button. The colour change and the
+                // padlock are the motion here.
+                val micScale = 1f
+                // Google Messages' own palette, measured off its composer: idle, the
+                // record circle is the pill's fill with the light variant as its
+                // glyph; the moment recording starts it turns red. The accent
+                // therefore still means Send and nothing else. Both are theme
+                // roles, so dynamic colour moves them with the wallpaper.
+                val micColor by animateColorAsState(
+                    targetValue = if (recording) MaterialTheme.colorScheme.recordActive
+                    else MaterialTheme.colorScheme.inputPill,
+                    animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
+                    label = "micRecordColor"
                 )
-                .semantics { contentDescription = sendLabel },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.AutoMirrored.Rounded.Send, null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(20.dp)
-            )
+                val micInk by animateColorAsState(
+                    targetValue = if (recording) MaterialTheme.colorScheme.onRecordActive
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
+                    label = "micRecordInk"
+                )
+                // The disc's resolved colour has no text equivalent, so it names
+                // itself; scripts assert it against Google Messages' palette.
+                val pillColor = MaterialTheme.colorScheme.inputPill
+                LaunchedEffect(micColor, micInk, pillColor) {
+                    android.util.Log.d(
+                        "VoiceButton",
+                        "fill=#%06X ink=#%06X pill=#%06X recording=$recording".format(
+                            micColor.toArgb() and 0xFFFFFF,
+                            micInk.toArgb() and 0xFFFFFF,
+                            pillColor.toArgb() and 0xFFFFFF
+                        )
+                    )
+                }
+                Box(
+                    Modifier
+                        .size(56.dp)
+                        .onGloballyPositioned {
+                            micLeft = it.positionInRoot().x
+                            micTop = it.positionInRoot().y
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                // The lock hint lives above the button, on a little tab of its
+                // own — inside the pill it read as one more label in a row that
+                // already says "Slide to cancel". Drawn above the row so it costs
+                // the composer no height.
+                // Only while a note is running: idle, this tab floated over the
+                // chat with nothing to lock.
+                if (recording && !locked) {
+                    // A stalk rising out of the button itself, the way WhatsApp
+                    // draws it: the lock at its top, a chevron under it, and the
+                    // same fill as the disc so the two read as one control rather
+                    // than a label floating over the chat.
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = VoiceLockTab.OFFSET_DP.dp)
+                            .width(VoiceLockTab.WIDTH_DP.dp)
+                            // requiredHeight, not height: the slot this sits in
+                            // is a fixed 56dp box, so height() is coerced to the
+                            // disc's own size and the stalk loses its length.
+                            .requiredHeight(VoiceLockTab.HEIGHT_DP.dp)
+                            .background(
+                                MaterialTheme.colorScheme.inverseSurface,
+                                RoundedCornerShape(topStart = VoiceLockTab.RADIUS_DP.dp,
+                                    topEnd = VoiceLockTab.RADIUS_DP.dp)
+                            )
+                            .onGloballyPositioned {
+                                lockTabLeft = it.positionInRoot().x
+                                lockTabTop = it.positionInRoot().y
+                                lockTabWidth = it.size.width.toFloat()
+                                val b = VoiceLockTab.iconBounds(
+                                    lockTabLeft, lockTabTop, lockTabWidth, layoutDensity
+                                )
+                                android.util.Log.d(
+                                    "VoiceLock",
+                                    "icon=[${b.left.toInt()},${b.top.toInt()}]" +
+                                        "[${b.right.toInt()},${b.bottom.toInt()}]"
+                                )
+                            }
+                            .semantics { contentDescription = lockHintLabel },
+                        verticalArrangement = Arrangement.spacedBy(VoiceLockTab.ICON_GAP_DP.dp)
+                    ) {
+                        // A spacer, not top padding: padding is applied inside the
+                        // node and shifted everything measured for the hit area.
+                        Spacer(Modifier.height(VoiceLockTab.ICON_TOP_DP.dp))
+                        // The lock is the target; the chevron points at it. Both in
+                        // inverse ink on the light stalk, the way WhatsApp draws
+                        // them, and both brighten only once the finger is on the
+                        // padlock — a highlight that followed the lift instead
+                        // made a small drift look like a lock (#364).
+                        val lockTint = if (arm == VoiceArm.LOCK) MaterialTheme.colorScheme.inverseOnSurface
+                        else MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.65f)
+                        Icon(
+                            Icons.Filled.Lock, null,
+                            tint = lockTint,
+                            modifier = Modifier.size(VoiceLockTab.ICON_SIZE_DP.dp)
+                        )
+                        Icon(
+                            Icons.Rounded.KeyboardArrowUp, null,
+                            tint = lockTint,
+                            modifier = Modifier.size(VoiceLockTab.CHEVRON_SIZE_DP.dp)
+                        )
+                    }
+                }
+                // The live meter: a translucent ring that grows with the voice,
+                // so a recording has motion even with the finger off the screen.
+                if (recording) {
+                    // A quiet microphone would otherwise leave the meter frozen,
+                    // so the ring also breathes on its own; the voice rides on top
+                    // of that. Reduce motion keeps it at a still, faint ring.
+                    val breathe = if (reduceMotion) 0f else {
+                        val pulse = rememberInfiniteTransition(label = "recordHalo")
+                        pulse.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(900, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "recordHaloPulse"
+                        ).value
+                    }
+                    Box(
+                        Modifier
+                            .matchParentSize()
+                            .graphicsLayer {
+                                val grow = 1f + HALO_GROWTH * voiceLevel + HALO_BREATHE_GROWTH * breathe
+                                scaleX = grow
+                                scaleY = grow
+                            }
+                            .background(
+                                MaterialTheme.colorScheme.recordActive.copy(
+                                    alpha = HALO_MIN_ALPHA + HALO_ALPHA * voiceLevel +
+                                        HALO_BREATHE_ALPHA * breathe
+                                ),
+                                CircleShape
+                            )
+                    )
+                }
+                Box(
+                    Modifier
+                        .size(56.dp)
+                        .graphicsLayer {
+                            alpha = present
+                            scaleX = micScale
+                            scaleY = micScale
+                        }
+                        .background(micColor, CircleShape)
+                        // Press-and-hold records; sliding left arms the cancel and
+                        // resting on the padlock arms the lock. Releasing then does
+                        // one of the two, and nothing is sent until the finger is up.
+                        .pointerInput(voiceMaxSeconds) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                down.consume()
+                                micHeld = true
+                                var drag = androidx.compose.ui.geometry.Offset.Zero
+                                val threshold = VoiceGesture.THRESHOLD_DP.dp.toPx()
+                                val lockDensity = this.density
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    // Follow the finger that started the note; a
+                                    // second pointer (a palm, or a tap on the
+                                    // overlay) must not stall the drag.
+                                    val change = event.changes.firstOrNull { it.id == down.id }
+                                        ?: event.changes.first()
+                                    if (!change.pressed) {
+                                        change.consume()
+                                        break
+                                    }
+                                    drag += change.positionChange()
+                                    // Nothing is armed until the microphone is
+                                    // actually open; before that this is a tap.
+                                    if (recording) {
+                                        slideDx = drag.x
+                                        arm = VoiceGesture.armFor(
+                                            drag.x, drag.y, threshold,
+                                            // The finger's own place on the
+                                            // button, not the distance it has
+                                            // covered: the padlock is a target.
+                                            overLock = VoiceLockTab.reached(
+                                                micLeft + change.position.x,
+                                                micTop + change.position.y,
+                                                lockTabLeft, lockTabTop, lockTabWidth,
+                                                lockDensity
+                                            )
+                                        )
+                                    }
+                                    change.consume()
+                                }
+                                micHeld = false
+                                // A press shorter than the hold delay never
+                                // opened the microphone, so there is no note to
+                                // send and nothing to clean up.
+                                if (!recording) return@awaitEachGesture
+                                if (locked) {
+                                    // The finger that lifted must not send the note:
+                                    // swallow the rest of the gesture and leave the
+                                    // recording running hands-free.
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        event.changes.forEach { it.consume() }
+                                        if (event.changes.none { it.pressed }) break
+                                    }
+                                    return@awaitEachGesture
+                                }
+                                if (!recording) return@awaitEachGesture
+                                stopRecording(send = arm != VoiceArm.CANCEL)
+                            }
+                        }
+                        .semantics { contentDescription = voiceLabel },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (arm == VoiceArm.LOCK && !locked) {
+                        Icon(
+                            Icons.Outlined.Lock,
+                            stringResource(R.string.chat_voice_lock_hint),
+                            tint = micInk,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Icon(
+                            painterResource(R.drawable.ic_voice_wave), null,
+                            tint = micInk,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                }
+                }
+                ComposerCircle.Send -> {
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .graphicsLayer {
+                        alpha = present
+                        scaleX = holdScale
+                        scaleY = holdScale
+                    }
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    // Holding Send is the only way in, as it was before #386: the
+                    // reporter was told where scheduling lives instead of being
+                    // given another button in the row.
+                    .combinedClickable(
+                        enabled = ready,
+                        onClick = onSend,
+                        onLongClick = if (schedulingEnabled) ({ holding = true }) else null
+                    )
+                    .semantics { contentDescription = sendLabel },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.Send, null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+                }
+            }
+            }
         }
     }
 }
+
+/** What the composer's single circle is currently for. */
+internal enum class ComposerCircle { Record, Send, LockedSend }
+
+/** How far a finger has to travel before releasing a recording cancels it. */
+private const val SLIDE_CANCEL_DP = 72
+
+/** The stalk above the record button: its height, and how far it overlaps. */
+
+/** How far the circle turns while it swaps meaning. */
+private const val CIRCLE_SWAP_ROTATION = 45f
+
+/** The live meter behind the record disc: growth and opacity against the voice. */
+private const val HALO_GROWTH = 0.45f
+private const val HALO_MIN_ALPHA = 0.22f
+private const val HALO_ALPHA = 0.35f
+private const val HALO_BREATHE_GROWTH = 0.22f
+private const val HALO_BREATHE_ALPHA = 0.20f
+
+/** How small the circle shrinks to (or grows from) while it swaps meaning. */
+private const val CIRCLE_SWAP_SCALE = 0.7f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

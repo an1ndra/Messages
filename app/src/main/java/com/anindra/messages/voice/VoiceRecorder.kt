@@ -1,0 +1,145 @@
+package com.anindra.messages.voice
+
+import android.content.Context
+import android.media.MediaRecorder
+import android.net.Uri
+import android.os.Build
+import android.os.SystemClock
+import android.util.Log
+import androidx.core.content.FileProvider
+import java.io.File
+
+/**
+ * Records one voice note into the app's cache and hands back a URI the send path
+ * can read.
+ *
+ * The output is an MPEG-4 container with AAC-LC mono in it. That is what Google
+ * Messages-class handsets decode without asking, and it is small enough at
+ * [VoiceNotePolicy.BITRATE] that a minute of speech sits well inside a carrier's
+ * default 300 KB MMS cap.
+ */
+class VoiceRecorder(private val context: Context) {
+
+    data class Note(val uri: Uri, val bytes: Long, val durationMs: Long)
+
+    /** What came back from [finish]; the caller says a different thing for each. */
+    sealed interface FinishResult {
+        data class Recorded(val note: Note) : FinishResult
+
+        /** The press was too brief for the encoder to write a container. */
+        data object TooShort : FinishResult
+
+        /** The recorder stopped or produced nothing readable. */
+        data object Failed : FinishResult
+    }
+
+    private var recorder: MediaRecorder? = null
+    private var file: File? = null
+    private var startedAt = 0L
+
+    val isRecording: Boolean get() = recorder != null
+
+    /**
+     * The loudest sample since the last read, 0..1.
+     *
+     * The recorder resets it on every read, so a caller polling it is showing
+     * what the microphone just heard rather than a peak that never falls.
+     */
+    fun level(): Float {
+        val peak = runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0)
+        return (peak / MAX_AMPLITUDE).coerceIn(0f, 1f)
+    }
+
+    /** @return the URI to play/send from, or null when the microphone could not
+     *  be opened (no device, SELinux denial, or the emulator's audio disabled). */
+    fun start(): Uri? {
+        cancel()
+        val dir = File(context.cacheDir, DIR).apply { mkdirs() }
+        val output = File(dir, "voice-${System.currentTimeMillis()}.m4a")
+        val mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(context)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaRecorder()
+        }
+        return try {
+            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            mediaRecorder.setAudioChannels(1)
+            mediaRecorder.setAudioSamplingRate(VoiceNotePolicy.SAMPLE_RATE)
+            mediaRecorder.setAudioEncodingBitRate(VoiceNotePolicy.BITRATE)
+            mediaRecorder.setOutputFile(output.absolutePath)
+            mediaRecorder.prepare()
+            mediaRecorder.start()
+            recorder = mediaRecorder
+            file = output
+            startedAt = SystemClock.elapsedRealtime()
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", output)
+        } catch (t: Throwable) {
+            Log.w(TAG, "could not start recording: ${t.message}")
+            runCatching { mediaRecorder.release() }
+            output.delete()
+            recorder = null
+            file = null
+            null
+        }
+    }
+
+    /** Stops and returns the recording, or why it produced no note. */
+    fun finish(): FinishResult {
+        val mediaRecorder = recorder ?: return FinishResult.Failed
+        val output = file
+        val durationMs = SystemClock.elapsedRealtime() - startedAt
+        recorder = null
+        file = null
+        val tooShort = durationMs < MIN_RECORD_MS
+        val stopped = try {
+            mediaRecorder.stop()
+            true
+        } catch (t: Throwable) {
+            Log.w(TAG, "recording produced no usable file: ${t.message}")
+            false
+        } finally {
+            runCatching { mediaRecorder.release() }
+        }
+        if (!stopped || output == null || !output.exists() || output.length() <= 0L) {
+            output?.delete()
+            return if (tooShort) FinishResult.TooShort else FinishResult.Failed
+        }
+        if (tooShort) {
+            output.delete()
+            return FinishResult.TooShort
+        }
+        return FinishResult.Recorded(
+            Note(
+                uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", output),
+                bytes = output.length(),
+                durationMs = durationMs
+            )
+        )
+    }
+
+    /** Discards an in-flight recording (a slide-to-cancel, or leaving the chat). */
+    fun cancel() {
+        recorder?.let { mediaRecorder ->
+            runCatching { mediaRecorder.stop() }
+            runCatching { mediaRecorder.release() }
+        }
+        recorder = null
+        file?.delete()
+        file = null
+    }
+
+    private companion object {
+        const val TAG = "VoiceRecorder"
+        const val DIR = "voice"
+
+        /** Below this the encoder has no frames to write, so `stop()` usually
+         *  throws; the user's press was a tap, not a recording. */
+        const val MIN_RECORD_MS = 400L
+
+        /** MediaRecorder reports amplitude against a signed 16-bit peak. */
+        const val MAX_AMPLITUDE = 32_767f
+    }
+}

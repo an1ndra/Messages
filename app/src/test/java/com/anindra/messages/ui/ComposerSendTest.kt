@@ -1,5 +1,6 @@
 package com.anindra.messages.ui
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -36,6 +37,23 @@ class ComposerSendTest {
     @Test
     fun textAndAPictureBothEnableSend() {
         assertTrue(canSend("caption", hasAttachments = true))
+    }
+
+    @Test
+    fun anEmptyComposerHandsTheCircleToTheMicrophone() {
+        assertTrue(showsVoiceButton(voiceEnabled = true, draft = "", hasAttachments = false))
+        assertTrue(showsVoiceButton(voiceEnabled = true, draft = "  ", hasAttachments = false))
+    }
+
+    @Test
+    fun typingBringsTheSendButtonBack() {
+        assertFalse(showsVoiceButton(voiceEnabled = true, draft = "hi", hasAttachments = false))
+        assertFalse(showsVoiceButton(voiceEnabled = true, draft = "", hasAttachments = true))
+    }
+
+    @Test
+    fun aDeviceWithoutAMicrophoneNeverShowsTheMic() {
+        assertFalse(showsVoiceButton(voiceEnabled = false, draft = "", hasAttachments = false))
     }
 
     @Test

@@ -37,7 +37,15 @@ data class Message(
     /** Who sent it. Blank means the conversation's own address. */
     val address: String = "",
     /** Bookmarked by the user (#394). Local only; the provider has no column. */
-    val starred: Boolean = false
+    val starred: Boolean = false,
+    /**
+     * The provider MMS this row came from, or 0 for an SMS or a local message.
+     *
+     * A multi-picture MMS is one provider row stored as one message row per
+     * attachment, so the id is what tells the chat that several rows are one
+     * message and must share a bubble (#398).
+     */
+    val sysId: Long = 0
 )
 
 /** A bookmarked message, with the chat it came from (#394). */

@@ -54,10 +54,109 @@ sealed interface ChatRow {
         override val key get() = "sent_${message.id}"
     }
 
+    /**
+     * The pictures one provider MMS carried, drawn as a single bubble.
+     *
+     * A multi-picture MMS is stored as one message row per attachment so no
+     * picture is lost (#398); showing each row separately made one message read
+     * as three. They are one MMS, so they get one bubble, one timestamp and one
+     * long-press (#398 follow-up).
+     */
+    data class Album(val messages: List<Message>) : ChatRow {
+        init {
+            require(messages.isNotEmpty()) { "an album needs at least one picture" }
+        }
+
+        val first: Message get() = messages.first()
+
+        override val timestamp get() = first.timestamp
+        override val key get() = "album_${first.sysId}"
+    }
+
     data class Pending(val scheduled: ScheduledMessage) : ChatRow {
         override val timestamp get() = scheduled.timestamp
         override val key get() = "pending_${scheduled.id}"
     }
+}
+
+/**
+ * The provider MMS a picture row belongs to, or null when the row is a message
+ * of its own.
+ *
+ * Only picture rows group: a text row is the caption, and a voice note is a
+ * message in its own right.
+ */
+fun albumKey(message: Message): Long? =
+    message.sysId.takeIf {
+        it > 0 && message.transport == "mms" && message.mediaType == "image"
+    }
+
+/**
+ * The id groups selection has to treat as one message: every picture of an
+ * album together, and every other row on its own.
+ */
+fun selectionGroups(messages: List<Message>): List<List<Long>> {
+    val groups = mutableListOf<MutableList<Long>>()
+    val byAlbum = mutableMapOf<Long, MutableList<Long>>()
+    for (message in messages) {
+        val key = albumKey(message)
+        if (key == null) {
+            groups += mutableListOf(message.id)
+        } else {
+            byAlbum.getOrPut(key) { mutableListOf<Long>().also { groups += it } } += message.id
+        }
+    }
+    return groups
+}
+
+/**
+ * Folds [rows] so every picture row of the same provider MMS becomes one
+ * [ChatRow.Album], wherever it sits in the list.
+ *
+ * Adjacency was not enough: every row of one MMS carries the same timestamp, so
+ * another message in that second can sort between two of its pictures. Folding
+ * by provider id keeps the album whole — and stops two `LazyColumn` items from
+ * sharing a key when the parts were interleaved (#398 follow-up).
+ */
+fun foldAlbums(rows: List<ChatRow>): List<ChatRow> {
+    val picturesByMms = LinkedHashMap<Long, MutableList<Message>>()
+    for (row in rows) {
+        val message = (row as? ChatRow.Sent)?.message ?: continue
+        val key = albumKey(message) ?: continue
+        picturesByMms.getOrPut(key) { mutableListOf() } += message
+    }
+    val emitted = mutableSetOf<Long>()
+    val out = mutableListOf<ChatRow>()
+    for (row in rows) {
+        val message = (row as? ChatRow.Sent)?.message
+        val key = message?.let(::albumKey)
+        if (key == null) {
+            out += row
+            continue
+        }
+        if (!emitted.add(key)) continue
+        val pictures = picturesByMms.getValue(key)
+        out += if (pictures.size == 1) {
+            ChatRow.Sent(pictures[0])
+        } else {
+            ChatRow.Album(pictures.toList())
+        }
+    }
+    return out
+}
+
+/** The message a row shows first, or null for a scheduled row. */
+fun ChatRow.firstMessage(): Message? = when (this) {
+    is ChatRow.Sent -> message
+    is ChatRow.Album -> first
+    is ChatRow.Pending -> null
+}
+
+/** Every message id a row stands for: one for a bubble, all the pictures for an album. */
+fun ChatRow.messageIds(): List<Long> = when (this) {
+    is ChatRow.Sent -> listOf(message.id)
+    is ChatRow.Album -> messages.map { it.id }
+    is ChatRow.Pending -> emptyList()
 }
 
 /** Chat rows for [conversationId], scheduled ones folded in by send time. */
@@ -71,20 +170,29 @@ fun rememberChatRows(
         allScheduled.filter { it.conversationId == conversationId }
     }
     return remember(messages, scheduledHere) {
-        (messages.map { ChatRow.Sent(it) } + scheduledHere.map { ChatRow.Pending(it) })
-            .sortedBy { it.timestamp }
+        foldAlbums(
+            (messages.map { ChatRow.Sent(it) } + scheduledHere.map { ChatRow.Pending(it) })
+                .sortedBy { it.timestamp }
+        )
     }
 }
 
 /**
  * Row index -> its position in `messages`, or -1 for a pending row. Row indices
- * and message indices stop agreeing once scheduled rows interleave, so without
- * this a pending row above a message shifts every bubble tail below it.
+ * and message indices stop agreeing once scheduled rows interleave *or* an
+ * album folds several messages into one row, so without this a pending row above
+ * a message shifts every bubble tail below it.
  */
 @Composable
 fun rememberSentIndexAt(rows: List<ChatRow>): List<Int> = remember(rows) {
     var n = 0
-    rows.map { if (it is ChatRow.Sent) n++ else -1 }
+    rows.map {
+        when (it) {
+            is ChatRow.Sent -> n++
+            is ChatRow.Album -> { val at = n; n += it.messages.size; at }
+            is ChatRow.Pending -> -1
+        }
+    }
 }
 
 /**

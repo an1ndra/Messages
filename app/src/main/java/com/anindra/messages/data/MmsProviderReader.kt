@@ -15,7 +15,7 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
         val content: MmsSupport.Content
     )
 
-    fun read(existing: Set<Long>, consume: (Message) -> Unit) {
+    fun read(skip: Set<Long>, consume: (Message) -> Unit) {
         val recipients = mutableMapOf<Long, Int>()
         resolver.query(
             Uri.parse("content://mms-sms/conversations?simple=true"),
@@ -33,7 +33,7 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
         )?.use { cursor ->
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(0)
-                if (id <= 0 || id in existing) continue
+                if (id <= 0 || id in skip) continue
                 val message = try {
                     val box = cursor.getInt(3)
                     if (!MmsSupport.isImportable(box, cursor.getInt(4))) continue
@@ -44,9 +44,13 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
                         continue
                     }
                     val content = MmsSupport.content(parts(id))
-                    if (content.imageId == null && content.body.isBlank()) continue
+                    if (content.mediaId == null && content.body.isBlank()) continue
                     Message(id, address, timestamp, box == 2, cursor.getInt(5) != 0,
                         if (cursor.isNull(6)) -1 else cursor.getInt(6), content)
+                } catch (e: SecurityException) {
+                    // A revoked READ_SMS must abort the pass, not look like one
+                    // unreadable row: the next sync retries the import in full.
+                    throw e
                 } catch (_: Exception) {
                     android.util.Log.w("RepoSync", "MMS skipped: provider content unavailable or unsupported")
                     continue
@@ -56,9 +60,82 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
         }
     }
 
+    data class PartLine(val mime: String, val seq: Int)
+
+    /**
+     * Every media part the provider holds, grouped by MMS id, in one cursor.
+     *
+     * This is what lets the import skip a provider row without asking for its
+     * addresses and parts one by one: knowing the part ids is enough to tell
+     * whether the message is fully stored. Null when the parts table cannot be
+     * read at all, so the caller can fall back to "skip everything already
+     * linked" instead of re-reading the whole provider.
+     */
+    fun mediaPartsById(): Map<Long, List<Long>>? {
+        val out = mutableMapOf<Long, MutableList<Long>>()
+        val cursor = resolver.query(
+            Uri.parse("content://mms/part"),
+            arrayOf("_id", "mid", "ct"), null, null, null
+        ) ?: return null
+        cursor.use {
+            while (it.moveToNext()) {
+                val partId = it.getLong(0)
+                val mid = it.getLong(1)
+                val mime = it.getString(2).orEmpty()
+                if (partId > 0 && mid > 0 &&
+                    (MmsSupport.isImage(mime) || MmsSupport.isAudio(mime))
+                ) {
+                    out.getOrPut(mid) { mutableListOf() }.add(partId)
+                }
+            }
+        }
+        return out
+    }
+
+    /** One provider MMS and the parts it actually carries. Diagnostics prints
+     *  this so a "only one picture showed" report can be separated from "the
+     *  provider only had one picture" (#398). */
+    data class MultiPart(val id: Long, val scanned: Int, val parts: List<PartLine>)
+
+    /**
+     * The newest provider MMS carrying two or more parts, if any.
+     *
+     * [scan] bounds the work: only the newest rows are looked at, because the
+     * report is answering "what does a multi-part MMS look like here", not
+     * counting the whole provider.
+     */
+    fun newestMultiPart(scan: Int = 20): MultiPart? {
+        val ids = mutableListOf<Long>()
+        runCatching {
+            resolver.query(
+                Telephony.Mms.CONTENT_URI,
+                arrayOf(Telephony.Mms._ID),
+                null, null, "date DESC, _id DESC LIMIT $scan"
+            )?.use { cursor ->
+                while (cursor.moveToNext()) ids.add(cursor.getLong(0))
+            }
+        }
+        for (id in ids) {
+            val parts = runCatching { partLines(id) }.getOrNull() ?: continue
+            if (parts.size >= 2) return MultiPart(id, ids.size, parts)
+        }
+        return null
+    }
+
+    private fun partLines(id: Long): List<PartLine> {
+        val result = mutableListOf<PartLine>()
+        val cursor = resolver.query(
+            Uri.parse("content://mms/$id/part"),
+            arrayOf("ct", "seq"), null, null, "seq ASC, _id ASC"
+        ) ?: return result
+        cursor.use {
+            while (it.moveToNext()) result.add(PartLine(it.getString(0).orEmpty(), it.getInt(1)))
+        }
+        return result
+    }
+
     /** Incoming MMS the carrier has announced but that nobody has downloaded
-     *  yet; the default SMS app has to fetch it before it can be imported.
-     *  The Content-Location (ct_l) is where the platform expects it to be
+     *  yet; the default SMS app has to fetch it before it can be imported.     *  The Content-Location (ct_l) is where the platform expects it to be
      *  fetched from — a row without one cannot be requested at all. */
     fun pendingDownloads(): List<MmsSupport.PendingDownload> {
         val columns = arrayOf(

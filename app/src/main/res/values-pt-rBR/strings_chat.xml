@@ -21,8 +21,25 @@
     <string name="chat_select_all">Selecionar tudo</string>
     <string name="chat_select_text">Selecionar texto</string>
     <string name="chat_save_image">Salvar imagem</string>
+    <string name="chat_save_voice">Salvar mensagem de voz</string>
     <string name="chat_image_saved">Imagem salva em Pictures/Messages</string>
     <string name="chat_image_save_failed">Não foi possível salvar a imagem</string>
+    <string name="chat_voice_saved">Mensagem de voz salva em Music/Messages</string>
+    <string name="chat_voice_save_failed">Não foi possível salvar a mensagem de voz</string>
+    <string name="chat_voice_slide_cancel">Deslize para cancelar</string>
+    <string name="chat_voice_release_cancel">Solte para cancelar</string>
+    <string name="chat_voice_permission_denied">É preciso acesso ao microfone para gravar uma mensagem de voz</string>
+    <string name="chat_voice_start_failed">Não foi possível iniciar a gravação</string>
+    <string name="chat_voice_too_short">A gravação foi muito curta. Mantenha o microfone pressionado para gravar.</string>
+    <string name="chat_voice_max_reached">Mensagem de voz interrompida no limite de tamanho do MMS</string>
+    <string name="chat_voice_cancel_recording">Cancelar gravação</string>
+    <string name="chat_voice_lock_hint">Deslize para cima para fixar a gravação</string>
+    <string name="chat_voice_recording_locked">Gravando em mãos livres</string>
+    <string name="voice_guide_title">Enviar uma mensagem de voz</string>
+    <string name="voice_guide_hold">Mantenha o botão de onda pressionado para gravar</string>
+    <string name="voice_guide_slide">Deslize para a esquerda para cancelar a gravação</string>
+    <string name="voice_guide_lock">Deslize para cima para fixar e gravar sem as mãos</string>
+    <string name="voice_guide_dismiss">Entendi</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Não é possível enviar mensagem</string>
@@ -106,4 +123,5 @@
     <string name="chat_starred">Mensagem marcada com estrela</string>
     <string name="chat_unstarred">Estrela removida</string>
     <string name="chat_message_starred">Mensagem com estrela</string>
+    <string name="chat_album_photos">%1$d fotos</string>
 </resources>

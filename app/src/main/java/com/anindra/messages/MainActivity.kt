@@ -84,6 +84,7 @@ import com.anindra.messages.ui.NotificationSettingsScreen
 import com.anindra.messages.ui.AutoDeleteSettingsScreen
 import com.anindra.messages.ui.LinkSettingsScreen
 import com.anindra.messages.ui.InboxSettingsScreen
+import com.anindra.messages.ui.SelectionToolbar
 import com.anindra.messages.ui.ScheduledMessagesScreen
 import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.AboutScreen
@@ -535,56 +536,133 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun sendMediaMessage(conversationId: Long, uri: Uri, caption: String = "") {
+    /**
+     * Sends one attachment as an MMS. [mediaType] names the kind when the caller
+     * already knows it (a recording is audio whatever the resolver says about
+     * the cache file); a blank value asks the resolver.
+     */
+    fun sendMediaMessage(
+        conversationId: Long,
+        uri: Uri,
+        caption: String = "",
+        mediaType: String = "",
+        onStored: (Boolean) -> Unit = {}
+    ) {
+        sendMediaAlbum(conversationId, listOf(uri), caption, listOf(mediaType)) { stored ->
+            onStored(stored > 0)
+        }
+    }
+
+    /**
+     * Sends several attachments as one MMS.
+     *
+     * They leave in one PDU and one SMIL slideshow, so a three-picture message
+     * arrives as one message rather than three (#364). [onStored] receives how
+     * many app rows were written; zero means nothing was stored and the caller
+     * should keep whatever it was holding.
+     */
+    fun sendMediaAlbum(
+        conversationId: Long,
+        uris: List<Uri>,
+        caption: String = "",
+        mediaTypes: List<String> = emptyList(),
+        onStored: (Int) -> Unit = {}
+    ) {
+        if (uris.isEmpty()) {
+            onStored(0)
+            return
+        }
         scope.launch {
-            val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
-            if (!isPhoneNumber(convo.address)) return@launch
-            val stored = repo.sendMedia(conversationId, "image", uri.toString(), caption) ?: return@launch
+            val convo = repo.conversationByIdSuspend(conversationId)
+                ?: return@launch onStored(0)
+            if (!isPhoneNumber(convo.address)) return@launch onStored(0)
+            // The composer asks before it stages a picture, but the voice
+            // callback and the share path reach this function directly. A block
+            // has to stop every attachment, not only the ones picked in the
+            // tray.
+            if (isNumberBlocked(convo.address)) {
+                Toast.makeText(
+                    getApplication(), R.string.chat_blocked_send, Toast.LENGTH_SHORT
+                ).show()
+                return@launch onStored(0)
+            }
+            val kinds = uris.mapIndexed { index, uri ->
+                mediaTypes.getOrNull(index)?.takeIf { it.isNotBlank() } ?: MmsSupport.mediaKind(
+                    runCatching {
+                        getApplication<Application>().contentResolver.getType(uri)
+                    }.getOrNull().orEmpty()
+                )
+            }
+            val stored = repo.sendMediaAlbum(
+                conversationId, kinds, uris.map { it.toString() }, caption
+            )
+            if (stored.isEmpty()) return@launch onStored(0)
+            // The rows exist now, so the composer may stop holding the pictures
+            // and their caption; the hand-off below only decides the status.
+            onStored(stored.size)
             // A group MMS addresses every member in one PDU, unlike SMS which
             // is sent once per person.
             val recipients = repo.conversationRecipients(conversationId)
                 .filter { isPhoneNumber(it) }
                 .ifEmpty { listOf(convo.address) }
             val handedOff = SmsSender.sendMms(
-                getApplication(), stored.id, recipients, uri, settings.simSubscriptionId,
-                stored.body
+                getApplication(), stored.map { it.id }, recipients, uris,
+                settings.simSubscriptionId, stored.first().body,
+                kinds.map { if (it == "audio") "audio/mp4" else null }
             )
             if (!handedOff) {
-                repo.markMessageStatusSuspend(stored.id, "failed")
+                stored.forEach { repo.markMessageStatusSuspend(it.id, "failed") }
                 NotificationHelper.showSendFailed(getApplication(), convo.address)
             }
         }
     }
 
-    /** Saves a message attachment (e.g. an MMS picture) to the gallery (#235).
-     *  Reads the bytes through the resolver so provider-backed
-     *  `content://mms/part/...` URIs and our own cache URIs both work. */
-    fun saveMessageImage(messageId: Long) {
+    /** Saves a message attachment (a picture to the gallery, a voice note to
+     *  Music) (#235, #364). Reads the bytes through the resolver so
+     *  provider-backed `content://mms/part/...` URIs and our own cache URIs both
+     *  work. The message's own kind decides the collection, never the menu item
+     *  that happened to be tapped. */
+    fun saveMessageAttachment(messageId: Long) {
         scope.launch {
             val app = getApplication<Application>()
             val resolver = app.contentResolver
             val msg = repo.messageByIdSuspend(messageId)
+            val target = msg?.let { MmsSupport.saveTargetFor(it.mediaType) }
+                ?: MmsSupport.SaveTarget.IMAGE
+            val audio = target == MmsSupport.SaveTarget.AUDIO
             if (msg == null || msg.mediaUri.isBlank()) {
-                Toast.makeText(app, R.string.chat_image_save_failed, Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    app,
+                    SelectionToolbar.saveFailureRes(target),
+                    Toast.LENGTH_SHORT
+                ).show()
                 return@launch
             }
             val uri = Uri.parse(msg.mediaUri)
             val bytes = runCatching { resolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
             val mime = MmsSupport.mimeForSavedAttachment(
-                msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
+                msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull(), target
             )
             val convo = repo.conversationByIdSuspend(msg.conversationId)
             val name = MmsSupport.savedAttachmentName(
-                convo?.name ?: convo?.address ?: "message", msg.timestamp, mime
+                convo?.name ?: convo?.address ?: "message", msg.timestamp, mime, target
             )
             val ok = bytes != null && bytes.isNotEmpty() &&
-                DownloadsStore.writeImage(app, name, mime, bytes)
+                DownloadsStore.writeMedia(app, name, mime, bytes, target)
+            // The toast is the only evidence a user gets, so the same outcome
+            // names itself for the regression script.
+            android.util.Log.d(
+                "AttachmentSave",
+                "target=$target mime=$mime name=$name ok=$ok"
+            )
             withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    app,
-                    if (ok) R.string.chat_image_saved else R.string.chat_image_save_failed,
-                    Toast.LENGTH_SHORT
-                ).show()
+                val message = when {
+                    audio && ok -> R.string.chat_voice_saved
+                    audio -> R.string.chat_voice_save_failed
+                    ok -> R.string.chat_image_saved
+                    else -> R.string.chat_image_save_failed
+                }
+                Toast.makeText(app, message, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -598,8 +676,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val recipients = repo.conversationRecipients(msg.conversationId)
                 .filter { isPhoneNumber(it) }
                 .ifEmpty { listOf(convo.address) }
-            val handedOff = if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
-                SmsSender.sendMms(getApplication(), messageId, recipients, Uri.parse(msg.mediaUri), simId)
+            val handedOff = if (msg.mediaType.let { it == "image" || it == "audio" } &&
+                msg.mediaUri.isNotBlank()
+            ) {
+                // A multi-picture message failed as a whole, so retrying one
+                // row of it has to resend every row (#364).
+                val album = if (msg.sysId > 0) repo.messagesBySysId(msg.sysId) else emptyList()
+                val rows = album.filter { it.mediaUri.isNotBlank() }.ifEmpty { listOf(msg) }
+                SmsSender.sendMms(
+                    getApplication(), rows.map { it.id }, recipients,
+                    rows.map { Uri.parse(it.mediaUri) }, simId,
+                    rows.firstOrNull { it.body.isNotBlank() }?.body.orEmpty(),
+                    rows.map { if (it.mediaType == "audio") "audio/mp4" else null }
+                )
             } else {
                 val results = recipients.map { address ->
                     SmsSender.send(
@@ -614,6 +703,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deliveryReportsEnabled() = settings.deliveryReportsEnabled
+
+    /**
+     * How long a voice note may run on the current line.
+     *
+     * Read from the same carrier profile the send path enforces, but budgeted
+     * the way the send path budgets it: the PDU header, SMIL and framing come
+     * out before the attachment can use the rest ([VoiceNotePolicy.maxSecondsForCarrier]).
+     * Using the raw carrier cap here advertised a note that the fitter then
+     * rejected as too large.
+     */
+    fun voiceNoteMaxSeconds(): Int {
+        val cap = runCatching {
+            com.anindra.messages.sms.MmsFacade.profiles(getApplication())
+                .of(settings.simSubscriptionId).maxMessageSize()
+        }.getOrDefault(com.anindra.messages.data.MmsConfig.DEFAULT_MAX_MESSAGE_SIZE)
+        return com.anindra.messages.voice.VoiceNotePolicy.maxSecondsForCarrier(cap)
+    }
 
     fun openOrCreate(address: String, name: String?, onReady: (Long) -> Unit) {
         scope.launch {
@@ -913,47 +1019,89 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Stores the forwarded row in the target conversation *and* hands it to
      *  the framework, so SmsStatusReceiver can flip it to sent/failed. Storing
      *  alone would leave it on "Sending…" forever. */
-    fun forwardMessage(messageId: Long, targetConversationId: Long) {
+    fun forwardMessage(messageId: Long, targetConversationId: Long) =
+        forwardMessages(listOf(messageId), targetConversationId)
+
+    /**
+     * Forwards every selected row, one message each.
+     *
+     * The rows of one provider MMS are forwarded together, as one multi-picture
+     * message, even though the selection names each row separately (#364).
+     */
+    fun forwardMessages(messageIds: List<Long>, targetConversationId: Long) {
         scope.launch {
-            val msg = repo.messageByIdSuspend(messageId) ?: return@launch
+            val msgs = messageIds.distinct().mapNotNull { repo.messageByIdSuspend(it) }
+            if (msgs.isEmpty()) return@launch
             val target = repo.conversationByIdSuspend(targetConversationId) ?: return@launch
             if (!isPhoneNumber(target.address)) return@launch
+            // A forward is still a send: a blocked number must not receive the
+            // message by picking it from the forward sheet instead of the chat.
+            if (isNumberBlocked(target.address)) {
+                Toast.makeText(
+                    getApplication(), R.string.chat_blocked_send, Toast.LENGTH_SHORT
+                ).show()
+                return@launch
+            }
             val subId = settings.simSubscriptionId
-            val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
-when (val plan = ForwardPlan.of(msg, text)) {
-                is ForwardPlan.Sms -> {
-                    // An attachment with no caption has no text to forward, but
-                    // it now travels as MMS below. Anything else blank would put
-                    // an empty SMS on the wire, so drop it.
-                    if (plan.body.isBlank()) return@launch
-                    val stored = repo.sendText(targetConversationId, plan.body, subId) ?: return@launch
-                    handOff(stored.id, target.address) {
-                        SmsSender.send(
-                            getApplication(), stored.id, target.address, plan.body,
-                            subId, settings.deliveryReportsEnabled
-                        )
-                    }
+            val seen = mutableSetOf<Long>()
+            for (msg in msgs) {
+                if (msg.sysId > 0 && !seen.add(msg.sysId)) continue
+                forwardOne(msg, target, targetConversationId, subId)
+            }
+        }
+    }
+
+    private suspend fun forwardOne(
+        msg: Message,
+        target: Conversation,
+        targetConversationId: Long,
+        subId: Int
+    ) {
+        val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
+        when (val plan = ForwardPlan.of(msg, text)) {
+            is ForwardPlan.Sms -> {
+                // An attachment with no caption has no text to forward, but
+                // it now travels as MMS below. Anything else blank would put
+                // an empty SMS on the wire, so drop it.
+                if (plan.body.isBlank()) return
+                val stored = repo.sendText(targetConversationId, plan.body, subId) ?: return
+                handOff(listOf(stored.id), target.address) {
+                    SmsSender.send(
+                        getApplication(), stored.id, target.address, plan.body,
+                        subId, settings.deliveryReportsEnabled
+                    )
                 }
-                is ForwardPlan.Mms -> {
-                    val uri = Uri.parse(plan.mediaUri)
-                    val stored = repo.sendMedia(
-                        targetConversationId, "image", plan.mediaUri, plan.caption
-                    ) ?: return@launch
-                    handOff(stored.id, target.address) {
-                        SmsSender.sendMms(
-                            getApplication(), stored.id, listOf(target.address), uri, subId, plan.caption
-                        )
-                    }
+            }
+            is ForwardPlan.Mms -> {
+                // The other rows of an album travel with this one; forwarding
+                // one of them alone would deliver a single picture of three.
+                val album = if (msg.sysId > 0) repo.messagesBySysId(msg.sysId) else emptyList()
+                val rows = album.filter { ForwardPlan.of(it, it.body) is ForwardPlan.Mms }
+                    .ifEmpty { listOf(msg) }
+                val types = rows.map { it.mediaType }
+                val uris = rows.map { it.mediaUri }
+                val rawCaption = rows.firstOrNull { it.body.isNotBlank() }?.body ?: plan.caption
+                val caption = if (settings.hideLinks) hideUrls(rawCaption) else rawCaption
+                val stored = repo.sendMediaAlbum(targetConversationId, types, uris, caption)
+                if (stored.isEmpty()) return
+                handOff(stored.map { it.id }, target.address) {
+                    SmsSender.sendMms(
+                        getApplication(), stored.map { it.id }, listOf(target.address),
+                        uris.map { Uri.parse(it) }, subId, caption,
+                        types.map { if (it == "audio") "audio/mp4" else null }
+                    )
                 }
             }
         }
     }
 
-    /** Marks the row failed and notifies when the framework declines the
-     *  handoff; on success SmsStatusReceiver confirms sent/failed. */
-    private suspend fun handOff(rowId: Long, address: String, send: () -> Boolean) {
+    /** Marks the rows failed and notifies when the framework declines the
+     *  handoff; on success SmsStatusReceiver confirms sent/failed. Every row of
+     *  an album is marked because a refusal happens before any row is linked to
+     *  the provider, so the sys_id cascade has nothing to follow. */
+    private suspend fun handOff(rowIds: List<Long>, address: String, send: () -> Boolean) {
         if (send()) return
-        repo.markMessageStatusSuspend(rowId, "failed")
+        rowIds.forEach { repo.markMessageStatusSuspend(it, "failed") }
         NotificationHelper.showSendFailed(getApplication(), address)
     }
 
@@ -1041,11 +1189,81 @@ when (val plan = ForwardPlan.of(msg, text)) {
                     settings.simSubscriptionId,
                     settings,
                     repo.totalConversationCount(),
-                    repo.totalMessageCount()
+                    repo.totalMessageCount(),
+                    voiceNoteDiagnostics(),
+                    mmsDiagnostics()
                 )
             }
             onReady(text)
         }
+    }
+
+    /** The voice-note line the Diagnostics sheet prints; see [VoiceNoteDetails]. */
+    private suspend fun voiceNoteDiagnostics(): com.anindra.messages.diagnostics.VoiceNoteDetails {
+        val app = getApplication<Application>()
+        val cap = runCatching {
+            com.anindra.messages.sms.MmsFacade.profiles(app)
+                .of(settings.simSubscriptionId).maxMessageSize()
+        }.getOrDefault(com.anindra.messages.data.MmsConfig.DEFAULT_MAX_MESSAGE_SIZE)
+        val last = repo.latestVoiceNote()
+        val bytes = last?.mediaUri?.takeIf { it.isNotBlank() }?.let { uri ->
+            runCatching {
+                app.contentResolver.openAssetFileDescriptor(Uri.parse(uri), "r")
+                    ?.use { it.length }
+            }.getOrNull() ?: -1L
+        } ?: -1L
+        val (sent, received) = repo.voiceNoteCounts()
+        val playback = com.anindra.messages.voice.VoicePlayback.state.value
+        val playbackLine = if (playback.uri.isBlank()) "idle" else {
+            val position = playback.positionMs / 1000.0
+            val total = playback.durationMs / 1000.0
+            "%s %.1fs / %.1fs".format(
+                if (playback.playing) "playing" else "paused", position, total
+            )
+        }
+        // The waveform is decoded from the note itself; when that fails the
+        // bubble draws a placeholder, which looks like a note that recorded
+        // nothing. Saying which one happened separates those two.
+        val peaks = last?.mediaUri?.takeIf { it.isNotBlank() }
+            ?.let { com.anindra.messages.voice.VoiceWaveform.cached(it) }
+        val waveform = when {
+            last?.mediaUri.isNullOrBlank() -> "none"
+            peaks == null -> "placeholder (the last note has not decoded yet)"
+            else -> "decoded, ${peaks.size} bars for the last note"
+        }
+        return com.anindra.messages.diagnostics.VoiceNoteDetails(
+            mime = com.anindra.messages.voice.VoiceNotePolicy.MIME,
+            maxSeconds = com.anindra.messages.voice.VoiceNotePolicy.maxSecondsForCarrier(cap),
+            carrierCapBytes = cap,
+            lastBytes = bytes,
+            lastUri = last?.mediaUri.orEmpty(),
+            sent = sent,
+            received = received,
+            playback = playbackLine,
+            waveform = waveform
+        )
+    }
+
+    /**
+     * The MMS shape for Diagnostics (#398): what the store holds per provider
+     * message, and what the newest multi-part provider MMS actually contains.
+     * Both halves are read from their owners — the database and the provider —
+     * never re-derived from what a bubble drew.
+     */
+    private suspend fun mmsDiagnostics(): com.anindra.messages.diagnostics.MmsDetails {
+        val app = getApplication<Application>()
+        val (rows, multi, max) = repo.mmsPartStats()
+        val probe = runCatching {
+            com.anindra.messages.data.MmsProviderReader(app.contentResolver).newestMultiPart()
+        }.getOrNull()
+        return com.anindra.messages.diagnostics.MmsDetails(
+            rows = rows,
+            multiPart = multi,
+            maxParts = max,
+            providerId = probe?.id ?: 0L,
+            scanned = probe?.scanned ?: 20,
+            parts = probe?.parts.orEmpty().map { "seq=${it.seq} ${it.mime}" }
+        )
     }
 }
 
@@ -1087,6 +1305,7 @@ open class MainActivity : FragmentActivity() {
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
     private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
     private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
+    private var stagedMediaProbe by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
 
     /** The conversation this activity is showing inside a notification bubble, if any. */
     private var bubbleConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
@@ -1725,9 +1944,11 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         searchQuery = chatSearchQuery,
                                         initialDraft = pendingShareBody,
                                         initialMedia = pendingShareMedia,
+                                        initialStagedMedia = stagedMediaProbe,
                                         onBack = {
                                             pendingShareBody = ""
                                             pendingShareMedia = emptyList()
+                                            stagedMediaProbe = emptyList()
                                             // A bubble exists to keep the chat on
                                             // screen, so Back hands back to the
                                             // chat list and leaves the bubble up
@@ -1756,7 +1977,8 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                             navRoute = "add-people"
                                         },
                                         onInitialDraftConsumed = { pendingShareBody = "" },
-                                        onInitialMediaConsumed = { pendingShareMedia = emptyList() }
+                                        onInitialMediaConsumed = { pendingShareMedia = emptyList() },
+                                        onInitialStagedMediaConsumed = { stagedMediaProbe = emptyList() }
                                     )
                                 }
                             }
@@ -1856,6 +2078,27 @@ onOpenAccessibility = { navRoute = "accessibility" },
             intent.getBooleanExtra("fake_dual_sim", false),
             debuggable
         )
+    }
+
+    /** Debug builds only: `--esa mms_stage <uri>,<uri>... --es mms_probe_to
+     *  <number>` opens the chat with the media already staged, so the composer's
+     *  send and retry path can be asserted on an emulator without a system
+     *  photo picker (the comparison AVDs have none). `--esa` is the spelling
+     *  that carries several URIs; a single `--es` is accepted as well. */
+    private fun applyMmsStageProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val media: List<String> = intent.getStringArrayExtra("mms_stage")?.toList()
+            ?: intent.getStringExtra("mms_stage")?.split(',')
+            ?: return
+        val to = intent.getStringExtra("mms_probe_to") ?: return
+        stagedMediaProbe = media
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .map { android.net.Uri.parse(it) }
+        android.util.Log.d("MmsStageProbe", "staged=${stagedMediaProbe.size} to=$to")
+        pendingOpenAddress = to
     }
 
     /** Debug builds only: `--es mms_probe <media uri> --es mms_probe_to <number>`
@@ -2028,6 +2271,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
         setIntent(intent)
         applyFakeDualSim(intent)
         applyMmsProbe(intent)
+        applyMmsStageProbe(intent)
         applySmsIeProbe(intent)
         applyBackupProbe(intent)
         applyBackupExportProbe(intent)

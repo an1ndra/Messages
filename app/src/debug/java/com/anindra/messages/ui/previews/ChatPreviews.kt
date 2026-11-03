@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
@@ -25,7 +26,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import com.anindra.messages.data.MmsSupport
 import com.anindra.messages.ui.AlphanumericNotice
+import com.anindra.messages.ui.AlbumGrid
 import com.anindra.messages.ui.ChatSearchBar
 import com.anindra.messages.ui.ChatTopBar
 import com.anindra.messages.ui.ConversationDetailsDialog
@@ -117,7 +120,8 @@ private fun MessageSelectionToolbarPreview() {
             allStarred = false,
             onSelectAll = {},
             onSelectText = {},
-            onSaveImage = {},
+            saveTarget = MmsSupport.SaveTarget.AUDIO,
+            onSaveMedia = {},
             onClose = {},
             onCopy = {},
             onForward = {},
@@ -135,7 +139,8 @@ private fun MessageSelectionToolbarPreview() {
             allStarred = true,
             onSelectAll = {},
             onSelectText = null,
-            onSaveImage = null,
+            saveTarget = null,
+            onSaveMedia = {},
             onClose = {},
             onCopy = {},
             onForward = {},
@@ -330,6 +335,30 @@ private fun ForwardPickerPreview() {
             ),
             onPick = { _, _ -> },
             onDismiss = {}
+        )
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Photo album", showBackground = true, widthDp = 380)
+@Composable
+private fun AlbumGridPreview() {
+    // Three pictures is the shape the reporter saw: they share one bubble now
+    // instead of arriving as one message each (#398).
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.End
+    ) {
+        AlbumGrid(
+            uris = listOf(
+                "content://mms/part/1",
+                "content://mms/part/2",
+                "content://mms/part/3",
+                "content://mms/part/4",
+                "content://mms/part/5"
+            ),
+            isMe = true,
+            onImageTap = {}
         )
     }
 }

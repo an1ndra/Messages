@@ -84,9 +84,8 @@ class MessageReactionsTest {
             src.contains("isPhoneNumber(addr) && !numberIsBlocked")
         )
         assertTrue(
-            "the picker is for the single selected message only",
-            src.contains("selectedMessageIds.size == 1") &&
-                src.contains("msg.id in selectedMessageIds")
+            "the bar belongs to the bubble the user selected, so the bubble must be the whole selection",
+            src.contains("bubbleIsTheWholeSelection(rowIds, selectedMessageIds)")
         )
     }
 }
