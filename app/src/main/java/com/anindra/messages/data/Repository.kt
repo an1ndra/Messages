@@ -4270,12 +4270,15 @@ class Repository(private val context: Context) {
 
     private fun importProviderMmsOnce(): List<MmsSupport.InboundMms> {
         val storedParts = mutableMapOf<Long, MutableSet<String>>()
+        val noticed = mutableSetOf<Long>()
         db.readableDatabase.rawQuery(
-            "SELECT sys_id, media_uri FROM messages WHERE transport='mms' AND sys_id>0", null
+            "SELECT sys_id, media_uri, body FROM messages WHERE transport='mms' AND sys_id>0", null
         ).use { cursor ->
             while (cursor.moveToNext()) {
-                storedParts.getOrPut(cursor.getLong(0)) { mutableSetOf() }
+                val sysId = cursor.getLong(0)
+                storedParts.getOrPut(sysId) { mutableSetOf() }
                     .add(cursor.getString(1).orEmpty())
+                if (MmsSupport.carriesNotice(cursor.getString(2).orEmpty())) noticed.add(sysId)
             }
         }
         val existing: Set<Long> = storedParts.keys
@@ -4291,15 +4294,18 @@ class Repository(private val context: Context) {
         // A provider MMS whose parts are all stored is skipped without reading
         // its addresses or opening a transaction. One part is enough to tell,
         // because the batch part index carries every media part id (#364).
+        // A row that still carries the "not displayed" notice is never skipped:
+        // the notice is a claim about the parts, so only re-reading them can say
+        // whether it is still true.
         // If that index cannot be read, skip everything already linked instead
         // of re-reading the whole provider; the next sync retries the backfill.
         val skip = try {
             val mediaParts = reader.mediaPartsById()
-            if (mediaParts == null) existing
-            else MmsSupport.completeMmsIds(storedParts, mediaParts)
+            if (mediaParts == null) existing - noticed
+            else MmsSupport.skippableMmsIds(storedParts, mediaParts, noticed)
         } catch (e: Exception) {
             MmsTrace.w(TRACE, "MMS part index unavailable; skipping linked rows only", e)
-            existing
+            existing - noticed
         }
         MmsTrace.i(
             TRACE,
