@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">پیام‌ها</string>
-
     <!-- App lock & permissions -->
     <string name="lock_title">برای دسترسی به پیام‌هایتان احراز هویت کنید</string>
     <string name="lock_unlock_title">باز کردن قفل پیام‌ها</string>
@@ -14,16 +13,13 @@
     <string name="lock_setup_needed">ابتدا روی دستگاه خود قفل صفحه (اثر انگشت، چهره یا پین) تنظیم کنید</string>
     <string name="lock_turn_on">تنظیم قفل صفحه</string>
     <string name="lock_turn_on_hint">برای روشن کردن دوباره قفل برنامه، یکی تنظیم کنید.</string>
-
     <!-- Default SMS app prompt -->
     <string name="default_sms_title">به‌عنوان برنامه پیش‌فرض پیامک تنظیم شود؟</string>
     <string name="default_sms_message">برای ارسال و دریافت پیام، پیام‌ها باید برنامه پیش‌فرض پیامک شما باشد.</string>
     <string name="default_sms_set">تنظیم به‌عنوان پیش‌فرض</string>
     <string name="default_sms_not_now">الان نه</string>
-
     <!-- Notifications -->
     <string name="notifications_disabled">اعلان‌ها خاموش است — برای پیام‌های جدید هشدار دریافت نمی‌کنید</string>
-
     <string name="messages_footer">پیام‌ها 1.0 - پیامک آفلاین</string>
     <string name="settings_light_mode">روشن</string>
     <string name="settings_dark_mode">تیره</string>
@@ -39,7 +35,6 @@
     <string name="settings_pin_dialog_enter">ورود پین پشتیبان</string>
     <string name="settings_pin_error_too_short">پین باید حداقل 4 رقم باشد</string>
     <string name="settings_pin_error_mismatch">پین‌ها یکسان نیستند</string>
-    <string name="settings_sound_arrival">صدایی که با رسیدن پیام پخش می‌شود</string>
     <string name="convo_moved_to_trash">گفتگو به سطل زباله منتقل شد</string>
     <string name="convo_archived">گفتگو بایگانی شد</string>
     <string name="action_undo">واگرد</string>
@@ -60,7 +55,6 @@
     <string name="notif_send_fail_private">پیام فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_send_fail">پیام به %s فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_not_delivered">پیام تحویل نشد</string>
-
     <!-- Crash reports -->
     <string name="crash_report_title">گزارش خرابی</string>
     <string name="crash_report_message">دفعه قبل برنامه از کار افتاد. گزارش در Downloads/Messages ذخیره شده است؛ آن را به یک issue در GitHub پیوست کنید تا به رفع آن کمک کنید.</string>
