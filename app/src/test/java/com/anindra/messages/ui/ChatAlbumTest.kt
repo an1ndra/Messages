@@ -130,16 +130,34 @@ class ChatAlbumTest {
     }
 
     @Test
-    fun theAlbumGridNeverGrowsPastFourTiles() {
-        assertEquals(0, ImageAlbum.shown(0))
-        assertEquals(1, ImageAlbum.shown(1))
-        assertEquals(3, ImageAlbum.shown(3))
-        assertEquals(4, ImageAlbum.shown(9))
-        assertEquals(0, ImageAlbum.overflow(4))
-        assertEquals(5, ImageAlbum.overflow(9))
-        assertEquals(2, ImageAlbum.rowCount(3, 0))
-        assertEquals(1, ImageAlbum.rowCount(3, 1))
-        assertEquals(0, ImageAlbum.rowCount(3, 2))
+    fun theAlbumGridPagesInChunksOfFour() {
+        assertEquals(0, ImageAlbum.pageCount(0))
+        assertEquals(1, ImageAlbum.pageCount(1))
+        assertEquals(1, ImageAlbum.pageCount(4))
+        assertEquals(2, ImageAlbum.pageCount(5))
+        assertEquals(2, ImageAlbum.pageCount(8))
+        assertEquals(3, ImageAlbum.pageCount(12))
+        assertEquals(0, ImageAlbum.pageStart(0))
+        assertEquals(4, ImageAlbum.pageStart(1))
+        assertEquals(4, ImageAlbum.pageSize(8, 0))
+        assertEquals(4, ImageAlbum.pageSize(8, 1))
+        assertEquals(2, ImageAlbum.pageSize(6, 1))
+        assertEquals(0, ImageAlbum.pageSize(6, 2))
+        assertEquals(2, ImageAlbum.rows(6, 0))
+        assertEquals(1, ImageAlbum.rows(6, 1))
+        assertEquals(2, ImageAlbum.rowCount(6, 1, 0))
+        assertEquals(0, ImageAlbum.rowCount(6, 1, 1))
+    }
+
+    @Test
+    fun theBadgeCountsThePicturesOnTheNextPage() {
+        assertEquals(0, ImageAlbum.nextPageCount(4, 0))
+        assertEquals(4, ImageAlbum.nextPageCount(8, 0))
+        assertEquals(0, ImageAlbum.nextPageCount(8, 1))
+        assertEquals(2, ImageAlbum.nextPageCount(6, 0))
+        assertEquals(4, ImageAlbum.nextPageCount(12, 0))
+        assertEquals(4, ImageAlbum.nextPageCount(12, 1))
+        assertEquals(0, ImageAlbum.nextPageCount(12, 2))
     }
 
     @Test

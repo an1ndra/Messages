@@ -103,4 +103,6 @@
     <string name="chat_unstarred">已取消星號</string>
     <string name="chat_message_starred">已加星號的訊息</string>
     <string name="chat_album_photos">%1$d 張相片</string>
+    <string name="chat_album_more">還有 %1$d 張相片</string>
+    <string name="chat_album_previous">上一組相片</string>
 </resources>

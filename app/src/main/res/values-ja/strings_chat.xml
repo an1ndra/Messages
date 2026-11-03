@@ -107,4 +107,6 @@
     <string name="chat_unstarred">スターを外しました</string>
     <string name="chat_message_starred">スター付きメッセージ</string>
     <string name="chat_album_photos">%1$d枚の写真</string>
+    <string name="chat_album_more">写真があと%1$d枚</string>
+    <string name="chat_album_previous">前の写真</string>
 </resources>

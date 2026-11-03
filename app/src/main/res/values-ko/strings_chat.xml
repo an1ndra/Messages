@@ -107,4 +107,6 @@
     <string name="chat_unstarred">별표를 제거했습니다</string>
     <string name="chat_message_starred">별표 표시된 메시지</string>
     <string name="chat_album_photos">사진 %1$d장</string>
+    <string name="chat_album_more">사진 %1$d장 더</string>
+    <string name="chat_album_previous">이전 사진</string>
 </resources>
