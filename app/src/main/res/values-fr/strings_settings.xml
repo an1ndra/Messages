@@ -24,7 +24,6 @@
     <string name="settings_pin_repeat">Répéter le PIN</string>
     <string name="settings_pin_delete_permanently">Supprimer définitivement ?</string>
     <string name="settings_pin_delay">Délai avant l\'envoi</string>
-    <string name="settings_pin_notification_sound">Son de notification</string>
     <string name="settings_notif_manage_channels">Gérer dans les paramètres système</string>
     <string name="settings_notif_manage_channels_subtitle">Son, vibration et priorité par catégorie</string>
     <string name="settings_pin_sim_card">Carte SIM</string>
@@ -160,11 +159,6 @@
     <string name="settings_restore_title">Restaurer (remplacer tout)</string>
     <string name="settings_restore_subtitle">Supprimer les messages actuels et restaurer la sauvegarde</string>
     <string name="settings_delay_with_value">%ds avant l\'envoi</string>
-    <string name="settings_sound_default">Par défaut (système)</string>
-    <string name="settings_sound_classic">Classique</string>
-    <string name="settings_sound_dragon">Dragon Studio</string>
-    <string name="settings_sound_chime">Carillon</string>
-    <string name="settings_sound_bubble">Bulle</string>
     <string name="settings_theme_light">Clair</string>
     <string name="settings_theme_dark">Sombre</string>
     <string name="settings_theme_amoled">Amoled</string>

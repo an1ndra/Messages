@@ -39,7 +39,6 @@
     <string name="settings_pin_dialog_enter">Введите PIN резервной копии</string>
     <string name="settings_pin_error_too_short">PIN-код должен содержать не менее 4 цифр</string>
     <string name="settings_pin_error_mismatch">PIN-коды не совпадают</string>
-    <string name="settings_sound_arrival">Звук при поступлении сообщения</string>
     <string name="convo_moved_to_trash">Переписка перемещена в корзину</string>
     <string name="convo_archived">Переписка отправлена в архив</string>
     <string name="action_undo">Отменить</string>
