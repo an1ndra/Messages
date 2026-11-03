@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">پیام‌ها</string>
+    <!-- App lock & permissions -->
+    <string name="lock_title">برای دسترسی به پیام‌هایتان احراز هویت کنید</string>
+    <string name="lock_unlock_title">باز کردن قفل پیام‌ها</string>
+    <string name="lock_auth_subtitle">برای نمایش این پیام‌ها احراز هویت کنید</string>
+    <string name="lock_change_app_lock_title">تأیید تغییر قفل برنامه</string>
+    <string name="lock_change_app_lock_subtitle">اثر انگشت، چهره یا پین شما تأیید می‌کند که خودتان هستید</string>
+    <string name="lock_got_it">متوجه شدم</string>
+    <string name="lock_not_now">الان نه</string>
+    <string name="lock_off">قفل برنامه خاموش است</string>
+    <string name="lock_setup_needed">ابتدا روی دستگاه خود قفل صفحه (اثر انگشت، چهره یا پین) تنظیم کنید</string>
+    <string name="lock_turn_on">تنظیم قفل صفحه</string>
+    <string name="lock_turn_on_hint">برای روشن کردن دوباره قفل برنامه، یکی تنظیم کنید.</string>
+    <!-- Default SMS app prompt -->
+    <string name="default_sms_title">به‌عنوان برنامه پیش‌فرض پیامک تنظیم شود؟</string>
+    <string name="default_sms_message">برای ارسال و دریافت پیام، پیام‌ها باید برنامه پیش‌فرض پیامک شما باشد.</string>
+    <string name="default_sms_set">تنظیم به‌عنوان پیش‌فرض</string>
+    <string name="default_sms_not_now">الان نه</string>
+    <!-- Notifications -->
+    <string name="notifications_disabled">اعلان‌ها خاموش است — برای پیام‌های جدید هشدار دریافت نمی‌کنید</string>
+    <string name="messages_footer">پیام‌ها 1.0 - پیامک آفلاین</string>
+    <string name="settings_light_mode">روشن</string>
+    <string name="settings_dark_mode">تیره</string>
+    <string name="system_default">پیش‌فرض سیستم</string>
+    <string name="settings_backup_restored">پشتیبان بازیابی شد. برای اعمال، برنامه را دوباره اجرا کنید.</string>
+    <string name="settings_saving">در حال ذخیره...</string>
+    <string name="settings_backup_saving">ذخیره محافظت‌شده با پین در Documents/Messages</string>
+    <string name="settings_link_tap_info">برای باز کردن وب‌سایت، روی پیوندهای داخل پیام‌ها ضربه بزنید</string>
+    <string name="settings_choose_delay">انتخاب کنید پیش از ارسال چه مدت صبر شود:</string>
+    <string name="settings_backup_apply">این پشتیبان چگونه روی پیام‌های فعلی شما اعمال شود؟</string>
+    <string name="settings_backup_pin_protection">پشتیبان شما با این پین محافظت می‌شود. برای بازیابی به آن نیاز دارید؛ حتی پس از نصب دوباره برنامه یا روی گوشی جدید.</string>
+    <string name="settings_pin_dialog_set">تعیین پین پشتیبان</string>
+    <string name="settings_pin_dialog_enter">ورود پین پشتیبان</string>
+    <string name="settings_pin_error_too_short">پین باید حداقل 4 رقم باشد</string>
+    <string name="settings_pin_error_mismatch">پین‌ها یکسان نیستند</string>
+    <string name="convo_moved_to_trash">گفتگو به سطل زباله منتقل شد</string>
+    <string name="convo_archived">گفتگو بایگانی شد</string>
+    <string name="action_undo">واگرد</string>
+    <string name="lock_error_no_screen_lock">قفل برنامه قابل استفاده نیست، چون این دستگاه قفل صفحه‌ای (اثر انگشت، چهره یا پین) ندارد تا هویت شما را تأیید کند.</string>
+    <string name="sim_default">پیش‌فرض</string>
+    <string name="time_yesterday">دیروز</string>
+    <string name="link_warning_confirm">پیش از باز کردن پیوندهای خارجی تأیید کنید</string>
+    <string name="notification_channel_desc">اعلان‌های پیام جدید</string>
+    <string name="notification_channel_direct_title">پیام‌های مستقیم</string>
+    <string name="notification_channel_group_title">پیام‌های گروهی</string>
+    <string name="notification_channel_unknown_title">فرستنده‌های ناشناس</string>
+    <string name="notification_channel_convo_desc">اعلان‌های این گفتگو</string>
+    <string name="notif_title_private">پیام جدید</string>
+    <string name="notif_body_private">پیام جدیدی دارید</string>
+    <string name="notif_action_delete">حذف</string>
+    <string name="notif_you">شما</string>
+    <string name="notif_photo">عکس</string>
+    <string name="notif_send_fail_private">پیام فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
+    <string name="notif_send_fail">پیام به %s فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
+    <string name="notif_not_delivered">پیام تحویل نشد</string>
+    <!-- Crash reports -->
+    <string name="crash_report_title">گزارش خرابی</string>
+    <string name="crash_report_message">دفعه قبل برنامه از کار افتاد. گزارش در Downloads/Messages ذخیره شده است؛ آن را به یک issue در GitHub پیوست کنید تا به رفع آن کمک کنید.</string>
+    <string name="crash_report_message_many">برنامه %1$d بار از کار افتاد. گزارش‌ها در Downloads/Messages ذخیره شده‌اند؛ آن‌ها را به یک issue در GitHub پیوست کنید تا به رفع آن کمک کنید.</string>
+    <string name="crash_report_export">ذخیره ZIP</string>
+    <string name="crash_report_copy">کپی</string>
+    <string name="crash_report_delete">حذف</string>
+    <string name="crash_report_saved">در Downloads/Messages ذخیره شد</string>
+    <string name="crash_report_clip_label">گزارش خرابی پیام‌ها</string>
+    <string name="convo_moved_to_trash_count">%1$d گفتگو به سطل زباله منتقل شد</string>
+    <string name="convo_archived_count">%1$d گفتگو بایگانی شد</string>
+    <string name="sheet_multi_select">انتخاب بیشتر</string>
+</resources>
