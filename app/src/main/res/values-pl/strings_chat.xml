@@ -124,4 +124,6 @@
     <string name="chat_unstarred">Usunięto gwiazdkę</string>
     <string name="chat_message_starred">Wiadomość z gwiazdką</string>
     <string name="chat_album_photos">%1$d zdjęć</string>
+    <string name="chat_album_more">Jeszcze %1$d zdjęć</string>
+    <string name="chat_album_previous">Poprzednie zdjęcia</string>
 </resources>

@@ -124,4 +124,6 @@
     <string name="chat_unstarred">Звезда убрана</string>
     <string name="chat_message_starred">Помеченное сообщение</string>
     <string name="chat_album_photos">%1$d фото</string>
+    <string name="chat_album_more">Ещё %1$d фото</string>
+    <string name="chat_album_previous">Предыдущие фото</string>
 </resources>
