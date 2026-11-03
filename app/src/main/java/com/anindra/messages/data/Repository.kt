@@ -2190,56 +2190,14 @@ class Repository(private val context: Context) {
         val newest: Long
     )
 
-    suspend fun getConversationNotificationsEnabled(conversationId: Long): Boolean = runOnIoAsync {
-        var enabled = true
-        db.readableDatabase.rawQuery(
-            "SELECT notifications_enabled FROM conversation_notifications WHERE conversation_id=?",
-            arrayOf(conversationId.toString())
-        ).use { c ->
-            if (c.moveToFirst()) enabled = c.getInt(0) == 1
-        }
-        enabled
-    }
-
-    fun conversationNotificationsEnabledFlow(conversationId: Long): Flow<Boolean> = observe {
-        var enabled = true
-        db.readableDatabase.rawQuery(
-            "SELECT notifications_enabled FROM conversation_notifications WHERE conversation_id=?",
-            arrayOf(conversationId.toString())
-        ).use { c ->
-            if (c.moveToFirst()) enabled = c.getInt(0) == 1
-        }
-        enabled
-    }
-
-    /** Synchronous variant for receivers already on a background thread. */
-    fun getConversationNotificationsEnabledBlocking(conversationId: Long): Boolean = runOnIo {
-        var enabled = true
-        db.readableDatabase.rawQuery(
-            "SELECT notifications_enabled FROM conversation_notifications WHERE conversation_id=?",
-            arrayOf(conversationId.toString())
-        ).use { c ->
-            if (c.moveToFirst()) enabled = c.getInt(0) == 1
-        }
-        enabled
-    }
-
-    fun setConversationNotificationsEnabled(conversationId: Long, enabled: Boolean) {
-        // INSERT OR IGNORE + UPDATE rather than REPLACE: a REPLACE would reset
-        // the row's `sound` to its default, wiping a per-conversation tone.
-        ensureConversationNotificationRow(conversationId)
-        db.writableDatabase.update(
-            "conversation_notifications",
-            ContentValues().apply { put("notifications_enabled", if (enabled) 1 else 0) },
-            "conversation_id=?",
-            arrayOf(conversationId.toString())
-        )
-        notifyChanged()
-    }
-    // The `conversation_notifications.sound` column is deliberately still in the
-    // schema: restores from an older backup carry it, and dropping it would cost
-    // a migration for a value nothing reads any more. A chat's tone now belongs
-    // to its system notification channel, which the app cannot overwrite.
+    // A chat's notifications live in one place: whether it owns a channel of its
+    // own (chat details → Notifications) and that channel's settings in Android
+    // (off / silent / sound). The app keeps no mute of its own — a second switch
+    // could only ever disagree with the channel (#339).
+    //
+    // The `conversation_notifications` columns stay for restores: older backups
+    // carry `notifications_enabled` and `sound`, and dropping them would cost a
+    // migration for values nothing reads any more.
 
     /**
      * One conversation's notification-channel inputs, or null when the row is
@@ -2272,16 +2230,6 @@ class Repository(private val context: Context) {
             groupTitle = c.getString(4).orEmpty(),
             recipients = c.getInt(5)
         )
-
-
-    /** Creates the row with defaults if it is missing, leaving an existing one alone. */
-    private fun ensureConversationNotificationRow(conversationId: Long) {
-        db.writableDatabase.insertWithOnConflict(
-            "conversation_notifications", null,
-            ContentValues().apply { put("conversation_id", conversationId) },
-            SQLiteDatabase.CONFLICT_IGNORE
-        )
-    }
 
     fun blockedNumbers(): Flow<List<BlockedNumber>> = observe {
         val out = mutableListOf<BlockedNumber>()
