@@ -374,17 +374,22 @@ internal fun ChatBubble(
         searchQuery = if (isLockedAndHidden) null else searchQuery,
         searchHighlightAlpha = searchHighlightAlpha
     )
-    // One style: the direction the text is painted with is the one the
-    // BubbleDirection diagnostic reports, so a regression script reading the
-    // log cannot agree with a broken paint.
+    // Content, not a direction computed here: each line is laid out in the
+    // direction its own first strong character gives, which is what Google
+    // Messages and Fossify do — mixing RTL prose with an LTR "11:24 PM" line
+    // in one bubble only works if the base direction is resolved per line.
+    // BubbleDirection reports those per-line directions for the regression
+    // scripts; the paint itself is the platform's.
     val bodyStyle = MaterialTheme.typography.bodyLarge.merge(
         TextStyle(
             color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface,
             textDirection = TextDirection.Content
         )
     )
-    LaunchedEffect(msg.id, bodyStyle.textDirection) {
-        android.util.Log.d("BubbleDirection", "id=${msg.id} dir=${bodyStyle.textDirection}")
+    LaunchedEffect(msg.id, displayBody) {
+        val lines = BidiText.lines(displayBody)
+            .joinToString(",") { if (it.direction == BidiText.Direction.RTL) "Rtl" else "Ltr" }
+        android.util.Log.d("BubbleDirection", "id=${msg.id} dirs=$lines")
     }
 
     if (senderName != null && !msg.isMe) {
@@ -2749,7 +2754,7 @@ private fun styledBody(
     val iso = BidiText.isolateNumberRuns(body, urls.keys.toList())
     android.util.Log.d(
         "BubbleBidi",
-        "dir=${if (iso.direction == BidiText.Direction.RTL) "Rtl" else "Ltr"} ltrLines=${iso.ltrLines}"
+        "lines=${iso.lines.joinToString(",") { if (it == BidiText.Direction.RTL) "Rtl" else "Ltr" }}"
     )
     val out = AnnotatedString.Builder(iso.text)
     urls.forEach { (original, url) ->
