@@ -21,8 +21,25 @@
     <string name="chat_select_all">Alle auswählen</string>
     <string name="chat_select_text">Text auswählen</string>
     <string name="chat_save_image">Bild speichern</string>
+    <string name="chat_save_voice">Sprachnachricht speichern</string>
     <string name="chat_image_saved">Bild in Pictures/Messages gespeichert</string>
     <string name="chat_image_save_failed">Bild konnte nicht gespeichert werden</string>
+    <string name="chat_voice_saved">Sprachnachricht in Music/Messages gespeichert</string>
+    <string name="chat_voice_save_failed">Sprachnachricht konnte nicht gespeichert werden</string>
+    <string name="chat_voice_slide_cancel">Zum Abbrechen ziehen</string>
+    <string name="chat_voice_release_cancel">Zum Abbrechen loslassen</string>
+    <string name="chat_voice_permission_denied">Für eine Sprachnachricht wird Zugriff auf das Mikrofon benötigt</string>
+    <string name="chat_voice_start_failed">Aufnahme konnte nicht gestartet werden</string>
+    <string name="chat_voice_too_short">Die Aufnahme war zu kurz. Halte das Mikrofon gedrückt, um aufzunehmen.</string>
+    <string name="chat_voice_max_reached">Sprachnachricht beim MMS-Größenlimit gestoppt</string>
+    <string name="chat_voice_cancel_recording">Aufnahme verwerfen</string>
+    <string name="chat_voice_lock_hint">Zum Fixieren nach oben ziehen</string>
+    <string name="chat_voice_recording_locked">Freihändige Aufnahme läuft</string>
+    <string name="voice_guide_title">Sprachnachricht senden</string>
+    <string name="voice_guide_hold">Wellen-Schaltfläche gedrückt halten, um aufzunehmen</string>
+    <string name="voice_guide_slide">Nach links ziehen, um die Aufnahme zu verwerfen</string>
+    <string name="voice_guide_lock">Nach oben ziehen, um sie zu fixieren und freihändig aufzunehmen</string>
+    <string name="voice_guide_dismiss">Verstanden</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Nachricht kann nicht gesendet werden</string>

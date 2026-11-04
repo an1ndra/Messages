@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import com.anindra.messages.R
+import com.anindra.messages.data.MmsSupport
 
 /**
  * Presentation rules for the contextual message-selection toolbar. Kept out of
@@ -42,6 +43,19 @@ object SelectionToolbar {
      *  must never end up in a bulk delete/trash. */
     fun selectAllCandidates(allIds: List<Long>, lockedIds: Set<Long>): List<Long> =
         allIds.filter { it !in lockedIds }
+
+    /** Whether Save is offered for this message, and which of the two it is.
+     *  A voice note is never offered as "Save image" (#364). */
+    fun saveTargetFor(mediaType: String): MmsSupport.SaveTarget? = when (mediaType) {
+        "image" -> MmsSupport.SaveTarget.IMAGE
+        "audio" -> MmsSupport.SaveTarget.AUDIO
+        else -> null
+    }
+
+    fun saveLabelRes(target: MmsSupport.SaveTarget): Int = when (target) {
+        MmsSupport.SaveTarget.AUDIO -> R.string.chat_save_voice
+        else -> R.string.chat_save_image
+    }
 
     /** Whether an action dismisses the selection afterwards. Non-destructive
      *  actions (copy, share, forward) leave the selection in place so the user

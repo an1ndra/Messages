@@ -1,7 +1,9 @@
 package com.anindra.messages.ui
 
 import com.anindra.messages.R
+import com.anindra.messages.data.MmsSupport
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -86,5 +88,32 @@ class SelectionToolbarTest {
             SelectionToolbar.selectAllCandidates(listOf(1L, 2L), emptySet())
         )
         assertTrue(SelectionToolbar.selectAllCandidates(listOf(5L), setOf(5L)).isEmpty())
+    }
+
+    @Test
+    fun aVoiceNoteIsOfferedAsAVoiceMessageNotAnImage() {
+        // #364: the overflow offered "Save image" on a voice note, and the
+        // save then wrote audio bytes into the gallery.
+        assertEquals(
+            MmsSupport.SaveTarget.AUDIO,
+            SelectionToolbar.saveTargetFor("audio")
+        )
+        assertEquals(R.string.chat_save_voice, SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.AUDIO))
+    }
+
+    @Test
+    fun aPictureKeepsTheImageLabel() {
+        assertEquals(
+            MmsSupport.SaveTarget.IMAGE,
+            SelectionToolbar.saveTargetFor("image")
+        )
+        assertEquals(R.string.chat_save_image, SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.IMAGE))
+    }
+
+    @Test
+    fun textAndFilesOfferNoSave() {
+        assertNull(SelectionToolbar.saveTargetFor("text"))
+        assertNull(SelectionToolbar.saveTargetFor("file"))
+        assertNull(SelectionToolbar.saveTargetFor(""))
     }
 }

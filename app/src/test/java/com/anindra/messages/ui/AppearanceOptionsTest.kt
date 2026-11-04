@@ -47,7 +47,7 @@ class AppearanceOptionsTest {
         )
         assertTrue(
             "the button stays on screen and dims instead of vanishing",
-            chat.contains("targetValue = if (ready) 1f else 0.38f")
+            chat.contains("targetValue = if (ready || micMode) 1f else 0.38f")
         )
         assertTrue(
             "the animation must keep the layout footprint (graphicsLayer, not size removal)",
