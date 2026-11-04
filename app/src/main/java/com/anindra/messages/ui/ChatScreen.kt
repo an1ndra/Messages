@@ -1016,7 +1016,6 @@ fun ChatScreen(
     val hasMicrophone = remember {
         context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_MICROPHONE)
     }
-    val voiceMaxSeconds = remember { vm.voiceNoteMaxSeconds() }
     var recordPermission by remember {
         mutableStateOf(
             context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
@@ -1077,6 +1076,9 @@ fun ChatScreen(
 
     var currentSimId by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
     var sims by remember { mutableStateOf(emptyList<SimCard>()) }
+    // The cap belongs to the line, not to the chat: switching SIM has to
+    // re-read the profile instead of keeping the first line's length.
+    val voiceMaxSeconds = remember(currentSimId) { vm.voiceNoteMaxSeconds() }
 
     var numberIsBlocked by remember { mutableStateOf(false) }
     var showBlockedDialog by remember { mutableStateOf(false) }
@@ -1925,19 +1927,31 @@ fun ChatScreen(
                         voiceMaxSeconds = voiceMaxSeconds,
                         onVoiceStart = { startVoiceNote() },
                         onVoiceFinish = {
-                            val note = recorder.finish()
-                            if (note != null) {
-                                vm.sendMediaMessage(conversationId, note.uri, "", "audio")
-                                android.util.Log.d(
-                                    "VoiceNote",
-                                    "sent bytes=${note.bytes} durationMs=${note.durationMs} mime=${VoiceNotePolicy.MIME}"
-                                )
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.chat_voice_start_failed),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                            when (val finished = recorder.finish()) {
+                                is VoiceRecorder.FinishResult.Recorded -> {
+                                    val note = finished.note
+                                    vm.sendMediaMessage(conversationId, note.uri, "", "audio")
+                                    android.util.Log.d(
+                                        "VoiceNote",
+                                        "sent bytes=${note.bytes} durationMs=${note.durationMs} mime=${VoiceNotePolicy.MIME}"
+                                    )
+                                }
+                                VoiceRecorder.FinishResult.TooShort -> {
+                                    android.util.Log.d("VoiceNote", "finish tooShort")
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.chat_voice_too_short),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                VoiceRecorder.FinishResult.Failed -> {
+                                    android.util.Log.d("VoiceNote", "finish failed")
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.chat_voice_start_failed),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         },
                         onVoiceCancel = { recorder.cancel() },
@@ -4098,9 +4112,9 @@ internal fun InputBar(
                             scaleY = micScale
                         }
                         .background(micColor, CircleShape)
-                        // Press-and-hold records; sliding up or left arms the
-                        // cancel. Releasing then does one of the two, and nothing
-                        // is sent until the finger is up.
+                        // Press-and-hold records; sliding left arms the cancel and
+                        // resting on the padlock arms the lock. Releasing then does
+                        // one of the two, and nothing is sent until the finger is up.
                         .pointerInput(voiceMaxSeconds) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
@@ -4157,7 +4171,8 @@ internal fun InputBar(
                                     return@awaitEachGesture
                                 }
                                 if (!recording) return@awaitEachGesture
-                                stopRecording(send = arm != VoiceArm.CANCEL)                            }
+                                stopRecording(send = arm != VoiceArm.CANCEL)
+                            }
                         }
                         .semantics { contentDescription = voiceLabel },
                     contentAlignment = Alignment.Center

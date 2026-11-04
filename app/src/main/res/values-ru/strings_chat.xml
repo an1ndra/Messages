@@ -30,6 +30,7 @@
     <string name="chat_voice_release_cancel">Отпустите, чтобы отменить</string>
     <string name="chat_voice_permission_denied">Для записи голосового сообщения нужен доступ к микрофону</string>
     <string name="chat_voice_start_failed">Не удалось начать запись</string>
+    <string name="chat_voice_too_short">Запись слишком короткая. Удерживайте микрофон, чтобы записать.</string>
     <string name="chat_voice_max_reached">Голосовое сообщение остановлено на пределе размера MMS</string>
     <string name="chat_voice_cancel_recording">Отменить запись</string>
     <string name="chat_voice_lock_hint">Сдвиньте вверх, чтобы закрепить запись</string>

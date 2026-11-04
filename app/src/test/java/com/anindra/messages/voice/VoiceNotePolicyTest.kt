@@ -1,5 +1,7 @@
 package com.anindra.messages.voice
 
+import com.anindra.messages.mms.SendReqBuilder
+import com.anindra.messages.mms.spi.BudgetPolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,22 +15,39 @@ import org.junit.Test
 class VoiceNotePolicyTest {
 
     @Test
-    fun aMinuteOfSpeechFitsTheDefaultCarrierCap() {
-        // An unexplained 30s cap is the usual reason a voice note is useless;
-        // the default AOSP MMS cap is 300 KB, which is a minute of 32 kbps AAC.
-        assertEquals(61, VoiceNotePolicy.maxSeconds(307_200))
+    fun theDefaultCarrierCapLeavesRoomForThePduAndSmil() {
+        // The raw cap is 307200 B, but the send path pays 12 KiB of header/SMIL
+        // and two 512 B part allowances before the attachment gets anything.
+        // The old raw-cap arithmetic advertised 61 s, which the fitter rejected.
+        assertEquals(58, VoiceNotePolicy.maxSecondsForCarrier(307_200))
+    }
+
+    @Test
+    fun theAdvertisedLengthAlwaysFitsTheAttachmentBudget() {
+        val cap = 307_200
+        val budget = BudgetPolicy.attachmentBudget(
+            carrierMaxMessageSize = cap,
+            captionBytes = 0,
+            partCount = SendReqBuilder.partCount(""),
+        )
+        val seconds = VoiceNotePolicy.maxSecondsForCarrier(cap)
+        assertTrue(VoiceNotePolicy.estimatedBytes(seconds) <= budget)
     }
 
     @Test
     fun aSmallerCarrierCapShortensTheRecording() {
-        assertTrue(VoiceNotePolicy.maxSeconds(102_400) < VoiceNotePolicy.maxSeconds(307_200))
-        assertEquals(20, VoiceNotePolicy.maxSeconds(102_400))
+        assertTrue(
+            VoiceNotePolicy.maxSecondsForCarrier(102_400) <
+                VoiceNotePolicy.maxSecondsForCarrier(307_200)
+        )
+        assertEquals(17, VoiceNotePolicy.maxSecondsForCarrier(102_400))
     }
 
     @Test
     fun anUnknownBudgetFallsBackToTheHardLimit() {
         assertEquals(VoiceNotePolicy.MAX_SECONDS, VoiceNotePolicy.maxSeconds(0))
         assertEquals(VoiceNotePolicy.MAX_SECONDS, VoiceNotePolicy.maxSeconds(-1))
+        assertEquals(VoiceNotePolicy.MAX_SECONDS, VoiceNotePolicy.maxSecondsForCarrier(0))
         // A budget so small it rounds to nothing is still a recordable second:
         // the send fails with a notice rather than the mic refusing to open.
         assertEquals(VoiceNotePolicy.MIN_SECONDS, VoiceNotePolicy.maxSeconds(1_000))
@@ -37,11 +56,12 @@ class VoiceNotePolicyTest {
     @Test
     fun theCapNeverExceedsTheHardLimit() {
         assertEquals(VoiceNotePolicy.MAX_SECONDS, VoiceNotePolicy.maxSeconds(10_000_000))
+        assertEquals(VoiceNotePolicy.MAX_SECONDS, VoiceNotePolicy.maxSecondsForCarrier(10_000_000))
     }
 
     @Test
     fun theEstimateIsTheSameArithmeticTheCapUses() {
-        val seconds = VoiceNotePolicy.maxSeconds(307_200)
+        val seconds = VoiceNotePolicy.maxSecondsForCarrier(307_200)
         assertTrue(VoiceNotePolicy.estimatedBytes(seconds) <= 307_200)
         assertEquals(VoiceNotePolicy.bytesPerSecond(), VoiceNotePolicy.estimatedBytes(1))
         assertEquals(0, VoiceNotePolicy.estimatedBytes(-5))

@@ -22,6 +22,17 @@ class VoiceRecorder(private val context: Context) {
 
     data class Note(val uri: Uri, val bytes: Long, val durationMs: Long)
 
+    /** What came back from [finish]; the caller says a different thing for each. */
+    sealed interface FinishResult {
+        data class Recorded(val note: Note) : FinishResult
+
+        /** The press was too brief for the encoder to write a container. */
+        data object TooShort : FinishResult
+
+        /** The recorder stopped or produced nothing readable. */
+        data object Failed : FinishResult
+    }
+
     private var recorder: MediaRecorder? = null
     private var file: File? = null
     private var startedAt = 0L
@@ -75,13 +86,14 @@ class VoiceRecorder(private val context: Context) {
         }
     }
 
-    /** Stops and returns the recording, or null when it produced no bytes. */
-    fun finish(): Note? {
-        val mediaRecorder = recorder ?: return null
+    /** Stops and returns the recording, or why it produced no note. */
+    fun finish(): FinishResult {
+        val mediaRecorder = recorder ?: return FinishResult.Failed
         val output = file
         val durationMs = SystemClock.elapsedRealtime() - startedAt
         recorder = null
         file = null
+        val tooShort = durationMs < MIN_RECORD_MS
         val stopped = try {
             mediaRecorder.stop()
             true
@@ -93,12 +105,18 @@ class VoiceRecorder(private val context: Context) {
         }
         if (!stopped || output == null || !output.exists() || output.length() <= 0L) {
             output?.delete()
-            return null
+            return if (tooShort) FinishResult.TooShort else FinishResult.Failed
         }
-        return Note(
-            uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", output),
-            bytes = output.length(),
-            durationMs = durationMs
+        if (tooShort) {
+            output.delete()
+            return FinishResult.TooShort
+        }
+        return FinishResult.Recorded(
+            Note(
+                uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", output),
+                bytes = output.length(),
+                durationMs = durationMs
+            )
         )
     }
 
@@ -116,6 +134,10 @@ class VoiceRecorder(private val context: Context) {
     private companion object {
         const val TAG = "VoiceRecorder"
         const val DIR = "voice"
+
+        /** Below this the encoder has no frames to write, so `stop()` usually
+         *  throws; the user's press was a tap, not a recording. */
+        const val MIN_RECORD_MS = 400L
 
         /** MediaRecorder reports amplitude against a signed 16-bit peak. */
         const val MAX_AMPLITUDE = 32_767f
