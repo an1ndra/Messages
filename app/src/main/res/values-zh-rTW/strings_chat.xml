@@ -20,6 +20,7 @@
     <string name="chat_select_all">全選</string>
     <string name="chat_select_text">選取文字</string>
     <string name="chat_save_image">儲存圖片</string>
+    <string name="chat_save_images">儲存圖片</string>
     <string name="chat_image_saved">圖片已儲存至 Pictures/Messages</string>
     <string name="chat_image_save_failed">無法儲存圖片</string>
 
@@ -103,4 +104,7 @@
     <string name="chat_starred">已加星號</string>
     <string name="chat_unstarred">已取消星號</string>
     <string name="chat_message_starred">已加星號的訊息</string>
+    <string name="chat_album_photos">%1$d 張相片</string>
+    <string name="chat_album_more">還有 %1$d 張相片</string>
+    <string name="chat_album_previous">上一組相片</string>
 </resources>

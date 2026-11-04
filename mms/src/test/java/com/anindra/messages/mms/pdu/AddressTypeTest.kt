@@ -69,7 +69,7 @@ class AddressTypeTest {
             SendReqRequest(
                 addresses = listOf("+15559998888", "someone@example.com"),
                 caption = "hello",
-                attachment = FittedAttachment("image/jpeg", ByteArray(64)),
+                attachments = listOf(FittedAttachment("image/jpeg", ByteArray(64))),
                 profile = profileOf(CarrierProfile.KEY_MAX_MESSAGE_SIZE to 300_000),
                 subscriptionId = Wire.SUBSCRIPTION_ID,
                 headers = SendHeaderPolicy.DEFAULT,

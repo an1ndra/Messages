@@ -21,6 +21,7 @@
     <string name="chat_select_all">تحديد الكل</string>
     <string name="chat_select_text">تحديد النص</string>
     <string name="chat_save_image">حفظ الصورة</string>
+    <string name="chat_save_images">حفظ الصور</string>
     <string name="chat_image_saved">تم حفظ الصورة في Pictures/Messages</string>
     <string name="chat_image_save_failed">تعذر حفظ الصورة</string>
 
@@ -107,4 +108,7 @@
     <string name="chat_starred">تم تمييز الرسالة</string>
     <string name="chat_unstarred">أُزيل التمييز</string>
     <string name="chat_message_starred">رسالة مميزة</string>
+    <string name="chat_album_photos">%1$d صور</string>
+    <string name="chat_album_more">%1$d صور إضافية</string>
+    <string name="chat_album_previous">الصور السابقة</string>
 </resources>

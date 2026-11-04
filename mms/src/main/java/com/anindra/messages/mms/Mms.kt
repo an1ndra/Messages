@@ -118,11 +118,19 @@ data class SendHeaderPolicy(
 /** An attachment as it will go on the wire, after fitting. */
 class FittedAttachment(val mimeType: String, val bytes: ByteArray)
 
+/** One attachment as the app hands it over, before any carrier limit is applied. */
+data class OutgoingAttachment(
+    val mimeType: String,
+    val bytes: ByteArray,
+    val sourceWidth: Int = 0,
+    val sourceHeight: Int = 0,
+)
+
 /** Everything a SendReq is assembled from. */
 data class SendReqRequest(
     val addresses: List<String>,
     val caption: String,
-    val attachment: FittedAttachment,
+    val attachments: List<FittedAttachment>,
     val profile: CarrierProfile,
     val subscriptionId: Int,
     val headers: SendHeaderPolicy,
@@ -169,11 +177,14 @@ object SendReqBuilder {
     const val TEXT_PART_NAME = "text"
 
     /**
-     * Parts a body for [caption] holds: the attachment, the SMIL, and the
+     * Parts a body for [caption] holds: one per attachment, the SMIL, and the
      * caption when there is one. The budget is derived from this, so it lives
      * here rather than being counted a second time by the caller.
      */
-    fun partCount(caption: String): Int = MEDIA_PART_COUNT + SMIL_PART_COUNT + if (caption.isNotBlank()) TEXT_PART_COUNT else 0
+    fun partCount(caption: String, attachmentCount: Int = 1): Int =
+        attachmentCount.coerceAtLeast(1) * MEDIA_PART_COUNT +
+            SMIL_PART_COUNT +
+            if (caption.isNotBlank()) TEXT_PART_COUNT else 0
 
     fun build(request: SendReqRequest, sender: SendAddressSource, nowSeconds: Long): SendReqOutcome {
         val recipients = request.addresses.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
@@ -181,10 +192,15 @@ object SendReqBuilder {
         if (recipients.size > 1 && !request.profile.groupMmsEnabled()) {
             return SendReqOutcome.GroupMmsUnsupported
         }
+        if (request.attachments.isEmpty()) return SendReqOutcome.NoPresentation
 
         val body = PduBody()
-        body.add(mediaPart(request.attachment))
-        if (request.caption.isNotBlank()) body.add(textPart(request.caption))
+        request.attachments.forEachIndexed { index, attachment ->
+            body.add(mediaPart(attachment, index))
+            // The caption rides in the first slide rather than after the last
+            // picture, so a handset shows it with the picture it describes.
+            if (index == 0 && request.caption.isNotBlank()) body.add(textPart(request.caption))
+        }
         val smil = SmilBuilder.build(body) ?: return SendReqOutcome.NoPresentation
         body.addAt(SMIL_PART_INDEX, smilPart(SmilSerializer.serialize(smil)))
 
@@ -237,9 +253,12 @@ object SendReqBuilder {
 
     private fun nextNonce(): Long = nonce.incrementAndGet()
 
-    private fun mediaPart(attachment: FittedAttachment) = PduPart().apply {
+    private fun mediaPart(attachment: FittedAttachment, index: Int) = PduPart().apply {
         contentType = ContentTypes.normalize(attachment.mimeType)
-        name = mediaPartName(contentType!!)
+        val base = mediaPartName(contentType!!)
+        // Names are what a SMIL src resolves against and a part is addressed by,
+        // so every attachment needs one of its own (#364).
+        name = if (index == 0) base else "$base${index + 1}"
         contentId = "<$name>"
         data = attachment.bytes
     }
@@ -374,14 +393,17 @@ private sealed interface TransferResult {
     data class Retrieved(val pdu: Pdu?, val httpStatus: Int) : TransferResult
 }
 
-/** What the app asked to send, before any carrier limit has been applied to it. */
+/**
+ * What the app asked to send, before any carrier limit has been applied to it.
+ *
+ * A message may carry several attachments. They travel in one M-Send.req and
+ * one SMIL slideshow, so a multi-picture message arrives as one MMS rather than
+ * one message per picture (#364).
+ */
 data class OutgoingMessage(
     val addresses: List<String>,
     val caption: String,
-    val attachmentMimeType: String,
-    val attachmentBytes: ByteArray,
-    val sourceWidth: Int = 0,
-    val sourceHeight: Int = 0,
+    val attachments: List<OutgoingAttachment>,
     val subscriptionId: Int,
 )
 
@@ -417,16 +439,16 @@ class Mms(
      */
     suspend fun send(message: OutgoingMessage): SendOutcome {
         val profile = carrierProfiles.of(message.subscriptionId)
-        val fitted = when (val outcome = fit(message, profile)) {
-            is FitOutcome.Fitted -> outcome
-            FitOutcome.Unreadable -> return SendOutcome.Rejected(SendRejection.ATTACHMENT_UNREADABLE)
-            FitOutcome.TooLarge -> return SendOutcome.Rejected(SendRejection.ATTACHMENT_TOO_LARGE)
+        val fitted = when (val outcome = fitAll(message, profile)) {
+            is FitAllOutcome.Fitted -> outcome.attachments
+            FitAllOutcome.Unreadable -> return SendOutcome.Rejected(SendRejection.ATTACHMENT_UNREADABLE)
+            FitAllOutcome.TooLarge -> return SendOutcome.Rejected(SendRejection.ATTACHMENT_TOO_LARGE)
         }
         val built = SendReqBuilder.build(
             SendReqRequest(
                 addresses = message.addresses,
                 caption = message.caption,
-                attachment = FittedAttachment(fitted.mimeType, fitted.bytes),
+                attachments = fitted,
                 profile = profile,
                 subscriptionId = message.subscriptionId,
                 headers = sendHeadersFor(message.subscriptionId),
@@ -627,41 +649,63 @@ class Mms(
     }
 
     /**
-     * Fits the attachment, budgeting the caption and the SMIL out of the
-     * carrier's cap first.
+     * Fits every attachment, splitting the carrier's cap between them.
      *
      * The budget comes from [BudgetPolicy] rather than from a subtraction here,
-     * so the split between caption and attachment has one owner.
+     * so the split between caption and attachment has one owner. Every
+     * attachment has to fit: a message that drops one picture would be a
+     * different message than the one the user staged.
      */
-    private fun fit(message: OutgoingMessage, profile: CarrierProfile): FitOutcome {
-        val request = FitRequest(
-            mimeType = message.attachmentMimeType,
-            bytes = message.attachmentBytes,
-            sourceWidth = message.sourceWidth,
-            sourceHeight = message.sourceHeight,
-            budgetBytes = BudgetPolicy.attachmentBudget(
-                carrierMaxMessageSize = profile.maxMessageSize(),
-                captionBytes = message.caption.toByteArray(Charsets.UTF_8).size,
-                partCount = SendReqBuilder.partCount(message.caption),
-            ),
-            maxImageWidth = profile.maxImageWidth(),
-            maxImageHeight = profile.maxImageHeight(),
-            dimensionLimitsReported = profile.imageLimitsReported(),
+    private fun fitAll(message: OutgoingMessage, profile: CarrierProfile): FitAllOutcome {
+        if (message.attachments.isEmpty()) return FitAllOutcome.Unreadable
+        val budget = BudgetPolicy.perAttachmentBudget(
+            carrierMaxMessageSize = profile.maxMessageSize(),
+            captionBytes = message.caption.toByteArray(Charsets.UTF_8).size,
+            partCount = SendReqBuilder.partCount(message.caption, message.attachments.size),
+            attachmentCount = message.attachments.size,
         )
-        val outcome = fitter.fit(request)
-        // Reported here rather than inside the fitters: this is the only place
-        // that knows the carrier profile the budget came from, so it is the only
-        // place a picture can be traced from source pixels to sent bytes.
-        when (outcome) {
-            is FitOutcome.Fitted -> diagnostics.attachmentFitted(request, outcome)
-            FitOutcome.Unreadable -> diagnostics.attachmentRejected(
-                request.mimeType, request.bytes.size, request.budgetBytes, "unreadable",
+        val fitted = ArrayList<FittedAttachment>(message.attachments.size)
+        for (attachment in message.attachments) {
+            val request = FitRequest(
+                mimeType = attachment.mimeType,
+                bytes = attachment.bytes,
+                sourceWidth = attachment.sourceWidth,
+                sourceHeight = attachment.sourceHeight,
+                budgetBytes = budget,
+                maxImageWidth = profile.maxImageWidth(),
+                maxImageHeight = profile.maxImageHeight(),
+                dimensionLimitsReported = profile.imageLimitsReported(),
             )
-            FitOutcome.TooLarge -> diagnostics.attachmentRejected(
-                request.mimeType, request.bytes.size, request.budgetBytes, "too_large",
-            )
+            when (val outcome = fitter.fit(request)) {
+                is FitOutcome.Fitted -> {
+                    // Reported here rather than inside the fitters: this is the
+                    // only place that knows the carrier profile the budget came
+                    // from, so it is the only place a picture can be traced
+                    // from source pixels to sent bytes.
+                    diagnostics.attachmentFitted(request, outcome)
+                    fitted.add(FittedAttachment(outcome.mimeType, outcome.bytes))
+                }
+                FitOutcome.Unreadable -> {
+                    diagnostics.attachmentRejected(
+                        request.mimeType, request.bytes.size, request.budgetBytes, "unreadable",
+                    )
+                    return FitAllOutcome.Unreadable
+                }
+                FitOutcome.TooLarge -> {
+                    diagnostics.attachmentRejected(
+                        request.mimeType, request.bytes.size, request.budgetBytes, "too_large",
+                    )
+                    return FitAllOutcome.TooLarge
+                }
+            }
         }
-        return outcome
+        return FitAllOutcome.Fitted(fitted)
+    }
+
+    private sealed interface FitAllOutcome {
+        data class Fitted(val attachments: List<FittedAttachment>) : FitAllOutcome
+        data object Unreadable : FitAllOutcome
+        data object TooLarge : FitAllOutcome
     }
 
     private fun sendHeadersFor(subscriptionId: Int): SendHeaderPolicy = SendHeaderPolicy.withCarrierConfig(

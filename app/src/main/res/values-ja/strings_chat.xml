@@ -21,6 +21,7 @@
     <string name="chat_select_all">すべて選択</string>
     <string name="chat_select_text">テキストを選択</string>
     <string name="chat_save_image">画像を保存</string>
+    <string name="chat_save_images">画像を保存</string>
     <string name="chat_image_saved">画像を Pictures/Messages に保存しました</string>
     <string name="chat_image_save_failed">画像を保存できませんでした</string>
 
@@ -107,4 +108,7 @@
     <string name="chat_starred">メッセージにスターを付けました</string>
     <string name="chat_unstarred">スターを外しました</string>
     <string name="chat_message_starred">スター付きメッセージ</string>
+    <string name="chat_album_photos">%1$d枚の写真</string>
+    <string name="chat_album_more">写真があと%1$d枚</string>
+    <string name="chat_album_previous">前の写真</string>
 </resources>

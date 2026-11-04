@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import com.anindra.messages.R
+import com.anindra.messages.data.Message
 
 /**
  * Presentation rules for the contextual message-selection toolbar. Kept out of
@@ -33,16 +34,34 @@ object SelectionToolbar {
 
     fun isSelectionActive(count: Int): Boolean = count > 0
 
+    /** Every selected row that carries a file. A multi-picture album is several
+     *  rows sharing one bubble, so Save has to cover all of them; taking the
+     *  first row silently saved one picture and reported success (#364). */
+    fun saveTargets(messages: List<Message>, selected: Collection<Long>): List<Message> =
+        messages.filter { it.id in selected && it.mediaUri.isNotBlank() }
+
     /** The overflow is reachable for any non-empty selection: it carries
      *  "Select all" even once several messages are picked, so the user can still
      *  extend a multi-message selection in one tap (#232). */
     fun showMore(count: Int): Boolean = count >= 1
 
-    /** "Select all" takes every message that is not locked; a locked message
-     *  must never end up in a bulk delete/trash. */
-    fun selectAllCandidates(allIds: List<Long>, lockedIds: Set<Long>): List<Long> =
-        allIds.filter { it !in lockedIds }
+    /**
+     * "Select all" takes every message that is not locked; a locked message
+     * must never end up in a bulk delete/trash.
+     *
+     * [groups] holds the ids that stand for one message — a single id, or every
+     * picture of one album. A group is taken whole or not at all: selecting two
+     * pictures of a locked three-picture MMS left the album looking unselected
+     * while a delete would take those two, which is the silent partial-loss
+     * bug this signature exists to make impossible.
+     */
+    fun selectAllCandidates(groups: List<List<Long>>, lockedIds: Set<Long>): List<Long> =
+        groups.filter { group -> group.isNotEmpty() && group.none { it in lockedIds } }.flatten()
 
+    /** Save names the number of files it will write: selecting several pictures
+     *  offered "Save image" and read as if only one would be saved (#398). */
+    fun saveLabelRes(count: Int): Int =
+        if (count > 1) R.string.chat_save_images else R.string.chat_save_image
     /** Whether an action dismisses the selection afterwards. Non-destructive
      *  actions (copy, share, forward) leave the selection in place so the user
      *  can chain actions; destructive/state-changing ones (trash, lock) clear it. */

@@ -349,6 +349,12 @@ internal fun TextCopyDialog(
 @Composable
 internal fun ChatBubble(
     msg: Message,
+    /**
+     * Every picture the message carries. More than one draws a grid inside the
+     * single bubble a multi-picture MMS gets (#398); one or none keeps the
+     * ordinary [ImageBubble].
+     */
+    albumUris: List<String> = emptyList(),
     showTime: Boolean,
     senderName: String? = null,
     onTap: () -> Unit,
@@ -495,7 +501,16 @@ internal fun ChatBubble(
                             onLongClick = { onLongPress() }
                         )
                     ) {
-                        ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
+                        if (albumUris.size > 1) {
+                            AlbumGrid(
+                                uris = albumUris,
+                                isMe = msg.isMe,
+                                onImageTap = onImageTap,
+                                onLongPress = onLongPress
+                            )
+                        } else {
+                            ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
+                        }
                         if (msg.body.isNotBlank()) {
                             Surface(
                                 color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
@@ -661,6 +676,19 @@ internal fun ChatBubble(
 internal fun reactionBarX(isMe: Boolean, isRtl: Boolean, bubbleWidth: Int, barWidth: Int): Int =
     if (isMe != isRtl) bubbleWidth - barWidth else 0
 
+/**
+ * Whether the long-press bar belongs on this bubble.
+ *
+ * The bar acts on one message, so it is offered only while this bubble is the
+ * whole selection: selecting a second message hides it (#5c7e694). A
+ * multi-picture MMS is several rows behind one bubble and its long-press
+ * selects all of them, so the bubble counts as one message (#364 M6) — asking
+ * for a single row instead made albums unable to carry a reaction at all.
+ */
+internal fun bubbleIsTheWholeSelection(rowIds: List<Long>, selected: Collection<Long>): Boolean =
+    rowIds.isNotEmpty() &&
+        selected.size == rowIds.size &&
+        rowIds.all { it in selected }
 /** The tap-to-toggle emoji bar shown on a long-pressed message (issue #188). */
 @Composable
 internal fun ReactionBar(    selected: Set<String>,
@@ -775,11 +803,13 @@ fun ChatScreen(
     searchQuery: String? = null,
     initialDraft: String = "",
     initialMedia: List<android.net.Uri> = emptyList(),
+    initialStagedMedia: List<android.net.Uri> = emptyList(),
     onBack: () -> Unit,
     onOpenDetails: () -> Unit = {},
     onAddPeople: () -> Unit = {},
     onInitialDraftConsumed: () -> Unit = {},
-    onInitialMediaConsumed: () -> Unit = {}
+    onInitialMediaConsumed: () -> Unit = {},
+    onInitialStagedMediaConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -932,7 +962,7 @@ fun ChatScreen(
     // A hit older than the loaded window is not a row yet; the scroll and flash
     // effects below re-run when the pager grows it into one.
     val focusedRowLoaded = focusedSearchId != null &&
-        chatRows.any { it is ChatRow.Sent && it.message.id == focusedSearchId }
+        chatRows.any { focusedSearchId in it.messageIds() }
     fun navigateMatch(delta: Int) {
         if (searchMatches.isEmpty()) return
         val from = focusedMatchIndex.takeIf { it >= 0 } ?: -1
@@ -1105,17 +1135,29 @@ fun ChatScreen(
         }
         if (addr.isBlank()) return
         val caption = draft.trim()
-        pendingMedia.toList().forEachIndexed { index, uri ->
-            vm.sendMediaMessage(conversationId, uri, if (index == 0) caption else "")
+        val awaiting = pendingMedia.toList()
+        // One send for all of them: they leave in a single PDU, so the recipient
+        // sees one message with several pictures rather than one each (#364).
+        vm.sendMediaAlbum(conversationId, awaiting, caption) { stored ->
+            // A send that stored nothing leaves the tray and the caption alone,
+            // so the user can retry (#364).
+            if (stored == 0) return@sendMediaAlbum
+            pendingMedia.clear()
+            draft = ""
+            vm.saveDraft(conversationId, "")
+            showEmoji = false
         }
-        pendingMedia.clear()
-        draft = ""
-        vm.saveDraft(conversationId, "")
-        showEmoji = false
     }
 
     fun toggleSelection(id: Long) {
         if (id in selectedMessageIds) selectedMessageIds.remove(id) else selectedMessageIds.add(id)
+    }
+
+    /** A multi-picture album is one message, so it is selected as a whole. */
+    fun toggleRowSelection(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        if (ids.all { it in selectedMessageIds }) selectedMessageIds.removeAll(ids.toSet())
+        else selectedMessageIds.addAll(ids)
     }
 
     fun clearSelection() {
@@ -1148,7 +1190,9 @@ fun ChatScreen(
     fun selectAllMessages() {
         val locked = messages.filter { it.locked }.map { it.id }.toSet()
         selectedMessageIds.clear()
-        selectedMessageIds.addAll(SelectionToolbar.selectAllCandidates(messages.map { it.id }, locked))
+        selectedMessageIds.addAll(
+            SelectionToolbar.selectAllCandidates(selectionGroups(messages), locked)
+        )
     }
 
     /** Partial-text copy (#231). A dialog is used instead of turning the bubble
@@ -1164,8 +1208,8 @@ fun ChatScreen(
         }
     }
 
-    fun saveMessageImage(id: Long) {
-        vm.saveMessageImage(id)
+    fun saveMessageImages(ids: List<Long>) {
+        vm.saveMessageImages(ids)
         clearSelection()
     }
 
@@ -1323,7 +1367,7 @@ fun ChatScreen(
     LaunchedEffect(focusedSearchId, focusedRowLoaded) {
         val id = focusedSearchId ?: return@LaunchedEffect
         if (scrolledToFocusedId == id) return@LaunchedEffect
-        val target = chatRows.indexOfFirst { it is ChatRow.Sent && it.message.id == id }
+        val target = chatRows.indexOfFirst { id in it.messageIds() }
         if (target >= 0) {
             listState.scrollToItem(target)
             hasScrolledToBottom = true
@@ -1536,12 +1580,20 @@ fun ChatScreen(
     // callbacks, which re-runs this effect with nothing to do.
     LaunchedEffect(conversationId, initialDraft, initialMedia) {
         if (initialMedia.isNotEmpty()) {
-            initialMedia.forEach { vm.sendMediaMessage(conversationId, it, initialDraft) }
+            // Several shared pictures are one message with one caption, the same
+            // way the composer sends them.
+            vm.sendMediaAlbum(conversationId, initialMedia, initialDraft)
             onInitialMediaConsumed()
             onInitialDraftConsumed()
         } else if (initialDraft.isNotBlank()) {
             draft = initialDraft
             onInitialDraftConsumed()
+        }
+    }
+    LaunchedEffect(conversationId, initialStagedMedia) {
+        if (initialStagedMedia.isNotEmpty()) {
+            initialStagedMedia.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
+            onInitialStagedMediaConsumed()
         }
     }
     LaunchedEffect(convo) {
@@ -1581,6 +1633,7 @@ fun ChatScreen(
             ) { mode ->
             when (mode) {
             "select" -> {
+                val saveTargets = SelectionToolbar.saveTargets(messages, selectedMessageIds)
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
@@ -1590,9 +1643,9 @@ fun ChatScreen(
                     onSelectText = messages.firstOrNull { it.id in selectedMessageIds }
                         ?.takeIf { it.body.isNotBlank() }
                         ?.let { m -> { startTextSelection(m.id) } },
-                    onSaveImage = messages.firstOrNull { it.id in selectedMessageIds }
-                        ?.takeIf { it.mediaUri.isNotBlank() }
-                        ?.let { m -> { saveMessageImage(m.id) } },
+                    saveCount = saveTargets.size,
+                    onSaveImage = saveTargets.takeIf { it.isNotEmpty() }
+                        ?.let { targets -> { saveMessageImages(targets.map { it.id }) } },
                     onClose = { clearSelection() },
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
@@ -1869,12 +1922,16 @@ fun ChatScreen(
                         )
                         return@itemsIndexed
                     }
-                    val msg = (row as ChatRow.Sent).message
+                    val msg = row.firstMessage() ?: return@itemsIndexed
+                    val rowIds = row.messageIds()
+                    // A multi-picture MMS is one message stored as a row per
+                    // picture; the bubble draws them together (#398).
+                    val albumUris = (row as? ChatRow.Album)?.messages?.map { it.mediaUri }.orEmpty()
                     val prevRow = chatRows.getOrNull(idx - 1)
-                    val prev = (prevRow as? ChatRow.Sent)?.message
+                    val prev = prevRow?.firstMessage()
                     val groupStart = prev == null || startsNewGroup(prev, msg)
                     val isLastMessage = idx == lastSentRow
-                    val isRevealed = msg.id in revealed
+                    val isRevealed = rowIds.any { it in revealed }
 
                     // Bubbles glide into place on send/receive and when an older
                     // page is prepended, instead of the list jumping a row.
@@ -1906,6 +1963,7 @@ fun ChatScreen(
                         }
                         ChatBubble(
                             msg = msg,
+                            albumUris = albumUris,
                             showTime = isLastMessage || isRevealed,
                             // Only a group needs a sender: in a 1:1 chat there is
                             // only one other person and the header names them.
@@ -1916,23 +1974,24 @@ fun ChatScreen(
                                 null
                             },
                             onTap = {
-                                if (selectionActive) toggleSelection(msg.id)
-                                else if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
+                                if (selectionActive) toggleRowSelection(rowIds)
+                                else if (isRevealed) revealed.removeAll(rowIds.toSet())
+                                else revealed.addAll(rowIds)
                             },
                             // Selection still wins over the preview, otherwise a
                             // tap while selecting would open a full-screen view
                             // instead of marking the message.
                             onImageTap = { uri ->
-                                if (selectionActive) toggleSelection(msg.id)
+                                if (selectionActive) toggleRowSelection(rowIds)
                                 else previewImageUri = uri
                             },
                             deliveryReports = deliveryReports,
                             highlightLinks = vm.settings.highlightLinks,
                             linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
                             hideLinks = vm.settings.hideLinks,
-                            isUnlocked = unlockedIds.contains(msg.id),
+                            isUnlocked = rowIds.any { it in unlockedIds },
                             showSimIndicator = vm.settings.showSimIndicator,
-                            isSelected = msg.id in selectedMessageIds,
+                            isSelected = rowIds.all { it in selectedMessageIds },
                             searchQuery = if (msg.id == focusedSearchId) activeSearch else null,
                             isSearchFocus = msg.id == focusedSearchId,
                             searchHighlightAlpha = if (msg.id == focusedSearchId) searchFlashAlpha else 0f,
@@ -1942,11 +2001,10 @@ fun ChatScreen(
                                 reduceMotion = LocalReduceMotion.current
                             ),
                             onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
-                            onLongPress = { toggleSelection(msg.id) },
+                            onLongPress = { toggleRowSelection(rowIds) },
                             onReact = { emoji -> applyReaction(msg, emoji) },
                             showReactionBar = canReact &&
-                                selectedMessageIds.size == 1 &&
-                                msg.id in selectedMessageIds,
+                                bubbleIsTheWholeSelection(rowIds, selectedMessageIds),
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
@@ -2131,7 +2189,7 @@ fun ChatScreen(
                 showForwardPicker = false
                 val targets = forwardingMessageIds
                 vm.openOrCreate(address, name) { targetId ->
-                    targets.forEach { vm.forwardMessage(it, targetId) }
+                    vm.forwardMessages(targets, targetId)
                     forwardingMessageIds = emptyList()
                     Toast.makeText(context, context.getString(R.string.chat_forwarded), Toast.LENGTH_SHORT).show()
                 }
@@ -2204,6 +2262,7 @@ internal fun MessageSelectionToolbar(
     onSelectAll: () -> Unit,
     onSelectText: (() -> Unit)?,
     onSaveImage: (() -> Unit)?,
+    saveCount: Int = 1,
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
@@ -2280,7 +2339,7 @@ internal fun MessageSelectionToolbar(
                         }
                         if (onSaveImage != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_save_image)) },
+                                text = { Text(stringResource(SelectionToolbar.saveLabelRes(saveCount))) },
                                 onClick = { overflow = false; onSaveImage() }
                             )
                         }

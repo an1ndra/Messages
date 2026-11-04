@@ -217,4 +217,28 @@ class DiagnosticsReportTest {
         assertEquals(2, phoneCountForSdk(29, null, 2))
         assertEquals(0, phoneCountForSdk(29, null, null))
     }
+
+    @Test
+    fun theReportSeparatesStoreMMsFromProviderMms() {
+        // #398: "only one of four pictures showed" needs the two halves told
+        // apart — what we stored, and what the provider actually holds.
+        val details = MmsDetails(
+            rows = 412,
+            multiPart = 7,
+            maxParts = 4,
+            providerId = 12345,
+            scanned = 20,
+            parts = listOf("seq=0 image/jpeg", "seq=1 image/png", "seq=2 image/webp")
+        )
+        assertEquals("412 row(s), 7 from multi-part MMS (max 4 row(s))", details.storeLine())
+        val lines = details.providerLines()
+        assertEquals("Provider MMS: newest multi-part #12345, 3 part(s)", lines.first())
+        assertEquals(listOf("  seq=0 image/jpeg", "  seq=1 image/png", "  seq=2 image/webp"), lines.drop(1))
+    }
+
+    @Test
+    fun aProviderWithOnePartSaysSo() {
+        val lines = MmsDetails(scanned = 20).providerLines()
+        assertEquals(listOf("Provider MMS: no multi-part MMS among the newest 20"), lines)
+    }
 }

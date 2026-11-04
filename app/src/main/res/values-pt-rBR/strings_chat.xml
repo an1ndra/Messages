@@ -21,6 +21,7 @@
     <string name="chat_select_all">Selecionar tudo</string>
     <string name="chat_select_text">Selecionar texto</string>
     <string name="chat_save_image">Salvar imagem</string>
+    <string name="chat_save_images">Salvar imagens</string>
     <string name="chat_image_saved">Imagem salva em Pictures/Messages</string>
     <string name="chat_image_save_failed">Não foi possível salvar a imagem</string>
 
@@ -107,4 +108,7 @@
     <string name="chat_starred">Mensagem marcada com estrela</string>
     <string name="chat_unstarred">Estrela removida</string>
     <string name="chat_message_starred">Mensagem com estrela</string>
+    <string name="chat_album_photos">%1$d fotos</string>
+    <string name="chat_album_more">Mais %1$d fotos</string>
+    <string name="chat_album_previous">Fotos anteriores</string>
 </resources>
