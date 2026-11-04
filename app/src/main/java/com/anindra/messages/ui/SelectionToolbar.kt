@@ -67,9 +67,11 @@ object SelectionToolbar {
         else -> null
     }
 
-    fun saveLabelRes(target: MmsSupport.SaveTarget): Int = when (target) {
+    /** Save names the number of files it will write: selecting several pictures
+     *  offered "Save image" and read as if only one would be saved (#398). */
+    fun saveLabelRes(target: MmsSupport.SaveTarget, count: Int = 1): Int = when (target) {
         MmsSupport.SaveTarget.AUDIO -> R.string.chat_save_voice
-        else -> R.string.chat_save_image
+        else -> if (count > 1) R.string.chat_save_images else R.string.chat_save_image
     }
 
     /** The failure toast names the same kind the menu does (#364). */
