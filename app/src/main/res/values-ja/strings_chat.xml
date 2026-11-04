@@ -30,6 +30,7 @@
     <string name="chat_voice_release_cancel">離してキャンセル</string>
     <string name="chat_voice_permission_denied">ボイス メッセージを録音するにはマイクへのアクセスが必要です</string>
     <string name="chat_voice_start_failed">録音を開始できませんでした</string>
+    <string name="chat_voice_too_short">録音が短すぎます。マイクを長押しして録音してください。</string>
     <string name="chat_voice_max_reached">MMS のサイズ上限に達したため、ボイス メッセージを停止しました</string>
     <string name="chat_voice_cancel_recording">録音をキャンセル</string>
     <string name="chat_voice_lock_hint">上にスワイプして録音を固定</string>

@@ -30,6 +30,7 @@
     <string name="chat_voice_release_cancel">اترك للإلغاء</string>
     <string name="chat_voice_permission_denied">يلزم الوصول إلى الميكروفون لتسجيل رسالة صوتية</string>
     <string name="chat_voice_start_failed">تعذّر بدء التسجيل</string>
+    <string name="chat_voice_too_short">التسجيل قصير جدًا. اضغط مع الاستمرار على الميكروفون للتسجيل.</string>
     <string name="chat_voice_max_reached">أوقفت الرسالة الصوتية عند حد حجم MMS</string>
     <string name="chat_voice_cancel_recording">إلغاء التسجيل</string>
     <string name="chat_voice_lock_hint">اسحب لأعلى لتثبيت التسجيل</string>

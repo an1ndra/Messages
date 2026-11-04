@@ -657,16 +657,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * How long a voice note may run on the current line.
      *
-     * Read from the same carrier profile the send path enforces, so the recorder
-     * stops at the size the carrier would have rejected rather than discovering
-     * it after the fact.
+     * Read from the same carrier profile the send path enforces, but budgeted
+     * the way the send path budgets it: the PDU header, SMIL and framing come
+     * out before the attachment can use the rest ([VoiceNotePolicy.maxSecondsForCarrier]).
+     * Using the raw carrier cap here advertised a note that the fitter then
+     * rejected as too large.
      */
     fun voiceNoteMaxSeconds(): Int {
-        val budget = runCatching {
+        val cap = runCatching {
             com.anindra.messages.sms.MmsFacade.profiles(getApplication())
                 .of(settings.simSubscriptionId).maxMessageSize()
         }.getOrDefault(com.anindra.messages.data.MmsConfig.DEFAULT_MAX_MESSAGE_SIZE)
-        return com.anindra.messages.voice.VoiceNotePolicy.maxSeconds(budget)
+        return com.anindra.messages.voice.VoiceNotePolicy.maxSecondsForCarrier(cap)
     }
 
     fun openOrCreate(address: String, name: String?, onReady: (Long) -> Unit) {

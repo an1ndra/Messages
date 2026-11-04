@@ -30,6 +30,7 @@
     <string name="chat_voice_release_cancel">रद्द करने के लिए छोड़ें</string>
     <string name="chat_voice_permission_denied">वॉइस संदेश रिकॉर्ड करने के लिए माइक्रोफ़ोन की अनुमति आवश्यक है</string>
     <string name="chat_voice_start_failed">रिकॉर्डिंग शुरू नहीं हो सकी</string>
+    <string name="chat_voice_too_short">रिकॉर्डिंग बहुत छोटी थी। रिकॉर्ड करने के लिए माइक दबाकर रखें।</string>
     <string name="chat_voice_max_reached">MMS आकार सीमा पर वॉइस संदेश रोका गया</string>
     <string name="chat_voice_cancel_recording">रिकॉर्डिंग रद्द करें</string>
     <string name="chat_voice_lock_hint">रिकॉर्डिंग लॉक करने के लिए ऊपर स्लाइड करें</string>
