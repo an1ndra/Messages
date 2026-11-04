@@ -15,7 +15,7 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
         val content: MmsSupport.Content
     )
 
-    fun read(existing: Set<Long>, consume: (Message) -> Unit) {
+    fun read(skip: Set<Long>, consume: (Message) -> Unit) {
         val recipients = mutableMapOf<Long, Int>()
         resolver.query(
             Uri.parse("content://mms-sms/conversations?simple=true"),
@@ -33,7 +33,7 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
         )?.use { cursor ->
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(0)
-                if (id <= 0 || id in existing) continue
+                if (id <= 0 || id in skip) continue
                 val message = try {
                     val box = cursor.getInt(3)
                     if (!MmsSupport.isImportable(box, cursor.getInt(4))) continue
@@ -47,6 +47,10 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
                     if (content.imageId == null && content.body.isBlank()) continue
                     Message(id, address, timestamp, box == 2, cursor.getInt(5) != 0,
                         if (cursor.isNull(6)) -1 else cursor.getInt(6), content)
+                } catch (e: SecurityException) {
+                    // A revoked READ_SMS must abort the pass, not look like one
+                    // unreadable row: the next sync retries the import in full.
+                    throw e
                 } catch (_: Exception) {
                     android.util.Log.w("RepoSync", "MMS skipped: provider content unavailable or unsupported")
                     continue
@@ -57,6 +61,34 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
     }
 
     data class PartLine(val mime: String, val seq: Int)
+
+    /**
+     * Every media part the provider holds, grouped by MMS id, in one cursor.
+     *
+     * This is what lets the import skip a provider row without asking for its
+     * addresses and parts one by one: knowing the part ids is enough to tell
+     * whether the message is fully stored. Null when the parts table cannot be
+     * read at all, so the caller can fall back to "skip everything already
+     * linked" instead of re-reading the whole provider.
+     */
+    fun mediaPartsById(): Map<Long, List<Long>>? {
+        val out = mutableMapOf<Long, MutableList<Long>>()
+        val cursor = resolver.query(
+            Uri.parse("content://mms/part"),
+            arrayOf("_id", "mid", "ct"), null, null, null
+        ) ?: return null
+        cursor.use {
+            while (it.moveToNext()) {
+                val partId = it.getLong(0)
+                val mid = it.getLong(1)
+                val mime = it.getString(2).orEmpty()
+                if (partId > 0 && mid > 0 && MmsSupport.isImage(mime)) {
+                    out.getOrPut(mid) { mutableListOf() }.add(partId)
+                }
+            }
+        }
+        return out
+    }
 
     /** One provider MMS and the parts it actually carries. Diagnostics prints
      *  this so a "only one picture showed" report can be separated from "the

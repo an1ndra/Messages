@@ -92,33 +92,56 @@ fun albumKey(message: Message): Long? =
     }
 
 /**
- * Folds [rows] so consecutive picture rows of the same provider MMS become one
- * [ChatRow.Album]. A lone picture stays a plain [ChatRow.Sent], so an ordinary
- * photo MMS renders exactly as before.
+ * The id groups selection has to treat as one message: every picture of an
+ * album together, and every other row on its own.
+ */
+fun selectionGroups(messages: List<Message>): List<List<Long>> {
+    val groups = mutableListOf<MutableList<Long>>()
+    val byAlbum = mutableMapOf<Long, MutableList<Long>>()
+    for (message in messages) {
+        val key = albumKey(message)
+        if (key == null) {
+            groups += mutableListOf(message.id)
+        } else {
+            byAlbum.getOrPut(key) { mutableListOf<Long>().also { groups += it } } += message.id
+        }
+    }
+    return groups
+}
+
+/**
+ * Folds [rows] so every picture row of the same provider MMS becomes one
+ * [ChatRow.Album], wherever it sits in the list.
+ *
+ * Adjacency was not enough: every row of one MMS carries the same timestamp, so
+ * another message in that second can sort between two of its pictures. Folding
+ * by provider id keeps the album whole — and stops two `LazyColumn` items from
+ * sharing a key when the parts were interleaved (#398 follow-up).
  */
 fun foldAlbums(rows: List<ChatRow>): List<ChatRow> {
-    val out = mutableListOf<ChatRow>()
-    val pictures = mutableListOf<Message>()
-    var currentKey: Long? = null
-    fun flush() {
-        if (pictures.isEmpty()) return
-        out += if (pictures.size == 1) ChatRow.Sent(pictures[0]) else ChatRow.Album(pictures.toList())
-        pictures.clear()
-        currentKey = null
+    val picturesByMms = LinkedHashMap<Long, MutableList<Message>>()
+    for (row in rows) {
+        val message = (row as? ChatRow.Sent)?.message ?: continue
+        val key = albumKey(message) ?: continue
+        picturesByMms.getOrPut(key) { mutableListOf() } += message
     }
+    val emitted = mutableSetOf<Long>()
+    val out = mutableListOf<ChatRow>()
     for (row in rows) {
         val message = (row as? ChatRow.Sent)?.message
-        val key = message?.let { albumKey(it) }
-        if (message == null || key == null) {
-            flush()
+        val key = message?.let(::albumKey)
+        if (key == null) {
             out += row
             continue
         }
-        if (key != currentKey) flush()
-        currentKey = key
-        pictures += message
+        if (!emitted.add(key)) continue
+        val pictures = picturesByMms.getValue(key)
+        out += if (pictures.size == 1) {
+            ChatRow.Sent(pictures[0])
+        } else {
+            ChatRow.Album(pictures.toList())
+        }
     }
-    flush()
     return out
 }
 

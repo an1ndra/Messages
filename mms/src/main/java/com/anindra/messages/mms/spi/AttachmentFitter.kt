@@ -69,4 +69,19 @@ object BudgetPolicy {
         val textShare = (captionBytes.toLong() * MMS_TEXT_BUDGET_FRACTION).toLong() + partCount.toLong() * 512
         return (total - textShare).coerceAtLeast(0)
     }
+
+    /**
+     * What each of [attachmentCount] attachments may spend.
+     *
+     * A multi-picture message shares one carrier cap, so the message budget is
+     * split evenly: budgeting every picture the whole cap would let a two-picture
+     * message compose to twice what the carrier accepts (#364).
+     */
+    fun perAttachmentBudget(
+        carrierMaxMessageSize: Int,
+        captionBytes: Int,
+        partCount: Int,
+        attachmentCount: Int,
+    ): Long = attachmentBudget(carrierMaxMessageSize, captionBytes, partCount) /
+        attachmentCount.coerceAtLeast(1)
 }

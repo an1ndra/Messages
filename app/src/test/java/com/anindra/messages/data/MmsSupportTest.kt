@@ -246,4 +246,38 @@ class MmsSupportTest {
         assertEquals("MMS", MmsSupport.outgoingKind("text", MmsSupport.TRANSPORT_MMS))
         assertEquals("SMS", MmsSupport.outgoingKind("text", MmsSupport.TRANSPORT_SMS))
     }
+
+    @Test
+    fun aProviderRowIsCompleteOnlyWhenEveryPartHasARow() {
+        val first = MmsSupport.partUri(11)
+        val second = MmsSupport.partUri(12)
+        val third = MmsSupport.partUri(13)
+        val stored = mapOf(
+            // Imported before every attachment got a row of its own.
+            7L to setOf(first),
+            // Fully imported.
+            8L to setOf(first, second, third),
+            // A text-only MMS carries no part URI.
+            9L to setOf(""),
+        )
+        val parts = mapOf(7L to listOf(11L, 12L, 13L), 8L to listOf(11L, 12L, 13L))
+        assertEquals(setOf(8L, 9L), MmsSupport.completeMmsIds(stored, parts))
+    }
+
+    @Test
+    fun aMessageWithNoProviderPartNeedsNoBackfill() {
+        // The provider's parts were deleted after import; there is nothing to
+        // add, and re-importing would duplicate an empty row.
+        val stored = mapOf(5L to setOf("content://mms/part/50"))
+        assertEquals(setOf(5L), MmsSupport.completeMmsIds(stored, emptyMap()))
+    }
+
+    @Test
+    fun onlyANewUnreadInboundMmsBumpsTheBadge() {
+        assertTrue(MmsSupport.countsAsNewUnread(isMe = false, read = false, alreadyStored = false))
+        assertFalse(MmsSupport.countsAsNewUnread(isMe = true, read = false, alreadyStored = false))
+        assertFalse(MmsSupport.countsAsNewUnread(isMe = false, read = true, alreadyStored = false))
+        // The picture the upgrade backfills belongs to a message already shown.
+        assertFalse(MmsSupport.countsAsNewUnread(isMe = false, read = false, alreadyStored = true))
+    }
 }

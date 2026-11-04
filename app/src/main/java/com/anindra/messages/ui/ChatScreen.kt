@@ -676,6 +676,19 @@ internal fun ChatBubble(
 internal fun reactionBarX(isMe: Boolean, isRtl: Boolean, bubbleWidth: Int, barWidth: Int): Int =
     if (isMe != isRtl) bubbleWidth - barWidth else 0
 
+/**
+ * Whether the long-press bar belongs on this bubble.
+ *
+ * The bar acts on one message, so it is offered only while this bubble is the
+ * whole selection: selecting a second message hides it (#5c7e694). A
+ * multi-picture MMS is several rows behind one bubble and its long-press
+ * selects all of them, so the bubble counts as one message (#364 M6) — asking
+ * for a single row instead made albums unable to carry a reaction at all.
+ */
+internal fun bubbleIsTheWholeSelection(rowIds: List<Long>, selected: Collection<Long>): Boolean =
+    rowIds.isNotEmpty() &&
+        selected.size == rowIds.size &&
+        rowIds.all { it in selected }
 /** The tap-to-toggle emoji bar shown on a long-pressed message (issue #188). */
 @Composable
 internal fun ReactionBar(    selected: Set<String>,
@@ -790,11 +803,13 @@ fun ChatScreen(
     searchQuery: String? = null,
     initialDraft: String = "",
     initialMedia: List<android.net.Uri> = emptyList(),
+    initialStagedMedia: List<android.net.Uri> = emptyList(),
     onBack: () -> Unit,
     onOpenDetails: () -> Unit = {},
     onAddPeople: () -> Unit = {},
     onInitialDraftConsumed: () -> Unit = {},
-    onInitialMediaConsumed: () -> Unit = {}
+    onInitialMediaConsumed: () -> Unit = {},
+    onInitialStagedMediaConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -1120,13 +1135,18 @@ fun ChatScreen(
         }
         if (addr.isBlank()) return
         val caption = draft.trim()
-        pendingMedia.toList().forEachIndexed { index, uri ->
-            vm.sendMediaMessage(conversationId, uri, if (index == 0) caption else "")
+        val awaiting = pendingMedia.toList()
+        // One send for all of them: they leave in a single PDU, so the recipient
+        // sees one message with several pictures rather than one each (#364).
+        vm.sendMediaAlbum(conversationId, awaiting, caption) { stored ->
+            // A send that stored nothing leaves the tray and the caption alone,
+            // so the user can retry (#364).
+            if (stored == 0) return@sendMediaAlbum
+            pendingMedia.clear()
+            draft = ""
+            vm.saveDraft(conversationId, "")
+            showEmoji = false
         }
-        pendingMedia.clear()
-        draft = ""
-        vm.saveDraft(conversationId, "")
-        showEmoji = false
     }
 
     fun toggleSelection(id: Long) {
@@ -1170,7 +1190,9 @@ fun ChatScreen(
     fun selectAllMessages() {
         val locked = messages.filter { it.locked }.map { it.id }.toSet()
         selectedMessageIds.clear()
-        selectedMessageIds.addAll(SelectionToolbar.selectAllCandidates(messages.map { it.id }, locked))
+        selectedMessageIds.addAll(
+            SelectionToolbar.selectAllCandidates(selectionGroups(messages), locked)
+        )
     }
 
     /** Partial-text copy (#231). A dialog is used instead of turning the bubble
@@ -1186,8 +1208,8 @@ fun ChatScreen(
         }
     }
 
-    fun saveMessageImage(id: Long) {
-        vm.saveMessageImage(id)
+    fun saveMessageImages(ids: List<Long>) {
+        vm.saveMessageImages(ids)
         clearSelection()
     }
 
@@ -1558,12 +1580,20 @@ fun ChatScreen(
     // callbacks, which re-runs this effect with nothing to do.
     LaunchedEffect(conversationId, initialDraft, initialMedia) {
         if (initialMedia.isNotEmpty()) {
-            initialMedia.forEach { vm.sendMediaMessage(conversationId, it, initialDraft) }
+            // Several shared pictures are one message with one caption, the same
+            // way the composer sends them.
+            vm.sendMediaAlbum(conversationId, initialMedia, initialDraft)
             onInitialMediaConsumed()
             onInitialDraftConsumed()
         } else if (initialDraft.isNotBlank()) {
             draft = initialDraft
             onInitialDraftConsumed()
+        }
+    }
+    LaunchedEffect(conversationId, initialStagedMedia) {
+        if (initialStagedMedia.isNotEmpty()) {
+            initialStagedMedia.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
+            onInitialStagedMediaConsumed()
         }
     }
     LaunchedEffect(convo) {
@@ -1603,6 +1633,7 @@ fun ChatScreen(
             ) { mode ->
             when (mode) {
             "select" -> {
+                val saveTargets = SelectionToolbar.saveTargets(messages, selectedMessageIds)
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
@@ -1612,9 +1643,8 @@ fun ChatScreen(
                     onSelectText = messages.firstOrNull { it.id in selectedMessageIds }
                         ?.takeIf { it.body.isNotBlank() }
                         ?.let { m -> { startTextSelection(m.id) } },
-                    onSaveImage = messages.firstOrNull { it.id in selectedMessageIds }
-                        ?.takeIf { it.mediaUri.isNotBlank() }
-                        ?.let { m -> { saveMessageImage(m.id) } },
+                    onSaveImage = saveTargets.takeIf { it.isNotEmpty() }
+                        ?.let { targets -> { saveMessageImages(targets.map { it.id }) } },
                     onClose = { clearSelection() },
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
@@ -1973,8 +2003,7 @@ fun ChatScreen(
                             onLongPress = { toggleRowSelection(rowIds) },
                             onReact = { emoji -> applyReaction(msg, emoji) },
                             showReactionBar = canReact &&
-                                rowIds.size == 1 &&
-                                msg.id in selectedMessageIds,
+                                bubbleIsTheWholeSelection(rowIds, selectedMessageIds),
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
@@ -2159,7 +2188,7 @@ fun ChatScreen(
                 showForwardPicker = false
                 val targets = forwardingMessageIds
                 vm.openOrCreate(address, name) { targetId ->
-                    targets.forEach { vm.forwardMessage(it, targetId) }
+                    vm.forwardMessages(targets, targetId)
                     forwardingMessageIds = emptyList()
                     Toast.makeText(context, context.getString(R.string.chat_forwarded), Toast.LENGTH_SHORT).show()
                 }
