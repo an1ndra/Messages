@@ -52,6 +52,7 @@
     <string name="notif_action_delete">حذف</string>
     <string name="notif_you">شما</string>
     <string name="notif_photo">عکس</string>
+    <string name="notif_voice">پیام صوتی</string>
     <string name="notif_send_fail_private">پیام فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_send_fail">پیام به %s فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_not_delivered">پیام تحویل نشد</string>
