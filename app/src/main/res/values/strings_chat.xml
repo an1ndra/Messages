@@ -73,6 +73,7 @@
     <string name="message_detail_to">To</string>
     <string name="message_detail_from">From</string>
     <string name="message_detail_sent">Sent</string>
+    <string name="message_detail_gregorian">Gregorian date</string>
     <string name="message_detail_delivered">Delivered</string>
     <string name="message_detail_status">Status</string>
     <string name="message_status_sending">Sending…</string>

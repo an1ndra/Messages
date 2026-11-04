@@ -73,6 +73,7 @@
     <string name="message_detail_to">به</string>
     <string name="message_detail_from">از</string>
     <string name="message_detail_sent">ارسال‌شده</string>
+    <string name="message_detail_gregorian">تاریخ میلادی</string>
     <string name="message_detail_delivered">تحویل‌شده</string>
     <string name="message_detail_status">وضعیت</string>
     <string name="message_status_sending">در حال ارسال…</string>

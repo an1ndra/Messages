@@ -73,6 +73,7 @@
     <string name="message_detail_to">Кому</string>
     <string name="message_detail_from">От кого</string>
     <string name="message_detail_sent">Отправлено</string>
+    <string name="message_detail_gregorian">Григорианская дата</string>
     <string name="message_detail_delivered">Доставлено</string>
     <string name="message_detail_status">Статус</string>
     <string name="message_status_sending">Отправка…</string>

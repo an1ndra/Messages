@@ -73,6 +73,7 @@
     <string name="message_detail_to">إلى</string>
     <string name="message_detail_from">من</string>
     <string name="message_detail_sent">مرسلة</string>
+    <string name="message_detail_gregorian">التاريخ الميلادي</string>
     <string name="message_detail_delivered">تم التسليم</string>
     <string name="message_detail_status">الحالة</string>
     <string name="message_status_sending">جارٍ الإرسال…</string>

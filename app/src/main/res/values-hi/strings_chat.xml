@@ -73,6 +73,7 @@
     <string name="message_detail_to">इसे</string>
     <string name="message_detail_from">से</string>
     <string name="message_detail_sent">भेजा गया</string>
+    <string name="message_detail_gregorian">ग्रेगोरियन तिथि</string>
     <string name="message_detail_delivered">वितरित</string>
     <string name="message_detail_status">स्थिति</string>
     <string name="message_status_sending">भेजा जा रहा है...</string>
