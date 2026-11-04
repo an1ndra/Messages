@@ -21,6 +21,7 @@
     <string name="chat_select_all">すべて選択</string>
     <string name="chat_select_text">テキストを選択</string>
     <string name="chat_save_image">画像を保存</string>
+    <string name="chat_save_images">画像を保存</string>
     <string name="chat_image_saved">画像を Pictures/Messages に保存しました</string>
     <string name="chat_image_save_failed">画像を保存できませんでした</string>
 

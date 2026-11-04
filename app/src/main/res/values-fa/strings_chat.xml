@@ -21,6 +21,7 @@
     <string name="chat_select_all">انتخاب همه</string>
     <string name="chat_select_text">انتخاب متن</string>
     <string name="chat_save_image">ذخیره تصویر</string>
+    <string name="chat_save_images">ذخیره تصاویر</string>
     <string name="chat_image_saved">تصویر در Pictures/Messages ذخیره شد</string>
     <string name="chat_image_save_failed">تصویر ذخیره نشد</string>
 
