@@ -210,7 +210,7 @@ fun TrashScreen(
                 onDismissRequest = { showEmptyTrashDialog = false },
                 title = { Text(stringResource(R.string.trash_empty)) },
                 text = {
-                    Text(
+                    DialogText(
                         String.format(
                             context.getString(R.string.trash_empty_confirm),
                             conversations.size + messages.size
@@ -255,7 +255,7 @@ fun TrashScreen(
                         deleteMessageTarget != null -> messages.find { it.id == deleteMessageTarget }?.body
                         else -> conversations.find { it.id == deleteConversationTarget }?.name
                     }.orEmpty()
-                    Text(String.format(context.getString(R.string.trash_delete_forever_confirm), name))
+                    DialogText(String.format(context.getString(R.string.trash_delete_forever_confirm), name))
                 },
                 confirmButton = {
                     TextButton(onClick = {

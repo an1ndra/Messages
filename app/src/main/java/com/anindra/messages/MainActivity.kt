@@ -290,6 +290,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun messageCount(conversationId: Long): Int = repo.messageCount(conversationId)
 
+    /** Rows a search-result jump must load to bring [messageId] into the window. */
+    suspend fun messageCountNewerThan(conversationId: Long, messageId: Long): Int =
+        repo.messageCountNewerThan(conversationId, messageId)
+
     fun messageCountFlow(conversationId: Long): Flow<Int> = repo.messageCountFlow(conversationId)
 
     /** Conversations with a hit anywhere in their history, for the home search. */

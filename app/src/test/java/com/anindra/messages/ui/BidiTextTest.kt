@@ -10,6 +10,8 @@ class BidiTextTest {
 
     private val lri = BidiText.LRI
     private val pdi = BidiText.PDI
+    private val nbsp = ' '
+    private val nbHyphen = '‑'
 
     /** What the platform actually paints: the string in visual order, as the
      *  Unicode bidi algorithm reorders it for the given paragraph direction. */
@@ -39,7 +41,7 @@ class BidiTextTest {
     @Test
     fun isolatesSpacedNumberAfterRtlText() {
         val out = BidiText.isolateNumberRuns("کد پیگیری 0999 862 0453").text
-        assertEquals("کد پیگیری ${lri}0999 862 0453$pdi", out)
+        assertEquals("کد پیگیری ${lri}0999${nbsp}862${nbsp}0453$pdi", out)
     }
 
     @Test
@@ -49,7 +51,7 @@ class BidiTextTest {
             BidiText.isolateNumberRuns("کد +155589935615").text
         )
         assertEquals(
-            "تلفن ${lri}(555) 000-4111$pdi",
+            "تلفن ${lri}(555)${nbsp}000${nbHyphen}4111$pdi",
             BidiText.isolateNumberRuns("تلفن (555) 000-4111").text
         )
     }
@@ -79,7 +81,7 @@ class BidiTextTest {
         val otp = body.indexOf("482")..body.indexOf("913") + 2
         val iso = BidiText.isolateNumberRuns(body)
         val mapped = iso.remap(otp)
-        assertEquals("$lri" + "482 913" + "$pdi", iso.text.substring(mapped.first, mapped.last + 1))
+        assertEquals("$lri" + "482${nbsp}913" + "$pdi", iso.text.substring(mapped.first, mapped.last + 1))
     }
 
     @Test
@@ -143,16 +145,16 @@ class BidiTextTest {
         // fall outside the isolate, so the minutes reordered away from the hour
         // and the colon came adrift.
         assertEquals(
-            "بانک ملت\n${lri}1405/07/30 - 16:59$pdi",
+            "بانک ملت\n${lri}1405/07/30${nbsp}${nbHyphen}${nbsp}16:59$pdi",
             BidiText.isolateNumberRuns("بانک ملت\n1405/07/30 - 16:59").text
         )
         // The same stamp in Persian digits, and one written without spaces.
         assertEquals(
-            "بانک ملت\n${lri}۱۴۰۵/۰۷/۳۰ - ۱۶:۵۹$pdi",
+            "بانک ملت\n${lri}۱۴۰۵/۰۷/۳۰${nbsp}${nbHyphen}${nbsp}۱۶:۵۹$pdi",
             BidiText.isolateNumberRuns("بانک ملت\n۱۴۰۵/۰۷/۳۰ - ۱۶:۵۹").text
         )
         assertEquals(
-            "بانک ملت\n${lri}05/07/30-04:05$pdi",
+            "بانک ملت\n${lri}05/07/30${nbHyphen}04:05$pdi",
             BidiText.isolateNumberRuns("بانک ملت\n05/07/30-04:05").text
         )
     }
@@ -166,7 +168,7 @@ class BidiTextTest {
             BidiText.isolateNumberRuns("شماره حساب 07/30_04:00").text
         )
         assertEquals(
-            "واریز ${lri}-500,000$pdi",
+            "واریز ${lri}${nbHyphen}500,000$pdi",
             BidiText.isolateNumberRuns("واریز -500,000").text
         )
     }
@@ -178,12 +180,12 @@ class BidiTextTest {
         // they stayed outside the number run the digits reordered around them
         // and only read correctly once selected.
         assertEquals(
-            "کارت مبدا:\n${lri}5022-29xx-xxxx-9227$pdi\nکارت مقصد:",
+            "کارت مبدا:\n${lri}5022${nbHyphen}29xx${nbHyphen}xxxx${nbHyphen}9227$pdi\nکارت مقصد:",
             BidiText.isolateNumberRuns("کارت مبدا:\n5022-29xx-xxxx-9227\nکارت مقصد:").text
         )
         // Star masks are the same shape.
         assertEquals(
-            "کارت مقصد:\n${lri}6104-33**-****-8284$pdi\nمانده:",
+            "کارت مقصد:\n${lri}6104${nbHyphen}33**${nbHyphen}****${nbHyphen}8284$pdi\nمانده:",
             BidiText.isolateNumberRuns("کارت مقصد:\n6104-33**-****-8284\nمانده:").text
         )
     }
@@ -195,11 +197,11 @@ class BidiTextTest {
         // digits ("مبلغ:00000000") have no separator inside, so a run isolate
         // would change nothing - they stay plain, like every pure digit run.
         assertEquals(
-            "کارت مبدا:\n${lri}5022-29xx-xxxx-9227$pdi\n" +
-                "کارت مقصد:\n${lri}6104-33xx-xxxx-8284$pdi\n" +
+            "کارت مبدا:\n${lri}5022${nbHyphen}29xx${nbHyphen}xxxx${nbHyphen}9227$pdi\n" +
+                "کارت مقصد:\n${lri}6104${nbHyphen}33xx${nbHyphen}xxxx${nbHyphen}8284$pdi\n" +
                 "نام دریافت کننده: \n" +
                 "مبلغ:00000000 ریال\n" +
-                "تاریخ انتقال:${lri}22:20:51 1405/08/03$pdi",
+                "تاریخ انتقال:${lri}22:20:51${nbsp}1405/08/03$pdi",
             BidiText.isolateNumberRuns(
                 "کارت مبدا:\n5022-29xx-xxxx-9227\n" +
                     "کارت مقصد:\n6104-33xx-xxxx-8284\n" +
@@ -208,6 +210,29 @@ class BidiTextTest {
                     "تاریخ انتقال:22:20:51 1405/08/03"
             ).text
         )
+    }
+
+    @Test
+    fun theIssue405CardCannotBreakInsideItsRun() {
+        // #405: the reporter photographed "5022 **29 **** 9227" split across two
+        // lines. The isolate keeps its order; the spaces have to stop being
+        // break opportunities as well.
+        val body = "به کارت 5022 **29 **** 9227 به نام آقا/خانم"
+        val iso = BidiText.isolateNumberRuns(body)
+        assertEquals(
+            "به کارت ${lri}5022${nbsp}**29${nbsp}****${nbsp}9227$pdi به نام آقا/خانم",
+            iso.text
+        )
+        val card = iso.text.substringAfter(lri).substringBefore(pdi)
+        assertFalse("the card still has a breakable space", card.contains(' '))
+        assertFalse("the card still contains a breakable hyphen", card.contains('-'))
+    }
+
+    @Test
+    fun aHyphenatedCardCannotBreakInsideItsRun() {
+        val iso = BidiText.isolateNumberRuns("کارت 5022-29xx-xxxx-9227")
+        val card = iso.text.substringAfter(lri).substringBefore(pdi)
+        assertEquals("5022${nbHyphen}29xx${nbHyphen}xxxx${nbHyphen}9227", card)
     }
 
     @Test
@@ -315,7 +340,7 @@ class BidiTextTest {
         // A plain space between the groups is a neutral, not a number separator,
         // so Unicode splits the amount there even without any isolate.
         assertEquals(
-            "مبلغ ${lri}20 980.01$pdi ریال",
+            "مبلغ ${lri}20${nbsp}980.01$pdi ریال",
             BidiText.isolateNumberRuns("مبلغ 20 980.01 ریال").text
         )
         assertFalse(painted("مبلغ 20 980.01 ریال", rtl = true).contains("20 980.01"))

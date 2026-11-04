@@ -690,7 +690,7 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_import_backup)) },
             text = {
                 Column {
-                    Text(
+                    DialogText(
                         stringResource(R.string.settings_backup_apply),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -763,7 +763,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     if (mode == PinDialogMode.SET) {
-                        Text(
+                        DialogText(
                             stringResource(R.string.settings_backup_pin_protection),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -939,8 +939,8 @@ fun SettingsScreen(
     if (showRawBackupWarning) {
         AlertDialog(
             onDismissRequest = { showRawBackupWarning = false },
-            title = { Text(stringResource(R.string.settings_backup_unencrypted_title)) },
-            text = { Text(stringResource(R.string.settings_backup_unencrypted_warning)) },
+            title = { DialogText(stringResource(R.string.settings_backup_unencrypted_title)) },
+            text = { DialogText(stringResource(R.string.settings_backup_unencrypted_warning)) },
             confirmButton = {
                 TextButton(onClick = {
                     showRawBackupWarning = false

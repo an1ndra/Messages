@@ -263,7 +263,7 @@ fun InboxSettingsScreen(
             title = { Text(stringResource(R.string.settings_pin_delay)) },
             text = {
                 Column {
-                    Text(
+                    DialogText(
                         stringResource(R.string.settings_choose_delay),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 8.dp)

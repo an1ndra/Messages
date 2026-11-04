@@ -1,5 +1,6 @@
 package com.anindra.messages.ui
 
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.data.SwipeAction
@@ -153,6 +154,70 @@ enum class SwipeDirection { LEFT, RIGHT }
  */
 fun swipeActionFor(travelsRight: Boolean, left: SwipeAction, right: SwipeAction): SwipeAction =
     if (travelsRight) right else left
+
+/**
+ * Whether a settle value means the finger/row travelled to the physical right.
+ *
+ * Compose anchors [SwipeToDismissBoxValue.StartToEnd] at the layout's *start*
+ * edge, so the same value is a rightward drag in LTR and a leftward one in RTL.
+ * The settings labels ("Swipe left" / "Swipe right") and the actions they
+ * configure are physical, so the two have to be translated through this.
+ */
+fun SwipeToDismissBoxValue.travelsRight(isRtl: Boolean): Boolean = when (this) {
+    SwipeToDismissBoxValue.StartToEnd -> !isRtl
+    SwipeToDismissBoxValue.EndToStart -> isRtl
+    else -> false
+}
+
+/**
+ * The action a drag in progress performs.
+ *
+ * [SwipeToDismissBoxState.dismissDirection] classifies the live drag by the raw
+ * offset sign (`offset > 0` is [SwipeToDismissBoxValue.StartToEnd]) rather than
+ * by the layout's anchors, so the same physical movement keeps the same value
+ * in RTL. [travelsRight] translates the *settled* value instead; applying it
+ * here mirrored the action in RTL, which drew the other action's colour and
+ * icon while the finger moved (#408). [SwipeToDismissBoxValue.Settled] is not
+ * a drag.
+ */
+fun dragSwipeAction(
+    direction: SwipeToDismissBoxValue,
+    left: SwipeAction,
+    right: SwipeAction
+): SwipeAction = when (direction) {
+    SwipeToDismissBoxValue.StartToEnd -> right
+    SwipeToDismissBoxValue.EndToStart -> left
+    SwipeToDismissBoxValue.Settled -> SwipeAction.OFF
+}
+
+/** The physical side a live drag has uncovered: the row moves away from it. */
+fun dragRevealedSide(direction: SwipeToDismissBoxValue): RevealSide? = when (direction) {
+    SwipeToDismissBoxValue.StartToEnd -> RevealSide.LEFT
+    SwipeToDismissBoxValue.EndToStart -> RevealSide.RIGHT
+    SwipeToDismissBoxValue.Settled -> null
+}
+
+/** The action a settled row performs, translated from its layout-relative value. */
+fun settledSwipeAction(
+    value: SwipeToDismissBoxValue,
+    isRtl: Boolean,
+    left: SwipeAction,
+    right: SwipeAction
+): SwipeAction = when (value) {
+    SwipeToDismissBoxValue.StartToEnd, SwipeToDismissBoxValue.EndToStart ->
+        swipeActionFor(value.travelsRight(isRtl), left, right)
+    SwipeToDismissBoxValue.Settled -> SwipeAction.OFF
+}
+
+/** A physical side of the screen; unaffected by layout direction. */
+enum class RevealSide { LEFT, RIGHT }
+
+/**
+ * The physical side a swipe uncovers: the row slides away from it. A leftward
+ * finger leaves the exposed block on the right, in every layout direction.
+ */
+fun SwipeDirection.revealedSide(): RevealSide =
+    if (this == SwipeDirection.LEFT) RevealSide.RIGHT else RevealSide.LEFT
 
 /**
  * The action a swipe in this direction performs. A direction set to
