@@ -5,6 +5,8 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Locale
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,6 +22,7 @@ class CalendarDatesTest {
     private val fa = Locale.forLanguageTag("fa-IR")
     private val ar = Locale.forLanguageTag("ar-EG")
     private val en = Locale.ENGLISH
+    private val TS = 1_793_016_000_000L // 2026-10-26T12:00Z
 
     @Test
     fun storedValuesRoundTrip() {
@@ -190,6 +193,59 @@ class CalendarDatesTest {
         )
         assertEquals(ZoneOffset.UTC, zone)
         assertEquals(picked, ts)
+    }
+
+    private val companionRenderer = DateRenderer { _, _, ts, locale, zone ->
+        java.time.format.DateTimeFormatter.ofPattern("MMM d, y", locale)
+            .withZone(zone)
+            .format(java.time.Instant.ofEpochMilli(ts))
+    }
+
+    /** #363: the details dialog names the Gregorian reading only when the dates
+     *  it shows are in another calendar. */
+    @Test
+    fun gregorianCompanionIsSkippedWhenDatesAlreadyRenderGregorian() {
+        assertNull(gregorianCompanion(TS, CalendarSystem.GREGORIAN, en, ZoneOffset.UTC, companionRenderer))
+        assertNull(gregorianCompanion(TS, CalendarSystem.AUTO, en, ZoneOffset.UTC, companionRenderer))
+    }
+
+    @Test
+    fun gregorianCompanionAppearsWhenAnotherCalendarRenders() {
+        assertEquals(
+            "Oct 26, 2026",
+            gregorianCompanion(TS, CalendarSystem.PERSIAN, en, ZoneOffset.UTC, companionRenderer)
+        )
+        // Automatic on a Persian phone is Jalali, so the companion appears —
+        // written in the reader's own language, like every other date.
+        assertNotNull(gregorianCompanion(TS, CalendarSystem.AUTO, fa, ZoneOffset.UTC, companionRenderer))
+    }
+
+    /** The clock reads the same in every calendar, so the companion is date-only. */
+    @Test
+    fun gregorianCompanionOmitsTheClock() {
+        val text = gregorianCompanion(TS, CalendarSystem.HIJRI_UMALQURA, en, ZoneOffset.UTC, companionRenderer)!!
+        assertFalse(text.contains(":"))
+    }
+
+    @Test
+    fun gregorianCompanionAsksForTheGregorianDayAndTheCallersZone() {
+        var style: DateStyle? = null
+        var seen: CalendarSystem? = null
+        var zone: ZoneId? = null
+        val recorder = DateRenderer { s, calendar, _, _, z ->
+            style = s
+            seen = calendar
+            zone = z
+            "converted"
+        }
+        val tokyo = ZoneId.of("Asia/Tokyo")
+        assertEquals(
+            "converted",
+            gregorianCompanion(TS, CalendarSystem.PERSIAN, en, tokyo, recorder)
+        )
+        assertEquals(DateStyle.DayWithYear, style)
+        assertEquals(CalendarSystem.GREGORIAN, seen)
+        assertEquals(tokyo, zone)
     }
 
     /**

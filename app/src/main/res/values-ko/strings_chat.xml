@@ -89,6 +89,7 @@
     <string name="message_detail_to">받는 사람</string>
     <string name="message_detail_from">보내는 사람</string>
     <string name="message_detail_sent">발신됨</string>
+    <string name="message_detail_gregorian">그레고리력 날짜</string>
     <string name="message_detail_delivered">전달됨</string>
     <string name="message_detail_status">상태</string>
     <string name="message_status_sending">전송 중…</string>

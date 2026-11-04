@@ -85,6 +85,7 @@
     <string name="message_detail_to">收件人</string>
     <string name="message_detail_from">发件人</string>
     <string name="message_detail_sent">已发送</string>
+    <string name="message_detail_gregorian">公历日期</string>
     <string name="message_detail_delivered">已送达</string>
     <string name="message_detail_status">状态</string>
     <string name="message_status_sending">正在发送…</string>

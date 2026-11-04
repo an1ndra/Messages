@@ -86,6 +86,7 @@
     <string name="message_detail_to">À</string>
     <string name="message_detail_from">De</string>
     <string name="message_detail_sent">Envoyé</string>
+    <string name="message_detail_gregorian">Date grégorienne</string>
     <string name="message_detail_delivered">Remis</string>
     <string name="message_detail_status">Statut</string>
     <string name="message_status_sending">Envoi en cours…</string>

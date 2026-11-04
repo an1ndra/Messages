@@ -89,6 +89,7 @@
     <string name="message_detail_to">Do</string>
     <string name="message_detail_from">Od</string>
     <string name="message_detail_sent">Wysłano</string>
+    <string name="message_detail_gregorian">Data gregoriańska</string>
     <string name="message_detail_delivered">Dostarczono</string>
     <string name="message_detail_status">Status</string>
     <string name="message_status_sending">Wysyłanie…</string>
