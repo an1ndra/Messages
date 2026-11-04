@@ -196,7 +196,7 @@ fun SpamBlockedScreen(
         AlertDialog(
             onDismissRequest = { showEmptyDialog = false },
             title = { Text(stringResource(R.string.spam_empty)) },
-            text = { Text(String.format(context.getString(R.string.spam_empty_confirm), count)) },
+            text = { DialogText(String.format(context.getString(R.string.spam_empty_confirm), count)) },
             confirmButton = {
                 TextButton(onClick = {
                     if (tab == 0) {

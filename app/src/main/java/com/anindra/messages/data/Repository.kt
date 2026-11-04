@@ -809,8 +809,32 @@ class Repository(private val context: Context) {
         out
     }
 
-    fun messageCount(conversationId: Long): Int = runOnIo {
-        var count = 0
+    /**
+     * How many messages sort after (are newer than) [messageId] within its
+     * thread — the number of rows a pager must load to reach it. Uses the same
+     * ordering as [messages] (timestamp, then id), so it matches the window the
+     * chat builds.
+     */
+    suspend fun messageCountNewerThan(conversationId: Long, messageId: Long): Int =
+        runOnIoAsync {
+            var count = 0
+            db.readableDatabase.rawQuery(
+                """SELECT COUNT(*) FROM messages m
+                   WHERE m.conversation_id=? AND m.deleted_at=0
+                     AND (m.timestamp > (SELECT timestamp FROM messages WHERE id=?)
+                          OR (m.timestamp = (SELECT timestamp FROM messages WHERE id=?)
+                              AND m.id > ?))""",
+                arrayOf(
+                    conversationId.toString(),
+                    messageId.toString(),
+                    messageId.toString(),
+                    messageId.toString()
+                )
+            ).use { if (it.moveToFirst()) count = it.getInt(0) }
+            count
+        }
+
+    fun messageCount(conversationId: Long): Int = runOnIo {        var count = 0
         db.readableDatabase.rawQuery(
             "SELECT COUNT(*) FROM messages WHERE conversation_id=? AND deleted_at=0",
             arrayOf(conversationId.toString())

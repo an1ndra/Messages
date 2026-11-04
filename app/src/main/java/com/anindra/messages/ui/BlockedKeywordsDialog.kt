@@ -81,7 +81,7 @@ fun BlockedKeywordsDialog(
         },
         text = {
             Column(Modifier.fillMaxWidth()) {
-                Text(
+                DialogText(
                     stringResource(R.string.keywords_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -119,7 +119,7 @@ fun BlockedKeywordsDialog(
                             modifier = Modifier.size(32.dp)
                         )
                         Spacer(Modifier.height(8.dp))
-                        Text(
+                        DialogText(
                             stringResource(R.string.keywords_empty),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
