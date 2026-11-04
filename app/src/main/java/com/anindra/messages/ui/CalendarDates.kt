@@ -63,6 +63,26 @@ internal fun pickedDateInGregorian(
     )
 }
 
+/**
+ * The same instant written Gregorian, for a reader whose dates render in another
+ * calendar (#363), or null when they already render Gregorian.
+ *
+ * Only the date is returned: the clock reads the same in every calendar and the
+ * row this sits beside already shows it. [CalendarSystem.resolve] makes the
+ * choice here too, so an explicit Gregorian pick and an Automatic choice that
+ * lands on Gregorian both skip the companion.
+ */
+internal fun gregorianCompanion(
+    ts: Long,
+    calendar: CalendarSystem,
+    locale: Locale = Locale.getDefault(),
+    zone: ZoneId = ZoneId.systemDefault(),
+    renderer: DateRenderer = platformDateRenderer
+): String? {
+    if (CalendarSystem.resolve(calendar.storageValue, locale) == CalendarSystem.GREGORIAN) return null
+    return formatDate(ts, DateStyle.DayWithYear, CalendarSystem.GREGORIAN, locale, zone, renderer)
+}
+
 /** The year [ts] falls in under [calendar], for the "same year?" label choice. */
 internal fun displayYear(
     ts: Long,
