@@ -20,7 +20,7 @@ class RtlSwipeMappingTest {
     private val right = SwipeAction.DELETE
 
     private fun actionFor(value: SwipeToDismissBoxValue, isRtl: Boolean): SwipeAction =
-        swipeActionFor(value.travelsRight(isRtl), left, right)
+        settledSwipeAction(value, isRtl, left, right)
 
     @Test
     fun startToEndTravelsRightOnlyInLtr() {
@@ -93,6 +93,38 @@ class RtlSwipeMappingTest {
     fun aLeftwardFingerRevealsThePhysicalRightSide() {
         assertEquals(RevealSide.RIGHT, SwipeDirection.LEFT.revealedSide())
         assertEquals(RevealSide.LEFT, SwipeDirection.RIGHT.revealedSide())
+    }
+
+    @Test
+    fun theLiveDragIsReadPhysicallyInBothLayouts() {
+        // dismissDirection follows the raw offset sign, so its names keep their
+        // physical meaning even in RTL. Applying travelsRight() to it showed
+        // the mirrored action and colour while swiping (#408).
+        assertEquals(right, dragSwipeAction(SwipeToDismissBoxValue.StartToEnd, left, right))
+        assertEquals(left, dragSwipeAction(SwipeToDismissBoxValue.EndToStart, left, right))
+        assertEquals(SwipeAction.OFF, dragSwipeAction(SwipeToDismissBoxValue.Settled, left, right))
+    }
+
+    @Test
+    fun theUncoveredSideIsPhysicalAndOppositeTheRow() {
+        // A rightward drag leaves the physical left of the row exposed.
+        assertEquals(RevealSide.LEFT, dragRevealedSide(SwipeToDismissBoxValue.StartToEnd))
+        assertEquals(RevealSide.RIGHT, dragRevealedSide(SwipeToDismissBoxValue.EndToStart))
+        assertTrue(dragRevealedSide(SwipeToDismissBoxValue.Settled) == null)
+    }
+
+    @Test
+    fun theDragAndTheSettledSwipeAgreeOnTheSameGesture() {
+        // The physical leftward gesture is EndToStart in the live drag and
+        // StartToEnd once settled in RTL; both must run the left action.
+        assertEquals(
+            dragSwipeAction(SwipeToDismissBoxValue.EndToStart, left, right),
+            settledSwipeAction(SwipeToDismissBoxValue.StartToEnd, isRtl = true, left, right)
+        )
+        assertEquals(
+            dragSwipeAction(SwipeToDismissBoxValue.StartToEnd, left, right),
+            settledSwipeAction(SwipeToDismissBoxValue.EndToStart, isRtl = true, left, right)
+        )
     }
 
     @Test
