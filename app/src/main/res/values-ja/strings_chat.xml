@@ -73,6 +73,7 @@
     <string name="message_detail_to">宛先</string>
     <string name="message_detail_from">送信元</string>
     <string name="message_detail_sent">送信済み</string>
+    <string name="message_detail_gregorian">西暦の日付</string>
     <string name="message_detail_delivered">配信済み</string>
     <string name="message_detail_status">ステータス</string>
     <string name="message_status_sending">送信中…</string>

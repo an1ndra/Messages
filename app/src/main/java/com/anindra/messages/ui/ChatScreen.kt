@@ -3030,6 +3030,9 @@ internal fun MessageDetailsDialog(
                     formatPhoneNumber(address)
                 )
                 DetailRow(stringResource(R.string.message_detail_sent), formatDateTime(message.timestamp, DateStyle.DayWithYear, is24Hour, calendar))
+                gregorianCompanion(message.timestamp, calendar)?.let {
+                    DetailRow(stringResource(R.string.message_detail_gregorian), it)
+                }
                 MessageDetails.deliveredAt(message)?.let {
                     DetailRow(stringResource(R.string.message_detail_delivered), formatDateTime(it, DateStyle.DayWithYear, is24Hour, calendar))
                 }
