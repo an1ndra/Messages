@@ -44,13 +44,13 @@ class MmsFacadeTest {
     private fun message(
         caption: String = this.caption,
         subscriptionId: Int = Wire.SUBSCRIPTION_ID,
+        attachments: List<OutgoingAttachment> = listOf(
+            OutgoingAttachment("image/jpeg", ByteArray(2_048), 4_000, 3_000)
+        ),
     ) = OutgoingMessage(
         addresses = listOf("+15551230000"),
         caption = caption,
-        attachmentMimeType = "image/jpeg",
-        attachmentBytes = ByteArray(2_048),
-        sourceWidth = 4_000,
-        sourceHeight = 3_000,
+        attachments = attachments,
         subscriptionId = subscriptionId,
     )
 
@@ -98,6 +98,45 @@ class MmsFacadeTest {
         assertEquals(768, fit.maxImageHeight)
         assertEquals(4_000, fit.sourceWidth)
         assertEquals(3_000, fit.sourceHeight)
+    }
+
+    @Test
+    fun everyAttachmentIsFittedAndSentInOnePdu() {
+        val fitter = RecordingFitter.fitting(ByteArray(1_024))
+        val transport = acceptedTransport()
+        val attachments = List(3) { OutgoingAttachment("image/jpeg", ByteArray(2_048)) }
+        runBlocking { mms(transport = transport, fitter = fitter).send(message(attachments = attachments)) }
+
+        val expected = BudgetPolicy.perAttachmentBudget(
+            carrierMaxMessageSize = 40_000,
+            captionBytes = caption.toByteArray(Charsets.UTF_8).size,
+            partCount = SendReqBuilder.partCount(caption, 3),
+            attachmentCount = 3,
+        )
+        assertEquals(3, fitter.requests.size)
+        assertTrue(
+            "every attachment must share the split budget, got ${fitter.requests.map { it.budgetBytes }}",
+            fitter.requests.all { it.budgetBytes == expected },
+        )
+        // One hand-off: three pictures are one message, not three sends.
+        assertEquals(1, transport.sends.size)
+        assertEquals(3, transport.sends.single().body!!.attachments.size)
+    }
+
+    @Test
+    fun oneUnusableAttachmentRefusesTheWholeMessage() {
+        val transport = acceptedTransport()
+        val attachments = List(3) { OutgoingAttachment("image/jpeg", ByteArray(2_048)) }
+        var seen = 0
+        val fitter = RecordingFitter { request ->
+            seen++
+            if (seen == 2) FitOutcome.TooLarge
+            else FitOutcome.Fitted(request.bytes, request.mimeType, 0, 0)
+        }
+        val outcome = runBlocking { mms(transport = transport, fitter = fitter).send(message(attachments = attachments)) }
+
+        assertEquals(SendOutcome.Rejected(SendRejection.ATTACHMENT_TOO_LARGE), outcome)
+        assertTrue("a refused message must not reach the transport", transport.sends.isEmpty())
     }
 
     @Test

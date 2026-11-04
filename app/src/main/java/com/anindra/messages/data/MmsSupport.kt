@@ -9,6 +9,54 @@ object MmsSupport {
     const val PROVIDER_SELECTION = "(msg_box=1 AND m_type=132) OR (msg_box=2 AND m_type=128)"
     const val MAX_TEXT_BYTES = 1_048_576
 
+    /** The URI a provider part's bytes are read from, and the value an imported
+     *  message row stores in `media_uri`. */
+    fun partUri(partId: Long): String = "content://mms/part/$partId"
+
+    /**
+     * The provider MMS rows whose stored pictures and voice notes already cover
+     * everything the provider holds, so the import can skip them without reading
+     * their addresses or opening a transaction.
+     *
+     * A row is complete only when every media part the provider lists has its
+     * own message row. An MMS imported before every attachment got a row of its
+     * own therefore re-enters the import and is backfilled, without needing a
+     * one-shot version gate that every later patch would have to bump (#364).
+     */
+    fun completeMmsIds(
+        stored: Map<Long, Set<String>>,
+        mediaPartIds: Map<Long, List<Long>>
+    ): Set<Long> = stored.filter { (sysId, uris) ->
+        mediaPartIds[sysId].orEmpty().all { partUri(it) in uris }
+    }.keys
+
+    /**
+     * The provider MMS the import can skip this pass.
+     *
+     * Every part being stored is not enough: the first row's body can still
+     * carry the notice an older import wrote over pictures that now have rows of
+     * their own. Whether its count is still true is only visible in the
+     * provider's parts, so a row that still makes the claim always goes through
+     * the import again — a genuinely unsupported attachment (a video)
+     * reproduces the same notice and the row is left alone.
+     */
+    fun skippableMmsIds(
+        stored: Map<Long, Set<String>>,
+        mediaPartIds: Map<Long, List<Long>>,
+        withNotice: Set<Long>
+    ): Set<Long> = completeMmsIds(stored, mediaPartIds) - withNotice
+
+    /**
+     * Whether an imported MMS should raise its conversation's unread badge.
+     *
+     * Only a message the store did not have yet counts. Backfilling a missing
+     * picture into an MMS already on screen is not new mail, and this app never
+     * writes the provider's read flag — so counting the backfill would make
+     * every old unread conversation bump again on upgrade.
+     */
+    fun countsAsNewUnread(isMe: Boolean, read: Boolean, alreadyStored: Boolean): Boolean =
+        !isMe && !read && !alreadyStored
+
     /** Inbox/outbox PDU types. 130 is an incoming MMS the carrier has only
      *  announced; it has no parts until the default SMS app downloads it. */
     const val PDU_SEND_REQ = 128
@@ -26,7 +74,35 @@ object MmsSupport {
 
     data class Address(val type: Int, val value: String)
     data class Part(val id: Long, val mime: String, val text: String? = null)
-    data class Content(val body: String, val imageId: Long?, val omittedParts: Int)
+    /**
+     * What one MMS carries, as far as this app can show it.
+     *
+     * [imageId] and [extraImageIds] are the part ids the provider will hand the
+     * bytes out under. Each one is imported as a message row of its own, so a
+     * four-picture MMS shows four pictures instead of one and a note about the
+     * rest (#398). [mediaType] is the label the first row is stored under, so the
+     * bubble and the notification agree with what was read.
+     */
+    data class Content(
+        val body: String,
+        val imageId: Long?,
+        val omittedParts: Int,
+        /** The second and later pictures of a multi-picture MMS. */
+        val extraImageIds: List<Long> = emptyList()
+    ) {
+        val mediaType: String
+            get() = if (imageId != null) "image" else "text"
+
+        val mediaId: Long?
+            get() = imageId
+
+        /** Every attachment this MMS carries, in the order it should be shown, as
+         *  (mediaType, partId). Empty for a text-only MMS. */
+        fun mediaRows(): List<Pair<String, Long>> = buildList {
+            imageId?.let { add("image" to it) }
+            extraImageIds.forEach { add("image" to it) }
+        }
+    }
     data class InboundMms(
         val address: String,
         val body: String,
@@ -176,19 +252,52 @@ object MmsSupport {
         "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/bmp", "image/heic", "image/heif"
     )
 
+    /** The app's media type for an outgoing attachment: only pictures get the
+     *  album layout, everything else is a plain file. */
+    fun mediaKind(rawMime: String): String = if (isImage(rawMime)) "image" else "file"
+
+    /** The sentence [content] writes when it could not show every attachment.
+     *  Only the provider's parts can say whether it is still true. */
+    private const val NOTICE_MARKER = "additional/unsupported attachment(s) not displayed"
+
+    fun carriesNotice(body: String): Boolean = body.contains(NOTICE_MARKER)
+
     fun content(parts: List<Part>): Content {
-        val image = parts.firstOrNull { it.id > 0 && isImage(it.mime) }
+        // Every attachment the provider can hand out gets a message row of its
+        // own, so a four-picture MMS arrives as four pictures rather than one
+        // picture and a note about the others (#398). Only media this app cannot
+        // show at all — video, documents, an extra voice note — is omitted.
+        val images = parts.filter { it.id > 0 && isImage(it.mime) }
         val text = parts.filter { mime(it.mime) == "text/plain" }.mapNotNull { it.text }
             .filter { it.isNotBlank() }.joinToString("\n")
+        val shownIds = images.map { it.id }.toSet()
         val omitted = parts.count {
-            mime(it.mime) !in setOf("text/plain", "application/smil") && it !== image
+            mime(it.mime) !in setOf("text/plain", "application/smil") && it.id !in shownIds
         }
-        val notice = if (omitted > 0) "[MMS: $omitted additional/unsupported attachment(s) not displayed]" else ""
-        return Content(listOf(text, notice).filter { it.isNotEmpty() }.joinToString("\n"), image?.id, omitted)
+        val notice = if (omitted > 0) "[MMS: $omitted $NOTICE_MARKER]" else ""
+        return Content(
+            body = listOf(text, notice).filter { it.isNotEmpty() }.joinToString("\n"),
+            imageId = images.firstOrNull()?.id,
+            omittedParts = omitted,
+            extraImageIds = images.drop(1).map { it.id }
+        )
     }
 
-    fun decodeText(bytes: ByteArray, charset: Int): String {
-        val name = when (charset) {
+    /**
+     * The body an already-imported MMS row should carry after a re-scan.
+     *
+     * Rows written before #398 stored "[MMS: N additional/unsupported
+     * attachment(s) not displayed]" beside the first picture, and every picture
+     * has a row of its own now, so the sentence contradicts the screen. The
+     * freshly computed body is authoritative — including an empty one, which is
+     * what a picture-only MMS has — except when the provider row yields nothing
+     * at all (its parts were deleted after import): then the stored text is the
+     * only copy left.
+     */
+    fun refreshedBody(stored: String, fresh: String, providerEmpty: Boolean): String =
+        if (providerEmpty) stored else fresh
+
+    fun decodeText(bytes: ByteArray, charset: Int): String {        val name = when (charset) {
             0, 106 -> "UTF-8"
             3 -> "US-ASCII"
             4 -> "ISO-8859-1"
