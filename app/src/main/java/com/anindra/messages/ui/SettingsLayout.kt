@@ -169,6 +169,46 @@ fun SwipeToDismissBoxValue.travelsRight(isRtl: Boolean): Boolean = when (this) {
     else -> false
 }
 
+/**
+ * The action a drag in progress performs.
+ *
+ * [SwipeToDismissBoxState.dismissDirection] classifies the live drag by the raw
+ * offset sign (`offset > 0` is [SwipeToDismissBoxValue.StartToEnd]) rather than
+ * by the layout's anchors, so the same physical movement keeps the same value
+ * in RTL. [travelsRight] translates the *settled* value instead; applying it
+ * here mirrored the action in RTL, which drew the other action's colour and
+ * icon while the finger moved (#408). [SwipeToDismissBoxValue.Settled] is not
+ * a drag.
+ */
+fun dragSwipeAction(
+    direction: SwipeToDismissBoxValue,
+    left: SwipeAction,
+    right: SwipeAction
+): SwipeAction = when (direction) {
+    SwipeToDismissBoxValue.StartToEnd -> right
+    SwipeToDismissBoxValue.EndToStart -> left
+    SwipeToDismissBoxValue.Settled -> SwipeAction.OFF
+}
+
+/** The physical side a live drag has uncovered: the row moves away from it. */
+fun dragRevealedSide(direction: SwipeToDismissBoxValue): RevealSide? = when (direction) {
+    SwipeToDismissBoxValue.StartToEnd -> RevealSide.LEFT
+    SwipeToDismissBoxValue.EndToStart -> RevealSide.RIGHT
+    SwipeToDismissBoxValue.Settled -> null
+}
+
+/** The action a settled row performs, translated from its layout-relative value. */
+fun settledSwipeAction(
+    value: SwipeToDismissBoxValue,
+    isRtl: Boolean,
+    left: SwipeAction,
+    right: SwipeAction
+): SwipeAction = when (value) {
+    SwipeToDismissBoxValue.StartToEnd, SwipeToDismissBoxValue.EndToStart ->
+        swipeActionFor(value.travelsRight(isRtl), left, right)
+    SwipeToDismissBoxValue.Settled -> SwipeAction.OFF
+}
+
 /** A physical side of the screen; unaffected by layout direction. */
 enum class RevealSide { LEFT, RIGHT }
 

@@ -873,7 +873,11 @@ internal fun SwipeConversationItem(
         modifier = modifier,
         backgroundContent = {
             val direction = dismissState.dismissDirection
-            val action = direction.action(settings, isRtl)
+            val action = dragSwipeAction(
+                direction, settings.swipeLeftAction, settings.swipeRightAction
+            )
+            val revealed = dragRevealedSide(direction)
+            val iconAtPhysicalLeft = revealed == RevealSide.LEFT
 
             val bgColor by animateColorAsState(
                 targetValue = action.background(),
@@ -889,9 +893,13 @@ internal fun SwipeConversationItem(
                     .fillMaxSize()
                     .background(bgColor)
                     .padding(horizontal = SettingsLayout.SWIPE_ICON_INSET),
-                contentAlignment = when (direction) {
-                    SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                    else -> Alignment.CenterStart
+                // Compose's CenterStart/CenterEnd are logical, so the physical
+                // side the drag uncovered has to be translated back (#408).
+                contentAlignment = when {
+                    iconAtPhysicalLeft && isRtl -> Alignment.CenterEnd
+                    iconAtPhysicalLeft -> Alignment.CenterStart
+                    isRtl -> Alignment.CenterStart
+                    else -> Alignment.CenterEnd
                 }
             ) {
                 if (action != SwipeAction.OFF) {
@@ -929,7 +937,10 @@ internal fun SwipeConversationItem(
     }
 
     LaunchedEffect(dismissState.currentValue) {
-        when (dismissState.currentValue.action(settings, isRtl)) {
+        when (settledSwipeAction(
+            dismissState.currentValue, isRtl,
+            settings.swipeLeftAction, settings.swipeRightAction
+        )) {
             SwipeAction.ARCHIVE -> onArchive()
             SwipeAction.DELETE -> onDelete()
             SwipeAction.MARK_READ_UNREAD -> onToggleRead()
@@ -942,14 +953,6 @@ internal fun SwipeConversationItem(
         }
     }
 }
-
-/** The action a swipe in [this] direction performs, per the user's configuration. */
-private fun SwipeToDismissBoxValue.action(settings: RowSettings, isRtl: Boolean): SwipeAction =
-    when (this) {
-        SwipeToDismissBoxValue.StartToEnd, SwipeToDismissBoxValue.EndToStart ->
-            swipeActionFor(travelsRight(isRtl), settings.swipeLeftAction, settings.swipeRightAction)
-        else -> SwipeAction.OFF
-    }
 
 @Composable
 private fun SwipeAction.background() = when (this) {
