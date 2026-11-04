@@ -21,6 +21,7 @@
     <string name="chat_select_all">Tout sélectionner</string>
     <string name="chat_select_text">Sélectionner le texte</string>
     <string name="chat_save_image">Enregistrer l\'image</string>
+    <string name="chat_save_images">Enregistrer les images</string>
     <string name="chat_save_voice">Enregistrer le message vocal</string>
     <string name="chat_image_saved">Image enregistrée dans Pictures/Messages</string>
     <string name="chat_image_save_failed">Impossible d\'enregistrer l\'image</string>

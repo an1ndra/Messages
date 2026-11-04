@@ -20,6 +20,7 @@
     <string name="chat_select_all">全選</string>
     <string name="chat_select_text">選取文字</string>
     <string name="chat_save_image">儲存圖片</string>
+    <string name="chat_save_images">儲存圖片</string>
     <string name="chat_save_voice">儲存語音訊息</string>
     <string name="chat_image_saved">圖片已儲存至 Pictures/Messages</string>
     <string name="chat_image_save_failed">無法儲存圖片</string>

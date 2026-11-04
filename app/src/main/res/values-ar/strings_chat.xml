@@ -21,6 +21,7 @@
     <string name="chat_select_all">تحديد الكل</string>
     <string name="chat_select_text">تحديد النص</string>
     <string name="chat_save_image">حفظ الصورة</string>
+    <string name="chat_save_images">حفظ الصور</string>
     <string name="chat_save_voice">حفظ الرسالة الصوتية</string>
     <string name="chat_image_saved">تم حفظ الصورة في Pictures/Messages</string>
     <string name="chat_image_save_failed">تعذر حفظ الصورة</string>

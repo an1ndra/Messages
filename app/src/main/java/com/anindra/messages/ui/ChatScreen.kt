@@ -1636,6 +1636,9 @@ fun ChatScreen(
                 val saveTargets = SelectionToolbar.saveTargets(messages, selectedMessageIds)
                 val saveTarget = saveTargets.firstOrNull()
                     ?.let { m -> SelectionToolbar.saveTargetFor(m.mediaType) }
+                val saveCount = saveTargets.count {
+                    SelectionToolbar.saveTargetFor(it.mediaType) == saveTarget
+                }
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
@@ -1646,6 +1649,7 @@ fun ChatScreen(
                         ?.takeIf { it.body.isNotBlank() }
                         ?.let { m -> { startTextSelection(m.id) } },
                     saveTarget = saveTarget,
+                    saveCount = saveCount,
                     onSaveMedia = { saveTargets.forEach { saveMessageAttachment(it.id) } },
                     onClose = { clearSelection() },
                     onCopy = { copySelection() },
@@ -2289,6 +2293,7 @@ internal fun MessageSelectionToolbar(
     onSelectText: (() -> Unit)?,
     onSaveMedia: () -> Unit,
     saveTarget: MmsSupport.SaveTarget?,
+    saveCount: Int = 1,
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
@@ -2365,7 +2370,7 @@ internal fun MessageSelectionToolbar(
                         }
                         if (saveTarget != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(SelectionToolbar.saveLabelRes(saveTarget))) },
+                                text = { Text(stringResource(SelectionToolbar.saveLabelRes(saveTarget, saveCount))) },
                                 onClick = { overflow = false; onSaveMedia() }
                             )
                         }

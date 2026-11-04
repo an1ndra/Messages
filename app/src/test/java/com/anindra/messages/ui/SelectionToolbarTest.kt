@@ -130,6 +130,24 @@ class SelectionToolbarTest {
     }
 
     @Test
+    fun severalPicturesReadAsPlural() {
+        // #398: selecting two pictures wrote both but still offered
+        // "Save image", which read as if only one would be saved.
+        assertEquals(
+            R.string.chat_save_images,
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.IMAGE, count = 2)
+        )
+        assertEquals(
+            R.string.chat_save_images,
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.IMAGE, count = 5)
+        )
+        assertEquals(
+            R.string.chat_save_image,
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.IMAGE, count = 1)
+        )
+    }
+
+    @Test
     fun aFailedVoiceSaveNamesTheVoiceNote() {
         // #364: an unreadable voice row reported "Could not save the image".
         assertEquals(
