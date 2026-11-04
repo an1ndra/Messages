@@ -21,6 +21,7 @@
     <string name="chat_select_all">सभी चुनें</string>
     <string name="chat_select_text">टेक्स्ट चुनें</string>
     <string name="chat_save_image">छवि सहेजें</string>
+    <string name="chat_save_images">छवियाँ सहेजें</string>
     <string name="chat_image_saved">छवि Pictures/Messages में सहेजी गई</string>
     <string name="chat_image_save_failed">छवि सहेजी नहीं जा सकी</string>
 

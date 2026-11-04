@@ -1643,6 +1643,7 @@ fun ChatScreen(
                     onSelectText = messages.firstOrNull { it.id in selectedMessageIds }
                         ?.takeIf { it.body.isNotBlank() }
                         ?.let { m -> { startTextSelection(m.id) } },
+                    saveCount = saveTargets.size,
                     onSaveImage = saveTargets.takeIf { it.isNotEmpty() }
                         ?.let { targets -> { saveMessageImages(targets.map { it.id }) } },
                     onClose = { clearSelection() },
@@ -2261,6 +2262,7 @@ internal fun MessageSelectionToolbar(
     onSelectAll: () -> Unit,
     onSelectText: (() -> Unit)?,
     onSaveImage: (() -> Unit)?,
+    saveCount: Int = 1,
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
@@ -2337,7 +2339,7 @@ internal fun MessageSelectionToolbar(
                         }
                         if (onSaveImage != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_save_image)) },
+                                text = { Text(stringResource(SelectionToolbar.saveLabelRes(saveCount))) },
                                 onClick = { overflow = false; onSaveImage() }
                             )
                         }

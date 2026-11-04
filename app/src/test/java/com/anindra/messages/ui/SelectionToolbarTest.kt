@@ -108,6 +108,15 @@ class SelectionToolbarTest {
     }
 
     @Test
+    fun severalPicturesReadAsPlural() {
+        // #398: selecting two pictures wrote both but still offered
+        // "Save image", which read as if only one would be saved.
+        assertEquals(R.string.chat_save_images, SelectionToolbar.saveLabelRes(count = 2))
+        assertEquals(R.string.chat_save_images, SelectionToolbar.saveLabelRes(count = 5))
+        assertEquals(R.string.chat_save_image, SelectionToolbar.saveLabelRes(count = 1))
+    }
+
+    @Test
     fun saveCoversEverySelectedRowWithAMediaUri() {
         fun message(id: Long, mediaType: String, mediaUri: String) = Message(
             id = id,

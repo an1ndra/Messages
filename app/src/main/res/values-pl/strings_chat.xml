@@ -21,6 +21,7 @@
     <string name="chat_select_all">Zaznacz wszystko</string>
     <string name="chat_select_text">Zaznacz tekst</string>
     <string name="chat_save_image">Zapisz obraz</string>
+    <string name="chat_save_images">Zapisz obrazy</string>
     <string name="chat_image_saved">Obraz zapisano w Pictures/Messages</string>
     <string name="chat_image_save_failed">Nie można zapisać obrazu</string>
 

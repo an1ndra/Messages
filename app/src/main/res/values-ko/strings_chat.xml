@@ -21,6 +21,7 @@
     <string name="chat_select_all">모두 선택</string>
     <string name="chat_select_text">텍스트 선택</string>
     <string name="chat_save_image">이미지 저장</string>
+    <string name="chat_save_images">이미지 저장</string>
     <string name="chat_image_saved">이미지를 Pictures/Messages에 저장했습니다</string>
     <string name="chat_image_save_failed">이미지를 저장할 수 없습니다</string>
 
