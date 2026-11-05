@@ -1,0 +1,7 @@
+Fixes since 1.0.30:
+• Notification channels per category and conversation, with sound, vibration and priority.
+• Multi-select conversations: long-press, then "Select more", to archive or delete several.
+• Dynamic theme follows your wallpaper on Android 12+.
+• Pinch to zoom chat text (0.7x-2.5x); a pill shows and resets the zoom.
+• MMS sent while data is off downloads once data returns.
+• Notifications count unread messages per conversation; Persian bank amounts no longer reorder.
