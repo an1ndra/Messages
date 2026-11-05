@@ -19,3 +19,9 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      # analyze reads the configuration init wrote and refuses to run when
+      # their versions differ, so these must always bump in one PR.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
