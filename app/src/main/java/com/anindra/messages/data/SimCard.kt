@@ -73,7 +73,8 @@ object SimCards {
     /**
      * Two fake SIMs. The subscriptionIds (1 and 7) intentionally do NOT match
      * slot+1, so the label logic is exercised (subId 7 on slot 1 must render
-     * "Vodafone (SIM 2)", never "SIM 7").
+     * "Vodafone UK (SIM 2)", never "SIM 7"). The second display name differs
+     * from its carrier on purpose, standing in for a user-renamed SIM (#323).
      */
     fun debugFake(): List<SimCard> = listOf(
         SimCard(1, 0, "T-Mobile", "T-Mobile", "310260", "us", false),

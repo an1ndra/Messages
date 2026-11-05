@@ -32,7 +32,6 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -343,13 +342,13 @@ onBack: () -> Unit,
             // One card, not two: notifications and blocking are the same block of
             // per-conversation controls, split by a hairline like Google's.
             GroupedRowList(Modifier.padding(horizontal = SettingsLayout.SCREEN_PADDING)) {
-                // One control per chat, not two: this switch is whether the chat
-                // owns a channel, and Android's page for that channel is off,
-                // silent, sound and vibration. A second in-app mute could only
-                // ever disagree with it (#339).
+                // One control per chat (#421): the switch says whether the chat
+                // owns a channel of its own, and the label opens Android's page
+                // for it — off, silent, sound and vibration. The label is inert
+                // while off because there is no channel page to open yet.
                 DetailCardRow(
                     icon = Icons.Rounded.Notifications,
-                    title = stringResource(R.string.contact_notifications),
+                    title = stringResource(R.string.contact_notification_profile),
                     trailing = {
                         Switch(
                             checked = channelOn,
@@ -358,18 +357,13 @@ onBack: () -> Unit,
                                 vm.setConversationCustomChannel(conversationId, it)
                             },
                         )
+                    },
+                    onClick = if (channelOn) {
+                        { vm.openConversationChannelSettings(conversationId) }
+                    } else {
+                        null
                     }
                 )
-                // The way into that channel's settings, not a second copy of the
-                // setting: Android owns the sound from the moment it exists.
-                if (channelOn) {
-                    DetailCardRow(
-                        icon = Icons.Rounded.Tune,
-                        title = stringResource(R.string.contact_customize_notifications),
-                        titleColor = MaterialTheme.colorScheme.onSurface,
-                        onClick = { vm.openConversationChannelSettings(conversationId) }
-                    )
-                }
                 DetailCardRow(
                     icon = Icons.Rounded.ChatBubble,
                     title = stringResource(R.string.contact_bubble_conversation),
