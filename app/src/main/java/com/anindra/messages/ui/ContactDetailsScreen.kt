@@ -25,12 +25,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -45,6 +47,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -69,6 +72,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import com.anindra.messages.R
 import com.anindra.messages.AppViewModel
@@ -100,11 +106,28 @@ onBack: () -> Unit,
     val display = BidiText.ltr(convo!!.display)
     val workProfile = phoneKey(address).let { it.isNotEmpty() && it in workNums }
 
-    // flows (not sync SELECTs) for notify/block state; VM retains last value
-    val notificationsEnabled by vm.conversationNotificationsEnabledFlow(conversationId)
-        .collectAsState(initial = true)
-    var notifState by remember(notificationsEnabled) { mutableStateOf(notificationsEnabled) }
+    // A chat's own channel exists only if the user asked for it, and Android
+    // keeps that channel's sound — so the switch mirrors the channel rather than
+    // a stored copy of the setting. Re-read on resume: the user may have removed
+    // it from system settings while this screen was in the background.
+    var channelOn by remember(conversationId) {
+        mutableStateOf(vm.conversationCustomChannel(conversationId))
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, conversationId) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                channelOn = vm.conversationCustomChannel(conversationId)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     var showBlockDialog by remember { mutableStateOf(false) }
+    val bubbleRevision by vm.settings.revision.collectAsState()
+    var bubbleEnabled by remember(bubbleRevision) {
+        mutableStateOf(vm.settings.bubblesFor(conversationId))
+    }
     var numberIsBlocked by remember { mutableStateOf(false) }
     LaunchedEffect(address) { numberIsBlocked = vm.isNumberBlocked(address) }
 
@@ -320,20 +343,43 @@ onBack: () -> Unit,
             // One card, not two: notifications and blocking are the same block of
             // per-conversation controls, split by a hairline like Google's.
             GroupedRowList(Modifier.padding(horizontal = SettingsLayout.SCREEN_PADDING)) {
+                // One control per chat, not two: this switch is whether the chat
+                // owns a channel, and Android's page for that channel is off,
+                // silent, sound and vibration. A second in-app mute could only
+                // ever disagree with it (#339).
                 DetailCardRow(
                     icon = Icons.Rounded.Notifications,
                     title = stringResource(R.string.contact_notifications),
                     trailing = {
                         Switch(
-                            checked = notifState,
+                            checked = channelOn,
                             onCheckedChange = {
-                                notifState = it
-                                vm.setConversationNotificationsEnabled(conversationId, it)
+                                channelOn = it
+                                vm.setConversationCustomChannel(conversationId, it)
                             },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-                            )
+                        )
+                    }
+                )
+                // The way into that channel's settings, not a second copy of the
+                // setting: Android owns the sound from the moment it exists.
+                if (channelOn) {
+                    DetailCardRow(
+                        icon = Icons.Rounded.Tune,
+                        title = stringResource(R.string.contact_customize_notifications),
+                        titleColor = MaterialTheme.colorScheme.onSurface,
+                        onClick = { vm.openConversationChannelSettings(conversationId) }
+                    )
+                }
+                DetailCardRow(
+                    icon = Icons.Rounded.ChatBubble,
+                    title = stringResource(R.string.contact_bubble_conversation),
+                    trailing = {
+                        Switch(
+                            checked = bubbleEnabled,
+                            onCheckedChange = {
+                                bubbleEnabled = it
+                                vm.settings.setBubblesFor(conversationId, it)
+                            },
                         )
                     }
                 )
@@ -450,7 +496,7 @@ onBack: () -> Unit,
         AlertDialog(
             onDismissRequest = { showBlockDialog = false },
             title = { Text(stringResource(R.string.contact_block_report)) },
-            text = { Text(context.getString(R.string.contact_block_confirm, formatPhoneNumber(address))) },
+            text = { DialogText(context.getString(R.string.contact_block_confirm, formatPhoneNumber(address))) },
             confirmButton = {
                 TextButton(onClick = {
                     showBlockDialog = false

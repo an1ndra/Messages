@@ -45,11 +45,11 @@ object SettingsSearch {
 
         card(Route.SETTINGS, 0,
             R.string.settings_notif_title,
-            R.string.settings_pin_notification_sound,
             R.string.settings_delivery_reports_title,
             R.string.settings_mark_read_title)
         card(Route.SETTINGS, 1,
             R.string.settings_theme_title,
+            R.string.settings_calendar_title,
             R.string.settings_pin_sim_card,
             R.string.settings_sim_indicator)
         card(Route.SETTINGS, 2,
@@ -71,7 +71,8 @@ object SettingsSearch {
             R.string.settings_backup_title,
             R.string.settings_import_title)
         card(Route.SETTINGS, 6,
-            R.string.settings_advanced_title)
+            R.string.settings_advanced_title,
+            R.string.settings_about_title)
 
         card(Route.ADVANCED, 7,
             R.string.settings_drafts_title,
@@ -90,7 +91,8 @@ object SettingsSearch {
             R.string.settings_receive_sound_title,
             R.string.settings_notif_action_reply_title,
             R.string.settings_notif_action_mark_read_title,
-            R.string.settings_notif_action_delete_title)
+            R.string.settings_notif_action_delete_title,
+            R.string.settings_bubble_back_closes_title)
         card(Route.ADVANCED, 11,
             R.string.settings_font_title,
             R.string.settings_advanced_emoji_button)

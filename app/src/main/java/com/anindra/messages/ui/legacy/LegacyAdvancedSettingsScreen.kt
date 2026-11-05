@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,6 +53,7 @@ import com.anindra.messages.diagnostics.DiagnosticsDialog
 import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.ui.theme.AppFonts
 import com.anindra.messages.ui.BlockedKeywordsDialog
+import com.anindra.messages.ui.DialogText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +87,7 @@ fun AdvancedSettingsScreen(
     var actionReply by remember(revision) { mutableStateOf(vm.settings.notifActionReply) }
     var actionMarkRead by remember(revision) { mutableStateOf(vm.settings.notifActionMarkRead) }
     var actionDelete by remember(revision) { mutableStateOf(vm.settings.notifActionDelete) }
+    var bubbleBackCloses by remember(revision) { mutableStateOf(vm.settings.bubbleBackCloses) }
     var retentionDaysDialog by remember { mutableStateOf(false) }
     var daysTarget by remember { mutableStateOf("") }
     var retentionOn by remember(revision) { mutableStateOf(vm.settings.retentionEnabled) }
@@ -97,9 +100,13 @@ fun AdvancedSettingsScreen(
     var keywordsDialog by remember { mutableStateOf(false) }
     var diagReport by remember { mutableStateOf<String?>(null) }
 
-    Scaffold(
-        topBar = {
+    // The page colour is painted by the shared legacy sheet, which also
+    // reports it, so no settings screen can drift from the others.
+    LegacySettingsScaffold(screen = "advanced", topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = { Text(stringResource(R.string.settings_advanced_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -107,8 +114,7 @@ fun AdvancedSettingsScreen(
                     }
                 }
             )
-        }
-    ) { padding ->
+    }) { padding ->
       androidx.compose.runtime.CompositionLocalProvider(
         LocalHighlightedSetting provides highlightTitle,
         LocalCardOffsets provides cardOffsets
@@ -252,7 +258,7 @@ fun AdvancedSettingsScreen(
                     onChecked = {
                         receiveSound = it
                         vm.settings.receiveSoundEnabled = it
-                        NotificationHelper.ensureChannel(context)
+                        NotificationHelper.ensureChannels(context)
                     }
                 )
                 SettingsRow(
@@ -272,6 +278,12 @@ fun AdvancedSettingsScreen(
                     subtitle = stringResource(R.string.settings_notif_action_delete_subtitle),
                     checked = actionDelete,
                     onChecked = { actionDelete = it; vm.settings.notifActionDelete = it }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_bubble_back_closes_title),
+                    subtitle = stringResource(R.string.settings_bubble_back_closes_subtitle),
+                    checked = bubbleBackCloses,
+                    onChecked = { bubbleBackCloses = it; vm.settings.bubbleBackCloses = it }
                 )
             }
 
@@ -416,7 +428,7 @@ fun AdvancedSettingsScreen(
             title = { Text(stringResource(R.string.settings_retention_after)) },
             text = {
                 Column {
-                    Text(
+                    DialogText(
                         stringResource(R.string.settings_choose_retention),
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -548,10 +560,10 @@ fun PermanentDeleteConfirmDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
-        title = { Text(stringResource(R.string.settings_advanced_delete_permanently)) },
+        title = { DialogText(stringResource(R.string.settings_advanced_delete_permanently)) },
         text = {
             Column(Modifier.fillMaxWidth()) {
-                Text(
+                DialogText(
                     stringResource(R.string.settings_advanced_permanent_delete_on)
                 )
                 Spacer(Modifier.height(4.dp))
@@ -562,7 +574,7 @@ fun PermanentDeleteConfirmDialog(
                 ) {
                     Checkbox(checked = dontShowAgain, onCheckedChange = { dontShowAgain = it })
                     Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.settings_advanced_warning))
+                    DialogText(stringResource(R.string.settings_advanced_warning))
                 }
             }
         },

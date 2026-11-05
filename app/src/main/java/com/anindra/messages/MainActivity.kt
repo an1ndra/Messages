@@ -52,6 +52,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,6 +86,7 @@ import com.anindra.messages.ui.LinkSettingsScreen
 import com.anindra.messages.ui.InboxSettingsScreen
 import com.anindra.messages.ui.ScheduledMessagesScreen
 import com.anindra.messages.ui.NewChatScreen
+import com.anindra.messages.ui.AboutScreen
 import com.anindra.messages.ui.SettingsScreen
 import com.anindra.messages.ui.AdvancedSettingsScreen
 import com.anindra.messages.ui.AccessibilityScreen
@@ -288,6 +290,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun messageCount(conversationId: Long): Int = repo.messageCount(conversationId)
 
+    /** Rows a search-result jump must load to bring [messageId] into the window. */
+    suspend fun messageCountNewerThan(conversationId: Long, messageId: Long): Int =
+        repo.messageCountNewerThan(conversationId, messageId)
+
     fun messageCountFlow(conversationId: Long): Flow<Int> = repo.messageCountFlow(conversationId)
 
     /** Conversations with a hit anywhere in their history, for the home search. */
@@ -322,15 +328,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deleteConversation(id: Long) = scope.launch {
-        if (settings.permanentDeleteEnabled) repo.deleteConversationSuspend(id)
-        else repo.trashConversationSuspend(id)
+        if (settings.permanentDeleteEnabled) {
+            repo.deleteConversationSuspend(id)
+            com.anindra.messages.sms.NotificationHelper.deleteConversationChannels(
+                getApplication(), id
+            )
+        } else {
+            repo.trashConversationSuspend(id)
+        }
     }
 
     fun restoreFromTrash(id: Long) = scope.launch { repo.restoreFromTrashSuspend(id) }
 
-    fun deleteForever(id: Long) = scope.launch { repo.deleteConversationSuspend(id) }
+    fun deleteForever(id: Long) = scope.launch {
+        repo.deleteConversationSuspend(id)
+        com.anindra.messages.sms.NotificationHelper.deleteConversationChannels(getApplication(), id)
+    }
 
-    fun emptyTrash() = scope.launch { repo.emptyTrashSuspend() }
+    fun emptyTrash() = scope.launch {
+        repo.emptyTrashSuspend()
+        com.anindra.messages.sms.NotificationHelper.pruneConversationChannels(getApplication())
+    }
 
     fun trashedConversations(): Flow<List<Conversation>> = repo.trashedConversations()
 
@@ -372,13 +390,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setLocked(messageId: Long, locked: Boolean) =
         scope.launch { repo.setLockedSuspend(messageId, locked) }
 
+    /** Bookmarks or clears messages from the chat's selection toolbar (#394). */
+    fun setStarred(messageIds: List<Long>, starred: Boolean) =
+        scope.launch { repo.setStarred(messageIds, starred) }
+
+    /** The Starred scope of the home search (#394). */
+    fun starredMessages(query: String, hideLinks: Boolean) = repo.starredMessages(query, hideLinks)
+
     fun deleteMessage(messageId: Long) =
         scope.launch { repo.deleteMessageSuspend(messageId) }
 
     fun restoreMessage(messageId: Long) =
         scope.launch { repo.restoreMessageSuspend(messageId) }
 
-    fun markAllRead() = scope.launch { repo.markAllReadSuspend() }
+    fun markAllRead() {
+        val ctx = getApplication<android.app.Application>()
+        scope.launch {
+            repo.markAllReadSuspend()
+            // Marking read used to leave the shade untouched, so the
+            // notifications for those very messages stayed up (#345 follow-up).
+            com.anindra.messages.sms.NotificationHelper.cancelAll(ctx)
+        }
+    }
 
     /** Applies FLAG_SECURE immediately so privacy mode toggles without restart. */
     fun setPrivacyMode(activity: Activity, enabled: Boolean) {
@@ -506,22 +539,81 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun sendMediaMessage(conversationId: Long, uri: Uri, caption: String = "") {
+    /**
+     * Sends one attachment as an MMS. [mediaType] names the kind when the caller
+     * already knows it (a recording is audio whatever the resolver says about
+     * the cache file); a blank value asks the resolver.
+     */
+    fun sendMediaMessage(
+        conversationId: Long,
+        uri: Uri,
+        caption: String = "",
+        mediaType: String = "",
+        onStored: (Boolean) -> Unit = {}
+    ) {
+        sendMediaAlbum(conversationId, listOf(uri), caption, listOf(mediaType)) { stored ->
+            onStored(stored > 0)
+        }
+    }
+
+    /**
+     * Sends several attachments as one MMS.
+     *
+     * They leave in one PDU and one SMIL slideshow, so a three-picture message
+     * arrives as one message rather than three (#364). [onStored] receives how
+     * many app rows were written; zero means nothing was stored and the caller
+     * should keep whatever it was holding.
+     */
+    fun sendMediaAlbum(
+        conversationId: Long,
+        uris: List<Uri>,
+        caption: String = "",
+        mediaTypes: List<String> = emptyList(),
+        onStored: (Int) -> Unit = {}
+    ) {
+        if (uris.isEmpty()) {
+            onStored(0)
+            return
+        }
         scope.launch {
-            val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
-            if (!isPhoneNumber(convo.address)) return@launch
-            val stored = repo.sendMedia(conversationId, "image", uri.toString(), caption) ?: return@launch
+            val convo = repo.conversationByIdSuspend(conversationId)
+                ?: return@launch onStored(0)
+            if (!isPhoneNumber(convo.address)) return@launch onStored(0)
+            // The composer asks before it stages a picture, but the share path
+            // reaches this function directly. A block has to stop every
+            // attachment, not only the ones picked in the tray.
+            if (isNumberBlocked(convo.address)) {
+                Toast.makeText(
+                    getApplication(), R.string.chat_blocked_send, Toast.LENGTH_SHORT
+                ).show()
+                return@launch onStored(0)
+            }
+            val kinds = uris.mapIndexed { index, uri ->
+                mediaTypes.getOrNull(index)?.takeIf { it.isNotBlank() } ?: MmsSupport.mediaKind(
+                    runCatching {
+                        getApplication<Application>().contentResolver.getType(uri)
+                    }.getOrNull().orEmpty()
+                )
+            }
+            val stored = repo.sendMediaAlbum(
+                conversationId, kinds, uris.map { it.toString() }, caption
+            )
+            if (stored.isEmpty()) return@launch onStored(0)
+            // The rows exist now, so the composer may stop holding the pictures
+            // and their caption; the hand-off below only decides the status.
+            onStored(stored.size)
             // A group MMS addresses every member in one PDU, unlike SMS which
             // is sent once per person.
             val recipients = repo.conversationRecipients(conversationId)
                 .filter { isPhoneNumber(it) }
                 .ifEmpty { listOf(convo.address) }
             val handedOff = SmsSender.sendMms(
-                getApplication(), stored.id, recipients, uri, settings.simSubscriptionId,
-                stored.body
+                getApplication(), stored.map { it.id }, recipients, uris,
+                settings.simSubscriptionId, stored.first().body,
+                kinds.map { if (it == "audio") "audio/mp4" else null }
             )
             if (!handedOff) {
-                repo.markMessageStatusSuspend(stored.id, "failed")
+                stored.forEach { repo.markMessageStatusSuspend(it.id, "failed") }
                 NotificationHelper.showSendFailed(getApplication(), convo.address)
             }
         }
@@ -530,30 +622,45 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Saves a message attachment (e.g. an MMS picture) to the gallery (#235).
      *  Reads the bytes through the resolver so provider-backed
      *  `content://mms/part/...` URIs and our own cache URIs both work. */
-    fun saveMessageImage(messageId: Long) {
+    fun saveMessageImage(messageId: Long) = saveMessageImages(listOf(messageId))
+
+    /**
+     * Saves every picture of the selection. A multi-picture MMS is one bubble
+     * backed by a row per picture, so saving only the first row stored one
+     * picture and still reported success (#364).
+     */
+    fun saveMessageImages(messageIds: List<Long>) {
         scope.launch {
             val app = getApplication<Application>()
             val resolver = app.contentResolver
-            val msg = repo.messageByIdSuspend(messageId)
-            if (msg == null || msg.mediaUri.isBlank()) {
+            val messages = messageIds.mapNotNull { repo.messageByIdSuspend(it) }
+                .filter { it.mediaUri.isNotBlank() }
+            if (messages.isEmpty()) {
                 Toast.makeText(app, R.string.chat_image_save_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            val uri = Uri.parse(msg.mediaUri)
-            val bytes = runCatching { resolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-            val mime = MmsSupport.mimeForSavedAttachment(
-                msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
-            )
-            val convo = repo.conversationByIdSuspend(msg.conversationId)
-            val name = MmsSupport.savedAttachmentName(
-                convo?.name ?: convo?.address ?: "message", msg.timestamp, mime
-            )
-            val ok = bytes != null && bytes.isNotEmpty() &&
-                DownloadsStore.writeImage(app, name, mime, bytes)
+            var saved = 0
+            for (msg in messages) {
+                val uri = Uri.parse(msg.mediaUri)
+                val bytes = runCatching {
+                    resolver.openInputStream(uri)?.use { it.readBytes() }
+                }.getOrNull()
+                val mime = MmsSupport.mimeForSavedAttachment(
+                    msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
+                )
+                val convo = repo.conversationByIdSuspend(msg.conversationId)
+                val name = MmsSupport.savedAttachmentName(
+                    convo?.name ?: convo?.address ?: "message", msg.timestamp, mime
+                )
+                if (bytes != null && bytes.isNotEmpty() &&
+                    DownloadsStore.writeImage(app, name, mime, bytes)
+                ) saved++
+            }
             withContext(Dispatchers.Main) {
                 Toast.makeText(
                     app,
-                    if (ok) R.string.chat_image_saved else R.string.chat_image_save_failed,
+                    if (saved == messages.size) R.string.chat_image_saved
+                    else R.string.chat_image_save_failed,
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -569,8 +676,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val recipients = repo.conversationRecipients(msg.conversationId)
                 .filter { isPhoneNumber(it) }
                 .ifEmpty { listOf(convo.address) }
-            val handedOff = if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
-                SmsSender.sendMms(getApplication(), messageId, recipients, Uri.parse(msg.mediaUri), simId)
+            val handedOff = if (msg.mediaType.let { it == "image" || it == "audio" } &&
+                msg.mediaUri.isNotBlank()
+            ) {
+                // A multi-picture message failed as a whole, so retrying one
+                // row of it has to resend every row (#364).
+                val album = if (msg.sysId > 0) repo.messagesBySysId(msg.sysId) else emptyList()
+                val rows = album.filter { it.mediaUri.isNotBlank() }.ifEmpty { listOf(msg) }
+                SmsSender.sendMms(
+                    getApplication(), rows.map { it.id }, recipients,
+                    rows.map { Uri.parse(it.mediaUri) }, simId,
+                    rows.firstOrNull { it.body.isNotBlank() }?.body.orEmpty(),
+                    rows.map { if (it.mediaType == "audio") "audio/mp4" else null }
+                )
             } else {
                 val results = recipients.map { address ->
                     SmsSender.send(
@@ -696,6 +814,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      *  message count before the atomic file swap. */
     val importLoading = androidx.compose.runtime.mutableStateOf<Int?>(null)
 
+    /** A restore or an sms-ie import can add or wipe hundreds of chats at once.
+     *  Chats no longer own a channel merely by existing (#339 follow-up), so this
+     *  only re-titles the channels that do and drops those of deleted chats. */
+    private fun syncChannelsAfterBulkImport() {
+        scope.launch(Dispatchers.IO) {
+            NotificationHelper.syncNotificationChannels(getApplication())
+        }
+    }
+
     fun importDatabase(
         uri: Uri,
         pin: String?,
@@ -714,6 +841,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: Exception) {
                 com.anindra.messages.data.Repository.ImportResult.Error("Import error: ${e.message}")
             }
+            if (result is com.anindra.messages.data.Repository.ImportResult.Success) {
+                syncChannelsAfterBulkImport()
+            }
             importLoading.value = null
             refreshTransferLog()
             onResult(result)
@@ -726,6 +856,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      *  The full [Repository.ImportResult] is passed through rather than a
      *  count: collapsing it to an Int is what made "wrong PIN" and "unreadable
      *  file" both surface as one generic toast. */
+    fun importQuik(
+        uri: Uri,
+        mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
+        onResult: (com.anindra.messages.data.Repository.ImportResult) -> Unit
+    ) {
+        importLoading.value = 0
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    repo.importQuikFrom(getApplication(), uri, mode)
+                }.getOrElse { e ->
+                    com.anindra.messages.data.Repository.ImportResult.Error(
+                        "Import error: ${e.message ?: e.javaClass.simpleName}"
+                    )
+                }
+            }
+            onResult(result)
+        }
+    }
+
     fun importSmsIe(
         uri: Uri,
         mode: com.anindra.messages.data.ImportMode = com.anindra.messages.data.ImportMode.MERGE,
@@ -741,6 +891,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         "Import error: ${e.message ?: e.javaClass.simpleName}"
                     )
                 }
+            }
+            if (result is com.anindra.messages.data.Repository.ImportResult.Success) {
+                syncChannelsAfterBulkImport()
             }
             importLoading.value = null
             refreshTransferLog()
@@ -797,11 +950,51 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun blockedNumbers() = repo.blockedNumbers()
 
-    fun conversationNotificationsEnabledFlow(conversationId: Long): Flow<Boolean> =
-        repo.conversationNotificationsEnabledFlow(conversationId)
+    /** Whether this chat has overcome its category channel with one of its own. */
+    fun conversationCustomChannel(conversationId: Long): Boolean =
+        com.anindra.messages.sms.NotificationHelper
+            .conversationChannelExists(getApplication(), conversationId)
 
-    fun setConversationNotificationsEnabled(conversationId: Long, enabled: Boolean) {
-        scope.launch(Dispatchers.IO) { repo.setConversationNotificationsEnabled(conversationId, enabled) }
+    /**
+     * Turns this chat's own notification channel on or off. On creates it with
+     * the system default tone; off deletes it, so the chat falls back to its
+     * category channel instead of going quiet.
+     */
+    fun setConversationCustomChannel(conversationId: Long, enabled: Boolean) {
+        scope.launch(Dispatchers.IO) {
+            val helper = com.anindra.messages.sms.NotificationHelper
+            if (!enabled) {
+                helper.deleteConversationChannels(getApplication(), conversationId)
+                return@launch
+            }
+            val target = repo.conversationChannelTargetBlocking(conversationId) ?: return@launch
+            helper.ensureConversationChannel(
+                getApplication(),
+                target,
+                repo.settings.receiveSoundEnabled
+            )
+        }
+    }
+
+    /** Opens Android's page for this chat's channel, creating it if needed. */
+    fun openConversationChannelSettings(conversationId: Long) {
+        scope.launch(Dispatchers.IO) {
+            val helper = com.anindra.messages.sms.NotificationHelper
+            val target = repo.conversationChannelTargetBlocking(conversationId) ?: return@launch
+            val id = helper.ensureConversationChannel(
+                getApplication(),
+                target,
+                repo.settings.receiveSoundEnabled
+            )
+            withContext(Dispatchers.Main) {
+                val intent = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                val app = getApplication<Application>()
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE, app.packageName)
+                intent.putExtra(Settings.EXTRA_CHANNEL_ID, id)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                runCatching { app.startActivity(intent) }
+            }
+        }
     }
 
     fun conversationIdForAddress(address: String): Long? = repo.conversationIdForAddress(address)
@@ -809,47 +1002,89 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Stores the forwarded row in the target conversation *and* hands it to
      *  the framework, so SmsStatusReceiver can flip it to sent/failed. Storing
      *  alone would leave it on "Sending…" forever. */
-    fun forwardMessage(messageId: Long, targetConversationId: Long) {
+    fun forwardMessage(messageId: Long, targetConversationId: Long) =
+        forwardMessages(listOf(messageId), targetConversationId)
+
+    /**
+     * Forwards every selected row, one message each.
+     *
+     * The rows of one provider MMS are forwarded together, as one multi-picture
+     * message, even though the selection names each row separately (#364).
+     */
+    fun forwardMessages(messageIds: List<Long>, targetConversationId: Long) {
         scope.launch {
-            val msg = repo.messageByIdSuspend(messageId) ?: return@launch
+            val msgs = messageIds.distinct().mapNotNull { repo.messageByIdSuspend(it) }
+            if (msgs.isEmpty()) return@launch
             val target = repo.conversationByIdSuspend(targetConversationId) ?: return@launch
             if (!isPhoneNumber(target.address)) return@launch
+            // A forward is still a send: a blocked number must not receive the
+            // message by picking it from the forward sheet instead of the chat.
+            if (isNumberBlocked(target.address)) {
+                Toast.makeText(
+                    getApplication(), R.string.chat_blocked_send, Toast.LENGTH_SHORT
+                ).show()
+                return@launch
+            }
             val subId = settings.simSubscriptionId
-            val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
-when (val plan = ForwardPlan.of(msg, text)) {
-                is ForwardPlan.Sms -> {
-                    // An attachment with no caption has no text to forward, but
-                    // it now travels as MMS below. Anything else blank would put
-                    // an empty SMS on the wire, so drop it.
-                    if (plan.body.isBlank()) return@launch
-                    val stored = repo.sendText(targetConversationId, plan.body, subId) ?: return@launch
-                    handOff(stored.id, target.address) {
-                        SmsSender.send(
-                            getApplication(), stored.id, target.address, plan.body,
-                            subId, settings.deliveryReportsEnabled
-                        )
-                    }
+            val seen = mutableSetOf<Long>()
+            for (msg in msgs) {
+                if (msg.sysId > 0 && !seen.add(msg.sysId)) continue
+                forwardOne(msg, target, targetConversationId, subId)
+            }
+        }
+    }
+
+    private suspend fun forwardOne(
+        msg: Message,
+        target: Conversation,
+        targetConversationId: Long,
+        subId: Int
+    ) {
+        val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
+        when (val plan = ForwardPlan.of(msg, text)) {
+            is ForwardPlan.Sms -> {
+                // An attachment with no caption has no text to forward, but
+                // it now travels as MMS below. Anything else blank would put
+                // an empty SMS on the wire, so drop it.
+                if (plan.body.isBlank()) return
+                val stored = repo.sendText(targetConversationId, plan.body, subId) ?: return
+                handOff(listOf(stored.id), target.address) {
+                    SmsSender.send(
+                        getApplication(), stored.id, target.address, plan.body,
+                        subId, settings.deliveryReportsEnabled
+                    )
                 }
-                is ForwardPlan.Mms -> {
-                    val uri = Uri.parse(plan.mediaUri)
-                    val stored = repo.sendMedia(
-                        targetConversationId, "image", plan.mediaUri, plan.caption
-                    ) ?: return@launch
-                    handOff(stored.id, target.address) {
-                        SmsSender.sendMms(
-                            getApplication(), stored.id, listOf(target.address), uri, subId, plan.caption
-                        )
-                    }
+            }
+            is ForwardPlan.Mms -> {
+                // The other rows of an album travel with this one; forwarding
+                // one of them alone would deliver a single picture of three.
+                val album = if (msg.sysId > 0) repo.messagesBySysId(msg.sysId) else emptyList()
+                val rows = album.filter { ForwardPlan.of(it, it.body) is ForwardPlan.Mms }
+                    .ifEmpty { listOf(msg) }
+                val types = rows.map { it.mediaType }
+                val uris = rows.map { it.mediaUri }
+                val rawCaption = rows.firstOrNull { it.body.isNotBlank() }?.body ?: plan.caption
+                val caption = if (settings.hideLinks) hideUrls(rawCaption) else rawCaption
+                val stored = repo.sendMediaAlbum(targetConversationId, types, uris, caption)
+                if (stored.isEmpty()) return
+                handOff(stored.map { it.id }, target.address) {
+                    SmsSender.sendMms(
+                        getApplication(), stored.map { it.id }, listOf(target.address),
+                        uris.map { Uri.parse(it) }, subId, caption,
+                        types.map { if (it == "audio") "audio/mp4" else null }
+                    )
                 }
             }
         }
     }
 
-    /** Marks the row failed and notifies when the framework declines the
-     *  handoff; on success SmsStatusReceiver confirms sent/failed. */
-    private suspend fun handOff(rowId: Long, address: String, send: () -> Boolean) {
+    /** Marks the rows failed and notifies when the framework declines the
+     *  handoff; on success SmsStatusReceiver confirms sent/failed. Every row of
+     *  an album is marked because a refusal happens before any row is linked to
+     *  the provider, so the sys_id cascade has nothing to follow. */
+    private suspend fun handOff(rowIds: List<Long>, address: String, send: () -> Boolean) {
         if (send()) return
-        repo.markMessageStatusSuspend(rowId, "failed")
+        rowIds.forEach { repo.markMessageStatusSuspend(it, "failed") }
         NotificationHelper.showSendFailed(getApplication(), address)
     }
 
@@ -937,18 +1172,53 @@ when (val plan = ForwardPlan.of(msg, text)) {
                     settings.simSubscriptionId,
                     settings,
                     repo.totalConversationCount(),
-                    repo.totalMessageCount()
+                    repo.totalMessageCount(),
+                    mmsDiagnostics()
                 )
             }
             onReady(text)
         }
+    }
+
+    /**
+     * The MMS shape for Diagnostics (#398): what the store holds per provider
+     * message, and what the newest multi-part provider MMS actually contains.
+     * Both halves are read from their owners — the database and the provider —
+     * never re-derived from what a bubble drew.
+     */
+    private suspend fun mmsDiagnostics(): com.anindra.messages.diagnostics.MmsDetails {
+        val app = getApplication<Application>()
+        val (rows, multi, max) = repo.mmsPartStats()
+        val probe = runCatching {
+            com.anindra.messages.data.MmsProviderReader(app.contentResolver).newestMultiPart()
+        }.getOrNull()
+        return com.anindra.messages.diagnostics.MmsDetails(
+            rows = rows,
+            multiPart = multi,
+            maxParts = max,
+            providerId = probe?.id ?: 0L,
+            scanned = probe?.scanned ?: 20,
+            parts = probe?.parts.orEmpty().map { "seq=${it.seq} ${it.mime}" }
+        )
     }
 }
 
 /** logcat tag the transfer-log dump is written under; see applyTransferLogProbe. */
 private const val TRANSFER_LOG_TAG = "TransferLog"
 
-class MainActivity : FragmentActivity() {
+/** What Back does when a bubble is hosting the chat (#354 follow-up). */
+internal enum class BubbleBack {
+    /** Close the bubble, i.e. the behaviour before the setting existed. */
+    FINISH,
+
+    /** Leave the bubble up and show the chat list inside it. */
+    SHOW_LIST
+}
+
+internal fun bubbleBackAction(bubbleMode: Boolean, backClosesBubble: Boolean): BubbleBack =
+    if (bubbleMode && backClosesBubble) BubbleBack.FINISH else BubbleBack.SHOW_LIST
+
+open class MainActivity : FragmentActivity() {
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
@@ -971,6 +1241,24 @@ class MainActivity : FragmentActivity() {
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
     private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
     private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
+    private var stagedMediaProbe by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
+
+    /** The conversation this activity is showing inside a notification bubble, if any. */
+    private var bubbleConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
+
+    /**
+     * Whether this window is behind App lock, held in Compose state rather than
+     * in a local: the gate turns the setting off when the device has no
+     * credential, and the probe that enables it on an emulator lands on the
+     * running instance through `onNewIntent`. A value captured once would leave
+     * the gate deciding on a setting that no longer exists.
+     */
+    private var appLockEnabled by androidx.compose.runtime.mutableStateOf(false)
+
+    private fun isBubbleLaunch(intent: Intent?): Boolean =
+        intent?.getBooleanExtra(
+            com.anindra.messages.sms.NotificationBubble.EXTRA_OPEN_IN_BUBBLE, false
+        ) == true
 
     private var lastResumeTime = 0L
 
@@ -1007,7 +1295,8 @@ class MainActivity : FragmentActivity() {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         }
 
-        val appLockEnabled = bootVm.settings.appLockEnabled
+        applyAppLockProbe(intent, bootVm)
+        appLockEnabled = bootVm.settings.appLockEnabled
 
         // Script hooks: --es set_theme dark|light|system|amoled|dynamic, --ez open_settings true, --ez privacy_mode true|false
         when (intent.getStringExtra("set_theme")) {
@@ -1015,13 +1304,19 @@ class MainActivity : FragmentActivity() {
         }
         intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { bootVm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, bootVm)
+        applyLockSessionProbe(intent)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
-                this@MainActivity, null, it
-            )
+            // The bubble's own notification is the bubble: dismissing it here
+            // would close the window this activity was launched into.
+            if (!isBubbleLaunch(intent)) {
+                com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+                    this@MainActivity, null, it
+                )
+            }
         }
+        if (isBubbleLaunch(intent)) navRoute = "opening"
         applyShareIntent(intent)
 
         val defaultSmsLauncher = registerForActivityResult(
@@ -1030,11 +1325,52 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             val vm: AppViewModel = viewModel()
-            var appUnlocked by remember { mutableStateOf(!appLockEnabled) }
+            // One prompt per unlocked session, not one per activity (#354
+            // follow-up): opening a bubble, sharing a text or rotating the
+            // screen used to ask for a fingerprint again.
+            var appUnlocked by remember {
+                mutableStateOf(
+                    com.anindra.messages.data.AppLockGate.allowsContent(
+                        appLockEnabled,
+                        com.anindra.messages.data.LockSession.isUnlocked()
+                    )
+                )
+            }
             var lockNotAvailable by remember { mutableStateOf(false) }
+
+            // The session can end while this window is open: the screen going off
+            // does exactly that, and an activity that is already built is never
+            // rebuilt by it. Re-reading the session on resume re-arms the gate.
+            // Resume, not the screen-off broadcast itself: flipping this while the
+            // window is stopped would put a BiometricPrompt on a paused activity,
+            // whose error path finishes — it would take the bubble down with it.
+            val lockLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+            DisposableEffect(lockLifecycle) {
+                val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME &&
+                        !com.anindra.messages.data.AppLockGate.allowsContent(
+                            appLockEnabled,
+                            com.anindra.messages.data.LockSession.isUnlocked()
+                        )
+                    ) {
+                        android.util.Log.d("LockSession", "regate=true")
+                        appUnlocked = false
+                    }
+                }
+                lockLifecycle.lifecycle.addObserver(observer)
+                onDispose {
+                    lockLifecycle.lifecycle.removeObserver(observer)
+                }
+            }
 
             if (appLockEnabled && !appUnlocked) {
                 LaunchedEffect(Unit) {
+                    if (com.anindra.messages.data.LockSession.isUnlocked()) {
+                        android.util.Log.d("LockSession", "prompt=skipped")
+                        appUnlocked = true
+                        return@LaunchedEffect
+                    }
+                    android.util.Log.d("LockSession", "prompt=shown")
                     val biometricManager = BiometricManager.from(this@MainActivity)
                     val canAuth = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                     if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
@@ -1043,6 +1379,8 @@ class MainActivity : FragmentActivity() {
                             object : BiometricPrompt.AuthenticationCallback() {
                                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                                     result.cryptoObject
+                                    com.anindra.messages.data.LockSession.unlock()
+                                    android.util.Log.d("LockSession", "unlocked=true")
                                     runOnUiThread { appUnlocked = true }
                                 }
                                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -1063,6 +1401,7 @@ class MainActivity : FragmentActivity() {
                         // lock that "anyone could turn off" — there is no working lock
                         // to bypass, and never fake one.
                         bootVm.settings.appLockEnabled = false
+                        appLockEnabled = false
                         lockNotAvailable = true
                     }
                 }
@@ -1070,7 +1409,11 @@ class MainActivity : FragmentActivity() {
 
             if (!appUnlocked) {
                 if (lockNotAvailable) {
-                    MessagesTheme(mode = vm.themeMode, font = vm.fontFamily, a11y = vm.a11y) {
+                    MessagesTheme(
+            mode = vm.themeMode,
+            font = vm.fontFamily,
+            a11y = vm.a11y,
+        ) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
@@ -1121,7 +1464,11 @@ class MainActivity : FragmentActivity() {
                 return@setContent
             }
 
-            MessagesTheme(mode = vm.themeMode, font = vm.fontFamily, a11y = vm.a11y) {
+            MessagesTheme(
+            mode = vm.themeMode,
+            font = vm.fontFamily,
+            a11y = vm.a11y,
+        ) {
                 var chatId by remember { mutableStateOf(-1L) }
                 // The home-list query that opened the chat, so the chat can
                 // highlight and scroll to the matching message. Null for every
@@ -1141,6 +1488,7 @@ class MainActivity : FragmentActivity() {
                 var settingsJumpTarget by remember { mutableStateOf<Int?>(null) }
                 val advancedScroll = rememberScrollState()
                 val accessibilityScroll = rememberScrollState()
+                val aboutScroll = rememberScrollState()
                 val contactDetailsScroll = rememberScrollState()
                 val inboxScroll = rememberScrollState()
                 val settingsRevision by vm.settings.revision.collectAsState()
@@ -1185,13 +1533,42 @@ class MainActivity : FragmentActivity() {
                     chatSearchQuery = null
                     navRoute = if (id > 0) "chat" else "list"
                     pendingOpenAddress = null
+                    // Keep the bubble's notification alive while this window
+                    // hosts it; the chat's own dismissal is deferred.
+                    if (id > 0 && isBubbleLaunch(intent)) {
+                        bubbleConversationId = id
+                        com.anindra.messages.sms.BubbleHost.enter(id)
+                    } else {
+                        // A full-screen open by address must retire that
+                        // conversation's floating bubble too: cancelling by
+                        // address hash never reaches the bubble's
+                        // conversation-id notification.
+                        com.anindra.messages.sms.NotificationHelper
+                            .retireBubbleForFullChat(this@MainActivity, id)
+                    }
                 }
 
                 if (showDefaultSmsDialog) {
                     androidx.compose.material3.AlertDialog(
                         onDismissRequest = { showDefaultSmsDialog = false },
-                        title = { androidx.compose.material3.Text(stringResource(R.string.default_sms_title)) },
-                        text = { androidx.compose.material3.Text(stringResource(R.string.default_sms_message)) },
+                        title = {
+                            val title = stringResource(R.string.default_sms_title)
+                            androidx.compose.material3.Text(
+                                title,
+                                style = com.anindra.messages.ui.directionalStyle(
+                                    androidx.compose.material3.LocalTextStyle.current, title
+                                )
+                            )
+                        },
+                        text = {
+                            val message = stringResource(R.string.default_sms_message)
+                            androidx.compose.material3.Text(
+                                message,
+                                style = com.anindra.messages.ui.directionalStyle(
+                                    androidx.compose.material3.LocalTextStyle.current, message
+                                )
+                            )
+                        },
                         confirmButton = {
                             androidx.compose.material3.TextButton(onClick = {
                                 showDefaultSmsDialog = false
@@ -1239,7 +1616,13 @@ class MainActivity : FragmentActivity() {
                 }
 
                 // Single back dispatcher for all routes; child screen BackHandlers win.
-                androidx.activity.compose.BackHandler(enabled = navRoute != "list") {
+                // A bubble hosts only the chat, so its root hands back to the
+                // system, which collapses the bubble instead of showing the list.
+                val bubbleMode = isBubbleLaunch(intent)
+                androidx.activity.compose.BackHandler(
+                    enabled = if (bubbleMode) navRoute != "chat" && navRoute != "opening"
+                    else navRoute != "list"
+                ) {
                     when (navRoute) {
                         "details" -> navRoute = "chat"
                         "add-people" -> navRoute = "details"
@@ -1250,13 +1633,14 @@ class MainActivity : FragmentActivity() {
                         "auto-delete" -> navRoute = "advanced"
                         "links" -> navRoute = "advanced"
                         "advanced" -> navRoute = "settings"
+                        "about" -> navRoute = "settings"
                         "accessibility" -> navRoute = "advanced"
                         "spam" -> navRoute = "settings"
                         else -> navRoute = "list"
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "inbox" to 2, "advanced" to 2, "accessibility" to 3,
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "inbox" to 2, "advanced" to 2, "about" to 2, "accessibility" to 3,
                         "notif-settings" to 3, "auto-delete" to 3, "links" to 3,
                         "transfer-log" to 3,
                         "add-people" to 3, "mms-check" to 3, "scheduled" to 2)
@@ -1270,6 +1654,8 @@ class MainActivity : FragmentActivity() {
                         onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
+                            com.anindra.messages.sms.NotificationHelper
+                                .retireBubbleForFullChat(this@MainActivity, id)
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
@@ -1281,6 +1667,8 @@ class MainActivity : FragmentActivity() {
                         onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
+                            com.anindra.messages.sms.NotificationHelper
+                                .retireBubbleForFullChat(this@MainActivity, id)
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
@@ -1292,6 +1680,10 @@ class MainActivity : FragmentActivity() {
                     AnimatedContent(
                         targetState = navRoute,
                         transitionSpec = {
+                            // Permanent marker: the chat-close regression script reads
+                            // this and the teardown line to prove the exit window is
+                            // not skipped.
+                            android.util.Log.d("NavTransition", "$initialState to $targetState")
                             if (vm.a11y.reduceMotionEnabled) {
                                 androidx.compose.animation.EnterTransition.None togetherWith
                                     androidx.compose.animation.ExitTransition.None
@@ -1299,6 +1691,27 @@ class MainActivity : FragmentActivity() {
                                 val from = routeDepth[initialState] ?: 0
                                 val to = routeDepth[targetState] ?: 0
                                 when {
+                                    // Opening a chat covers the list from below, the
+                                    // way Google Messages does it: the list stays
+                                    // put and the chat rises over it, rather than
+                                    // both sliding sideways like a page push.
+                                    // Solid while it rises: fading the incoming chat
+                                    // in made the list show through its own bubbles.
+                                    targetState == "chat" && initialState == "list" ->
+                                        androidx.compose.animation.slideInVertically(navSlide) { it } togetherWith
+                                            fadeOut(navFade)
+                                    // Back out of a chat: the reverse, so the list is
+                                    // revealed rather than pushed in from the left.
+                                    // Solid on the way out too. Fading the outgoing
+                                    // chat let the list show through it while it slid,
+                                    // so closing dissolved instead of moving and the
+                                    // pair read as "opening animates, closing does not".
+                                    // The list is drawn behind this container, so it
+                                    // needs no enter transition; the chat carries the
+                                    // whole move as one opaque surface.
+                                    targetState == "list" && initialState == "chat" ->
+                                        androidx.compose.animation.EnterTransition.None togetherWith
+                                            androidx.compose.animation.slideOutVertically(navSlide) { it }
                                     to > from ->
                                         slideInHorizontally(navSlide) { it } togetherWith
                                             slideOutHorizontally(navSlide) { -it }
@@ -1341,6 +1754,7 @@ class MainActivity : FragmentActivity() {
                                         onOpenSpamBlocked = { navRoute = "spam" },
                                         onOpenInbox = { navRoute = "inbox" },
                                         onOpenScheduled = { navRoute = "scheduled" },
+                                        onOpenAbout = { navRoute = "about" },
                                         scrollState = settingsScroll
                                     ) else com.anindra.messages.ui.legacy.SettingsScreen(
                                         onOpenRoute = { route -> navRoute = route },
@@ -1351,6 +1765,7 @@ class MainActivity : FragmentActivity() {
                                         onOpenAdvanced = { navRoute = "advanced" },
                                         onOpenSpamBlocked = { navRoute = "spam" },
                                         onOpenScheduled = { navRoute = "scheduled" },
+                                        onOpenAbout = { navRoute = "about" },
                                         scrollState = settingsScroll
                                     )
                                     "inbox" -> InboxSettingsScreen(
@@ -1381,6 +1796,11 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         entries = vm.transferLog.value,
                                         onBack = { navRoute = "advanced" },
                                         onClear = { vm.clearTransferLog() }
+                                    )
+                                    "about" -> AboutScreen(
+                                        requestDiagnostics = { onReady -> vm.diagnosticsReport(onReady) },
+                                        onBack = { navRoute = "settings" },
+                                        scrollState = aboutScroll
                                     )
                                     "scheduled" -> ScheduledMessagesScreen(
                                         vm = vm,
@@ -1460,10 +1880,20 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         searchQuery = chatSearchQuery,
                                         initialDraft = pendingShareBody,
                                         initialMedia = pendingShareMedia,
+                                        initialStagedMedia = stagedMediaProbe,
                                         onBack = {
                                             pendingShareBody = ""
                                             pendingShareMedia = emptyList()
-                                            navRoute = "list"
+                                            stagedMediaProbe = emptyList()
+                                            // A bubble exists to keep the chat on
+                                            // screen, so Back hands back to the
+                                            // chat list and leaves the bubble up
+                                            // unless the user asked for the plain
+                                            // "Back dismisses it" behaviour (#354
+                                            // follow-up).
+                                            if (bubbleBackAction(bubbleMode, vm.settings.bubbleBackCloses) ==
+                                                BubbleBack.FINISH
+                                            ) finish() else navRoute = "list"
                                         },
                                         // Leaving for contact details consumes the
                                         // search handoff. ChatScreen lives inside
@@ -1483,7 +1913,8 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                             navRoute = "add-people"
                                         },
                                         onInitialDraftConsumed = { pendingShareBody = "" },
-                                        onInitialMediaConsumed = { pendingShareMedia = emptyList() }
+                                        onInitialMediaConsumed = { pendingShareMedia = emptyList() },
+                                        onInitialStagedMediaConsumed = { stagedMediaProbe = emptyList() }
                                     )
                                 }
                             }
@@ -1525,6 +1956,11 @@ onOpenAccessibility = { navRoute = "accessibility" },
             repo.needsInitialImport
         ) {
             repo.requeryFromSystem()
+            // A fresh install imports the whole history right here — SMS access
+            // only exists from this point on — so the channels that already
+            // exist for those chats have to be matched up after the import, not
+            // at Application.onCreate where the database was still empty (#339).
+            com.anindra.messages.sms.NotificationHelper.reconcileAsync(this)
         }
         val now = System.currentTimeMillis()
         if (now - lastResumeTime > 5 * 60_000L) {
@@ -1553,6 +1989,22 @@ onOpenAccessibility = { navRoute = "accessibility" },
         super.onPause()
     }
 
+    /**
+     * A bubble's notification outlives its host while the bubble is open, so the
+     * deferred dismissal happens here: closing the bubble dismisses the
+     * notification the chat had already tried to cancel. A configuration change
+     * destroys without finishing and the recreated activity registers again,
+     * which is why only a real finish releases it.
+     */
+    override fun onDestroy() {
+        val bubbleId = bubbleConversationId
+        if (bubbleId != null && isFinishing) {
+            com.anindra.messages.sms.BubbleHost.leave(bubbleId)
+            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(this, bubbleId)
+        }
+        super.onDestroy()
+    }
+
     /** Debug builds only: `--ez fake_dual_sim true` makes the app see two fake
      *  SIMs so the dual-SIM UI can be tested on the single-SIM emulator. */
     private fun applyFakeDualSim(intent: Intent) {
@@ -1562,6 +2014,27 @@ onOpenAccessibility = { navRoute = "accessibility" },
             intent.getBooleanExtra("fake_dual_sim", false),
             debuggable
         )
+    }
+
+    /** Debug builds only: `--esa mms_stage <uri>,<uri>... --es mms_probe_to
+     *  <number>` opens the chat with the media already staged, so the composer's
+     *  send and retry path can be asserted on an emulator without a system
+     *  photo picker (the comparison AVDs have none). `--esa` is the spelling
+     *  that carries several URIs; a single `--es` is accepted as well. */
+    private fun applyMmsStageProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val media: List<String> = intent.getStringArrayExtra("mms_stage")?.toList()
+            ?: intent.getStringExtra("mms_stage")?.split(',')
+            ?: return
+        val to = intent.getStringExtra("mms_probe_to") ?: return
+        stagedMediaProbe = media
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .map { android.net.Uri.parse(it) }
+        android.util.Log.d("MmsStageProbe", "staged=${stagedMediaProbe.size} to=$to")
+        pendingOpenAddress = to
     }
 
     /** Debug builds only: `--es mms_probe <media uri> --es mms_probe_to <number>`
@@ -1678,6 +2151,31 @@ onOpenAccessibility = { navRoute = "accessibility" },
         vm.dumpTransferLog { entries -> vm.logTransferEntries(entries) }
     }
 
+    /**
+     * Debug builds only: `--es lock_session_probe unlock|lock|query` drives the
+     * app-lock session, so a script can assert its lifetime without a real
+     * biometric prompt (an emulator has no enrolled fingerprint).
+     */
+    private fun applyLockSessionProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        when (intent.getStringExtra("lock_session_probe")) {
+            "unlock" -> {
+                com.anindra.messages.data.LockSession.unlock()
+                android.util.Log.d("LockSessionProbe", "unlocked=true")
+            }
+            "lock" -> {
+                com.anindra.messages.data.LockSession.lock()
+                android.util.Log.d("LockSessionProbe", "unlocked=false")
+            }
+            "query" -> android.util.Log.d(
+                "LockSessionProbe",
+                "unlocked=${com.anindra.messages.data.LockSession.isUnlocked()}"
+            )
+        }
+    }
+
     private fun applyPrivacyModeProbe(intent: Intent, vm: AppViewModel) {
         if (intent.hasExtra("privacy_mode")) {
             (application as com.anindra.messages.MessagesApplication).repository.settings.privacyModeEnabled =
@@ -1685,11 +2183,31 @@ onOpenAccessibility = { navRoute = "accessibility" },
         }
     }
 
+    /**
+     * Debug builds only: `--es app_lock_probe enable|disable` sets App lock
+     * without the credential check the settings toggle goes through, so a script
+     * can drive the gate on an emulator that has no fingerprint or PIN enrolled.
+     * It writes the real setting, exactly as the toggle does — nothing here
+     * pretends an authentication happened.
+     */
+    private fun applyAppLockProbe(intent: Intent, vm: AppViewModel) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val probe = intent.getStringExtra("app_lock_probe") ?: return
+        if (probe != "enable" && probe != "disable") return
+        val enabled = probe == "enable"
+        vm.settings.appLockEnabled = enabled
+        appLockEnabled = enabled
+        android.util.Log.d("AppLockProbe", "appLockEnabled=$enabled")
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         applyFakeDualSim(intent)
         applyMmsProbe(intent)
+        applyMmsStageProbe(intent)
         applySmsIeProbe(intent)
         applyBackupProbe(intent)
         applyBackupExportProbe(intent)
@@ -1701,13 +2219,18 @@ onOpenAccessibility = { navRoute = "accessibility" },
         }
         intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { vm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, vm)
+        applyAppLockProbe(intent, vm)
+        applyLockSessionProbe(intent)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
-            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
-                this@MainActivity, null, it
-            )
+            if (!isBubbleLaunch(intent)) {
+                com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
+                    this@MainActivity, null, it
+                )
+            }
         }
+        if (isBubbleLaunch(intent)) navRoute = "opening"
         applyShareIntent(intent)
     }
 

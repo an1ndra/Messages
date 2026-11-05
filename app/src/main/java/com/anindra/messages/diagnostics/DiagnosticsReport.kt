@@ -21,6 +21,7 @@ import com.anindra.messages.crash.CrashDeviceInfo
 import com.anindra.messages.crash.CrashReporter
 import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.data.BackupHealth
+import com.anindra.messages.data.CalendarSystem
 import com.anindra.messages.data.DownloadsStore
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
@@ -29,6 +30,8 @@ import com.anindra.messages.data.TransferEntry
 import com.anindra.messages.data.TransferLog
 import com.anindra.messages.data.TransferLogStore
 import com.anindra.messages.data.TransferOperation
+import com.anindra.messages.ui.DateStyle
+import com.anindra.messages.ui.formatDate
 import com.anindra.messages.ui.theme.A11yOptions
 import com.anindra.messages.ui.theme.schemeFor
 import com.anindra.messages.ui.theme.startChatContainer
@@ -44,12 +47,55 @@ data class PermissionState(
     val granted: Boolean
 )
 
+/**
+ * Imported versus provider MMS shape, for reports like "only one picture of
+ * four showed" (#398).
+ *
+ * [multiPart] and [maxParts] come from the message store: one provider MMS is
+ * several message rows there, so a picture that is stored but not drawn shows
+ * up as rows > 1. [parts] is the newest provider MMS with two or more parts, so
+ * "the provider only had one part" and "we lost the others" look different.
+ */
+data class MmsDetails(
+    val rows: Int = 0,
+    val multiPart: Int = 0,
+    val maxParts: Int = 0,
+    val providerId: Long = 0,
+    val scanned: Int = 0,
+    val parts: List<String> = emptyList()
+) {
+    fun storeLine(): String =
+        "$rows row(s), $multiPart from multi-part MMS" +
+            if (maxParts > 1) " (max $maxParts row(s))" else ""
+
+    fun providerLines(): List<String> = when {
+        providerId > 0 -> listOf("Provider MMS: newest multi-part #$providerId, ${parts.size} part(s)") +
+            parts.map { "  $it" }
+        scanned > 0 -> listOf("Provider MMS: no multi-part MMS among the newest $scanned")
+        else -> listOf("Provider MMS: unreadable")
+    }
+}
+
 data class AppDetails(
     val defaultSms: Boolean,
     val permissions: List<PermissionState>,
     val locale: String,
     val timeZone: String,
     val themeMode: String,
+    /**
+     * The calendar dates render in (#363), as "persian (automatic)" or
+     * "gregorian (chosen explicitly)". Reading the same [CalendarSystem.resolve]
+     * the screens render through is what stops this line from claiming a
+     * calendar the app is not drawing.
+     */
+    val calendar: String = "",
+    /**
+     * One fixed instant rendered in the resolved calendar. Timestamps on screen
+     * depend on the messages and the clock, which makes them awkward to assert;
+     * this constant does not, so a script can pin Jalali/Hijri rendering from a
+     * text dump.
+     */
+    val calendarSample: String = "",
     /**
      * The page colour the theme mode actually resolves to, as #RRGGBB.
      *
@@ -61,6 +107,8 @@ data class AppDetails(
     val resolvedBackground: String = "",
     /** The "Start chat" pill's content on its container, as "#RRGGBB on #RRGGBB". */
     val resolvedStartChat: String = "",
+    /** The silhouette ink an avatar resolves to under the current scheme. */
+    val resolvedAvatarInk: String = "",
     val notificationsEnabled: Boolean,
     val fontFamily: String = "",
     val sendSound: Boolean = false,
@@ -83,6 +131,21 @@ data class AppDetails(
     val fullScreenIntentGranted: Boolean = false,
     val channelImportance: Int = 0,
     val channelImportanceLabel: String = "",
+    /**
+     * Every channel this app has created, as "id=importance". Read from the
+     * NotificationManager rather than re-derived, so the list cannot claim a
+     * channel the poster did not actually make.
+     */
+    val channels: List<String> = emptyList(),
+    /**
+     * Bubble readiness (#354), read back from the platform: the channels whose
+     * live settings allow bubbles, and the conversation shortcuts the shortcut
+     * service actually holds. A notification cannot float without both, so the
+     * reason a bubble is missing is visible here instead of guessed at.
+     */
+    val bubblesEnabled: Boolean = false,
+    val bubbleChannels: List<String> = emptyList(),
+    val bubbleShortcuts: List<String> = emptyList(),
     val keyguardLocked: Boolean = false,
     val wakeEligible: Boolean = false
 )
@@ -181,6 +244,8 @@ data class DiagnosticsData(
     val timestamp: Long,
     /** MMS carrier-config values per subscriptionId; see SimMmsProbe.carrierFacts. */
     val mmsFacts: Map<Int, List<String>> = emptyMap(),
+    /** Imported versus provider MMS shape; see [MmsDetails]. */
+    val mms: MmsDetails = MmsDetails(),
     /**
      * Recent MMS stack events, oldest first.
      *
@@ -205,6 +270,14 @@ data class DiagnosticsData(
 object DiagnosticsReport {
     const val FILE_NAME = "messages-diagnostics.txt"
 
+    /**
+     * 2026-10-26T12:00Z. A constant instant, not "now": the sample line reports
+     * how the chosen calendar formats a date, and a date that moves with the
+     * clock cannot be asserted. On a UTC phone it is 1405-08-04 Jalali and
+     * 1448-05-15 Umm al-Qura.
+     */
+    private const val CALENDAR_SAMPLE_MILLIS = 1_793_016_000_000L
+
     fun format(data: DiagnosticsData): String {
         val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(data.timestamp))
         return buildString {
@@ -221,8 +294,14 @@ object DiagnosticsReport {
             appendLine("Locale: ${data.appDetails.locale}")
             appendLine("Time zone: ${data.appDetails.timeZone}")
             appendLine("Theme mode: ${data.appDetails.themeMode}")
+            appendLine("Calendar: ${data.appDetails.calendar}")
+            appendLine("Calendar sample: ${data.appDetails.calendarSample}")
             appendLine("Resolved page colour: ${data.appDetails.resolvedBackground}")
             appendLine("Resolved Start chat colours: ${data.appDetails.resolvedStartChat}")
+            // The rule is the same for every theme, so this line is the same for
+            // every theme: it states the rule rather than reporting a per-mode
+            // value that would make two identical builds look different.
+            appendLine("Avatar ink: ${data.appDetails.resolvedAvatarInk} on the fixed GM palette")
             appendLine("Font: ${data.appDetails.fontFamily}")
             appendLine("Accessibility mode: ${data.appDetails.accessibilityMode}")
             if (data.appDetails.accessibilityMode) {
@@ -235,6 +314,23 @@ object DiagnosticsReport {
             appendLine("Notifications enabled: ${data.appDetails.notificationsEnabled}")
             appendLine("Full-screen intent: ${if (data.appDetails.fullScreenIntentGranted) "granted" else "denied"}")
             appendLine("Channel importance: ${data.appDetails.channelImportanceLabel}")
+            if (data.appDetails.channels.isEmpty()) {
+                appendLine("Channels: none created yet")
+            } else {
+                appendLine("Channels:")
+                data.appDetails.channels.forEach { appendLine("  $it") }
+            }
+            appendLine("Bubbles enabled: ${if (data.appDetails.bubblesEnabled) "yes" else "no"}")
+            if (data.appDetails.bubbleChannels.isEmpty()) {
+                appendLine("Bubbles: no channel allows them")
+            } else {
+                appendLine("Bubbles: allowed by ${data.appDetails.bubbleChannels.joinToString()}")
+            }
+            if (data.appDetails.bubbleShortcuts.isEmpty()) {
+                appendLine("Bubble shortcuts: none published")
+            } else {
+                appendLine("Bubble shortcuts: ${data.appDetails.bubbleShortcuts.joinToString()}")
+            }
             appendLine("Keyguard locked: ${if (data.appDetails.keyguardLocked) "yes" else "no"}")
             appendLine("Wake screen for new messages: ${if (data.appDetails.wakeEligible) "will wake" else "headsup only"}")
             if (!data.appDetails.fullScreenIntentGranted) {
@@ -345,6 +441,10 @@ object DiagnosticsReport {
                 }
             }
             appendLine()
+            appendLine("--- MMS ---")
+            appendLine("Imported: ${data.mms.storeLine()}")
+            data.mms.providerLines().forEach { appendLine(it) }
+            appendLine()
             appendLine("--- MMS activity ---")
             if (data.mmsTrace.isEmpty()) {
                 appendLine("No MMS events recorded this session.")
@@ -387,7 +487,8 @@ object DiagnosticsReport {
         selectedSubId: Int,
         settings: SettingsStore,
         conversationCount: Int,
-        messageCount: Int
+        messageCount: Int,
+        mms: MmsDetails = MmsDetails()
     ): String {
         val phoneStateGranted = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
             PackageManager.PERMISSION_GRANTED
@@ -503,6 +604,7 @@ object DiagnosticsReport {
                     s.subscriptionId to
                         com.anindra.messages.sms.SimMmsProbe.carrierFacts(context, s.subscriptionId)
                 },
+                mms = mms,
                 mmsTrace = com.anindra.messages.sms.MmsFacade.trace().map { it.toString() },
                 transfers = TransferLogStore.read(context),
                 backupHealth = BackupHealthInfo(
@@ -563,6 +665,18 @@ object DiagnosticsReport {
             locale = Locale.getDefault().toString(),
             timeZone = TimeZone.getDefault().id,
             themeMode = settings.themeMode,
+            calendar = if (settings.calendarChoice == CalendarSystem.AUTO) {
+                "${settings.calendarSystem.storageValue} (automatic)"
+            } else {
+                "${settings.calendarSystem.storageValue} (chosen explicitly)"
+            },
+            calendarSample = formatDate(
+                CALENDAR_SAMPLE_MILLIS,
+                DateStyle.DayWithYear,
+                settings.calendarSystem,
+                Locale.getDefault(),
+                java.time.ZoneOffset.UTC
+            ),
             resolvedBackground = resolvedBackgroundHex(
                 settings.themeMode,
                 systemIsDark(),
@@ -573,6 +687,13 @@ object DiagnosticsReport {
                 )
             ),
             resolvedStartChat = resolvedStartChatHex(
+                settings.themeMode,
+                systemIsDark(),
+                com.anindra.messages.ui.theme.dynamicSchemeOrNull(
+                    context, settings.themeMode, themeIsDark(settings.themeMode, systemIsDark())
+                )
+            ),
+            resolvedAvatarInk = resolvedAvatarInkHex(
                 settings.themeMode,
                 systemIsDark(),
                 com.anindra.messages.ui.theme.dynamicSchemeOrNull(
@@ -596,6 +717,11 @@ object DiagnosticsReport {
             fullScreenIntentGranted = fullScreenIntentGranted(context),
             channelImportance = NotificationHelper.channelImportance(context),
             channelImportanceLabel = importanceLabel(NotificationHelper.channelImportance(context)),
+            channels = NotificationHelper.createdChannels(context)
+                .map { "${it.first}=${importanceLabel(it.second)}" },
+            bubblesEnabled = NotificationHelper.bubblesAllowed(context),
+            bubbleChannels = NotificationHelper.bubbleChannels(context),
+            bubbleShortcuts = com.anindra.messages.sms.NotificationBubble.publishedShortcutIds(context),
             keyguardLocked = context.getSystemService(KeyguardManager::class.java)
                 ?.isKeyguardLocked == true,
             wakeEligible = NotificationHelper.shouldWake(
@@ -658,6 +784,25 @@ internal fun resolvedStartChatHex(
     fun hex(c: androidx.compose.ui.graphics.Color) =
         "#%02X%02X%02X".format(channel(c.red), channel(c.green), channel(c.blue))
     return "${hex(scheme.startChatContent)} on ${hex(scheme.startChatContainer)}"
+}
+
+/**
+ * The silhouette ink an avatar paints with, resolved through the same
+ * [com.anindra.messages.ui.avatarGlyphInk] the avatar itself uses — a second
+ * copy of the night-mode branch here is how a report starts disagreeing with
+ * what was drawn.
+ */
+internal fun resolvedAvatarInkHex(
+    mode: String,
+    systemIsDark: Boolean,
+    dynamic: androidx.compose.material3.ColorScheme? = null
+): String {
+    val scheme = schemeFor(
+        mode, A11yOptions.DISABLED, themeIsDark(mode, systemIsDark), dynamic
+    )
+    val ink = com.anindra.messages.ui.avatarGlyphInk(scheme)
+    fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
+    return "#%02X%02X%02X".format(channel(ink.red), channel(ink.green), channel(ink.blue))
 }
 
 /** The device's night setting, read without a Context. */

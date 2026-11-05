@@ -14,12 +14,14 @@
     <string name="chat_details">Detalhes</string>
     <string name="chat_view_details">Ver detalhes</string>
     <string name="chat_schedule">Agendar</string>
+    <string name="chat_select_date">Selecionar data</string>
     <string name="chat_select_time">Selecionar horário</string>
     <string name="chat_media_camera">Câmera</string>
     <string name="chat_media_gallery">Galeria</string>
     <string name="chat_select_all">Selecionar tudo</string>
     <string name="chat_select_text">Selecionar texto</string>
     <string name="chat_save_image">Salvar imagem</string>
+    <string name="chat_save_images">Salvar imagens</string>
     <string name="chat_image_saved">Imagem salva em Pictures/Messages</string>
     <string name="chat_image_save_failed">Não foi possível salvar a imagem</string>
 
@@ -38,6 +40,10 @@
     <string name="chat_sending_via">Enviando via %s</string>
     <string name="chat_switch_sim">Trocar SIM</string>
     <string name="chat_scheduled_for">Agendado para %s</string>
+    <string name="chat_schedule_gregorian_hint">Gregoriano: %1$s</string>
+    <string name="chat_schedule_previous_month">Mês anterior</string>
+    <string name="chat_schedule_next_month">Próximo mês</string>
+    <string name="chat_schedule_choose_year">Escolher ano</string>
     <string name="chat_schedule_failed">Não foi possível agendar a mensagem</string>
     <string name="chat_search_contacts">Pesquisar contatos</string>
     <string name="chat_add_people">Adicionar pessoas</string>
@@ -67,6 +73,7 @@
     <string name="message_detail_to">Para</string>
     <string name="message_detail_from">De</string>
     <string name="message_detail_sent">Enviada</string>
+    <string name="message_detail_gregorian">Data gregoriana</string>
     <string name="message_detail_delivered">Entregue</string>
     <string name="message_detail_status">Status</string>
     <string name="message_status_sending">Enviando…</string>
@@ -95,4 +102,13 @@
     <string name="chat_search_next">Próxima correspondência</string>
     <string name="chat_search_counter">%1$d de %2$d</string>
     <string name="chat_scroll_to_latest">Ir para a mensagem mais recente</string>
+    <string name="access_zoom_reset">Zoom %1$d%%, toque para redefinir</string>
+    <string name="chat_star">Adicionar estrela</string>
+    <string name="chat_unstar">Remover estrela</string>
+    <string name="chat_starred">Mensagem marcada com estrela</string>
+    <string name="chat_unstarred">Estrela removida</string>
+    <string name="chat_message_starred">Mensagem com estrela</string>
+    <string name="chat_album_photos">%1$d fotos</string>
+    <string name="chat_album_more">Mais %1$d fotos</string>
+    <string name="chat_album_previous">Fotos anteriores</string>
 </resources>

@@ -44,6 +44,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -53,13 +54,20 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.unit.IntSize
+import com.anindra.messages.ui.theme.motionSpring
+import com.anindra.messages.ui.theme.LocalReduceMotion
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,7 +94,7 @@ import com.anindra.messages.ui.theme.LocalLargeTouchTargets
 private enum class PinDialogMode { SET, ENTER }
 
 /** Which backup format the picked file belongs to. */
-private enum class ImportSource { OWN_BACKUP, SMS_IE }
+private enum class ImportSource { OWN_BACKUP, SMS_IE, QUIK }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,11 +106,15 @@ fun SettingsScreen(
     onOpenSpamBlocked: () -> Unit = {},
     onOpenInbox: () -> Unit = {},
     onOpenScheduled: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
 
     val context = LocalContext.current
+    // The version the About row shows comes from the same lookup the crash
+    // report and Diagnostics print, so the three cannot disagree.
+    val appInfo = remember(context) { com.anindra.messages.crash.CrashReporter.appInfo(context) }
 
     val revision by vm.settings.revision.collectAsState()
     val scheduledAll by vm.scheduledMessages().collectAsState(initial = emptyList())
@@ -110,23 +122,18 @@ fun SettingsScreen(
     else context.getString(R.string.settings_scheduled_count, scheduledAll.size)
 
     var themeDialog by remember { mutableStateOf(false) }
-    var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
-    val notificationSoundOptions = listOf(
-        SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
-        SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
-        SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
-    )
+    var markReadDialog by remember { mutableStateOf(false) }
     val themeMode = vm.themeMode
-
-    var soundDialog by remember { mutableStateOf(false) }
 
     var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
 
     var simDialog by remember { mutableStateOf(false) }
-    var sims by remember { mutableStateOf(emptyList<SimCard>()) }
+    // Seeded from the phone rather than from an empty list: starting empty made
+    // the SIM row render title-only for a frame and then grow a subtitle, which
+    // shifted every row below it — the list visibly jumped on entry, and a
+    // restored scroll offset was clamped to the shorter content.
+    var sims by remember { mutableStateOf(SimCards.load(context)) }
     var backupFolder by remember(revision) { mutableStateOf(vm.settings.backupTreeUri) }
 
     var pinMode by remember { mutableStateOf<PinDialogMode?>(null) }
@@ -197,6 +204,18 @@ fun SettingsScreen(
         }
     }
 
+    // QUIK's backup is its own entry and its own picker: the file is plain JSON
+    // and nothing about the sms-ie flow applies to it.
+    val quikLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            pendingImportUri = it
+            pendingImportSource = ImportSource.QUIK
+            importModeDialog = true
+        }
+    }
+
     val backupFolderLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -219,8 +238,18 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        // Google Messages paints the settings sheet a step lighter than the rest
+        // of the app and insets the rows into it: page #1E1F20, row #131314.
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
+                // GM paints the app bar with the sheet, not with the page: the
+                // title band is #1E1F20 like the gaps, and only the rows are
+                // inset at #131314. Left at the default role it was the one
+                // black band that made the screen read darker than GM.
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = { Text(stringResource(R.string.settings_general)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -230,6 +259,64 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
+        val pageColor = MaterialTheme.colorScheme.surfaceContainer
+        val rowColor = MaterialTheme.colorScheme.background
+        // The settings sheet's two colours are pixels with no text equivalent, so
+        // report them the way SettingsRowShape reports the corners: a regression
+        // script can then assert Google Messages' pattern from logcat.
+        LaunchedEffect(pageColor, rowColor) {
+            android.util.Log.d(
+                "SettingsColors",
+                "page=${hexColor(pageColor)} row=${hexColor(rowColor)}"
+            )
+        }
+        // A restored offset does not survive content that arrives late: the
+        // list is rebuilt on every entry, and a subtitle that shows up a frame
+        // later (a SIM label, the scheduled count) grows it, which clamps the
+        // offset without restoring it — pressing Back from About landed a row
+        // short of where the reader was. Re-apply the remembered offset until
+        // the height stops changing, then leave the reader alone.
+        LaunchedEffect(scrollState) {
+            val target = scrollState.value
+            // Nothing was remembered, so there is nothing to restore: without
+            // this early exit the loop kept pulling a fresh screen back to the
+            // top while the reader was already scrolling down to About.
+            if (target > 0) {
+                // A reader parked at the end expects to stay there when the rest
+                // of the list finishes loading; anyone else keeps their offset.
+                var wasAtEnd = target >= scrollState.maxValue - 1
+                var previousMax = -1
+                var stableFrames = 0
+                var frames = 0
+                // One unchanged frame is not "settled": a subtitle that arrives
+                // a few frames later grows the list after this loop would have
+                // given up. Wait for the height to hold still before handing
+                // control back.
+                while (frames < 300) {
+                    withFrameNanos { }
+                    frames++
+                    // Once the reader touches the list the restore is over; it
+                    // exists to survive late data, not to overrule them.
+                    if (scrollState.isScrollInProgress) break
+                    val max = scrollState.maxValue
+                    val wanted = when {
+                        wasAtEnd -> max
+                        else -> target.coerceAtMost(max)
+                    }
+                    stableFrames = if (max == previousMax) stableFrames + 1 else 0
+                    previousMax = max
+                    if (scrollState.value != wanted) scrollState.scrollTo(wanted)
+                    if (stableFrames >= 60 && scrollState.value == wanted) break
+                }
+            }
+            // The offset has no text equivalent on screen; publish it so a
+            // regression script can compare where the reader left the list.
+            android.util.Log.d(
+                "SettingsScroll",
+                "value=${scrollState.value} max=${scrollState.maxValue}"
+            )
+        }
+
         Column(
             Modifier
                 .padding(padding)
@@ -248,14 +335,15 @@ fun SettingsScreen(
                 SettingsRow(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_mark_read_title),
-                    onClick = {
-                        vm.markAllRead()
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.settings_mark_read),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    onClick = { markReadDialog = true }
+                )
+                // Android owns this one: its per-app Bubbles page already carries
+                // the same All / Selected / Nothing choice, and mirroring it here
+                // meant two places deciding the same thing.
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_bubbles_title),
+                    onClick = { openSystemBubbleSettings(context) }
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,
@@ -350,7 +438,6 @@ fun SettingsScreen(
                 SettingsRow(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_backup_title),
-                    subtitle = stringResource(R.string.settings_backup_subtitle),
                     enabled = !privacyMode,
                     onClick = {
                         pinMode = PinDialogMode.SET
@@ -366,14 +453,28 @@ fun SettingsScreen(
                     onClick = { importSourceDialog = true }
                 )
                 SettingsRow(
-                    position = RowPosition.LAST,
+                    position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_advanced_title),
                     subtitle = stringResource(R.string.settings_advanced_subtitle),
                     onClick = onOpenAdvanced
                 )
+                // The version lives on the About screen now; this row replaced
+                // the footer that used to spell it out here.
+                SettingsRow(
+                    position = RowPosition.LAST,
+                    title = stringResource(R.string.settings_about_title),
+                    subtitle = stringResource(
+                        R.string.settings_about_version,
+                        appInfo.versionName,
+                        appInfo.versionCode
+                    ),
+                    onClick = onOpenAbout
+                )
             }
 
-            SettingsFooter(stringResource(R.string.messages_footer))
+            // What the removed footer left behind: the list ends on a card, and
+            // without this the card sits flush against the bottom inset.
+            Spacer(Modifier.height(SettingsLayout.BOTTOM_GAP))
         }
     }
 
@@ -424,51 +525,32 @@ fun SettingsScreen(
 
 
 
-    if (soundDialog) {
+    if (markReadDialog) {
         AlertDialog(
-            onDismissRequest = { soundDialog = false },
-            title = { Text(stringResource(R.string.settings_pin_notification_sound)) },
+            onDismissRequest = { markReadDialog = false },
+            title = {
+                val title = stringResource(R.string.settings_mark_read_confirm_title)
+                Text(title, style = directionalStyle(LocalTextStyle.current, title))
+            },
             text = {
-                Column {
-                    Text(
-                        stringResource(R.string.settings_sound_arrival),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    notificationSoundOptions.forEach { (value, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    notificationSound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                                .padding(vertical = 2.dp)
-                        ) {
-                            RadioButton(
-                                selected = notificationSound == value,
-                                onClick = {
-                                    notificationSound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(label)
-                        }
-                    }
-                }
+                val message = stringResource(R.string.settings_mark_read_confirm_message)
+                Text(message, style = directionalStyle(LocalTextStyle.current, message))
             },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.settings.notificationSound = notificationSound
-                    NotificationHelper.ensureChannel(context)
-                    soundDialog = false
-                }) { Text(stringResource(R.string.common_ok)) }
+                    markReadDialog = false
+                    vm.markAllRead()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_mark_read),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }) { Text(stringResource(R.string.settings_mark_read_title)) }
             },
             dismissButton = {
-                TextButton(onClick = { soundDialog = false }) { Text(stringResource(R.string.common_cancel)) }
+                TextButton(onClick = { markReadDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
@@ -524,6 +606,8 @@ fun SettingsScreen(
                 importLauncher.launch(
                     arrayOf("application/octet-stream", "application/x-sqlite3")
                 )
+            } else if (source == ImportSource.QUIK) {
+                quikLauncher.launch(arrayOf("application/json", "*/*"))
             } else {
                 smsIeLauncher.launch(
                     arrayOf(
@@ -542,11 +626,20 @@ fun SettingsScreen(
                 ImportRadioGroup(
                     options = listOf(
                         stringResource(R.string.settings_import_source_own_title) to "",
-                        stringResource(R.string.settings_import_source_sms_ie_title) to ""
+                        stringResource(R.string.settings_import_source_sms_ie_title) to "",
+                        stringResource(R.string.settings_import_quik_title) to ""
                     ),
-                    selectedIndex = if (source == ImportSource.OWN_BACKUP) 0 else 1,
+                    selectedIndex = when (source) {
+                        ImportSource.OWN_BACKUP -> 0
+                        ImportSource.SMS_IE -> 1
+                        ImportSource.QUIK -> 2
+                    },
                     onSelect = {
-                        source = if (it == 0) ImportSource.OWN_BACKUP else ImportSource.SMS_IE
+                        source = when (it) {
+                            0 -> ImportSource.OWN_BACKUP
+                            1 -> ImportSource.SMS_IE
+                            else -> ImportSource.QUIK
+                        }
                     }
                 )
             },
@@ -570,6 +663,10 @@ fun SettingsScreen(
         }
         fun applyImport() {
             val target = uri ?: return
+            if (pendingImportSource == ImportSource.QUIK) {
+                vm.importQuik(target, mode, showImportResult)
+                return
+            }
             if (pendingImportSource == ImportSource.SMS_IE) {
                 // The real ImportResult carries the reason; the old Int callback
                 // discarded it and showed one generic failure for every cause.
@@ -593,7 +690,7 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_import_backup)) },
             text = {
                 Column {
-                    Text(
+                    DialogText(
                         stringResource(R.string.settings_backup_apply),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -666,7 +763,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     if (mode == PinDialogMode.SET) {
-                        Text(
+                        DialogText(
                             stringResource(R.string.settings_backup_pin_protection),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -842,8 +939,8 @@ fun SettingsScreen(
     if (showRawBackupWarning) {
         AlertDialog(
             onDismissRequest = { showRawBackupWarning = false },
-            title = { Text(stringResource(R.string.settings_backup_unencrypted_title)) },
-            text = { Text(stringResource(R.string.settings_backup_unencrypted_warning)) },
+            title = { DialogText(stringResource(R.string.settings_backup_unencrypted_title)) },
+            text = { DialogText(stringResource(R.string.settings_backup_unencrypted_warning)) },
             confirmButton = {
                 TextButton(onClick = {
                     showRawBackupWarning = false
@@ -912,6 +1009,18 @@ fun GroupedRowCard(
     }
 }
 
+/* Google Messages puts its settings rows *darker* than the sheet they sit on —
+ * page #1E1F20, row #131314 — so every settings screen paints the sheet in
+ * surfaceContainer and every SettingsRow paints the page background. One rule,
+ * in SettingsRow, so no screen can drift from another. */
+
+/** "#RRGGBB" for the SettingsColors log line; Compose channels are 0..1 floats. */
+internal fun hexColor(c: androidx.compose.ui.graphics.Color): String = "#%02X%02X%02X".format(
+    (c.red * 255f + 0.5f).toInt().coerceIn(0, 255),
+    (c.green * 255f + 0.5f).toInt().coerceIn(0, 255),
+    (c.blue * 255f + 0.5f).toInt().coerceIn(0, 255)
+)
+
 @Composable
 fun SettingsGroup(content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(SettingsLayout.ROW_GAP)) {
@@ -942,6 +1051,16 @@ fun GroupedRowList(
 
 /** Android's own notification prefs for this app, which is where the OS-level
  *  toggles (per-conversation, channels, badges) actually live. */
+private fun openSystemBubbleSettings(context: android.content.Context) {
+    runCatching {
+        context.startActivity(
+            android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS)
+                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+}
+
 private fun openSystemNotificationSettings(context: android.content.Context) {
     runCatching {
         context.startActivity(
@@ -961,9 +1080,6 @@ private fun themeLabel(mode: String, context: android.content.Context) = when (m
 }
 
 
-
-private fun notificationSoundLabel(value: String, options: List<Pair<String, String>>, context: android.content.Context) =
-    options.firstOrNull { it.first == value }?.second ?: context.getString(R.string.settings_sound_default)
 
 /**
  * A single-choice group of [options] (label to optional supporting text),
@@ -1039,13 +1155,17 @@ fun SettingsRow(
             bottomStart = corners.bottomStart
         ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = MaterialTheme.colorScheme.background
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // A row that gains a subtitle (or loses one) eases to its new
+                // height instead of jumping, which is what made the list feel
+                // like it re-laid-out under the finger.
+                .animateContentSize(animationSpec = motionSpring<IntSize>(LocalReduceMotion.current))
                 .clickable(enabled = enabled && (onClick != null || checked != null)) {
                     if (checked != null && onChecked != null) onChecked(!checked) else onClick?.invoke()
                 }

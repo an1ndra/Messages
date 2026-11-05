@@ -36,4 +36,13 @@
     <string name="convo_pinned">Закреплено</string>
     <string name="convo_unpinned">Закрепление снято</string>
     <string name="convo_blocked">Номер заблокирован</string>
+    <string name="search_scope_all">Все</string>
+    <string name="search_scope_unread">Непрочитанные</string>
+    <string name="search_scope_starred">С звёздочкой</string>
+    <string name="starred_empty">Пока нет помеченных сообщений</string>
+    <string name="starred_empty_hint">Нажмите и удерживайте сообщение, затем коснитесь звезды, чтобы сохранить его здесь</string>
+    <string name="search_scope_unread_empty">Нет непрочитанных бесед</string>
+    <string name="search_scope_contacts">Контакты</string>
+    <string name="search_scope_messages">Сообщения</string>
+    <string name="search_scope_no_results">Совпадений нет</string>
 </resources>

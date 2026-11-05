@@ -36,4 +36,13 @@
     <string name="convo_pinned">ピン留めしました</string>
     <string name="convo_unpinned">ピンを外しました</string>
     <string name="convo_blocked">番号をブロックしました</string>
+    <string name="search_scope_all">すべて</string>
+    <string name="search_scope_unread">未読</string>
+    <string name="search_scope_starred">スター付き</string>
+    <string name="starred_empty">スター付きのメッセージはまだありません</string>
+    <string name="starred_empty_hint">メッセージを長押ししてスターをタップすると、ここに表示されます</string>
+    <string name="search_scope_unread_empty">未読の会話はありません</string>
+    <string name="search_scope_contacts">連絡先</string>
+    <string name="search_scope_messages">メッセージ</string>
+    <string name="search_scope_no_results">一致する項目はありません</string>
 </resources>

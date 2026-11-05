@@ -5,17 +5,40 @@ import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Locale
 
 /** Google-Messages-like customization store. */
 class SettingsStore(context: Context) {
 
     private val prefs: SharedPreferences =
-        context.getSharedPreferences("messages_settings", Context.MODE_PRIVATE)
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    /**
+     * True when this package has never been replaced by an update: a fresh
+     * install ships the redesigned UI and DM Sans, while an installation that
+     * has been updated keeps the defaults it started with. An update must not
+     * restyle the app under someone who never touched the setting.
+     */
+    private val firstInstall: Boolean =
+        runCatching {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            info.firstInstallTime == info.lastUpdateTime
+        }.getOrDefault(false)
+
+    init {
+        // Written once, on a fresh install, so a later update keeps the look the
+        // user first saw instead of falling back with the package's age.
+        seedFontFor(firstInstall, prefs.getString(KEY_FONT_FAMILY, null))?.let {
+            prefs.edit().putString(KEY_FONT_FAMILY, it).apply()
+        }
+    }
 
     private val _revision = MutableStateFlow(0)
     val revision: StateFlow<Int> = _revision.asStateFlow()
 
     companion object {
+        private const val PREFS_NAME = "messages_settings"
+
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
         const val THEME_DARK = "dark"
@@ -23,6 +46,7 @@ class SettingsStore(context: Context) {
         const val THEME_DYNAMIC = "dynamic"
 
         const val KEY_THEME = "theme_mode"
+        const val KEY_CALENDAR = "calendar_system"
         const val KEY_NOTIFICATIONS = "notifications_enabled"
         const val KEY_SOUNDS = "message_sounds_enabled"
         const val KEY_DELIVERY_REPORTS = "delivery_reports_enabled"
@@ -40,6 +64,9 @@ class SettingsStore(context: Context) {
         const val KEY_FORWARDING_ENABLED = "forwarding_enabled"
         const val KEY_UNREAD_AT_TOP_ENABLED = "unread_at_top_enabled"
         const val KEY_SCHEDULED_MESSAGES_ENABLED = "scheduled_messages_enabled"
+        const val KEY_PINCH_ZOOM = "pinch_zoom_enabled"
+        const val KEY_NOTIF_CLEARED_PREFIX = "notif_cleared_"
+        const val KEY_BUBBLE_OFF_PREFIX = "bubble_off_"
         const val KEY_DELAYED_SENDING_ENABLED = "delayed_sending_enabled"
         const val KEY_DELAY_SECONDS = "delay_seconds"
         const val KEY_HIGHLIGHT_LINKS = "highlight_links"
@@ -52,15 +79,10 @@ class SettingsStore(context: Context) {
         const val KEY_PHONE_REGION = "phone_region"
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
-        const val KEY_NOTIFICATION_SOUND = "notification_sound"
         const val KEY_NOTIF_ACTION_REPLY = "notif_action_reply"
         const val KEY_NOTIF_ACTION_MARK_READ = "notif_action_mark_read"
         const val KEY_NOTIF_ACTION_DELETE = "notif_action_delete"
-        const val NOTIFY_SOUND_DEFAULT = "default"
-        const val NOTIFY_SOUND_APP = "app_sound"
-        const val NOTIFY_SOUND_DRAGON = "dragon_studio"
-        const val NOTIFY_SOUND_UNIVERSFIELD_09 = "universfield_09"
-        const val NOTIFY_SOUND_UNIVERSFIELD_062 = "universfield_062"
+        const val KEY_BUBBLE_BACK_CLOSES = "bubble_back_closes"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
         const val KEY_EMOJI_BUTTON = "emoji_button_enabled"
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
@@ -73,11 +95,22 @@ class SettingsStore(context: Context) {
         const val KEY_LINK_WARNING = "link_open_warning_enabled"
         const val KEY_FONT_FAMILY = "font_family"
         const val FONT_SYSTEM = "system"
+
+        /**
+         * The font a new installation is seeded with, or null to leave whatever
+         * is stored alone. Only a fresh install with no stored choice is
+         * seeded: an update must not restyle the app under someone who never
+         * touched the setting, and an explicit choice always wins.
+         */
+        internal fun seedFontFor(freshInstall: Boolean, storedFont: String?): String? =
+            if (freshInstall && storedFont == null) FONT_DM_SANS else null
+
         const val FONT_DM_SANS = "dm_sans"
         const val FONT_INTER = "inter"
         const val FONT_FIGTREE = "figtree"
         const val FONT_POPPINS = "poppins"
         const val KEY_BLOCKED_KEYWORDS = "blocked_keywords"
+        const val KEY_CHAT_ZOOM_PREFIX = "chat_zoom_"
         const val KEY_BACKUP_TREE_URI = "backup_tree_uri"
         const val KEY_PERIODIC_BACKUP = "periodic_backup_enabled"
         const val KEY_PERIODIC_BACKUP_INTERVAL = "periodic_backup_interval"
@@ -99,11 +132,42 @@ class SettingsStore(context: Context) {
         const val DEFAULTS_SIM_SUBSCRIPTION_ID = -1
         const val DEFAULTS_EMOJI_BUTTON = false
         const val DEFAULTS_UNREAD_AT_TOP = false
+
+        /** Per-conversation key holding that chat's zoom (#348). */
+        fun chatZoomKey(conversationId: Long): String = "$KEY_CHAT_ZOOM_PREFIX$conversationId"
+
+        /**
+         * The calendar dates render in. Read straight from preferences rather
+         * than through a store, because every timestamp on every screen asks
+         * for it and a store re-reads the package manager on construction.
+         * [CalendarSystem.resolve] makes the choice, so the setting, the
+         * subtitle and Diagnostics cannot drift apart.
+         */
+        fun calendarSystemOf(context: Context, locale: Locale = Locale.getDefault()): CalendarSystem =
+            CalendarSystem.resolve(storedCalendarOf(sharedPrefs(context)), locale)
+
+        private fun sharedPrefs(context: Context): SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        private fun storedCalendarOf(prefs: SharedPreferences): String? =
+            prefs.getString(KEY_CALENDAR, CalendarSystem.AUTO.storageValue)
     }
 
     var themeMode: String
         get() = prefs.getString(KEY_THEME, THEME_SYSTEM) ?: THEME_SYSTEM
         set(v) { prefs.edit().putString(KEY_THEME, v).apply(); _revision.value++ }
+
+    /**
+     * The calendar the user picked (#363), which may be [CalendarSystem.AUTO].
+     * [calendarSystem] is what that choice actually renders as.
+     */
+    var calendarChoice: CalendarSystem
+        get() = CalendarSystem.fromStorage(storedCalendarOf(prefs))
+        set(v) { prefs.edit().putString(KEY_CALENDAR, v.storageValue).apply(); _revision.value++ }
+
+    /** The calendar dates render in; never [CalendarSystem.AUTO]. */
+    val calendarSystem: CalendarSystem
+        get() = CalendarSystem.resolve(storedCalendarOf(prefs), Locale.getDefault())
 
     var notificationsEnabled: Boolean
         get() = prefs.getBoolean(KEY_NOTIFICATIONS, DEFAULTS_NOTIFICATIONS)
@@ -189,12 +253,13 @@ class SettingsStore(context: Context) {
         set(v) { prefs.edit().putBoolean(KEY_FORWARDING_ENABLED, v).apply(); _revision.value++ }
 
     /**
-     * Which settings/chat surface to render. The pre-redesign screens under
-     * `ui/legacy` are the default; switching on renders the redesigned set.
-     * Both read this same store, so data stays in sync either way.
+     * Which settings/chat surface to render. Fresh installs start on the
+     * redesigned screens; the pre-redesign views under `ui/legacy` stay
+     * reachable through this switch. Both read the same store, so data stays in
+     * sync either way.
      */
     var useNewUi: Boolean
-        get() = prefs.getBoolean(KEY_USE_NEW_UI, false)
+        get() = prefs.getBoolean(KEY_USE_NEW_UI, true)
         set(v) { prefs.edit().putBoolean(KEY_USE_NEW_UI, v).apply(); _revision.value++ }
 
     /** Legacy chat surfaces still gate on this. */
@@ -225,6 +290,40 @@ class SettingsStore(context: Context) {
     var unreadAtTopEnabled: Boolean
         get() = prefs.getBoolean(KEY_UNREAD_AT_TOP_ENABLED, DEFAULTS_UNREAD_AT_TOP)
         set(v) { prefs.edit().putBoolean(KEY_UNREAD_AT_TOP_ENABLED, v).apply(); _revision.value++ }
+
+    /**
+     * Whether pinching a chat scales its text (#348). On by default, and
+     * off means the gesture is not installed at all, so a two-finger drag
+     * scrolls like any other drag.
+     */
+    /**
+     * The newest message timestamp the user has already dealt with for this
+     * conversation: they either dismissed its notification or read it.
+     *
+     * A boot or an app update re-posts unread conversations so the launcher
+     * badge survives, but without this it also resurrects notifications the user
+     * swiped away — the #345 follow-up reported exactly that.
+     */
+    fun notifClearedUpTo(conversationId: Long): Long =
+        prefs.getLong(KEY_NOTIF_CLEARED_PREFIX + conversationId, 0L)
+
+    fun markNotifCleared(conversationId: Long, upTo: Long) {
+        if (upTo <= notifClearedUpTo(conversationId)) return
+        prefs.edit().putLong(KEY_NOTIF_CLEARED_PREFIX + conversationId, upTo).apply()
+    }
+
+    /** Whether this conversation's notifications may float as a bubble. */
+    fun bubblesFor(conversationId: Long): Boolean =
+        !prefs.getBoolean(KEY_BUBBLE_OFF_PREFIX + conversationId, false)
+
+    fun setBubblesFor(conversationId: Long, enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_BUBBLE_OFF_PREFIX + conversationId, !enabled).apply()
+        _revision.value++
+    }
+
+    var pinchZoomEnabled: Boolean
+        get() = prefs.getBoolean(KEY_PINCH_ZOOM, true)
+        set(v) { prefs.edit().putBoolean(KEY_PINCH_ZOOM, v).apply(); _revision.value++ }
 
     var scheduledMessagesEnabled: Boolean
         get() = prefs.getBoolean(KEY_SCHEDULED_MESSAGES_ENABLED, true)
@@ -275,10 +374,6 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_RECEIVE_SOUND, DEFAULTS_SOUNDS)
         set(v) { prefs.edit().putBoolean(KEY_RECEIVE_SOUND, v).apply(); _revision.value++ }
 
-    var notificationSound: String
-        get() = prefs.getString(KEY_NOTIFICATION_SOUND, NOTIFY_SOUND_DEFAULT) ?: NOTIFY_SOUND_DEFAULT
-        set(v) { prefs.edit().putString(KEY_NOTIFICATION_SOUND, v).apply(); _revision.value++ }
-
     /** Which actions an incoming-message notification offers. All on by default. */
     var notifActionReply: Boolean
         get() = prefs.getBoolean(KEY_NOTIF_ACTION_REPLY, true)
@@ -291,6 +386,16 @@ class SettingsStore(context: Context) {
     var notifActionDelete: Boolean
         get() = prefs.getBoolean(KEY_NOTIF_ACTION_DELETE, true)
         set(v) { prefs.edit().putBoolean(KEY_NOTIF_ACTION_DELETE, v).apply(); _revision.value++ }
+
+    /**
+     * Whether Back closes a conversation bubble (#354 follow-up). Off by
+     * default: Back inside a bubble returns to the conversation list and leaves
+     * the bubble on screen, because closing the chat is what the bubble exists
+     * to avoid. Turning it on restores the plain "Back dismisses it" behaviour.
+     */
+    var bubbleBackCloses: Boolean
+        get() = prefs.getBoolean(KEY_BUBBLE_BACK_CLOSES, false)
+        set(v) { prefs.edit().putBoolean(KEY_BUBBLE_BACK_CLOSES, v).apply(); _revision.value++ }
 
     var showSimIndicator: Boolean
         get() = prefs.getBoolean(KEY_SHOW_SIM_INDICATOR, true)
@@ -411,6 +516,15 @@ class SettingsStore(context: Context) {
     var lastBackupDetail: String
         get() = prefs.getString(KEY_LAST_BACKUP_DETAIL, "") ?: ""
         set(v) { prefs.edit().putString(KEY_LAST_BACKUP_DETAIL, v).apply(); _revision.value++ }
+
+    /** The zoom the chat with [conversationId] was last left at (#348), so a
+     *  pinch survives leaving the chat and an app restart. */
+    fun chatZoomFor(conversationId: Long): Float =
+        prefs.getFloat(chatZoomKey(conversationId), 1f)
+
+    fun setChatZoomFor(conversationId: Long, zoom: Float) {
+        prefs.edit().putFloat(chatZoomKey(conversationId), zoom).apply()
+    }
 
     /** True when [body] contains any blocked keyword (case-insensitive). */
     fun isKeywordBlocked(body: String): Boolean = KeywordFilter.isBlocked(body, blockedKeywords)

@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MarkEmailRead
 import androidx.compose.material.icons.rounded.MarkEmailUnread
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -56,6 +57,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -88,7 +93,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -113,6 +117,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -131,8 +137,12 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.data.StarredMessage
 import com.anindra.messages.data.ConversationList
 import com.anindra.messages.data.SwipeAction
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -170,9 +180,9 @@ fun ConversationsScreen(
     var unreadSeeded by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    var searchScope by remember { mutableStateOf(SearchScope.All) }
     var showArchived by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var lastBackExitAt by remember { mutableLongStateOf(0L) }
     val syncDone by vm.initialSyncDone.collectAsState()
@@ -280,6 +290,41 @@ fun ConversationsScreen(
         }
     }
 
+    // #374: one snackbar, LIFO. Queuing showSnackbar per swipe showed the oldest
+    // action's Undo and restored the wrong chat; only the newest entry is shown,
+    // and closing the snackbar closes the whole undo window.
+    val undoStack = remember { UndoStack<UndoEntry>() }
+    val undoRequests = remember { Channel<Unit>(Channel.CONFLATED) }
+    val undoLabel = context.getString(R.string.action_undo)
+    LaunchedEffect(undoRequests) {
+        var showing: Job? = null
+        while (true) {
+            undoRequests.receive()
+            showing?.cancelAndJoin()
+            val entry = undoStack.peek() ?: continue
+            showing = launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = entry.message,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Long
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    undoStack.pop()
+                    entry.undo()
+                    // Reveal the next entry so repeated Undo keeps walking back.
+                    undoRequests.trySend(Unit)
+                } else {
+                    undoStack.clear()
+                }
+            }
+        }
+    }
+
+    fun showUndo(message: String, undo: () -> Unit) {
+        undoStack.push(UndoEntry(message, undo))
+        undoRequests.trySend(Unit)
+    }
+
     fun moveToTrash(convo: Conversation) {
         if (vm.settings.permanentDeleteEnabled) {
             if (vm.settings.permanentDeleteWarn) {
@@ -290,69 +335,65 @@ fun ConversationsScreen(
             return
         }
         vm.deleteConversation(convo.id)
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.convo_moved_to_trash),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) vm.restoreFromTrash(convo.id)
-        }
+        showUndo(context.getString(R.string.convo_moved_to_trash)) { vm.restoreFromTrash(convo.id) }
     }
 
     fun archiveWithUndo(convo: Conversation) {
         vm.archiveConversation(convo.id)
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.convo_archived),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) vm.unarchiveConversation(convo.id)
-        }
-    }
-
-    /** Snackbar helper so every swipe action is recoverable, like archive/delete. */
-    fun withUndo(messageRes: Int, undo: suspend () -> Unit) {
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(messageRes),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) undo()
-        }
+        showUndo(context.getString(R.string.convo_archived)) { vm.unarchiveConversation(convo.id) }
     }
 
     fun markReadWithUndo(convo: Conversation) {
         val wasUnread = convo.unreadCount > 0
         if (wasUnread) vm.markRead(convo.id) else vm.markUnread(convo.id)
-        withUndo(
-            if (wasUnread) R.string.convo_marked_read else R.string.convo_marked_unread
+        showUndo(
+            context.getString(if (wasUnread) R.string.convo_marked_read else R.string.convo_marked_unread)
         ) { vm.setRead(convo.id, !wasUnread) }
     }
 
     fun pinWithUndo(convo: Conversation) {
         val wasPinned = convo.pinned
         if (wasPinned) vm.unpin(convo.id) else vm.togglePin(convo.id)
-        withUndo(
-            if (wasPinned) R.string.convo_unpinned else R.string.convo_pinned
+        showUndo(
+            context.getString(if (wasPinned) R.string.convo_unpinned else R.string.convo_pinned)
         ) { vm.setPinned(convo.id, !wasPinned) }
     }
 
     fun blockWithUndo(convo: Conversation) {
         vm.blockNumber(convo.address)
-        withUndo(R.string.convo_blocked) { vm.unblockNumber(convo.address) }
+        showUndo(context.getString(R.string.convo_blocked)) { vm.unblockNumber(convo.address) }
     }
 
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
+
+    val starredHits by remember(query, rowSettings.hideLinks) {
+        vm.starredMessages(query, rowSettings.hideLinks)
+    }.collectAsState(initial = emptyList())
 
     val messageMatchIds = rememberMessageMatchIds(vm, query)
 
     val displayed = rememberSearchResults(
         conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks, messageMatchIds
     )
+
+    // The conversation-list scopes narrow `displayed`; Starred swaps the list
+    // for message rows entirely (see the list branch below). Contacts looks at
+    // who the chat is with, Messages at what was said.
+    val scoped = when {
+        !searching -> displayed
+        searchScope == SearchScope.Unread -> displayed.filter { it.unreadCount > 0 }
+        searchScope == SearchScope.Contacts -> displayed.filter {
+            it.name.contains(query, ignoreCase = true) ||
+                it.address.contains(query, ignoreCase = true) ||
+                it.display.contains(query, ignoreCase = true)
+        }
+        searchScope == SearchScope.Messages -> displayed.filter {
+            val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
+            snippet.contains(query, ignoreCase = true) || it.id in messageMatchIds
+        }
+        else -> displayed
+    }
 
     // Reveal a new unread only while the user is still at the top.
     LaunchedEffect(displayed) {
@@ -385,13 +426,8 @@ fun ConversationsScreen(
         if (ids.isEmpty()) return
         selectedIds = emptySet()
         ids.forEach { vm.deleteConversation(it) }
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.convo_moved_to_trash_count, ids.size),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) ids.forEach { vm.restoreFromTrash(it) }
+        showUndo(context.getString(R.string.convo_moved_to_trash_count, ids.size)) {
+            ids.forEach { vm.restoreFromTrash(it) }
         }
     }
 
@@ -400,13 +436,8 @@ fun ConversationsScreen(
         if (ids.isEmpty()) return
         selectedIds = emptySet()
         ids.forEach { vm.archiveConversation(it) }
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = context.getString(R.string.convo_archived_count, ids.size),
-                actionLabel = context.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long
-            )
-            if (result == SnackbarResult.ActionPerformed) ids.forEach { vm.unarchiveConversation(it) }
+        showUndo(context.getString(R.string.convo_archived_count, ids.size)) {
+            ids.forEach { vm.unarchiveConversation(it) }
         }
     }
 
@@ -492,8 +523,8 @@ fun ConversationsScreen(
                             Icon(Icons.Outlined.Search, stringResource(R.string.icon_search))
                         }
                         IconButton(onClick = onOpenSettings) {
-                            PersonAvatar(
-                                stringResource(R.string.conversations_me), size = 32.dp,
+                            OwnerAvatar(
+                                size = 32.dp,
                                 backgroundColor = MaterialTheme.colorScheme.primary,
                                 tint = MaterialTheme.colorScheme.onPrimary
                             )
@@ -501,6 +532,16 @@ fun ConversationsScreen(
                     }
                 }
             }
+            }
+
+            // Part of the same frame as the header swap on purpose: growing it
+            // in afterwards moved the whole list a second time, which read as
+            // the screen jumping twice on the way into search.
+            if (searching) {
+                SearchScopeChips(
+                    selected = searchScope,
+                    onSelect = { searchScope = it }
+                )
             }
 
             syncProgress?.let { progress ->
@@ -513,6 +554,10 @@ fun ConversationsScreen(
                 )
             }
 
+            // Swapped, not cross-faded: this surface holds the whole list, and
+            // fading it draws every row twice at partial alpha — which reads as
+            // the list blinking when the skeleton is replaced or a chat is
+            // closed back into it.
             if (!loaded) {
                 ProvideShimmer {
                     LazyColumn(modifier = Modifier.weight(1f)) {
@@ -529,8 +574,7 @@ fun ConversationsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    PersonAvatar(
-                        "sms-launcher",
+                    OwnerAvatar(
                         size = 72.dp,
                         backgroundColor = MaterialTheme.colorScheme.primaryContainer,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer
@@ -569,12 +613,71 @@ fun ConversationsScreen(
                     }
                 }
             } else {
-                CompositionLocalProvider(
+                if (searching && searchScope == SearchScope.Starred) {
+                    if (starredHits.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = 40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.starred_empty),
+                                style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                stringResource(R.string.starred_empty_hint),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+                            items(starredHits, key = { "star_${it.messageId}" }) { hit ->
+                                StarredHitRow(
+                                    hit = hit,
+                                    now = nowTick,
+                                    onClick = { onOpenConversation(hit.conversationId, hit.body) }
+                                )
+                            }
+                            item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
+                        }
+                    }
+                } else CompositionLocalProvider(
                     LocalNowTick provides nowTick,
                     LocalScheduledPreview provides scheduledPreview
                 ) {
+                    if (searching && scoped.isEmpty() &&
+                        searchScope != SearchScope.Starred
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = 40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (searchScope == SearchScope.Unread) {
+                                        R.string.search_scope_unread_empty
+                                    } else {
+                                        R.string.search_scope_no_results
+                                    }
+                                ),
+                                style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else
                     LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
-                        items(displayed, key = { it.id }) { convo ->
+                        items(scoped, key = { it.id }) { convo ->
                             SwipeableConversationItem(
                                 context,
                                 modifier = Modifier.animateItem(
@@ -761,13 +864,20 @@ internal fun SwipeConversationItem(
         }
     )
     dismissStateRef = dismissState
+    // Compose's settle values follow the layout's start/end edges, so in RTL
+    // StartToEnd is a leftward drag. The configured actions are physical.
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     SwipeToDismissBox(
         state = dismissState,
         modifier = modifier,
         backgroundContent = {
             val direction = dismissState.dismissDirection
-            val action = direction.action(settings)
+            val action = dragSwipeAction(
+                direction, settings.swipeLeftAction, settings.swipeRightAction
+            )
+            val revealed = dragRevealedSide(direction)
+            val iconAtPhysicalLeft = revealed == RevealSide.LEFT
 
             val bgColor by animateColorAsState(
                 targetValue = action.background(),
@@ -783,9 +893,13 @@ internal fun SwipeConversationItem(
                     .fillMaxSize()
                     .background(bgColor)
                     .padding(horizontal = SettingsLayout.SWIPE_ICON_INSET),
-                contentAlignment = when (direction) {
-                    SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                    else -> Alignment.CenterStart
+                // Compose's CenterStart/CenterEnd are logical, so the physical
+                // side the drag uncovered has to be translated back (#408).
+                contentAlignment = when {
+                    iconAtPhysicalLeft && isRtl -> Alignment.CenterEnd
+                    iconAtPhysicalLeft -> Alignment.CenterStart
+                    isRtl -> Alignment.CenterStart
+                    else -> Alignment.CenterEnd
                 }
             ) {
                 if (action != SwipeAction.OFF) {
@@ -799,10 +913,12 @@ internal fun SwipeConversationItem(
         },
         // A direction set to OFF must not be swipeable at all, not just inert.
         enableDismissFromStartToEnd = swipeActionFor(
-            travelsRight = true, settings.swipeLeftAction, settings.swipeRightAction
+            travelsRight = SwipeToDismissBoxValue.StartToEnd.travelsRight(isRtl),
+            settings.swipeLeftAction, settings.swipeRightAction
         ) != SwipeAction.OFF,
         enableDismissFromEndToStart = swipeActionFor(
-            travelsRight = false, settings.swipeLeftAction, settings.swipeRightAction
+            travelsRight = SwipeToDismissBoxValue.EndToStart.travelsRight(isRtl),
+            settings.swipeLeftAction, settings.swipeRightAction
         ) != SwipeAction.OFF
     ) {
         ConversationRow(
@@ -821,7 +937,10 @@ internal fun SwipeConversationItem(
     }
 
     LaunchedEffect(dismissState.currentValue) {
-        when (dismissState.currentValue.action(settings)) {
+        when (settledSwipeAction(
+            dismissState.currentValue, isRtl,
+            settings.swipeLeftAction, settings.swipeRightAction
+        )) {
             SwipeAction.ARCHIVE -> onArchive()
             SwipeAction.DELETE -> onDelete()
             SwipeAction.MARK_READ_UNREAD -> onToggleRead()
@@ -833,17 +952,6 @@ internal fun SwipeConversationItem(
             dismissState.snapTo(SwipeToDismissBoxValue.Settled)
         }
     }
-}
-
-/** The action a swipe in [this] direction performs, per the user's configuration. */
-private fun SwipeToDismissBoxValue.action(settings: RowSettings): SwipeAction = when (this) {
-    SwipeToDismissBoxValue.StartToEnd -> swipeActionFor(
-        travelsRight = true, settings.swipeLeftAction, settings.swipeRightAction
-    )
-    SwipeToDismissBoxValue.EndToStart -> swipeActionFor(
-        travelsRight = false, settings.swipeLeftAction, settings.swipeRightAction
-    )
-    else -> SwipeAction.OFF
 }
 
 @Composable
@@ -884,13 +992,23 @@ private fun SwipeAction.icon(unread: Boolean): ImageVector = when (this) {
  */
 @Composable
 fun SwipeActionPreview(direction: SwipeDirection, action: SwipeAction) {
-    val blockAtEnd = direction.revealsTrailingEdge
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    // The gesture is physical: a leftward finger slides the row left and
+    // uncovers its right edge in every layout direction. Logical Start/End
+    // placement mirrored this preview in RTL, so it advertised the block on the
+    // side the real swipe would *not* reveal, and the action read as swapped.
+    val side = direction.revealedSide()
+    val blockOnPhysicalRight = side == RevealSide.RIGHT
+    // A logical start in this layout: the first child of the Row.
+    val blockFirstInRow = blockOnPhysicalRight == isRtl
     val shape = RoundedCornerShape(SettingsLayout.PREVIEW_RADIUS)
-    // The action colour is drawn on whichever edge the row slides in from.
-    val blockShape = if (blockAtEnd) {
-        RoundedCornerShape(topEnd = SettingsLayout.PREVIEW_RADIUS, bottomEnd = SettingsLayout.PREVIEW_RADIUS)
+    val radius = SettingsLayout.PREVIEW_RADIUS
+    // Round only the corners on the physical edge the block hugs.
+    val roundStart = blockOnPhysicalRight == isRtl
+    val blockShape = if (roundStart) {
+        RoundedCornerShape(topStart = radius, bottomStart = radius)
     } else {
-        RoundedCornerShape(topStart = SettingsLayout.PREVIEW_RADIUS, bottomStart = SettingsLayout.PREVIEW_RADIUS)
+        RoundedCornerShape(topEnd = radius, bottomEnd = radius)
     }
 
     Row(
@@ -901,7 +1019,9 @@ fun SwipeActionPreview(direction: SwipeDirection, action: SwipeAction) {
             .clip(shape)
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f))
     ) {
-        if (!blockAtEnd) IconBlock(action, blockShape, atEnd = false)
+        if (blockFirstInRow) {
+            IconBlock(action, blockShape, onPhysicalRight = blockOnPhysicalRight, isRtl = isRtl)
+        }
         // The mock row takes the slack so the colour block always sits flush
         // against the edge the swipe uncovers.
         Row(
@@ -935,27 +1055,36 @@ fun SwipeActionPreview(direction: SwipeDirection, action: SwipeAction) {
                 )
             }
         }
-        if (blockAtEnd) IconBlock(action, blockShape, atEnd = true)
+        if (!blockFirstInRow) {
+            IconBlock(action, blockShape, onPhysicalRight = blockOnPhysicalRight, isRtl = isRtl)
+        }
     }
 }
 
 /**
  * The revealed colour block with the action's icon. Hidden when there is no
- * action. The icon hugs the row's outer edge, matching the real gesture.
+ * action. The icon hugs the row's physical outer edge, matching the real
+ * gesture.
  */
 @Composable
-private fun RowScope.IconBlock(action: SwipeAction, shape: Shape, atEnd: Boolean) {
+private fun RowScope.IconBlock(
+    action: SwipeAction,
+    shape: Shape,
+    onPhysicalRight: Boolean,
+    isRtl: Boolean
+) {
     if (action == SwipeAction.OFF) {
         Spacer(Modifier.width(SettingsLayout.PREVIEW_BLOCK_WIDTH))
         return
     }
+    val hugStart = onPhysicalRight == isRtl
     Box(
         modifier = Modifier
             .width(SettingsLayout.PREVIEW_BLOCK_WIDTH)
             .fillMaxHeight()
             .clip(shape)
             .background(action.background()),
-        contentAlignment = if (atEnd) Alignment.CenterEnd else Alignment.CenterStart
+        contentAlignment = if (hugStart) Alignment.CenterStart else Alignment.CenterEnd
     ) {
         Icon(
             imageVector = action.icon(unread = false),
@@ -1213,10 +1342,14 @@ internal fun StartChatFab(
             .clip(RoundedCornerShape(16.dp))
             .background(cs.startChatContainer)
             .clickable(onClick = onClick)
-            .semantics { contentDescription = context.getString(R.string.access_start_chat) },
+            .semantics { contentDescription = context.getString(R.string.access_start_chat) }
+            // Padding, not spacers: a spacer can be squeezed to zero while the
+            // pill animates, leaving the label flush against the clipped edge
+            // (the RTL report showed the text touching the pill's end). At the
+            // collapsed 56dp width this leaves exactly the 24dp icon.
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Spacer(Modifier.width(16.dp))
         Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null, tint = cs.startChatContent)
         if (p > 0.01f) {
             Spacer(Modifier.width(8.dp))
@@ -1231,9 +1364,98 @@ internal fun StartChatFab(
                 maxLines = 1,
                 softWrap = false
             )
-            Spacer(Modifier.width(16.dp))
         }
     }
 }
 
 
+/** One recoverable inbox action; [message] is what the snackbar says it did. */
+private class UndoEntry(val message: String, val undo: () -> Unit)
+
+
+/** Home-search scopes (#394). All/Unread filter conversations; Starred lists
+ *  the bookmarked messages themselves. More scopes (Links, Images) slot in
+ *  here without touching the row. */
+internal enum class SearchScope(val labelRes: Int) {
+    All(R.string.search_scope_all),
+    Contacts(R.string.search_scope_contacts),
+    Messages(R.string.search_scope_messages),
+    Unread(R.string.search_scope_unread),
+    Starred(R.string.search_scope_starred)
+}
+
+/** Material 3 filter chips: one row, single select, 32dp tall. */
+@Composable
+internal fun SearchScopeChips(selected: SearchScope, onSelect: (SearchScope) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SearchScope.entries.forEach { scope ->
+            FilterChip(
+                selected = scope == selected,
+                onClick = { onSelect(scope) },
+                label = { Text(stringResource(scope.labelRes)) },
+                shape = RoundedCornerShape(8.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            )
+        }
+    }
+}
+
+/** One bookmarked message under the Starred scope: who, what, and when. */
+@Composable
+internal fun StarredHitRow(hit: StarredMessage, now: Long, onClick: () -> Unit) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PersonAvatar(hit.address, size = 40.dp)
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = hit.chatName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = formatListTime(hit.timestamp, now, context),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (hit.locked) "\u2022\u2022\u2022\u2022" else hit.body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(6.dp))
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = stringResource(R.string.chat_message_starred),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}

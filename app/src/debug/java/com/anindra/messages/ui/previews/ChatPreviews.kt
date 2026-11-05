@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
@@ -26,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.ui.AlphanumericNotice
+import com.anindra.messages.ui.AlbumGrid
 import com.anindra.messages.ui.ChatSearchBar
 import com.anindra.messages.ui.ChatTopBar
 import com.anindra.messages.ui.ConversationDetailsDialog
@@ -36,6 +38,7 @@ import com.anindra.messages.ui.MessageRow
 import com.anindra.messages.ui.ScheduledBubble
 import com.anindra.messages.ui.SimPickerDialog
 import com.anindra.messages.ui.SkeletonMessageRow
+import com.anindra.messages.ui.StarBadge
 import com.anindra.messages.ui.TextCopyDialog
 import com.anindra.messages.ui.ForwardPicker
 import com.anindra.messages.ui.ImagePreview
@@ -113,12 +116,14 @@ private fun MessageSelectionToolbarPreview() {
         MessageSelectionToolbar(
             count = 3,
             allLocked = false,
+            allStarred = false,
             onSelectAll = {},
             onSelectText = {},
             onSaveImage = {},
             onClose = {},
             onCopy = {},
             onForward = {},
+            onToggleStar = {},
             onShare = {},
             onViewDetails = {},
             onDelete = {},
@@ -129,12 +134,14 @@ private fun MessageSelectionToolbarPreview() {
         MessageSelectionToolbar(
             count = 2,
             allLocked = true,
+            allStarred = true,
             onSelectAll = {},
             onSelectText = null,
             onSaveImage = null,
             onClose = {},
             onCopy = {},
             onForward = {},
+            onToggleStar = {},
             onShare = {},
             onViewDetails = {},
             onDelete = {},
@@ -210,6 +217,13 @@ private fun ScheduledBubblePreview() {
             onCancel = {}
         )
     }
+}
+
+@PreviewLightDark
+@Preview(name = "Starred badge", showBackground = true, widthDp = 120)
+@Composable
+private fun StarBadgePreview() {
+    Stage { StarBadge() }
 }
 
 @PreviewLightDark
@@ -318,6 +332,30 @@ private fun ForwardPickerPreview() {
             ),
             onPick = { _, _ -> },
             onDismiss = {}
+        )
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Photo album", showBackground = true, widthDp = 380)
+@Composable
+private fun AlbumGridPreview() {
+    // Three pictures is the shape the reporter saw: they share one bubble now
+    // instead of arriving as one message each (#398).
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.End
+    ) {
+        AlbumGrid(
+            uris = listOf(
+                "content://mms/part/1",
+                "content://mms/part/2",
+                "content://mms/part/3",
+                "content://mms/part/4",
+                "content://mms/part/5"
+            ),
+            isMe = true,
+            onImageTap = {}
         )
     }
 }

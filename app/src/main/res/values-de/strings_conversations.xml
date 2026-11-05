@@ -36,4 +36,13 @@
     <string name="convo_pinned">Angeheftet</string>
     <string name="convo_unpinned">Losgelöst</string>
     <string name="convo_blocked">Nummer blockiert</string>
+    <string name="search_scope_all">Alle</string>
+    <string name="search_scope_unread">Ungelesen</string>
+    <string name="search_scope_starred">Markiert</string>
+    <string name="starred_empty">Noch keine markierten Nachrichten</string>
+    <string name="starred_empty_hint">Nachricht lange drücken und auf den Stern tippen</string>
+    <string name="search_scope_unread_empty">Keine ungelesenen Unterhaltungen</string>
+    <string name="search_scope_contacts">Kontakte</string>
+    <string name="search_scope_messages">Nachrichten</string>
+    <string name="search_scope_no_results">Keine Treffer</string>
 </resources>

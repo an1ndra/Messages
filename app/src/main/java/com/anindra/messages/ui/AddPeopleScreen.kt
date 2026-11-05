@@ -150,6 +150,7 @@ fun AddPeopleScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .animateItem()
                             .clickable {
                                 chosen = if (picked) chosen - contact.number
                                 else chosen + contact.number

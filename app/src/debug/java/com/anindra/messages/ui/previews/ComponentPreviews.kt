@@ -23,10 +23,13 @@ import com.anindra.messages.data.SwipeAction
 import com.anindra.messages.ui.AttachSheet
 import com.anindra.messages.ui.BubblePosition
 import com.anindra.messages.ui.ChatBubble
+import com.anindra.messages.ui.DialogText
 import com.anindra.messages.ui.ReactionBar
 import com.anindra.messages.ui.ReactionChips
 import com.anindra.messages.ui.InputBar
 import com.anindra.messages.ui.MessageDetailsDialog
+import com.anindra.messages.ui.OwnerAvatar
+import com.anindra.messages.ui.ScheduleDialog
 import com.anindra.messages.ui.PersonAvatar
 import com.anindra.messages.ui.ProvideShimmer
 import com.anindra.messages.ui.RowPosition
@@ -592,6 +595,30 @@ private fun InputBarPreview() {
 }
 
 @PreviewLightDark
+@Preview(name = "Compose input bar, empty", showBackground = true, widthDp = 380)
+@Composable
+private fun InputBarEmptyPreview() {
+    MessagesTheme(mode = "system") {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            InputBar(
+                draft = "",
+                placeholder = "Text message",
+                onDraftChange = {},
+                onSend = {},
+                onSchedule = {},
+                onEmojiToggle = {},
+                onAttach = {},
+                showEmojiButton = true
+            )
+        }
+    }
+}
+
+@PreviewLightDark
 @Preview(name = "Attach sheet", showBackground = true, widthDp = 380, heightDp = 640)
 @Composable
 private fun AttachSheetPreview() {
@@ -614,5 +641,43 @@ private fun SkeletonRowsPreview() {
         ProvideShimmer {
             repeat(4) { SkeletonConversationRow() }
         }
+    }
+}
+
+
+/** Dialog copy carries its own direction, shown here as the title/body pair
+ *  the backup-without-a-PIN warning paints (#405). */
+@PreviewLightDark
+@Preview(name = "Dialog text", showBackground = true, widthDp = 320)
+@Composable
+private fun DialogTextPreview() {
+    Stage() {
+        Column(Modifier.padding(24.dp)) {
+            DialogText("Back up without a PIN?")
+            Spacer(Modifier.height(12.dp))
+            DialogText("This backup will not be encrypted.")
+        }
+    }
+}
+
+/** The owner's avatar: profile photo when the device has one, else the silhouette. */
+@PreviewLightDark
+@Preview(name = "Owner avatar", showBackground = true, widthDp = 120)
+@Composable
+private fun OwnerAvatarPreview() {
+    OwnerAvatar(size = 56.dp)
+}
+
+
+/** The schedule picker's window: it grows out of the send button's corner. */
+@PreviewLightDark
+@Preview(name = "Schedule dialog", showBackground = true, widthDp = 360)
+@Composable
+private fun ScheduleDialogPreview() {
+    ScheduleDialog(onDismiss = {}) {
+        androidx.compose.material3.Text(
+            "Select date",
+            modifier = androidx.compose.ui.Modifier.padding(24.dp)
+        )
     }
 }

@@ -14,12 +14,14 @@
     <string name="chat_details">विवरण</string>
     <string name="chat_view_details">विवरण देखें</string>
     <string name="chat_schedule">शीड्यूल</string>
+    <string name="chat_select_date">तारीख चुनें</string>
     <string name="chat_select_time">समय चुनें</string>
     <string name="chat_media_camera">कैमरा</string>
     <string name="chat_media_gallery">गैलरी</string>
     <string name="chat_select_all">सभी चुनें</string>
     <string name="chat_select_text">टेक्स्ट चुनें</string>
     <string name="chat_save_image">छवि सहेजें</string>
+    <string name="chat_save_images">छवियाँ सहेजें</string>
     <string name="chat_image_saved">छवि Pictures/Messages में सहेजी गई</string>
     <string name="chat_image_save_failed">छवि सहेजी नहीं जा सकी</string>
 
@@ -38,6 +40,10 @@
     <string name="chat_sending_via">%s के माध्यम से भेजा जा रहा है</string>
     <string name="chat_switch_sim">SIM बदलें</string>
     <string name="chat_scheduled_for">%s के लिए शीड्यूल किया गया</string>
+    <string name="chat_schedule_gregorian_hint">ग्रेगोरियन: %1$s</string>
+    <string name="chat_schedule_previous_month">पिछला महीना</string>
+    <string name="chat_schedule_next_month">अगला महीना</string>
+    <string name="chat_schedule_choose_year">वर्ष चुनें</string>
     <string name="chat_schedule_failed">संदेश शीड्यूल नहीं किया जा सका</string>
     <string name="chat_search_contacts">संपर्क खोजें</string>
     <string name="chat_add_people">लोगों को जोड़ें</string>
@@ -67,6 +73,7 @@
     <string name="message_detail_to">इसे</string>
     <string name="message_detail_from">से</string>
     <string name="message_detail_sent">भेजा गया</string>
+    <string name="message_detail_gregorian">ग्रेगोरियन तिथि</string>
     <string name="message_detail_delivered">वितरित</string>
     <string name="message_detail_status">स्थिति</string>
     <string name="message_status_sending">भेजा जा रहा है...</string>
@@ -95,4 +102,13 @@
     <string name="chat_search_next">अगला मिलान</string>
     <string name="chat_search_counter">%1$d / %2$d</string>
     <string name="chat_scroll_to_latest">नवीनतम संदेश पर जाएँ</string>
+    <string name="access_zoom_reset">ज़ूम %1$d%%, रीसेट करने के लिए टैप करें</string>
+    <string name="chat_star">स्टार करें</string>
+    <string name="chat_unstar">स्टार हटाएँ</string>
+    <string name="chat_starred">संदेश स्टार किया गया</string>
+    <string name="chat_unstarred">स्टार हटाया गया</string>
+    <string name="chat_message_starred">स्टार किया गया संदेश</string>
+    <string name="chat_album_photos">%1$d फ़ोटो</string>
+    <string name="chat_album_more">%1$d और फ़ोटो</string>
+    <string name="chat_album_previous">पिछली फ़ोटो</string>
 </resources>

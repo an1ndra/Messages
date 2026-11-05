@@ -48,8 +48,8 @@ class PendingMediaWiringTest {
             chat.contains("hasAttachments = pendingMedia.isNotEmpty()"),
         )
         assertTrue(
-            "the send button must enable for an attachment with no text",
-            chat.contains("val canSend = draft.isNotBlank() || hasAttachments"),
+            "the send button must be live for an attachment with no text",
+            chat.contains("val ready = canSend(draft, hasAttachments)"),
         )
     }
 
@@ -60,8 +60,8 @@ class PendingMediaWiringTest {
             chat.contains("fun sendPendingMedia()"),
         )
         assertTrue(
-            "the draft must ride as the first picture's caption",
-            chat.contains("vm.sendMediaMessage(conversationId, uri, if (index == 0) caption else \"\")"),
+            "the staged pictures must leave as one album, in one send",
+            chat.contains("vm.sendMediaAlbum(conversationId, awaiting, caption)"),
         )
     }
 
@@ -70,6 +70,23 @@ class PendingMediaWiringTest {
         assertTrue(
             "each staged picture must offer a remove control",
             Regex("pendingMedia\\.forEach[\\s\\S]{0,1200}?pendingMedia\\.remove\\(uri\\)").containsMatchIn(chat),
+        )
+    }
+
+    @Test
+    fun theStagedTraySurvivesASendThatStoredNothing() {
+        assertTrue(
+            "the clear decision must wait for the album's outcome",
+            chat.contains("if (stored == 0) return@sendMediaAlbum"),
+        )
+        val activity = locate("MainActivity.kt")
+        assertTrue(
+            "a send that stops before storing must report that it stored nothing",
+            activity.contains("return@launch onStored(0)"),
+        )
+        assertTrue(
+            "the rows' existence is the moment the composer may clear",
+            activity.contains("onStored(stored.size)"),
         )
     }
 

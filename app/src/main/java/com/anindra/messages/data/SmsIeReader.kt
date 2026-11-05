@@ -201,6 +201,19 @@ object SmsIeReader {
     }
 
     /**
+     * Stages a message list we produced ourselves (a converted QUIK backup) in
+     * the v2 shape: newline-delimited records, no parts directory.
+     */
+    fun stageRecords(records: List<String>, workDir: File): Staged {
+        val root = File(workDir, "import-${System.nanoTime()}").apply { mkdirs() }
+        val messageFile = File(root, "messages.ndjson")
+        messageFile.bufferedWriter().use { writer ->
+            records.forEach { writer.write(it); writer.newLine() }
+        }
+        return Staged(root, messageFile, null, zip = true, skippedParts = emptyList())
+    }
+
+    /**
      * Hands each message record to [onRecord] as raw JSON text, one at a time.
      *
      * v2 is newline-delimited and streams. v1 is a single JSON array, so it has

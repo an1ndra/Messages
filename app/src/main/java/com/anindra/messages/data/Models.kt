@@ -35,7 +35,29 @@ data class Message(
     val transport: String = "sms",
     val deliveredAt: Long = 0,
     /** Who sent it. Blank means the conversation's own address. */
-    val address: String = ""
+    val address: String = "",
+    /** Bookmarked by the user (#394). Local only; the provider has no column. */
+    val starred: Boolean = false,
+    /**
+     * The provider MMS this row came from, or 0 for an SMS or a local message.
+     *
+     * A multi-picture MMS is one provider row stored as one message row per
+     * attachment, so the id is what tells the chat that several rows are one
+     * message and must share a bubble (#398).
+     */
+    val sysId: Long = 0
+)
+
+/** A bookmarked message, with the chat it came from (#394). */
+data class StarredMessage(
+    val messageId: Long,
+    val conversationId: Long,
+    val body: String,
+    val timestamp: Long,
+    val isMe: Boolean,
+    val chatName: String,
+    val address: String,
+    val locked: Boolean
 )
 
 data class BlockedNumber(
@@ -73,4 +95,22 @@ data class ScheduledMessage(
     val timestamp: Long,
     val conversationId: Long,
     val subId: Int = -1
+)
+
+/**
+ * Everything a conversation's notification channel is built from (#339),
+ * resolved in one query so the poster and the settings reconciliation can never
+ * title or classify a channel differently.
+ *
+ * [display] is the locale-formatted address and [recipients] the member count;
+ * together with [name] they are what [com.anindra.messages.ui.ContactDetails]
+ * needs to label the chat and [NotificationCategory] to pick its category.
+ */
+data class ConversationChannelTarget(
+    val conversationId: Long,
+    val address: String,
+    val name: String,
+    val display: String,
+    val groupTitle: String,
+    val recipients: Int
 )

@@ -1,6 +1,9 @@
 package com.anindra.messages.ui
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,14 +45,17 @@ import com.anindra.messages.data.MmsVerdict
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimMmsCheck
 import com.anindra.messages.sms.NotificationHelper
+import com.anindra.messages.sms.NotificationCategory
+import com.anindra.messages.sms.NotificationChannels
 import com.anindra.messages.sms.SimMmsProbe
 
 private const val DAYS_TRASH = "trash"
 private const val DAYS_SPAM = "spam"
 
 /**
- * Sound and delivery options. This is where the notification *sound* lives, so
- * the picker has to stay reachable; it used to sit on General settings.
+ * Sound and delivery options. The tone itself lives in Android's channel page:
+ * a channel's sound cannot be changed once it exists, so an app-side picker
+ * could only disagree with what the channel actually plays (#339).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,19 +66,10 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
 
     var sendSound by remember(revision) { mutableStateOf(vm.settings.sendSoundEnabled) }
     var receiveSound by remember(revision) { mutableStateOf(vm.settings.receiveSoundEnabled) }
-    var sound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
-    var soundDialog by remember { mutableStateOf(false) }
     var actionReply by remember(revision) { mutableStateOf(vm.settings.notifActionReply) }
     var actionMarkRead by remember(revision) { mutableStateOf(vm.settings.notifActionMarkRead) }
     var actionDelete by remember(revision) { mutableStateOf(vm.settings.notifActionDelete) }
-
-    val options = listOf(
-        SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
-        SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
-        SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
-    )
+    var bubbleBackCloses by remember(revision) { mutableStateOf(vm.settings.bubbleBackCloses) }
 
     SettingsScaffold(
         title = stringResource(R.string.settings_notif_title),
@@ -91,16 +89,15 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 onChecked = {
                     receiveSound = it
                     vm.settings.receiveSoundEnabled = it
-                    NotificationHelper.ensureChannel(context)
+                    NotificationHelper.ensureChannels(context)
+                    NotificationHelper.reconcileAsync(context)
                 }
             )
             SettingsRow(
                 position = RowPosition.MIDDLE,
-                title = stringResource(R.string.settings_pin_notification_sound),
-                subtitle = options.firstOrNull { it.first == sound }?.second
-                    ?: context.getString(R.string.settings_sound_default),
-                enabled = receiveSound,
-                onClick = { soundDialog = true }
+                title = stringResource(R.string.settings_notif_manage_channels),
+                subtitle = stringResource(R.string.settings_notif_manage_channels_subtitle),
+                onClick = { openSystemChannelSettings(context) }
             )
             SettingsRow(
                 position = RowPosition.MIDDLE,
@@ -117,54 +114,22 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 onChecked = { actionMarkRead = it; vm.settings.notifActionMarkRead = it }
             )
             SettingsRow(
-                position = RowPosition.LAST,
+                position = RowPosition.MIDDLE,
                 title = stringResource(R.string.settings_notif_action_delete_title),
                 subtitle = stringResource(R.string.settings_notif_action_delete_subtitle),
                 checked = actionDelete,
                 onChecked = { actionDelete = it; vm.settings.notifActionDelete = it }
             )
+            SettingsRow(
+                position = RowPosition.LAST,
+                title = stringResource(R.string.settings_bubble_back_closes_title),
+                subtitle = stringResource(R.string.settings_bubble_back_closes_subtitle),
+                checked = bubbleBackCloses,
+                onChecked = { bubbleBackCloses = it; vm.settings.bubbleBackCloses = it }
+            )
         }
 
         SettingsFooter(stringResource(R.string.settings_notif_footer))
-    }
-
-    if (soundDialog) {
-        AlertDialog(
-            onDismissRequest = { soundDialog = false },
-            title = { Text(stringResource(R.string.settings_pin_notification_sound)) },
-            text = {
-                Column {
-                    options.forEach { (value, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
-                        ) {
-                            RadioButton(
-                                selected = sound == value,
-                                onClick = {
-                                    sound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                            )
-                            Spacer(Modifier.padding(start = 8.dp))
-                            Text(label)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.settings.notificationSound = sound
-                    NotificationHelper.ensureChannel(context)
-                    soundDialog = false
-                }) { Text(stringResource(R.string.common_ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { soundDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
-        )
     }
 }
 
@@ -442,8 +407,14 @@ internal fun SettingsScaffold(
     content: @Composable () -> Unit
 ) {
     Scaffold(
+        // Same sheet as General settings: page and app bar are surfaceContainer,
+        // rows are inset at the page background.
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -468,4 +439,12 @@ internal fun SettingsScaffold(
             Spacer(Modifier.height(SettingsLayout.GROUP_GAP))
         }
     }
+}
+
+/** Opens Android's own notification settings for this app, listing its channels. */
+private fun openSystemChannelSettings(context: android.content.Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    }
+    runCatching { context.startActivity(intent) }
 }

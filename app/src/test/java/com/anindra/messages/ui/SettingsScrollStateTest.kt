@@ -52,7 +52,7 @@ class SettingsScrollStateTest {
     @Test
     fun mainActivityHoistsEverySettingsScrollStateAboveTheNavAnimation() {
         val hoisted = listOf(
-            "settingsScroll", "advancedScroll", "accessibilityScroll",
+            "settingsScroll", "advancedScroll", "accessibilityScroll", "aboutScroll",
             "contactDetailsScroll", "trashConversationList",
             "trashMessageList", "spamConversationList", "spamMessageList"
         )
@@ -66,7 +66,8 @@ class SettingsScrollStateTest {
     fun everyHoistedStateIsWiredIntoItsScreen() {
         val wired = listOf(
             "scrollState = settingsScroll", "scrollState = advancedScroll",
-            "scrollState = accessibilityScroll", "scrollState = contactDetailsScroll",
+            "scrollState = accessibilityScroll", "scrollState = aboutScroll",
+            "scrollState = contactDetailsScroll",
             "conversationListState = trashConversationList",
             "messageListState = trashMessageList",
             "conversationListState = spamConversationList",

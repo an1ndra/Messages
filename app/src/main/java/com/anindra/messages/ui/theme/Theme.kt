@@ -244,6 +244,14 @@ private val DarkHighContrastColors = darkColorScheme(
     surfaceContainerHighest = Color(0xFF333537)
 )
 
+/**
+ * The launcher mark's own blue (ic_launcher_background). The one colour that
+ * must not follow the theme: About draws the same mark, so a wallpaper palette
+ * cannot repaint the app's own icon. Kept here so the drawable and the screen
+ * cannot drift apart.
+ */
+val AppMarkBlue = Color(0xFF0B57D0)
+
 // Semantic aliases so screens express intent, not raw colors.
 val ColorScheme.outgoingBubble: Color get() = primaryContainer          // GM blue bubble
 val ColorScheme.incomingBubble: Color get() = surfaceContainerHighest   // GM grey bubble
@@ -253,20 +261,47 @@ val ColorScheme.incomingBubble: Color get() = surfaceContainerHighest   // GM gr
 val ColorScheme.chatBar: Color
     get() = if (background.luminance() < 0.5f) surfaceContainerLow else background
 val ColorScheme.inputPill: Color get() = surfaceContainerHigh           // text field pill
-// The "Start chat" pill. Container and content are defined as a pair here so
-// the FAB and Diagnostics cannot disagree: primary on secondaryContainer is not
-// a pair Material defines, and a wallpaper palette can make both almost the
-// same darkness, which painted the pill black.
-val ColorScheme.startChatContainer: Color get() = secondaryContainer
-val ColorScheme.startChatContent: Color get() = onSecondaryContainer
-val ColorScheme.selectedBubble: Color
-    get() = if (background.luminance() < 0.5f) Color(0xFF9CC0FF) else Color(0xFF1A46A0)
-val ColorScheme.onSelectedBubble: Color
-    get() = if (background.luminance() < 0.5f) Color(0xFF062E6F) else Color(0xFFFFFFFF)
+
+/** WCAG relative-contrast ratio between two opaque colours. */
+internal fun contrastRatio(a: Color, b: Color): Float {
+    val la = a.luminance()
+    val lb = b.luminance()
+    return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
+}
+
+// The "Start chat" pill is the tinted accent container (#347), measured off
+// Google Messages on both schemes: #D3E3FD with #0842A0 content in the light
+// theme, #0842A0 with #D3E3FD content in the dark one. That is the scheme's
+// primaryContainer and whichever of its content roles reads on it — a solid
+// primary fill (round 2) turned into a dead grey slab under a wallpaper
+// palette, and secondaryContainer (round 1) was never the surface GM paints.
+// Defined once here so the FAB, the legacy screen and Diagnostics cannot
+// disagree.
+val ColorScheme.startChatContainer: Color get() = primaryContainer
+val ColorScheme.startChatContent: Color
+    get() = if (primaryContainer.luminance() < 0.5f) onPrimaryContainer else primary
+
+// Selected messages sit inside the accent the theme (seeded or wallpaper)
+// supplies: the bubble fills with primary and its content reads onPrimary.
+// The previous hard-coded blue never followed the wallpaper pair (#347).
+val ColorScheme.selectedBubble: Color get() = primary
+val ColorScheme.onSelectedBubble: Color get() = onPrimary
 
 // Chat date separators and message times use the platform default typeface
 // at a slightly lighter weight than surrounding text.
 val ChatMetaWeight: FontWeight = FontWeight.Medium
+
+/**
+ * The badge Google Messages draws on the composer's attach button: a dot on the
+ * "+" ring's top-right, overlapping it so the ring reads as broken there.
+ *
+ * It used to be pinned to the #76D1FF sampled off GM's *dark* composer. On a
+ * light pill that pale cyan has almost no contrast against the white field —
+ * "in light mode the attach dot colour does not look good" — and a fixed hex is
+ * not a scheme role. It follows the accent now, like every other highlight, so
+ * each theme (and each wallpaper palette, under Dynamic) gets a dot that reads.
+ */
+val ColorScheme.composerAttachDot: Color get() = primary
 
 /**
  * Whether a theme mode renders as a dark scheme.
@@ -327,7 +362,7 @@ internal fun schemeFor(
 
 @Composable
 fun MessagesTheme(
-    mode: String = "system",   // system | light | dark | amoled
+    mode: String = "system",   // system | light | dark | amoled | dynamic
     font: String = SettingsStore.FONT_SYSTEM,
     a11y: A11yOptions = A11yOptions.DISABLED,
     content: @Composable () -> Unit

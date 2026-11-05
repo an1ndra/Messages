@@ -37,6 +37,25 @@ class MessageSearchTest {
     }
 
     @Test
+    fun rangesMatchAcrossNonBreakingDigitsInAPaintedBubble() {
+        // The bubble paints a card number with U+00A0/U+2011 so it cannot wrap
+        // (#405); a query typed with ordinary characters still has to hit it,
+        // and the offsets still have to address the painted string.
+        val painted = "کارت 5022 **29 **** 9227"
+        val hits = MessageSearch.ranges(painted, "5022 **29")
+        assertEquals(listOf(5 until 14), hits)
+        assertEquals("5022 **29", painted.substring(hits.single().first, hits.single().last + 1))
+
+        val hyphenated = "کارت 5022‑29xx‑xxxx‑9227"
+        assertEquals(
+            "5022‑29xx",
+            hyphenated.substring(MessageSearch.ranges(hyphenated, "5022-29xx").single().let {
+                it.first..it.last
+            })
+        )
+    }
+
+    @Test
     fun visibleMatchesNeverSeeLockedBodiesOrHiddenLinks() {
         val redactor: (String) -> String = { body -> body.replace(Regex("https?://\\S+"), "") }
         val body = "pay https://secret.example/now please"

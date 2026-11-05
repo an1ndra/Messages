@@ -14,12 +14,14 @@
     <string name="chat_details">التفاصيل</string>
     <string name="chat_view_details">عرض التفاصيل</string>
     <string name="chat_schedule">جدولة</string>
+    <string name="chat_select_date">اختر التاريخ</string>
     <string name="chat_select_time">اختر الوقت</string>
     <string name="chat_media_camera">الكاميرا</string>
     <string name="chat_media_gallery">المعرض</string>
     <string name="chat_select_all">تحديد الكل</string>
     <string name="chat_select_text">تحديد النص</string>
     <string name="chat_save_image">حفظ الصورة</string>
+    <string name="chat_save_images">حفظ الصور</string>
     <string name="chat_image_saved">تم حفظ الصورة في Pictures/Messages</string>
     <string name="chat_image_save_failed">تعذر حفظ الصورة</string>
 
@@ -38,6 +40,10 @@
     <string name="chat_sending_via">جارٍ الإرسال عبر %s</string>
     <string name="chat_switch_sim">تبديل شريحة SIM</string>
     <string name="chat_scheduled_for">مجدولة في %s</string>
+    <string name="chat_schedule_gregorian_hint">ميلادي: %1$s</string>
+    <string name="chat_schedule_previous_month">الشهر السابق</string>
+    <string name="chat_schedule_next_month">الشهر التالي</string>
+    <string name="chat_schedule_choose_year">اختر السنة</string>
     <string name="chat_schedule_failed">تعذّر جدولة الرسالة</string>
     <string name="chat_search_contacts">البحث في جهات الاتصال</string>
     <string name="chat_add_people">إضافة أشخاص</string>
@@ -67,6 +73,7 @@
     <string name="message_detail_to">إلى</string>
     <string name="message_detail_from">من</string>
     <string name="message_detail_sent">مرسلة</string>
+    <string name="message_detail_gregorian">التاريخ الميلادي</string>
     <string name="message_detail_delivered">تم التسليم</string>
     <string name="message_detail_status">الحالة</string>
     <string name="message_status_sending">جارٍ الإرسال…</string>
@@ -95,4 +102,13 @@
     <string name="chat_search_next">المطابقة التالية</string>
     <string name="chat_search_counter">%1$d من %2$d</string>
     <string name="chat_scroll_to_latest">الانتقال إلى أحدث رسالة</string>
+    <string name="access_zoom_reset">تكبير %1$d%%، اضغط لإعادة الضبط</string>
+    <string name="chat_star">تمييز</string>
+    <string name="chat_unstar">إزالة التمييز</string>
+    <string name="chat_starred">تم تمييز الرسالة</string>
+    <string name="chat_unstarred">أُزيل التمييز</string>
+    <string name="chat_message_starred">رسالة مميزة</string>
+    <string name="chat_album_photos">%1$d صور</string>
+    <string name="chat_album_more">%1$d صور إضافية</string>
+    <string name="chat_album_previous">الصور السابقة</string>
 </resources>
