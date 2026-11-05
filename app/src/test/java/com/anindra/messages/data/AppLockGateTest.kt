@@ -62,4 +62,18 @@ class AppLockGateTest {
             bubble.contains(": MainActivity()")
         )
     }
+
+    @Test
+    fun theOpenChatIsHeldOutsideTheGatedContent() {
+        val activity = src("java/com/anindra/messages/MainActivity.kt")
+        val gateReturn = activity.indexOf("return@setContent")
+        val chatId = activity.indexOf("chatId by")
+        assertTrue("the gate's early return was not found", gateReturn > 0)
+        assertTrue("chatId was not found", chatId > 0)
+        assertTrue(
+            "chatId is declared after the gate's early return, so re-arming the lock " +
+                "discards it and the chat comes back blank with no name (#354)",
+            chatId < gateReturn
+        )
+    }
 }
