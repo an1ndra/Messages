@@ -149,12 +149,12 @@ class ContactDetailsWiringTest {
         // view in Contacts, or block. Those all belong to a 1:1.
         val actions = screen
             .substringAfter("Spacer(Modifier.height(16.dp))")
-            .substringBefore("contact_notifications")
+            .substringBefore("contact_notification_profile")
         assertTrue(
             "the Call/Contact row must be gated on !isGroup",
             Regex("""if \(!isGroup\) \{\s*\n\s*Row\(""").containsMatchIn(actions),
         )
-        val blockRow = screen.substringAfter("contact_notifications")
+        val blockRow = screen.substringAfter("contact_notification_profile")
         assertTrue(
             "Block number must be gated on !isGroup",
             Regex("""if \(!isGroup\) \{[\s\S]{0,200}?contact_block_report""").containsMatchIn(blockRow),
