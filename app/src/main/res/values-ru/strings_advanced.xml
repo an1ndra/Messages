@@ -9,7 +9,7 @@
     <string name="settings_advanced_permanent_delete">Удаление безвозвратно</string>
     <string name="settings_advanced_permanent_delete_desc">Удалять сообщения сразу, не перемещая в корзину</string>
     <string name="settings_advanced_turn_off">Сначала отключите «</string>
-    <string name="settings_advanced_turn_off_suffix">"»</string>
+    <string name="settings_advanced_turn_off_suffix">\"»</string>
     <string name="settings_advanced_permanent_delete_on">Удаление безвозвратно включено. Эта переписка и её сообщения будут немедленно удалены с устройства — без перемещения в корзину — и не могут быть восстановлены.</string>
     <string name="settings_font_title">Шрифт</string>
     <string name="settings_advanced_emoji_button">Кнопка эмодзи</string>

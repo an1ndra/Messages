@@ -8,8 +8,8 @@
     <string name="settings_advanced_link_warning">Aviso de abertura de link</string>
     <string name="settings_advanced_permanent_delete">Exclusão permanente</string>
     <string name="settings_advanced_permanent_delete_desc">Excluir mensagens imediatamente em vez de movê-las para a lixeira</string>
-    <string name="settings_advanced_turn_off">Desative "</string>
-    <string name="settings_advanced_turn_off_suffix">" primeiro</string>
+    <string name="settings_advanced_turn_off">Desative \"</string>
+    <string name="settings_advanced_turn_off_suffix">\" primeiro</string>
     <string name="settings_advanced_permanent_delete_on">A exclusão permanente está ativada. Esta conversa e suas mensagens serão removidas do seu dispositivo imediatamente — não movidas para a lixeira — e não poderão ser restauradas.</string>
     <string name="settings_font_title">Fonte</string>
     <string name="settings_advanced_emoji_button">Botão de emoji</string>

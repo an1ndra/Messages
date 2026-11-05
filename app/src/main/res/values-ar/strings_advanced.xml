@@ -9,7 +9,7 @@
     <string name="settings_advanced_permanent_delete">حذف نهائي</string>
     <string name="settings_advanced_permanent_delete_desc">حذف الرسائل فورًا بدلاً من نقلها إلى سلة المحذوفات</string>
     <string name="settings_advanced_turn_off">أطفئ \"</string>
-    <string name="settings_advanced_turn_off_suffix">" أولاً</string>
+    <string name="settings_advanced_turn_off_suffix">\" أولاً</string>
     <string name="settings_advanced_permanent_delete_on">الحذف النهائي مفعّل. سيتم إزالة هذه المحادثة ورسائلها من جهازك فورًا - لن تُنقل إلى سلة المحذوفات - ولا يمكن استعادتها.</string>
     <string name="settings_font_title">الخط</string>
     <string name="settings_advanced_emoji_button">زر الرموز التعبيرية</string>
