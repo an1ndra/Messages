@@ -365,6 +365,8 @@ internal fun ChatBubble(
     hideLinks: Boolean,
     isUnlocked: Boolean,
     showSimIndicator: Boolean,
+    /** The SIM the message went out on, when it can still be resolved. */
+    simCard: SimCard? = null,
     isSelected: Boolean = false,
     animateIn: Boolean = false,
     position: BubblePosition = BubblePosition.SINGLE,
@@ -635,12 +637,9 @@ internal fun ChatBubble(
                         else -> com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
                     }
                 } else ""
-                val simLabel = if (showSimIndicator && msg.subId > 0) {
-                    try {
-                        val slotIndex = SubscriptionManager.getSlotIndex(msg.subId)
-                        if (slotIndex >= 0) String.format(context.getString(R.string.sim_slot_suffix), slotIndex + 1) else ""
-                    } catch (_: Exception) { "" }
-                } else ""
+                val simLabel = remember(msg.subId, showSimIndicator, simCard) {
+                    simMessageSuffix(context, simCard, msg.subId, showSimIndicator)
+                }
                 val time = formatTimeOnly(msg.timestamp, is24HourFormat(context))
                 val label = if (msg.isMe) {
                     "$time \u2022 $statusText$simLabel"
@@ -1087,8 +1086,8 @@ fun ChatScreen(
         val next = SimSwitcher.next(currentSimId, sims) ?: return
         currentSimId = next.subscriptionId
         vm.settings.simSubscriptionId = next.subscriptionId
-        val carrier = next.carrierName?.ifBlank { null }
-        val label = if (carrier != null) String.format("%s · SIM %s", carrier, next.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), next.slotIndex + 1)
+        val name = simName(next)
+        val label = if (name != null) String.format("%s · SIM %s", name, next.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), next.slotIndex + 1)
         Toast.makeText(context, context.getString(R.string.chat_sending_via, label), Toast.LENGTH_SHORT).show()
     }
 
@@ -1918,7 +1917,10 @@ fun ChatScreen(
                         ScheduledBubble(
                             scheduled = row.scheduled,
                             onCancel = { vm.cancelScheduledMessage(row.scheduled.id) },
-                            showSimIndicator = vm.settings.showSimIndicator
+                            showSimIndicator = vm.settings.showSimIndicator,
+                            simCard = sims.firstOrNull {
+                                it.subscriptionId == row.scheduled.subId
+                            }
                         )
                         return@itemsIndexed
                     }
@@ -1991,6 +1993,7 @@ fun ChatScreen(
                             hideLinks = vm.settings.hideLinks,
                             isUnlocked = rowIds.any { it in unlockedIds },
                             showSimIndicator = vm.settings.showSimIndicator,
+                            simCard = sims.firstOrNull { it.subscriptionId == msg.subId },
                             isSelected = rowIds.all { it in selectedMessageIds },
                             searchQuery = if (msg.id == focusedSearchId) activeSearch else null,
                             isSearchFocus = msg.id == focusedSearchId,
@@ -2542,11 +2545,7 @@ internal fun ChatTopBar(
                     )
                     if (SimSwitcher.shouldShowSwitch(sims.size)) {
                         sims.sortedBy { it.slotIndex }.forEach { sub ->
-                            val carrier = sub.carrierName?.ifBlank { null }
-                            val simLabel = buildString {
-                                append(String.format(context.getString(R.string.settings_sim_label), sub.slotIndex + 1))
-                                if (carrier != null) append(String.format(" · %s", carrier))
-                            }
+                            val simLabel = simOptionLabel(context, sub)
                             DropdownMenuItem(
                                 text = {
                                     Row(
@@ -3625,9 +3624,7 @@ internal fun SimPickerDialog(
         text = {
             Column {
                 sims.forEach { sub ->
-                    val carrier = sub.carrierName?.ifBlank { null }
-                    val label =
-                        if (carrier != null) String.format("%s · SIM %s", carrier, sub.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.slotIndex + 1)
+                    val label = simOptionLabel(context, sub)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { selected = sub.subscriptionId }
