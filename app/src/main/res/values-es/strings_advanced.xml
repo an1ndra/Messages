@@ -9,7 +9,7 @@
     <string name="settings_advanced_permanent_delete">Eliminación permanente</string>
     <string name="settings_advanced_permanent_delete_desc">Eliminar mensajes inmediatamente en lugar de moverlos a la papelera</string>
     <string name="settings_advanced_turn_off">Desactivar «</string>
-    <string name="settings_advanced_turn_off_suffix">" primero</string>
+    <string name="settings_advanced_turn_off_suffix">\" primero</string>
     <string name="settings_advanced_permanent_delete_on">La eliminación permanente está activada. Esta conversación y sus mensajes se eliminarán de tu dispositivo de inmediato — no se moverán a la papelera — y no podrán ser restaurados.</string>
     <string name="settings_font_title">Fuente</string>
     <string name="settings_advanced_emoji_button">Botón de emoji</string>

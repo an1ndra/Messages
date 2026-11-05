@@ -8,7 +8,6 @@
     <string name="common_open">열기</string>
     <string name="common_close">닫기</string>
     <string name="common_next">다음</string>
-
     <!-- Time formatting -->
     <string name="time_now">지금</string>
     <string name="time_today">오늘</string>
@@ -16,10 +15,8 @@
     <string name="time_format_hour">h:mm a</string>
     <string name="time_format_date">MMM d</string>
     <string name="time_format_divider">EEE, MMM d</string>
-
     <!-- Contacts -->
     <string name="contact_work_profile">업무 프로필 연락처</string>
-
     <!-- Accessibility -->
     <string name="access_restore">복원</string>
     <string name="access_delete_forever">영구 삭제</string>

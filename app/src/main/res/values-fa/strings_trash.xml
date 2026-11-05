@@ -10,7 +10,6 @@
     <string name="trash_tab_messages">پیام‌ها</string>
     <string name="trash_messages_empty">هیچ پیام حذف‌شده‌ای نیست</string>
     <string name="trash_messages_empty_message">پیام‌هایی که حذف می‌کنید تا وقتی پاکشان نکنید اینجا می‌مانند</string>
-
     <string name="trash_empty_is_empty">سطل زباله خالی است</string>
     <string name="trash_empty_message">گفتگوهای حذف‌شده پس از 30 روز برای همیشه پاک می‌شوند</string>
     <string name="trash_empty_confirm">همه %d مورد سطل زباله برای همیشه حذف شوند؟ قابل بازگشت نیست.</string>
