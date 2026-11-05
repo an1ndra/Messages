@@ -117,6 +117,7 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .animateItem()
                             .clickable { onPick(contact.number, contact.name) }
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {

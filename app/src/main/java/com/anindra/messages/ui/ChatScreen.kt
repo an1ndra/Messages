@@ -40,8 +40,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
@@ -68,6 +68,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,7 +77,9 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.Archive
@@ -93,8 +96,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Schedule
 
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -102,6 +104,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
@@ -113,6 +116,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -120,7 +124,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -140,6 +143,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -148,15 +152,21 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
@@ -169,11 +179,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.anindra.messages.AppViewModel
+import kotlin.math.abs
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.MessageSearch
+import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimSwitcher
@@ -184,6 +196,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.Motion
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.graphics.toArgb
+import com.anindra.messages.ui.theme.composerAttachDot
 import com.anindra.messages.ui.theme.motionSpring
 import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.ui.theme.chatBar
@@ -196,10 +212,12 @@ import com.anindra.messages.ui.theme.selectedBubble
 import java.io.File
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -210,15 +228,97 @@ import androidx.compose.runtime.mutableStateListOf
 private val EMOJIS = MessageReactions.EMOJI
 
 private const val INITIAL_CHUNK = 40
-private const val AUTO_CHUNK = 40
-private const val AUTO_CAP = 400
-private const val LOAD_EARLIER_STEP = 200
+internal const val AUTO_CHUNK = 40
+/**
+ * Whether older history should be loaded now.
+ *
+ * Only when the reader has actually reached the top of the loaded window — a few
+ * rows of slack so the placeholder under the first message counts. Loading while
+ * parked at the bottom prepends rows nobody asked for: the visible ones shift for
+ * a frame before the follow-bottom snap pulls them back, which on a long thread
+ * is one visible flash per chunk.
+ */
+internal fun shouldLoadEarlier(totalItems: Int, firstVisibleIndex: Int): Boolean =
+    totalItems > 0 && firstVisibleIndex <= EARLIER_EDGE_ROWS
+
+/**
+ * What the list needs to know about its own bottom: whether the *last* row is on
+ * screen, and where its bottom edge sits.
+ *
+ * Comparing a row's bottom with the viewport is not enough — a row clipped by the
+ * fold has its bottom on the fold too. Only the last row of the list can prove
+ * the list has reached its end.
+ */
+private data class BottomSnapshot(
+    val totalItems: Int,
+    val lastRowShown: Boolean,
+    val bottomEdge: Int
+)
+
+private fun LazyListState.bottomSnapshot(): BottomSnapshot {
+    val info = layoutInfo
+    val lastRow = info.visibleItemsInfo.lastOrNull()
+    return BottomSnapshot(
+        totalItems = info.totalItemsCount,
+        lastRowShown = lastRow != null && lastRow.index == info.totalItemsCount - 1,
+        bottomEdge = if (lastRow == null) Int.MAX_VALUE else lastRow.offset + lastRow.size
+    )
+}
+
+/**
+ * The draft to put back in the composer, or null when there is nothing to
+ * restore.
+ *
+ * The restore used to be a bare `{ … }` lambda literal that was never invoked, so
+ * a saved draft silently vanished on re-open ("one Draft message I open in chat
+ * Text field I cant see them it disappere"). Keeping the decision as a function
+ * is what makes it testable off-device: an empty or already-loaded draft restores
+ * nothing, and anything else is put back exactly once.
+ */
+internal fun restoredDraft(saved: String?, alreadyLoaded: Boolean): String? =
+    when {
+        alreadyLoaded -> null
+        saved.isNullOrBlank() -> null
+        else -> saved
+    }
+
+/** Rows of slack above the first loaded message that count as "at the top". */
+private const val EARLIER_EDGE_ROWS = 3
+
+/**
+ * Rows of older history a search jump loads around its hit. Older history is no
+ * longer capped at 400 rows (issue #406): scrolling up keeps paging until the
+ * thread's beginning.
+ */
+internal const val SEARCH_CONTEXT_ROWS = 60
+
+/** The page size after one more scroll-up load: monotonic, never above [total]. */
+internal fun grownPageLimit(current: Int, total: Int, step: Int = AUTO_CHUNK): Int =
+    (current + step).coerceAtMost(maxOf(total, current))
+
+/**
+ * The page size that reaches a hit [newerCount] rows from the newest message,
+ * plus context. A search jump asks for this once instead of walking the thread
+ * in fixed steps, which made a hit thousands of rows back take seconds.
+ */
+internal fun searchPageLimit(newerCount: Int, total: Int): Int =
+    (newerCount + SEARCH_CONTEXT_ROWS).coerceIn(0, total)
+
+/** Whether the loaded window still excludes part of the thread. */
+internal fun hasEarlierMessages(totalCount: Int, pageLimit: Int): Boolean =
+    totalCount > pageLimit
 
 /** The first visible chat row at the moment the pager grows, restored once the
  *  older rows land. LazyColumn re-anchors by key itself, but only within a
- *  bounded window around the previous index, so a LOAD_EARLIER_STEP prepend
- *  pushes that key out of the window and the view drifts up the thread. */
-private class PrependAnchor(val key: Any, val offset: Int)
+ *  bounded window around the previous index, so a large prepend pushes that key
+ *  out of the window and the view drifts up the thread. */
+/** What to restore once a requested page lands. [key] is null for a search
+ *  jump, which has no row to hold. */
+private class PendingLoad(val key: Any?, val offset: Int, val rowsBefore: Int)
+
+/** The visible rows in the shape [ChatZoom.anchorAt] takes. */
+private fun LazyListState.zoomItems(): List<ChatZoom.Item> =
+    layoutInfo.visibleItemsInfo.map { ChatZoom.Item(it.index, it.offset, it.size) }
 
 /** Partial-text copy (#231). The message text is shown in a dialog inside a
  *  SelectionContainer: the system handles and the Copy/Share toolbar then work
@@ -249,6 +349,12 @@ internal fun TextCopyDialog(
 @Composable
 internal fun ChatBubble(
     msg: Message,
+    /**
+     * Every picture the message carries. More than one draws a grid inside the
+     * single bubble a multi-picture MMS gets (#398); one or none keeps the
+     * ordinary [ImageBubble].
+     */
+    albumUris: List<String> = emptyList(),
     showTime: Boolean,
     senderName: String? = null,
     onTap: () -> Unit,
@@ -276,6 +382,10 @@ internal fun ChatBubble(
     var pendingUrl by remember { mutableStateOf<String?>(null) }
     val isLockedAndHidden = msg.locked && !isUnlocked
     val displayBody = if (isLockedAndHidden) "@Lock" else msg.body
+    // The bubble is aligned by logical Start/End, so "mine" sits on the physical
+    // right in LTR and on the physical left in RTL. The reaction bar has to hug
+    // the same outer edge as the bubble or it overflows the screen.
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val searchResultLabel = stringResource(R.string.chat_search_result)
     val slidePx = with(LocalDensity.current) { BubbleEntrance.SLIDE_DP.dp.toPx() }
     val bubbleReduceMotion = LocalReduceMotion.current
@@ -299,6 +409,23 @@ internal fun ChatBubble(
         searchQuery = if (isLockedAndHidden) null else searchQuery,
         searchHighlightAlpha = searchHighlightAlpha
     )
+    // Content, not a direction computed here: each line is laid out in the
+    // direction its own first strong character gives, which is what Google
+    // Messages and Fossify do — mixing RTL prose with an LTR "11:24 PM" line
+    // in one bubble only works if the base direction is resolved per line.
+    // BubbleDirection reports those per-line directions for the regression
+    // scripts; the paint itself is the platform's.
+    val bodyStyle = MaterialTheme.typography.bodyLarge.merge(
+        TextStyle(
+            color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface,
+            textDirection = TextDirection.Content
+        )
+    )
+    LaunchedEffect(msg.id, displayBody) {
+        val lines = BidiText.lines(displayBody)
+            .joinToString(",") { if (it.direction == BidiText.Direction.RTL) "Rtl" else "Ltr" }
+        android.util.Log.d("BubbleDirection", "id=${msg.id} dirs=$lines")
+    }
 
     if (senderName != null && !msg.isMe) {
         Row(
@@ -374,7 +501,16 @@ internal fun ChatBubble(
                             onLongClick = { onLongPress() }
                         )
                     ) {
-                        ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
+                        if (albumUris.size > 1) {
+                            AlbumGrid(
+                                uris = albumUris,
+                                isMe = msg.isMe,
+                                onImageTap = onImageTap,
+                                onLongPress = onLongPress
+                            )
+                        } else {
+                            ImageBubble(uri = msg.mediaUri, isMe = msg.isMe)
+                        }
                         if (msg.body.isNotBlank()) {
                             Surface(
                                 color = if (isSelected) cs.selectedBubble else if (msg.isMe) cs.outgoingBubble else cs.incomingBubble,
@@ -388,9 +524,7 @@ internal fun ChatBubble(
                             ) {
                                 Text(
                                     text = bodyText,
-                                    style = MaterialTheme.typography.bodyLarge.merge(
-                                        TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
-                                    ),
+                                    style = bodyStyle,
                                     modifier = Modifier
                                         .padding(horizontal = 14.dp, vertical = 8.dp)
                                         .semantics {
@@ -413,9 +547,7 @@ internal fun ChatBubble(
                     ) {
                         Text(
                             text = bodyText,
-                            style = MaterialTheme.typography.bodyLarge.merge(
-                                TextStyle(color = if (isSelected) cs.onSelectedBubble else if (msg.isMe) cs.onPrimaryContainer else cs.onSurface)
-                            ),
+                            style = bodyStyle,
                             modifier = Modifier
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
                                 .semantics {
@@ -424,6 +556,13 @@ internal fun ChatBubble(
                                 }
                         )
                     }
+                }
+                if (msg.starred) {
+                    StarBadge(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 2.dp, y = 2.dp)
+                    )
                 }
 
             }
@@ -450,8 +589,10 @@ internal fun ChatBubble(
                 layout(bubble.width, bubble.height) {
                     bubble.place(0, 0)
                     bar?.let {
-                        val x = if (msg.isMe) bubble.width - it.width else 0
-                        it.place(x, -it.height - barGapPx)
+                        it.place(
+                            reactionBarX(msg.isMe, isRtl, bubble.width, it.width),
+                            -it.height - barGapPx
+                        )
                     }
                 }
             }
@@ -525,10 +666,32 @@ internal fun ChatBubble(
 }
 
 
+/**
+ * X offset of the reaction bar inside the bubble's layout: it hugs the same
+ * physical outer edge as the bubble. In LTR that is the right edge for an
+ * outgoing bubble and the left edge for an incoming one; RTL is the mirror.
+ * Without the mirror the bar kept its left edge on an incoming RTL bubble and
+ * ran off the right side of the screen (issue #408).
+ */
+internal fun reactionBarX(isMe: Boolean, isRtl: Boolean, bubbleWidth: Int, barWidth: Int): Int =
+    if (isMe != isRtl) bubbleWidth - barWidth else 0
+
+/**
+ * Whether the long-press bar belongs on this bubble.
+ *
+ * The bar acts on one message, so it is offered only while this bubble is the
+ * whole selection: selecting a second message hides it (#5c7e694). A
+ * multi-picture MMS is several rows behind one bubble and its long-press
+ * selects all of them, so the bubble counts as one message (#364 M6) — asking
+ * for a single row instead made albums unable to carry a reaction at all.
+ */
+internal fun bubbleIsTheWholeSelection(rowIds: List<Long>, selected: Collection<Long>): Boolean =
+    rowIds.isNotEmpty() &&
+        selected.size == rowIds.size &&
+        rowIds.all { it in selected }
 /** The tap-to-toggle emoji bar shown on a long-pressed message (issue #188). */
 @Composable
-internal fun ReactionBar(
-    selected: Set<String>,
+internal fun ReactionBar(    selected: Set<String>,
     onReact: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -600,6 +763,38 @@ internal fun ReactionChips(
     }
 }
 
+/**
+ * #394: the marker on a starred bubble. A framed circle rather than a bare
+ * glyph, so it reads as a badge pinned to the bubble's corner instead of
+ * another word in the message. The description is on this node, not on the
+ * icon inside it, so the badge reports its own size to accessibility.
+ */
+@Composable
+internal fun StarBadge(
+    modifier: Modifier = Modifier
+) {
+    val cs = MaterialTheme.colorScheme
+    val desc = stringResource(R.string.chat_message_starred)
+    Surface(
+        shape = CircleShape,
+        color = cs.surface,
+        border = BorderStroke(1.dp, cs.outlineVariant),
+        shadowElevation = 2.dp,
+        modifier = modifier
+            .size(20.dp)
+            .semantics { contentDescription = desc }
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                Icons.Filled.Star,
+                contentDescription = null,
+                tint = cs.primary,
+                modifier = Modifier.size(12.dp)
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -608,11 +803,13 @@ fun ChatScreen(
     searchQuery: String? = null,
     initialDraft: String = "",
     initialMedia: List<android.net.Uri> = emptyList(),
+    initialStagedMedia: List<android.net.Uri> = emptyList(),
     onBack: () -> Unit,
     onOpenDetails: () -> Unit = {},
     onAddPeople: () -> Unit = {},
     onInitialDraftConsumed: () -> Unit = {},
-    onInitialMediaConsumed: () -> Unit = {}
+    onInitialMediaConsumed: () -> Unit = {},
+    onInitialStagedMediaConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -633,18 +830,89 @@ fun ChatScreen(
         vmContacts.filter { it.workProfile }.map { phoneKey(it.number) }.toSet()
     }
     val listState = rememberLazyListState()
-    // #348: pinch scales the message text and lets the bubbles re-lay out.
-    // Remembered per conversation for as long as the chat (or its saved state)
-    // lives, then back to 1x for the next chat.
+    // #348: pinch scales the message text and lets the bubbles re-lay out. The
+    // zoom is remembered per conversation, in settings, so it survives leaving
+    // the chat and an app restart.
     var zoom by rememberSaveable(conversationId) {
-        mutableFloatStateOf(ChatZoom.fontScale(vm.debugChatZoom.takeIf { it > 0f } ?: ChatZoom.DEFAULT))
-    }
-    val zoomState = rememberTransformableState { zoomChange, _, _ ->
-        zoom = ChatZoom.apply(zoom, zoomChange)
+        mutableFloatStateOf(
+            ChatZoom.fontScale(
+                vm.debugChatZoom.takeIf { it > 0f } ?: vm.settings.chatZoomFor(conversationId)
+            )
+        )
     }
     val baseDensity = LocalDensity.current
     val zoomedDensity = remember(baseDensity, zoom) {
         Density(baseDensity.density, baseDensity.fontScale * ChatZoom.fontScale(zoom))
+    }
+    var anchorJob by remember { mutableStateOf<Job?>(null) }
+    // Held outside the gesture handler: Compose restarts a `pointerInput` block
+    // whenever its lambda changes, and this chat recomposes on every zoom step.
+    val pinch = remember(conversationId) { ChatZoom.Pinch() }
+    val pinchZoomEnabled = vm.settings.pinchZoomEnabled
+    // Every row changes height when the scale changes, and the list keeps its
+    // scroll offset, so the message under the fingers slides away. Re-anchor it:
+    // note the row under the touch point, then scroll back so that same point of
+    // that row is back under it once the new layout is in place.
+    fun zoomAnchored(target: Float, y: Float) {
+        if (target == zoom) return
+        val anchor = ChatZoom.anchorAt(y, listState.zoomItems())
+        zoom = target
+        if (anchor == null) return
+        anchorJob?.cancel()
+        anchorJob = scope.launch {
+            withFrameNanos { }
+            val item = listState.layoutInfo.visibleItemsInfo
+                .firstOrNull { it.index == anchor.index } ?: return@launch
+            listState.scrollBy(
+                ChatZoom.anchorScroll(
+                    y, anchor, ChatZoom.Item(item.index, item.offset, item.size)
+                )
+            )
+        }
+    }
+    // The pinch is handled here rather than with `Modifier.transformable`: a
+    // lazy list's own scroll gesture gets pointer events first and consumes the
+    // drag, which cancels a transform gesture for the whole touch sequence. A
+    // real pinch almost always starts with one finger landing before the other,
+    // so that cancellation was the norm and the chat only zoomed when both
+    // fingers landed on the same frame (#348).
+    //
+    // So: watch in the Initial pass, measure the finger spread from the moment
+    // the second finger lands (no zoom is lost to a slop gate), and consume the
+    // two-finger events so the list cannot scroll out from under the gesture.
+    // Single-finger events are left alone, and a two-finger drag that does not
+    // change the spread is not consumed either, so it still scrolls.
+    suspend fun PointerInputScope.pinchToZoom() {
+        val slop = viewConfiguration.touchSlop
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                val pressed = event.changes.filter { it.pressed }
+                if (pressed.size != 2) {
+                    pinch.clear()
+                    continue
+                }
+                val a = pressed[0].position
+                val b = pressed[1].position
+                val spread = ChatZoom.spread(b.x - a.x, b.y - a.y)
+                if (!pinch.tracking) {
+                    pinch.begin(spread, zoom)
+                    continue
+                }
+                if (abs(spread - pinch.startSpread) < slop) continue
+                zoomAnchored(pinch.zoomFor(spread), (a.y + b.y) / 2f)
+                event.changes.forEach { it.consume() }
+            }
+        }
+    }
+    LaunchedEffect(conversationId) {
+        snapshotFlow { zoom }.collectLatest { value ->
+            delay(400)
+            vm.settings.setChatZoomFor(conversationId, ChatZoom.fontScale(value))
+        }
+    }
+    DisposableEffect(conversationId) {
+        onDispose { vm.settings.setChatZoomFor(conversationId, ChatZoom.fontScale(zoom)) }
     }
     // Progressive loading: latest chunk first, shimmer while older messages queue
     var pageLimit by remember(conversationId) { mutableIntStateOf(INITIAL_CHUNK) }
@@ -675,9 +943,9 @@ fun ChatScreen(
         (if (searchOpen) chatQuery else searchQuery)?.trim()?.takeIf { it.isNotEmpty() }
     }
     // The matches come from the whole thread, not just the loaded window: the
-    // home list surfaces a thread on a hit buried past the 400-message auto-load
-    // cap, so the chat has to be able to reach it too (the pager grows on
-    // demand while a hit is older than what it holds).
+    // home list surfaces a thread on a hit buried deep in its history, so the
+    // chat has to be able to reach it too (the pager grows on demand while a hit
+    // is older than what it holds).
     val hideLinks = vm.settings.hideLinks
     val searchMatches by remember(conversationId, activeSearch, hideLinks) {
         if (activeSearch == null) flowOf(emptyList())
@@ -694,7 +962,7 @@ fun ChatScreen(
     // A hit older than the loaded window is not a row yet; the scroll and flash
     // effects below re-run when the pager grows it into one.
     val focusedRowLoaded = focusedSearchId != null &&
-        chatRows.any { it is ChatRow.Sent && it.message.id == focusedSearchId }
+        chatRows.any { focusedSearchId in it.messageIds() }
     fun navigateMatch(delta: Int) {
         if (searchMatches.isEmpty()) return
         val from = focusedMatchIndex.takeIf { it >= 0 } ?: -1
@@ -710,12 +978,17 @@ fun ChatScreen(
             entranceBaseline = messages.maxOfOrNull { it.id } ?: 0L
         }
     }
-    val pendingEarlier = messagesLoaded && totalCount > pageLimit && pageLimit < AUTO_CAP
-    // The focused hit older than everything loaded needs the pager past AUTO_CAP;
-    // without this the home list surfaces a thread the chat can never reach.
+    // Until the whole thread is loaded. There used to be an AUTO_CAP of 400
+    // here, so a long conversation simply stopped loading older history
+    // (issue #406). The open-stability rules — no load until the reader has
+    // reached the top themselves — are what keep the extra pages from firing
+    // on open, so the cap is not what was preventing the flicker.
+    val pendingEarlier = messagesLoaded && hasEarlierMessages(totalCount, pageLimit)
+    // A search hit older than the loaded window: jump straight to it rather
+    // than walking the history in fixed steps.
     // Follows the *focused* hit, not the oldest match: keying on the oldest made
-    // one ancient hit anywhere in the thread walk the whole history in 200-row
-    // steps while the view sat on a hit that was already loaded (issue #284).
+    // one ancient hit anywhere in the thread walk the whole history while the
+    // view sat on a hit that was already loaded (issue #284).
     val oldestLoadedId = messages.minOfOrNull { it.id }
     val searchWantsOlder = activeSearch != null && focusedSearchId != null &&
         oldestLoadedId != null && focusedSearchId < oldestLoadedId
@@ -802,10 +1075,12 @@ fun ChatScreen(
     val activity = context as? androidx.fragment.app.FragmentActivity
     val biometricExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
     DisposableEffect(Unit) {
-        onDispose {
-            biometricExecutor.shutdown()
-            com.anindra.messages.sms.ForegroundTracker.setOpenConversation(null)
-        }
+        onDispose { biometricExecutor.shutdown() }
+    }
+    DisposableEffect(convo?.address) {
+        val address = convo?.address
+        com.anindra.messages.sms.ForegroundTracker.openConversation(address)
+        onDispose { com.anindra.messages.sms.ForegroundTracker.closeConversation(address) }
     }
 
     fun cycleSim() {
@@ -860,17 +1135,29 @@ fun ChatScreen(
         }
         if (addr.isBlank()) return
         val caption = draft.trim()
-        pendingMedia.toList().forEachIndexed { index, uri ->
-            vm.sendMediaMessage(conversationId, uri, if (index == 0) caption else "")
+        val awaiting = pendingMedia.toList()
+        // One send for all of them: they leave in a single PDU, so the recipient
+        // sees one message with several pictures rather than one each (#364).
+        vm.sendMediaAlbum(conversationId, awaiting, caption) { stored ->
+            // A send that stored nothing leaves the tray and the caption alone,
+            // so the user can retry (#364).
+            if (stored == 0) return@sendMediaAlbum
+            pendingMedia.clear()
+            draft = ""
+            vm.saveDraft(conversationId, "")
+            showEmoji = false
         }
-        pendingMedia.clear()
-        draft = ""
-        vm.saveDraft(conversationId, "")
-        showEmoji = false
     }
 
     fun toggleSelection(id: Long) {
         if (id in selectedMessageIds) selectedMessageIds.remove(id) else selectedMessageIds.add(id)
+    }
+
+    /** A multi-picture album is one message, so it is selected as a whole. */
+    fun toggleRowSelection(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        if (ids.all { it in selectedMessageIds }) selectedMessageIds.removeAll(ids.toSet())
+        else selectedMessageIds.addAll(ids)
     }
 
     fun clearSelection() {
@@ -903,7 +1190,9 @@ fun ChatScreen(
     fun selectAllMessages() {
         val locked = messages.filter { it.locked }.map { it.id }.toSet()
         selectedMessageIds.clear()
-        selectedMessageIds.addAll(SelectionToolbar.selectAllCandidates(messages.map { it.id }, locked))
+        selectedMessageIds.addAll(
+            SelectionToolbar.selectAllCandidates(selectionGroups(messages), locked)
+        )
     }
 
     /** Partial-text copy (#231). A dialog is used instead of turning the bubble
@@ -919,8 +1208,8 @@ fun ChatScreen(
         }
     }
 
-    fun saveMessageImage(id: Long) {
-        vm.saveMessageImage(id)
+    fun saveMessageImages(ids: List<Long>) {
+        vm.saveMessageImages(ids)
         clearSelection()
     }
 
@@ -945,6 +1234,19 @@ fun ChatScreen(
             cm.setPrimaryClip(android.content.ClipData.newPlainText(context.getString(R.string.chat_messages_label), text))
             Toast.makeText(context, context.getString(R.string.chat_copied), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    fun starSelection() {
+        val targets = messages.filter { it.id in selectedMessageIds }
+        if (targets.isEmpty()) return
+        val star = targets.any { !it.starred }
+        vm.setStarred(targets.map { it.id }, star)
+        clearSelection()
+        Toast.makeText(
+            context,
+            context.getString(if (star) R.string.chat_starred else R.string.chat_unstarred),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     fun forwardSelection() {
@@ -1065,7 +1367,7 @@ fun ChatScreen(
     LaunchedEffect(focusedSearchId, focusedRowLoaded) {
         val id = focusedSearchId ?: return@LaunchedEffect
         if (scrolledToFocusedId == id) return@LaunchedEffect
-        val target = chatRows.indexOfFirst { it is ChatRow.Sent && it.message.id == id }
+        val target = chatRows.indexOfFirst { id in it.messageIds() }
         if (target >= 0) {
             listState.scrollToItem(target)
             hasScrolledToBottom = true
@@ -1098,14 +1400,30 @@ fun ChatScreen(
             if (it is DragInteraction.Start) userDraggedList = true
         }
     }
+    // Park the list on the newest row, and keep it there while the content settles.
+    //
+    // scrollToItem(Int.MAX_VALUE) is clamped to the rows laid out *so far*, so a
+    // first pass over a list that has not composed yet scrolls nowhere. The old
+    // version snapped on every layout change for a fixed four seconds, which was
+    // a race: a slow first query (300 rows landing on a busy database) outlived
+    // the window and the chat opened at the top of the loaded window. It now
+    // re-snaps only while the newest row is still off screen, and stops as soon
+    // as it is — which also ends the run of snaps that made the list twitch after
+    // a picture finished decoding.
     LaunchedEffect(conversationId, newestId, focusedSearchId) {
         if (focusedSearchId != null || newestId == null) return@LaunchedEffect
-        withTimeoutOrNull(4_000L) {
-            snapshotFlow {
+        withTimeoutOrNull(10_000L) {
+            snapshotFlow { listState.bottomSnapshot() }.collect { snapshot ->
                 val info = listState.layoutInfo
-                info.totalItemsCount to info.visibleItemsInfo.sumOf { it.size }
-            }.collect {
-                if (!userDraggedList) listState.scrollToItem(Int.MAX_VALUE)
+                if (snapshot.totalItems == 0) return@collect
+                if (!userDraggedList) {
+                    val inset = info.viewportEndOffset - info.afterContentPadding
+                    if (snapshot.lastRowShown && snapshot.bottomEdge <= inset + 1) {
+                        hasScrolledToBottom = true
+                    } else {
+                        listState.scrollToItem(Int.MAX_VALUE)
+                    }
+                }
             }
         }
     }
@@ -1142,34 +1460,101 @@ fun ChatScreen(
         delay(if (reduceMotion) 3500L else 1900L)
         searchFlashOn = false
     }
-    // Load chunks while pinned near the bottom so inserting rows doesn't jump the
-    // view; a search hit older than the window loads without waiting, in bigger
-    // steps, so the chat reaches what the home list found.
-    LaunchedEffect(pageLimit, totalCount, searchWantsOlder) {
-        if (!pendingEarlier && !searchWantsOlder) return@LaunchedEffect
-        if (!searchWantsOlder) {
-            val nearBottom: () -> Boolean = {
-                val info = listState.layoutInfo
-                val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-                info.totalItemsCount == 0 || last >= info.totalItemsCount - 2
+    // Older history is loaded when the reader reaches the top of the loaded
+    // window, never while the list is parked at the bottom. Prepending there
+    // shifts every visible row for a frame and the follow-bottom snap pulls it
+    // back, so a 300-message chat flashed seven times in 2.5s on open — the
+    // "chat flickers every time I open it" report.
+    var earlierRequest by remember(conversationId) { mutableIntStateOf(0) }
+    // The tick is what the load effect waits for; pageLimit changing below must
+    // not count as a new request, or every load would ask for the next one and
+    // the chat would page in its whole history on open again.
+    var handledRequest by remember(conversationId) { mutableIntStateOf(0) }
+    // Drives the spinner at the top of the list. It is part of the list, so the
+    // prepend anchor below has to count it as a row while it is showing.
+    var loadingEarlier by remember(conversationId) { mutableStateOf(false) }
+    // Row to hold and window size to wait for; survives the effect restart that
+    // the pageLimit write causes.
+    var pendingLoad by remember(conversationId) { mutableStateOf<PendingLoad?>(null) }
+    LaunchedEffect(conversationId) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            info.totalItemsCount to (info.visibleItemsInfo.firstOrNull()?.index ?: Int.MAX_VALUE)
+        }.collect { (total, first) ->
+            // Not before the open has landed on the newest message: until then
+            // the list still sits at the top of the rows that just loaded, which
+            // is exactly the state that used to trigger a preload. The spinner
+            // is row 0 while it shows, so it must not count as reaching the top.
+            if (hasScrolledToBottom && !loadingEarlier && shouldLoadEarlier(total, first)) {
+                earlierRequest++
             }
-            while (!nearBottom()) delay(80)
         }
+    }
+    LaunchedEffect(searchWantsOlder, earlierRequest, focusedSearchId) {
+        if (searchWantsOlder) {
+            // One query and one page, wherever the hit is: a hit thousands of
+            // rows back used to be reached in fixed 200-row steps, each behind
+            // the same settling delay.
+            val id = focusedSearchId ?: return@LaunchedEffect
+            val newer = vm.messageCountNewerThan(conversationId, id)
+            val wanted = searchPageLimit(newer, totalCount)
+            if (wanted <= pageLimit) return@LaunchedEffect
+            loadingEarlier = true
+            pendingLoad = PendingLoad(key = null, offset = 0, rowsBefore = chatRows.size)
+            android.util.Log.d("ChatPaging", "search jump newer=$newer limit=$wanted")
+            pageLimit = wanted
+            return@LaunchedEffect
+        }
+        if (earlierRequest == handledRequest || !pendingEarlier) return@LaunchedEffect
         delay(240)
+        // Marked only after the settling delay: the effect is restarted whenever
+        // its keys change, and a request that arrived while the previous one was
+        // waiting used to be marked handled by a run that then got cancelled —
+        // leaving the request unserved and the pager parked at its old limit.
+        if (earlierRequest == handledRequest) return@LaunchedEffect
+        handledRequest = earlierRequest
         // Hold the first visible row across the prepend. LazyColumn re-anchors by
         // key, but only within a bounded window around the previous index, so a
-        // LOAD_EARLIER_STEP prepend pushes that key out of the window and the
-        // view silently drifts up the thread (issue #284). Without this the
-        // search fix alone leaves an intermittent few-row drift.
+        // large prepend pushes that key out of the window and the view silently
+        // drifts up the thread (issue #284).
         val first = listState.layoutInfo.visibleItemsInfo.firstOrNull()
-        val anchor = first?.let { PrependAnchor(it.key, it.offset) }
         val rowsBefore = chatRows.size
-        pageLimit = (pageLimit + if (searchWantsOlder) LOAD_EARLIER_STEP else AUTO_CHUNK)
-            .coerceAtMost(if (searchWantsOlder) totalCount else AUTO_CAP)
-        if (anchor != null) {
-            snapshotFlow { chatRows.size }.first { it > rowsBefore }
-            val idx = chatRows.indexOfFirst { it.key == anchor.key }
-            if (idx >= 0) listState.scrollToItem(idx, anchor.offset)
+        // Permanent report: older history must not load while a chat is merely
+        // being opened. scripts/test-chat-open-stability.sh asserts this stays
+        // silent for a conversation opened at the bottom.
+        android.util.Log.d("ChatPreload", "scroll-up load rowsBefore=$rowsBefore")
+        val next = grownPageLimit(pageLimit, totalCount)
+        android.util.Log.d("ChatPaging", "scroll-up load limit=$next of $totalCount")
+        loadingEarlier = true
+        // The restore runs in its own effect: changing pageLimit restarts this
+        // one (it is read through composition), and the old inline wait was
+        // cancelled before it could put the view back or clear the spinner —
+        // which left the spinner up and blocked every later scroll-up load.
+        pendingLoad = PendingLoad(first?.key, first?.offset ?: 0, rowsBefore)
+        pageLimit = next
+    }
+    // Finishes a page load once its rows are in: restores the row the reader was
+    // looking at and takes the spinner down.
+    LaunchedEffect(chatRows.size, pendingLoad) {
+        val load = pendingLoad ?: return@LaunchedEffect
+        if (chatRows.size <= load.rowsBefore) return@LaunchedEffect
+        pendingLoad = null
+        val key = load.key
+        if (key != null) {
+            val idx = chatRows.indexOfFirst { it.key == key }
+            // The spinner occupies index 0 for as long as loadingEarlier is set.
+            if (idx >= 0) listState.scrollToItem(idx + 1, load.offset)
+        }
+        loadingEarlier = false
+    }
+    // A page that never grew the window (the rows were all already loaded)
+    // must not leave the spinner up and the pager blocked forever.
+    LaunchedEffect(pendingLoad) {
+        if (pendingLoad == null) return@LaunchedEffect
+        delay(2500)
+        if (pendingLoad != null) {
+            pendingLoad = null
+            loadingEarlier = false
         }
     }
     LaunchedEffect(conversationId) {
@@ -1181,7 +1566,12 @@ fun ChatScreen(
         draftLoaded = false
     }
     DisposableEffect(conversationId) {
-        onDispose { vm.setViewedConversation(0L) }
+        onDispose {
+            // Closes the exit-animation window the script measures: this must happen
+            // after the transition, never in the same frame as the route change.
+            android.util.Log.d("NavTransition", "chat closed")
+            vm.setViewedConversation(0L)
+        }
     }
     // Content handed over by an external share, handled in one effect so the text
     // and the media are read from the same composition. Sharing text with an
@@ -1190,7 +1580,9 @@ fun ChatScreen(
     // callbacks, which re-runs this effect with nothing to do.
     LaunchedEffect(conversationId, initialDraft, initialMedia) {
         if (initialMedia.isNotEmpty()) {
-            initialMedia.forEach { vm.sendMediaMessage(conversationId, it, initialDraft) }
+            // Several shared pictures are one message with one caption, the same
+            // way the composer sends them.
+            vm.sendMediaAlbum(conversationId, initialMedia, initialDraft)
             onInitialMediaConsumed()
             onInitialDraftConsumed()
         } else if (initialDraft.isNotBlank()) {
@@ -1198,19 +1590,19 @@ fun ChatScreen(
             onInitialDraftConsumed()
         }
     }
-    LaunchedEffect(convo?.address) {
-        com.anindra.messages.sms.ForegroundTracker.setOpenConversation(convo?.address)
+    LaunchedEffect(conversationId, initialStagedMedia) {
+        if (initialStagedMedia.isNotEmpty()) {
+            initialStagedMedia.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
+            onInitialStagedMediaConsumed()
+        }
     }
     LaunchedEffect(convo) {
-        if (convo != null && !draftLoaded) {
-            {
-                val savedDraft = convo!!.draft
-                if (savedDraft.isNotBlank()) {
-                    draft = savedDraft
-                }
-            }
+        val current = convo
+        val restored = restoredDraft(current?.draft, draftLoaded)
+        if (restored != null) draft = restored
+        if (current != null && !draftLoaded) {
             draftLoaded = true
-            numberIsBlocked = vm.isNumberBlocked(convo!!.address)
+            numberIsBlocked = vm.isNumberBlocked(current.address)
         }
     }
 
@@ -1241,19 +1633,23 @@ fun ChatScreen(
             ) { mode ->
             when (mode) {
             "select" -> {
+                val saveTargets = SelectionToolbar.saveTargets(messages, selectedMessageIds)
                 MessageSelectionToolbar(
                     count = selectedMessageIds.size,
                     allLocked = messages.filter { it.id in selectedMessageIds }.all { it.locked },
+                    allStarred = messages.filter { it.id in selectedMessageIds }
+                        .let { sel -> sel.isNotEmpty() && sel.all { it.starred } },
                     onSelectAll = { selectAllMessages() },
                     onSelectText = messages.firstOrNull { it.id in selectedMessageIds }
                         ?.takeIf { it.body.isNotBlank() }
                         ?.let { m -> { startTextSelection(m.id) } },
-                    onSaveImage = messages.firstOrNull { it.id in selectedMessageIds }
-                        ?.takeIf { it.mediaUri.isNotBlank() }
-                        ?.let { m -> { saveMessageImage(m.id) } },
+                    saveCount = saveTargets.size,
+                    onSaveImage = saveTargets.takeIf { it.isNotEmpty() }
+                        ?.let { targets -> { saveMessageImages(targets.map { it.id }) } },
                     onClose = { clearSelection() },
                     onCopy = { copySelection() },
                     onForward = { forwardSelection() },
+                    onToggleStar = { starSelection() },
                     onShare = { shareSelection() },
                     onViewDetails = {
                         detailsMessage = messages.firstOrNull { it.id in selectedMessageIds }
@@ -1448,6 +1844,7 @@ fun ChatScreen(
                                 }
                             }
                         },
+                        schedulingEnabled = vm.settings.scheduledMessagesEnabled,
                         onSchedule = {
                             val text = draft.trim()
                             if (text.isNotEmpty()) {
@@ -1476,10 +1873,46 @@ fun ChatScreen(
             CompositionLocalProvider(LocalDensity provides zoomedDensity) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().transformable(zoomState),
+                modifier = Modifier
+                    .fillMaxSize()
+                    // Off means the handler is not installed, so two fingers
+                    // scroll the list instead of being captured by the zoom.
+                    .pointerInput(conversationId, pinchZoomEnabled) {
+                        if (pinchZoomEnabled) pinchToZoom()
+                    }
+                    .pointerInput(conversationId) {
+                        detectTapGestures(
+                            onDoubleTap = { offset ->
+                                zoomAnchored(ChatZoom.doubleTapTarget(zoom), offset.y)
+                            }
+                        )
+                    },
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
+                // The spinner is the first row while an older page is being
+                // fetched (issue #406). It is placed before the messages so the
+                // top of the list does not appear to end.
+                if (loadingEarlier) {
+                    item(key = "loading_earlier") {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .semantics {
+                                        contentDescription =
+                                            context.getString(R.string.chat_loading_earlier)
+                                    },
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
+                }
                 itemsIndexed(chatRows, key = { _, row -> row.key }) { idx, row ->
                     if (row is ChatRow.Pending) {
                         ScheduledBubble(
@@ -1489,14 +1922,26 @@ fun ChatScreen(
                         )
                         return@itemsIndexed
                     }
-                    val msg = (row as ChatRow.Sent).message
+                    val msg = row.firstMessage() ?: return@itemsIndexed
+                    val rowIds = row.messageIds()
+                    // A multi-picture MMS is one message stored as a row per
+                    // picture; the bubble draws them together (#398).
+                    val albumUris = (row as? ChatRow.Album)?.messages?.map { it.mediaUri }.orEmpty()
                     val prevRow = chatRows.getOrNull(idx - 1)
-                    val prev = (prevRow as? ChatRow.Sent)?.message
+                    val prev = prevRow?.firstMessage()
                     val groupStart = prev == null || startsNewGroup(prev, msg)
                     val isLastMessage = idx == lastSentRow
-                    val isRevealed = msg.id in revealed
+                    val isRevealed = rowIds.any { it in revealed }
 
-                    Column(Modifier.fillMaxWidth()) {
+                    // Bubbles glide into place on send/receive and when an older
+                    // page is prepended, instead of the list jumping a row.
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .animateItem(
+                                placementSpec = motionSpring<IntOffset>(LocalReduceMotion.current)
+                            )
+                    ) {
                         if (groupStart) {
                             Box(
                                 Modifier.fillMaxWidth().padding(top = 30.dp, bottom = 18.dp),
@@ -1506,7 +1951,8 @@ fun ChatScreen(
                                     formatGroupLabel(
                                         msg.timestamp,
                                         is24HourFormat(context),
-                                        stringResource(R.string.time_yesterday)
+                                        stringResource(R.string.time_yesterday),
+                                        SettingsStore.calendarSystemOf(context)
                                     ),
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = ChatMetaWeight
@@ -1517,6 +1963,7 @@ fun ChatScreen(
                         }
                         ChatBubble(
                             msg = msg,
+                            albumUris = albumUris,
                             showTime = isLastMessage || isRevealed,
                             // Only a group needs a sender: in a 1:1 chat there is
                             // only one other person and the header names them.
@@ -1527,23 +1974,24 @@ fun ChatScreen(
                                 null
                             },
                             onTap = {
-                                if (selectionActive) toggleSelection(msg.id)
-                                else if (isRevealed) revealed.remove(msg.id) else revealed.add(msg.id)
+                                if (selectionActive) toggleRowSelection(rowIds)
+                                else if (isRevealed) revealed.removeAll(rowIds.toSet())
+                                else revealed.addAll(rowIds)
                             },
                             // Selection still wins over the preview, otherwise a
                             // tap while selecting would open a full-screen view
                             // instead of marking the message.
                             onImageTap = { uri ->
-                                if (selectionActive) toggleSelection(msg.id)
+                                if (selectionActive) toggleRowSelection(rowIds)
                                 else previewImageUri = uri
                             },
                             deliveryReports = deliveryReports,
                             highlightLinks = vm.settings.highlightLinks,
                             linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
                             hideLinks = vm.settings.hideLinks,
-                            isUnlocked = unlockedIds.contains(msg.id),
+                            isUnlocked = rowIds.any { it in unlockedIds },
                             showSimIndicator = vm.settings.showSimIndicator,
-                            isSelected = msg.id in selectedMessageIds,
+                            isSelected = rowIds.all { it in selectedMessageIds },
                             searchQuery = if (msg.id == focusedSearchId) activeSearch else null,
                             isSearchFocus = msg.id == focusedSearchId,
                             searchHighlightAlpha = if (msg.id == focusedSearchId) searchFlashAlpha else 0f,
@@ -1553,17 +2001,42 @@ fun ChatScreen(
                                 reduceMotion = LocalReduceMotion.current
                             ),
                             onEntranceStart = { if (msg.id !in animatedIds) animatedIds.add(msg.id) },
-                            onLongPress = { toggleSelection(msg.id) },
+                            onLongPress = { toggleRowSelection(rowIds) },
                             onReact = { emoji -> applyReaction(msg, emoji) },
                             showReactionBar = canReact &&
-                                selectedMessageIds.size == 1 &&
-                                msg.id in selectedMessageIds,
+                                bubbleIsTheWholeSelection(rowIds, selectedMessageIds),
                             onRetry = { vm.retryMessage(msg.id) }
                         )
                     }
                 }
             }
             }
+            // The pinch has no other feedback, so a pill says where the zoom is
+            // and gives one tap back to 100% (a second pinch to undo is the
+            // "takes too much work" part).
+            if (!ChatZoom.isDefault(zoom)) {
+                Surface(
+                    onClick = { zoom = ChatZoom.DEFAULT },
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(end = 12.dp, top = 8.dp)
+                        .semantics {
+                            contentDescription = context.getString(
+                                R.string.access_zoom_reset, ChatZoom.percent(zoom)
+                            )
+                        }
+                ) {
+                    Text(
+                        text = "${ChatZoom.percent(zoom)}%",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+
             // Back to the newest message, offered only once the view has left
             // it: after opening a search hit, or after reading back.
             val showJumpToLatest by remember {
@@ -1666,7 +2139,7 @@ fun ChatScreen(
         AlertDialog(
             onDismissRequest = { showBlockedDialog = false },
             title = { Text(stringResource(R.string.chat_number_blocked)) },
-            text = { Text(stringResource(R.string.chat_blocked_send)) },
+            text = { DialogText(stringResource(R.string.chat_blocked_send)) },
             confirmButton = {
                 TextButton(onClick = {
                     showBlockedDialog = false
@@ -1716,7 +2189,7 @@ fun ChatScreen(
                 showForwardPicker = false
                 val targets = forwardingMessageIds
                 vm.openOrCreate(address, name) { targetId ->
-                    targets.forEach { vm.forwardMessage(it, targetId) }
+                    vm.forwardMessages(targets, targetId)
                     forwardingMessageIds = emptyList()
                     Toast.makeText(context, context.getString(R.string.chat_forwarded), Toast.LENGTH_SHORT).show()
                 }
@@ -1756,7 +2229,12 @@ fun ChatScreen(
                         ).show()
                         return@scheduleMessage
                     }
-                    val timeText = formatDateTime(ts, "MMM d,", is24HourFormat(context))
+                    val timeText = formatDateTime(
+                        ts,
+                        DateStyle.Day,
+                        is24HourFormat(context),
+                        SettingsStore.calendarSystemOf(context)
+                    )
                     Toast.makeText(context, context.getString(R.string.chat_scheduled_for, timeText), Toast.LENGTH_SHORT).show()
                     vm.saveDraft(conversationId, "")
                     draft = ""
@@ -1780,12 +2258,15 @@ fun ChatScreen(
 internal fun MessageSelectionToolbar(
     count: Int,
     allLocked: Boolean,
+    allStarred: Boolean,
     onSelectAll: () -> Unit,
     onSelectText: (() -> Unit)?,
     onSaveImage: (() -> Unit)?,
+    saveCount: Int = 1,
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
+    onToggleStar: () -> Unit,
     onShare: () -> Unit,
     onViewDetails: () -> Unit,
     onDelete: () -> Unit,
@@ -1822,6 +2303,15 @@ internal fun MessageSelectionToolbar(
                     )
                 }
             }
+            if (SelectionToolbar.showStar(count)) {
+                IconButton(onClick = onToggleStar) {
+                    Icon(
+                        if (allStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        stringResource(if (allStarred) R.string.chat_unstar else R.string.chat_star),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
             if (SelectionToolbar.showTrash(count)) {
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, stringResource(R.string.chat_trash), tint = MaterialTheme.colorScheme.primary)
@@ -1849,7 +2339,7 @@ internal fun MessageSelectionToolbar(
                         }
                         if (onSaveImage != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chat_save_image)) },
+                                text = { Text(stringResource(SelectionToolbar.saveLabelRes(saveCount))) },
                                 onClick = { overflow = false; onSaveImage() }
                             )
                         }
@@ -2219,21 +2709,39 @@ internal fun ChatSchedulePicker(
     if (!visible) return
     val context = LocalContext.current
     if (step == "date") {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = scheduledDateMillis ?: System.currentTimeMillis()
-        )
-        DatePickerDialog(
-            onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton(onClick = { onDateSelected(datePickerState.selectedDateMillis ?: System.currentTimeMillis()) }) {
-                    Text(stringResource(R.string.chat_next))
+        val calendar = SettingsStore.calendarSystemOf(context)
+        var picked by remember(scheduledDateMillis) {
+            mutableStateOf(scheduledDateMillis ?: utcMidnightOfToday())
+        }
+        // 360dp is Material's date picker width: seven 48dp cells plus the
+        // picker's own 12dp side padding, exactly.
+        ScheduleDialog(onDismiss = onDismiss, maxWidth = 360.dp) {
+            Column {
+                CalendarDatePicker(
+                    utcMillis = picked,
+                    calendar = calendar,
+                    onPick = { picked = it }
+                )
+                // The grid speaks the reader's calendar; this says what the same
+                // day is called in Gregorian, for anyone reading both.
+                pickedDateInGregorian(picked, calendar)?.let { converted ->
+                    Text(
+                        stringResource(R.string.chat_schedule_gregorian_hint, converted),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp)
+                    )
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
+                    TextButton(onClick = { onDateSelected(picked) }) {
+                        Text(stringResource(R.string.chat_next))
+                    }
+                }
             }
-        ) {
-            DatePicker(state = datePickerState)
         }
     } else if (step == "time") {
         val timePickerState = rememberTimePickerState(
@@ -2241,26 +2749,90 @@ internal fun ChatSchedulePicker(
             initialMinute = scheduledMinute,
             is24Hour = is24HourFormat(context)
         )
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(stringResource(R.string.chat_select_time)) },
-            text = { TimePicker(state = timePickerState) },
-            confirmButton = {
-                TextButton(onClick = {
-                    onTimeSelected(timePickerState.hour, timePickerState.minute)
-                    onSchedule(
-                        com.anindra.messages.data.ScheduledTime.resolve(
-                            scheduledDateMillis ?: System.currentTimeMillis(),
-                            timePickerState.hour,
-                            timePickerState.minute
+        ScheduleDialog(onDismiss = onDismiss, maxWidth = 400.dp) {
+            Column(
+                // The clock face is left-aligned inside its own 328dp box; without
+                // this the whole picker sat against the dialog's left edge and the
+                // AM/PM column was clipped on the right.
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    stringResource(R.string.chat_select_time),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
+                )
+                TimePicker(state = timePickerState)
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
+                    TextButton(onClick = {
+                        onTimeSelected(timePickerState.hour, timePickerState.minute)
+                        onSchedule(
+                            com.anindra.messages.data.ScheduledTime.resolve(
+                                scheduledDateMillis ?: System.currentTimeMillis(),
+                                timePickerState.hour,
+                                timePickerState.minute
+                            )
                         )
-                    )
-                }) { Text(stringResource(R.string.chat_schedule)) }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_cancel)) }
+                    }) { Text(stringResource(R.string.chat_schedule)) }
+                }
             }
-        )
+        }
+    }
+}
+
+/**
+ * The schedule picker's window, growing out of the bottom-right corner — the
+ * corner the send button sits in — instead of fading in centred. A Material
+ * `DatePickerDialog` cannot do that: its window is centred and does not expose a
+ * transform origin, so the picker is drawn here and animated itself.
+ */
+@Composable
+internal fun ScheduleDialog(
+    onDismiss: () -> Unit,
+    maxWidth: Dp = 420.dp,
+    content: @Composable () -> Unit
+) {
+    val reduceMotion = LocalReduceMotion.current
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val scale by animateFloatAsState(
+        targetValue = if (shown) 1f else 0.35f,
+        animationSpec = motionTween(reduceMotion, Motion.DURATION_MEDIUM2),
+        label = "scheduleScale"
+    )
+    val fade by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = motionTween(reduceMotion, Motion.DURATION_SHORT4),
+        label = "scheduleFade"
+    )
+    // usePlatformDefaultWidth = false: the platform caps dialog width below the
+    // seven columns the month grid needs, which clipped the last weekday. The
+    // Surface sets its own width instead.
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier
+                .fillMaxWidth(0.96f)
+                .widthIn(max = maxWidth)
+                .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = fade
+                transformOrigin = TransformOrigin(1f, 1f)
+            }
+        ) {
+            content()
+        }
     }
 }
 
@@ -2283,13 +2855,20 @@ fun phoneKey(address: String): String =
 fun isPhoneNumber(address: String): Boolean =
     com.anindra.messages.data.AddressIdentity.isReplyable(address)
 
-fun openUrl(context: android.content.Context, url: String) {
-    val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return
-    try {
+/** Opens a web link; false when nothing on the phone can take it. */
+fun openUrl(context: android.content.Context, url: String): Boolean {
+    val target = if (url.startsWith("http://") || url.startsWith("https://")) url else return false
+    return try {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+        true
     } catch (_: Exception) {
+        false
     }
 }
+
+/** The base direction a piece of text is laid out in, in Compose terms. */
+internal fun BidiText.Direction.toTextDirection(): TextDirection =
+    if (this == BidiText.Direction.RTL) TextDirection.Rtl else TextDirection.Ltr
 
 @Composable
 private fun rememberLinkedText(
@@ -2350,6 +2929,10 @@ private fun styledBody(
     onLinkClick: ((String) -> Unit)?
 ): AnnotatedString {
     val iso = BidiText.isolateNumberRuns(body, urls.keys.toList())
+    android.util.Log.d(
+        "BubbleBidi",
+        "lines=${iso.lines.joinToString(",") { if (it == BidiText.Direction.RTL) "Rtl" else "Ltr" }}"
+    )
     val out = AnnotatedString.Builder(iso.text)
     urls.forEach { (original, url) ->
         val range = iso.remap(original)
@@ -2385,7 +2968,7 @@ internal fun LinkWarningDialog(url: String, onDismiss: () -> Unit, onOpen: () ->
         title = { Text(stringResource(R.string.chat_link_caution)) },
         text = {
             Column {
-                Text(stringResource(R.string.chat_link_warning))
+                DialogText(stringResource(R.string.chat_link_warning))
                 Spacer(Modifier.height(12.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -2428,6 +3011,7 @@ internal fun MessageDetailsDialog(
     val toSelf = MessageDetails.direction(message.isMe) == MessageDetails.Direction.TO
     val context = LocalContext.current
     val is24Hour = is24HourFormat(context)
+    val calendar = SettingsStore.calendarSystemOf(context)
     val statusLabel = when (MessageDetails.status(message.status)) {
         MessageDetails.Status.SENDING -> stringResource(R.string.message_status_sending)
         MessageDetails.Status.DELIVERED -> stringResource(R.string.message_status_delivered)
@@ -2445,9 +3029,12 @@ internal fun MessageDetailsDialog(
                     stringResource(if (toSelf) R.string.message_detail_to else R.string.message_detail_from),
                     formatPhoneNumber(address)
                 )
-                DetailRow(stringResource(R.string.message_detail_sent), formatDateTime(message.timestamp, "MMM d, yyyy,", is24Hour))
+                DetailRow(stringResource(R.string.message_detail_sent), formatDateTime(message.timestamp, DateStyle.DayWithYear, is24Hour, calendar))
+                gregorianCompanion(message.timestamp, calendar)?.let {
+                    DetailRow(stringResource(R.string.message_detail_gregorian), it)
+                }
                 MessageDetails.deliveredAt(message)?.let {
-                    DetailRow(stringResource(R.string.message_detail_delivered), formatDateTime(it, "MMM d, yyyy,", is24Hour))
+                    DetailRow(stringResource(R.string.message_detail_delivered), formatDateTime(it, DateStyle.DayWithYear, is24Hour, calendar))
                 }
                 DetailRow(stringResource(R.string.message_detail_status), statusLabel)
             }
@@ -2796,6 +3383,7 @@ internal fun InputBar(
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
     onSchedule: () -> Unit = {},
+    schedulingEnabled: Boolean = true,
     onEmojiToggle: () -> Unit,
     onAttach: () -> Unit,
     showEmojiButton: Boolean = false,
@@ -2808,10 +3396,28 @@ internal fun InputBar(
         modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Typing a Persian/Arabic word should flip the field, so the caret and
+        // every following line sit on the right (#362). First strong character
+        // only: a message's own direction is decided differently (see
+        // BidiText.direction), but flipping the caret mid-word would be worse
+        // than the message's final alignment being imperfect.
+        val draftStyle = LocalTextStyle.current.copy(
+            textDirection = BidiText.firstStrongDirection(draft).toTextDirection()
+        )
+        LaunchedEffect(draftStyle.textDirection) {
+            android.util.Log.d("ComposerDirection", "dir=${draftStyle.textDirection}")
+        }
+        // GM's composer is a true pill: a 56dp field with a 28dp corner, which
+        // at 24dp still read as a rounded rectangle beside it.
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.inputPill,
-            modifier = Modifier.weight(1f)
+            // A new line makes the pill taller; ease that instead of snapping.
+            modifier = Modifier
+                .weight(1f)
+                .animateContentSize(
+                    animationSpec = motionSpring<IntSize>(LocalReduceMotion.current)
+                )
         ) {
             TextField(
                 value = draft,
@@ -2819,16 +3425,45 @@ internal fun InputBar(
                 placeholder = { Text(placeholder) },
                 leadingIcon = {
                     IconButton(onClick = onAttach) {
-                        Icon(
-                            Icons.Rounded.AddCircleOutline, stringResource(R.string.icon_attach),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        // GM badges the attach button with a dot that overlaps the
+                        // ring's top-right; the ring shows through as broken
+                        // because the dot carries a ring of field colour around it.
+                        Box {
+                            Icon(
+                                Icons.Rounded.AddCircleOutline,
+                                stringResource(R.string.icon_attach),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val dot = MaterialTheme.colorScheme.composerAttachDot
+                            // A dot colour has no text equivalent, so it names
+                            // itself; scripts/test-composer-dot.sh uses this.
+                            LaunchedEffect(dot) {
+                                android.util.Log.d(
+                                    "ComposerDot",
+                                    "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
+                                )
+                            }
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    // Sits *on* the ring, not outside it: GM's
+                                    // dot centre is 0.99·r from the ring centre.
+                                    .offset(x = (-1).dp, y = 1.dp)
+                                    // GM's dot measures ~5dp across; the 8dp box
+                                    // is the cut-out ring plus that dot.
+                                    .size(8.dp)
+                                    .background(MaterialTheme.colorScheme.inputPill, CircleShape)
+                                    .padding(1.5.dp)
+                                    .background(dot, CircleShape)
+                            )
+                        }
                     }
                 },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Default,
                     capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
                 ),
+                textStyle = draftStyle,
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (SimSwitcher.shouldShowSwitch(sims.size)) {
@@ -2876,26 +3511,61 @@ internal fun InputBar(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+        // The send circle is always there, dimmed while there is nothing to
+        // send, and inert until then — combinedClickable is gated on [ready], so
+        // an empty tap cannot fire and holding it schedules nothing. Round 2 of
+        // #347 hid it instead; the row then looked unfinished on an empty chat.
+        val ready = canSend(draft, hasAttachments)
+        val sendLabel = stringResource(R.string.icon_send)
+        val sendReduceMotion = LocalReduceMotion.current
+        val present by animateFloatAsState(
+            targetValue = if (ready) 1f else 0.38f,
+            animationSpec = motionTween(sendReduceMotion, Motion.DURATION_SHORT4),
+            label = "sendPresence"
+        )
+        // Holding Send shrinks the circle, and the date picker opens once it has
+        // finished shrinking — the press reads as "this is doing something"
+        // instead of the calendar appearing under a finger that is still down.
+        var holding by remember { mutableStateOf(false) }
+        val holdScale by animateFloatAsState(
+            targetValue = if (holding) 0.8f else 1f,
+            animationSpec = motionTween(sendReduceMotion, Motion.DURATION_MEDIUM1),
+            label = "sendHold"
+        )
+        LaunchedEffect(holding) {
+            if (!holding) return@LaunchedEffect
+            // Let the shrink finish and sit small for a beat: at the animation's
+            // own duration the circle was back to full size by the time the
+            // dialog covered it, so the press looked like nothing happened.
+            delay(Motion.DURATION_MEDIUM1.toLong() + 220L)
+            android.util.Log.d("ScheduleHold", "shrunk, opening the picker")
+            onSchedule()
+            holding = false
+        }
         Spacer(Modifier.width(8.dp))
-        val canSend = draft.isNotBlank() || hasAttachments
         Box(
             Modifier
                 .size(48.dp)
-                .background(
-                    if (canSend) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
-                    CircleShape
-                )
+                .graphicsLayer {
+                    alpha = present
+                    scaleX = holdScale
+                    scaleY = holdScale
+                }
+                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                // Holding Send is the only way in, as it was before #386: the
+                // reporter was told where scheduling lives instead of being
+                // given another button in the row.
                 .combinedClickable(
-                    enabled = canSend,
+                    enabled = ready,
                     onClick = onSend,
-                    onLongClick = onSchedule
-                ),
+                    onLongClick = if (schedulingEnabled) ({ holding = true }) else null
+                )
+                .semantics { contentDescription = sendLabel },
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.AutoMirrored.Rounded.Send, stringResource(R.string.icon_send),
-                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (canSend) 1f else 0.38f),
+                Icons.AutoMirrored.Rounded.Send, null,
+                tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(20.dp)
             )
         }

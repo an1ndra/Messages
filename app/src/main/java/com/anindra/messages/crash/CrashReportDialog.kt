@@ -6,6 +6,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
+import com.anindra.messages.ui.DialogText
 
 @Composable
 fun CrashReportDialog(
@@ -18,7 +19,7 @@ fun CrashReportDialog(
         onDismissRequest = onDelete,
         title = { Text(stringResource(R.string.crash_report_title)) },
         text = {
-            Text(
+            DialogText(
                 if (reportCount > 1) stringResource(R.string.crash_report_message_many, reportCount)
                 else stringResource(R.string.crash_report_message)
             )

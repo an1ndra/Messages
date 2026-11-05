@@ -23,6 +23,12 @@ enum class DateStyle(val skeleton: String) {
 
     /** As [DayWithFullWeekday], plus year: "Tuesday, Aug 2, 2024". */
     DayWithFullWeekdayAndYear("yMMMMEEEEd"),
+
+    /** Day, month and year: "Aug 2, 2024" / "2 août 2024". */
+    DayWithYear("yMMMd"),
+
+    /** Month and year alone, the schedule grid's header: "August 2024". */
+    MonthAndYear("yMMMM"),
 }
 
 /** Resolves a skeleton to a locale-specific pattern. Overridable so the caching
@@ -55,4 +61,7 @@ internal fun dateFormatter(
         .also { cache[key] = it }
 }
 
-internal fun clearDateFormatterCache() = cache.clear()
+internal fun clearDateFormatterCache() {
+    cache.clear()
+    clearCalendarFormatterCache()
+}

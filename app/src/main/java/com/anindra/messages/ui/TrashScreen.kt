@@ -163,6 +163,7 @@ fun TrashScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
                     ) {
                         items(conversations, key = { it.id }) { convo ->
+                            Column(Modifier.animateItem()) {
                             TrashRow(
                                 convo = convo,
                                 onRestore = { vm.restoreFromTrash(convo.id) },
@@ -171,6 +172,7 @@ fun TrashScreen(
                                     showDeleteForeverDialog = true
                                 }
                             )
+                            }
                         }
                     }
                 }
@@ -187,6 +189,7 @@ fun TrashScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
                     ) {
                         items(messages, key = { it.id }) { msg ->
+                            Column(Modifier.animateItem()) {
                             TrashMessageRow(
                                 msg = msg,
                                 onRestore = { vm.restoreMessage(msg.id) },
@@ -195,6 +198,7 @@ fun TrashScreen(
                                     showDeleteForeverDialog = true
                                 }
                             )
+                            }
                         }
                     }
                 }
@@ -206,7 +210,7 @@ fun TrashScreen(
                 onDismissRequest = { showEmptyTrashDialog = false },
                 title = { Text(stringResource(R.string.trash_empty)) },
                 text = {
-                    Text(
+                    DialogText(
                         String.format(
                             context.getString(R.string.trash_empty_confirm),
                             conversations.size + messages.size
@@ -251,7 +255,7 @@ fun TrashScreen(
                         deleteMessageTarget != null -> messages.find { it.id == deleteMessageTarget }?.body
                         else -> conversations.find { it.id == deleteConversationTarget }?.name
                     }.orEmpty()
-                    Text(String.format(context.getString(R.string.trash_delete_forever_confirm), name))
+                    DialogText(String.format(context.getString(R.string.trash_delete_forever_confirm), name))
                 },
                 confirmButton = {
                     TextButton(onClick = {

@@ -118,9 +118,9 @@ class ConversationListWiringTest {
                 fab.contains("color = cs.startChatContent")
         )
         assertTrue(
-            "the pair is defined once, in the theme",
-            theme.contains("val ColorScheme.startChatContainer: Color get() = secondaryContainer") &&
-                theme.contains("val ColorScheme.startChatContent: Color get() = onSecondaryContainer")
+            "the pair is defined once, in the theme, as the tinted accent container (#347)",
+            theme.contains("val ColorScheme.startChatContainer: Color get() = primaryContainer") &&
+                theme.contains("if (primaryContainer.luminance() < 0.5f) onPrimaryContainer else primary")
         )
         assertTrue(
             "Diagnostics must report the pair the pill paints with",

@@ -15,6 +15,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Granted at install up to Android 13. From 14 it is only auto-granted to
          calling/messaging apps; as the default SMS handler this app qualifies.
          Without it the platform discards the intent and a locked screen never
@@ -48,10 +49,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Messages">
 
+        <!-- allowEmbedded + resizeableActivity are what let a conversation
+             notification float as a bubble (#354); without both the platform
+             falls back to a plain notification. -->
         <activity
             android:name=".MainActivity"
+            android:allowEmbedded="true"
             android:exported="true"
             android:launchMode="singleTop"
+            android:resizeableActivity="true"
             android:taskAffinity=""
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -122,6 +128,20 @@
             </intent-filter>
         </activity>
 
+        <!-- The bubble's own window. A plain subclass of MainActivity so it can
+             carry a launch mode and task affinity MainActivity cannot: a
+             bubble tapped while the app is on screen must get a task of its own
+             instead of being folded into the resumed singleTop one (#354). -->
+        <activity
+            android:name=".BubbleChatActivity"
+            android:allowEmbedded="true"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="standard"
+            android:resizeableActivity="true"
+            android:taskAffinity="com.anindra.messages.bubble"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name=".sms.FullScreenSmsActivity"
             android:excludeFromRecents="true"
@@ -145,6 +165,19 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.anindra.messages.SCHEDULED_SEND" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".sms.NotificationDismissReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".sms.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 

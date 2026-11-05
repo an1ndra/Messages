@@ -39,6 +39,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,6 +52,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,7 +87,11 @@ import com.anindra.messages.ui.A11y
 import com.anindra.messages.ui.formatPhoneNumber
 import com.anindra.messages.ui.formatDateTime
 import com.anindra.messages.ui.is24HourFormat
+import com.anindra.messages.ui.DialogText
+import com.anindra.messages.ui.directionalStyle
 import com.anindra.messages.ui.BackupLocation
+import com.anindra.messages.ui.CalendarPickerDialog
+import com.anindra.messages.ui.calendarLabel
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
@@ -100,6 +107,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.animateColorAsState
 import com.anindra.messages.ui.SettingsSearch
+import com.anindra.messages.ui.SettingsLayout
 
 private enum class PinDialogMode { SET, ENTER }
 
@@ -113,6 +121,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenTrash: () -> Unit = {},
     onOpenAdvanced: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
     onOpenSpamBlocked: () -> Unit = {},
     onOpenScheduled: () -> Unit = {},
     onOpenRoute: (String) -> Unit = {},
@@ -122,24 +131,17 @@ fun SettingsScreen(
     BackHandler(onBack = onBack)
 
     val context = LocalContext.current
+    val appInfo = remember(context) { com.anindra.messages.crash.CrashReporter.appInfo(context) }
 
     val revision by vm.settings.revision.collectAsState()
 
     var themeDialog by remember { mutableStateOf(false) }
+    var calendarDialog by remember { mutableStateOf(false) }
+    var markReadDialog by remember { mutableStateOf(false) }
     var notifications by remember(revision) { mutableStateOf(vm.settings.notificationsEnabled) }
     var delivery by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
-    var notificationSound by remember(revision) { mutableStateOf(vm.settings.notificationSound) }
-    val notificationSoundOptions = listOf(
-        SettingsStore.NOTIFY_SOUND_DEFAULT to context.getString(R.string.settings_sound_default),
-        SettingsStore.NOTIFY_SOUND_APP to context.getString(R.string.settings_sound_classic),
-        SettingsStore.NOTIFY_SOUND_DRAGON to context.getString(R.string.settings_sound_dragon),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_09 to context.getString(R.string.settings_sound_chime),
-        SettingsStore.NOTIFY_SOUND_UNIVERSFIELD_062 to context.getString(R.string.settings_sound_bubble)
-    )
     var showSim by remember(revision) { mutableStateOf(vm.settings.showSimIndicator) }
     val themeMode = vm.themeMode
-
-    var soundDialog by remember { mutableStateOf(false) }
 
     var pinned by remember(revision) { mutableStateOf(vm.settings.pinnedEnabled) }
     var archiving by remember(revision) { mutableStateOf(vm.settings.archivingEnabled) }
@@ -282,9 +284,11 @@ fun SettingsScreen(
     }
 
 
-    Scaffold(
-        topBar = {
+    LegacySettingsScaffold(screen = "general", topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = {
                     if (searching) {
                         val focusRequester = remember { FocusRequester() }
@@ -326,8 +330,7 @@ fun SettingsScreen(
                     }
                 }
             )
-        }
-    ) { padding ->
+    }) { padding ->
         CompositionLocalProvider(
             LocalHighlightedSetting provides highlightTitle,
             LocalCardOffsets provides cardOffsets
@@ -339,6 +342,43 @@ fun SettingsScreen(
                 modifier = Modifier.padding(padding)
             )
         } else {
+        // Content that arrives late (SIM label, scheduled count) grows the list
+        // and clamps a restored offset without restoring it. Re-apply the offset
+        // the reader left until the height settles, then leave them alone.
+        LaunchedEffect(scrollState) {
+            val target = scrollState.value
+            // Nothing was remembered, so there is nothing to restore: without
+            // this early exit the loop kept pulling a fresh screen back to the
+            // top while the reader was already scrolling down to About.
+            if (target > 0) {
+                // A reader parked at the end expects to stay there when the rest
+                // of the list finishes loading; anyone else keeps their offset.
+                var wasAtEnd = target >= scrollState.maxValue - 1
+                var previousMax = -1
+                var stableFrames = 0
+                var frames = 0
+                // One unchanged frame is not "settled": a subtitle that arrives
+                // a few frames later grows the list after this loop would have
+                // given up. Wait for the height to hold still before handing
+                // control back.
+                while (frames < 300) {
+                    withFrameNanos { }
+                    frames++
+                    // Once the reader touches the list the restore is over; it
+                    // exists to survive late data, not to overrule them.
+                    if (scrollState.isScrollInProgress) break
+                    val max = scrollState.maxValue
+                    val wanted = when {
+                        wasAtEnd -> max
+                        else -> target.coerceAtMost(max)
+                    }
+                    stableFrames = if (max == previousMax) stableFrames + 1 else 0
+                    previousMax = max
+                    if (scrollState.value != wanted) scrollState.scrollTo(wanted)
+                    if (stableFrames >= 60 && scrollState.value == wanted) break
+                }
+            }
+        }
         Column(
             Modifier
                 .padding(padding)
@@ -356,14 +396,6 @@ fun SettingsScreen(
                     onChecked = { notifications = it; vm.settings.notificationsEnabled = it }
                 )
                 SettingsRow(
-                    title = stringResource(R.string.settings_pin_notification_sound),
-                    subtitle = notificationSoundLabel(notificationSound, notificationSoundOptions, context),
-                    onClick = {
-                        notificationSound = vm.settings.notificationSound
-                        soundDialog = true
-                    }
-                )
-                SettingsRow(
                     title = stringResource(R.string.settings_delivery_reports_title),
                     subtitle = stringResource(R.string.settings_delivery_reports_subtitle),
                     checked = delivery,
@@ -372,10 +404,7 @@ fun SettingsScreen(
                 SettingsRow(
                     title = stringResource(R.string.settings_mark_read_title),
                     subtitle = stringResource(R.string.settings_mark_read_subtitle),
-                    onClick = {
-                        vm.markAllRead()
-                        Toast.makeText(context, context.getString(R.string.settings_mark_read), Toast.LENGTH_SHORT).show()
-                    }
+                    onClick = { markReadDialog = true }
                 )
             }
 
@@ -386,6 +415,15 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_theme_title),
                     subtitle = themeLabel(themeMode, context),
                     onClick = { themeDialog = true }
+                )
+                SettingsRow(
+                    title = stringResource(R.string.settings_calendar_title),
+                    subtitle = calendarLabel(
+                        vm.settings.calendarChoice,
+                        vm.settings.calendarSystem,
+                        context
+                    ),
+                    onClick = { calendarDialog = true }
                 )
                 val selectedSub = sims.firstOrNull { it.subscriptionId == vm.settings.simSubscriptionId }
                 val currentSimLabel = if (selectedSub == null) {
@@ -551,20 +589,20 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_advanced_subtitle),
                     onClick = onOpenAdvanced
                 )
+                SettingsRow(
+                    title = stringResource(R.string.settings_about_title),
+                    subtitle = stringResource(
+                        R.string.settings_about_version,
+                        appInfo.versionName,
+                        appInfo.versionCode
+                    ),
+                    onClick = onOpenAbout
+                )
             }
 
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                stringResource(R.string.messages_footer),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .padding(bottom = 16.dp)
-            )
+            // The version footer that used to close this screen is gone; keep
+            // the same breathing room under the last card.
+            Spacer(Modifier.height(SettingsLayout.BOTTOM_GAP))
         }
         }
         }
@@ -574,6 +612,14 @@ fun SettingsScreen(
             scrollState = scrollState,
             setHighlight = { highlightTitle = it },
             onHandled = { pendingJump = null }
+        )
+    }
+
+    if (calendarDialog) {
+        CalendarPickerDialog(
+            choice = vm.settings.calendarChoice,
+            onChoose = { vm.settings.calendarChoice = it },
+            onDismiss = { calendarDialog = false }
         )
     }
 
@@ -619,51 +665,32 @@ fun SettingsScreen(
         )
     }
 
-    if (soundDialog) {
+    if (markReadDialog) {
         AlertDialog(
-            onDismissRequest = { soundDialog = false },
-            title = { Text(stringResource(R.string.settings_pin_notification_sound)) },
+            onDismissRequest = { markReadDialog = false },
+            title = {
+                val title = stringResource(R.string.settings_mark_read_confirm_title)
+                Text(title, style = directionalStyle(LocalTextStyle.current, title))
+            },
             text = {
-                Column {
-                    Text(
-                        stringResource(R.string.settings_sound_arrival),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    notificationSoundOptions.forEach { (value, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    notificationSound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                                .padding(vertical = 2.dp)
-                        ) {
-                            RadioButton(
-                                selected = notificationSound == value,
-                                onClick = {
-                                    notificationSound = value
-                                    NotificationHelper.previewNotificationSound(context, value)
-                                }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(label)
-                        }
-                    }
-                }
+                val message = stringResource(R.string.settings_mark_read_confirm_message)
+                Text(message, style = directionalStyle(LocalTextStyle.current, message))
             },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.settings.notificationSound = notificationSound
-                    NotificationHelper.ensureChannel(context)
-                    soundDialog = false
-                }) { Text(stringResource(R.string.common_ok)) }
+                    markReadDialog = false
+                    vm.markAllRead()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_mark_read),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }) { Text(stringResource(R.string.settings_mark_read_title)) }
             },
             dismissButton = {
-                TextButton(onClick = { soundDialog = false }) { Text(stringResource(R.string.common_cancel)) }
+                TextButton(onClick = { markReadDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
@@ -718,7 +745,7 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_pin_delay)) },
             text = {
                 Column {
-                    Text(
+                    DialogText(
                         stringResource(R.string.settings_choose_delay),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -830,7 +857,7 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_import_backup)) },
             text = {
                 Column {
-                    Text(
+                    DialogText(
                         stringResource(R.string.settings_backup_apply),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -903,7 +930,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     if (mode == PinDialogMode.SET) {
-                        Text(
+                        DialogText(
                             stringResource(R.string.settings_backup_pin_protection),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -1083,8 +1110,8 @@ fun SettingsScreen(
     if (showRawBackupWarning) {
         AlertDialog(
             onDismissRequest = { showRawBackupWarning = false },
-            title = { Text(stringResource(R.string.settings_backup_unencrypted_title)) },
-            text = { Text(stringResource(R.string.settings_backup_unencrypted_warning)) },
+            title = { DialogText(stringResource(R.string.settings_backup_unencrypted_title)) },
+            text = { DialogText(stringResource(R.string.settings_backup_unencrypted_warning)) },
             confirmButton = {
                 TextButton(onClick = {
                     showRawBackupWarning = false
@@ -1194,11 +1221,6 @@ private fun themeLabel(mode: String, context: android.content.Context) = when (m
     "dynamic" -> context.getString(R.string.settings_theme_dynamic)
     else -> context.getString(R.string.settings_theme_system)
 }
-
-
-
-private fun notificationSoundLabel(value: String, options: List<Pair<String, String>>, context: android.content.Context) =
-    options.firstOrNull { it.first == value }?.second ?: context.getString(R.string.settings_sound_default)
 
 /**
  * A single-choice group of [options] (label to optional supporting text),

@@ -27,7 +27,11 @@ import com.anindra.messages.ui.ConversationRow
 import com.anindra.messages.ui.ConversationSelectionBar
 import com.anindra.messages.ui.ExpressiveTab
 import com.anindra.messages.ui.ExpressiveTabs
+import com.anindra.messages.data.StarredMessage
+import com.anindra.messages.ui.SearchScope
+import com.anindra.messages.ui.SearchScopeChips
 import com.anindra.messages.ui.SheetActionRow
+import com.anindra.messages.ui.StarredHitRow
 import com.anindra.messages.ui.StartChatFab
 import com.anindra.messages.ui.SwipeActionDialog
 import com.anindra.messages.ui.SwipeActionPreview
@@ -212,6 +216,53 @@ private fun ExpressiveTabsPreview() {
             ),
             selected = 1,
             onSelect = {}
+        )
+    }
+}
+
+
+@PreviewLightDark
+@Preview(name = "Search scopes", showBackground = true, widthDp = 380)
+@Composable
+private fun SearchScopeChipsPreview() {
+    Stage {
+        SearchScopeChips(selected = SearchScope.Starred, onSelect = {})
+        SearchScopeChips(selected = SearchScope.All, onSelect = {})
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Starred hit (RTL + LTR)", showBackground = true, widthDp = 380)
+@Composable
+private fun StarredHitRowPreview() {
+    Stage {
+        StarredHitRow(
+            hit = StarredMessage(
+                messageId = 1,
+                conversationId = 1,
+                body = "🎁ام هر ماه، هدیه ویژه همراه اول برای 8",
+                timestamp = 1_790_000_000_000,
+                isMe = false,
+                chatName = "MCI Offers",
+                address = "+9830000",
+                locked = false
+            ),
+            now = 1_790_000_600_000,
+            onClick = {}
+        )
+        StarredHitRow(
+            hit = StarredMessage(
+                messageId = 2,
+                conversationId = 2,
+                body = "Booked the table for seven, see you there",
+                timestamp = 1_790_000_000_000,
+                isMe = true,
+                chatName = "Sara",
+                address = "+989120001111",
+                locked = false
+            ),
+            now = 1_790_000_600_000,
+            onClick = {}
         )
     }
 }

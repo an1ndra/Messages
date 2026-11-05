@@ -24,10 +24,15 @@ class ScrollFollowGuardTest {
         }
     }
 
+    /** The follow block, from its state to the effect after it. Sliced by
+     *  landmarks rather than a fixed length: the region grows with the comments
+     *  that explain why it is shaped this way. */
     private fun followEffect(): String {
         val start = chatScreenSrc.indexOf("var userDraggedList by remember(conversationId)")
         require(start >= 0) { "scroll-follow effect not found in ChatScreen.kt" }
-        return chatScreenSrc.substring(start, start + 700)
+        val end = chatScreenSrc.indexOf("val chatLifecycleOwner", start)
+        require(end > start) { "end of scroll-follow effect not found" }
+        return chatScreenSrc.substring(start, end)
     }
 
     @Test

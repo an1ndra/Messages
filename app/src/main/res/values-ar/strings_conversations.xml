@@ -36,4 +36,13 @@
     <string name="convo_pinned">تم التثبيت</string>
     <string name="convo_unpinned">تم إلغاء التثبيت</string>
     <string name="convo_blocked">تم حظر الرقم</string>
+    <string name="search_scope_all">الكل</string>
+    <string name="search_scope_unread">غير المقروءة</string>
+    <string name="search_scope_starred">مميزة</string>
+    <string name="starred_empty">لا توجد رسائل مميزة بعد</string>
+    <string name="starred_empty_hint">اضغط مطولاً على رسالة ثم انقر على النجمة للاحتفاظ بها هنا</string>
+    <string name="search_scope_unread_empty">لا توجد محادثات غير مقروءة</string>
+    <string name="search_scope_contacts">جهات الاتصال</string>
+    <string name="search_scope_messages">الرسائل</string>
+    <string name="search_scope_no_results">لا توجد نتائج</string>
 </resources>

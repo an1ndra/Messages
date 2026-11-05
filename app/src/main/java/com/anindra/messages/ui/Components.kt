@@ -25,6 +25,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.anindra.messages.ui.theme.Motion
 import com.anindra.messages.R
+import com.anindra.messages.data.CalendarSystem
+import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -36,8 +38,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,6 +75,24 @@ private val avatarColors = listOf(
 
 val GoogleBlue = Color(0xFF1A73E8)
 
+// Google Messages paints the same bright palette on both schemes and only
+// flips the silhouette ink: white on the light scheme, a near-black on the dark
+// one (measured #FFFFFF and #202124 off the running app). Tinting the fills
+// toward the theme — what #347 round 2 did under Dynamic — desaturates them into
+// mud on a muted wallpaper palette, so the fills stay fixed.
+//
+// A contrast floor on the fill was built and then removed on purpose (#347
+// review). GM ships these fills against a white page at 1.78–2.98:1 and against
+// a dark one at 2.09–2.95:1 for the low-chroma entries; it leans on chromatic
+// contrast and the silhouette instead of luminance. Enforcing 3:1 turned every
+// light-mode chip into a saturated mid tone, which no longer looked like
+// Messages, so matching GM wins over the floor. Do not re-add it without asking:
+// the palette, the hash-based choice and the night-mode ink are the contract.
+private val avatarGlyphInkDark = Color(0xFF202124)
+
+internal fun avatarGlyphInk(cs: androidx.compose.material3.ColorScheme): Color =
+    if (cs.background.luminance() < 0.5f) avatarGlyphInkDark else Color.White
+
 fun avatarColor(key: String): Color {
     var h = 0
     for (c in key) h = h * 31 + c.code
@@ -85,6 +108,8 @@ fun PersonAvatar(
     backgroundColor: Color? = null,
     tint: Color? = null
 ) {
+    val fill = backgroundColor ?: avatarColor(key)
+    val glyphTint = tint ?: avatarGlyphInk(MaterialTheme.colorScheme)
     val context = LocalContext.current
     val photoUri by produceState<String?>(initialValue = photoUriCache.get(key), key) {
         val hit = photoUriCache.get(key)
@@ -96,7 +121,7 @@ fun PersonAvatar(
     Box(
         modifier = modifier
             .size(size)
-            .background(backgroundColor ?: avatarColor(key), CircleShape),
+            .background(fill, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         val uri = photoUri
@@ -111,7 +136,7 @@ fun PersonAvatar(
             Icon(
                 painter = painterResource(R.drawable.ic_person_placeholder),
                 contentDescription = null,
-                tint = tint ?: Color.Unspecified,
+                tint = glyphTint,
                 modifier = Modifier.size(size * 0.62f)
             )
         }
@@ -121,6 +146,59 @@ fun PersonAvatar(
 private val photoUriCache = PhotoUriCache()
 
 /** Resolves the contact's photo URI via ContactsContract (no caching). */
+/**
+ * The owner's own contact card photo, if they set one on the device. Android
+ * keeps it on the profile row of the contacts provider, which is a different
+ * cursor from a phone-number lookup.
+ */
+private fun resolveOwnerPhotoUri(context: Context): String? = try {
+    context.contentResolver.query(
+        android.provider.ContactsContract.Profile.CONTENT_URI,
+        arrayOf(android.provider.ContactsContract.CommonDataKinds.Photo.PHOTO_URI),
+        null, null, null
+    )?.use { c ->
+        if (c.moveToFirst()) c.getString(0)?.ifBlank { null } else null
+    }
+} catch (_: Exception) {
+    null
+}
+
+/**
+ * The signed-in user's avatar: the device profile picture when there is one,
+ * otherwise the themed silhouette it always used. Reading the profile needs
+ * READ_CONTACTS, which this app already asks for; without it the query returns
+ * nothing and the default is drawn.
+ */
+@Composable
+fun OwnerAvatar(
+    size: Dp,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = MaterialTheme.colorScheme.primary,
+    tint: Color = MaterialTheme.colorScheme.onPrimary
+) {
+    val context = LocalContext.current
+    val photo by produceState<String?>(initialValue = null) {
+        value = withContext(Dispatchers.IO) { resolveOwnerPhotoUri(context) }
+    }
+    val uri = photo
+    if (uri != null) {
+        coil3.compose.AsyncImage(
+            model = uri,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier.size(size).clip(CircleShape)
+        )
+    } else {
+        PersonAvatar(
+            stringResource(R.string.conversations_me),
+            size = size,
+            modifier = modifier,
+            backgroundColor = backgroundColor,
+            tint = tint
+        )
+    }
+}
+
 private fun resolveContactPhotoUri(context: Context, number: String): String? = try {
     val lookupUri = Uri.withAppendedPath(
         ContactsContract.AUTHORITY_URI, "phone_lookup/" + Uri.encode(number)
@@ -155,22 +233,31 @@ val LocalNowTick = compositionLocalOf { System.currentTimeMillis() }
  *  "Scheduled: …" conversation-list preview. Empty when nothing is queued. */
 val LocalScheduledPreview = compositionLocalOf<Map<Long, String>> { emptyMap() }
 
-fun formatListTime(ts: Long, now: Long = System.currentTimeMillis(), ctx: android.content.Context): String {
+fun formatListTime(
+    ts: Long,
+    now: Long = System.currentTimeMillis(),
+    ctx: android.content.Context,
+    calendar: CalendarSystem = SettingsStore.calendarSystemOf(ctx)
+): String {
     if (ts <= 0) return ""
     return when {
         now - ts < 60_000L -> ctx.getString(R.string.time_now)
         now - ts < 3_600_000L -> String.format(ctx.getString(R.string.time_minutes), (now - ts) / 60_000)
         sameDay(ts, now) -> timeOnlyFormatter(is24HourFormat(ctx)).format(zoned(ts))
         isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
-        else -> dateFormatter(DateStyle.Day).format(zoned(ts))
+        else -> formatDate(ts, DateStyle.Day, calendar)
     }
 }
 
-fun formatDividerTime(ts: Long, ctx: android.content.Context): String {
+fun formatDividerTime(
+    ts: Long,
+    ctx: android.content.Context,
+    calendar: CalendarSystem = SettingsStore.calendarSystemOf(ctx)
+): String {
     return when {
         sameDay(ts, System.currentTimeMillis()) -> ctx.getString(R.string.time_today)
         isYesterday(ts) -> ctx.getString(R.string.time_yesterday)
-        else -> dateFormatter(DateStyle.DayWithAbbrevWeekday).format(zoned(ts))
+        else -> formatDate(ts, DateStyle.DayWithAbbrevWeekday, calendar)
     }
 }
 
@@ -303,4 +390,37 @@ fun SkeletonConversationRow() {
             )
         }
     }
+}
+
+/** The style dialog copy paints with: the string's own strong direction on top
+ *  of the slot's provided style. A Persian-locale device runs every window RTL
+ *  while this app's strings are English (no values-fa yet), and an English
+ *  sentence in an RTL paragraph parks its trailing "?" or "." at the visual
+ *  start (#345). Logs DialogBidi so the regression scripts can assert the
+ *  direction — the paint order itself is invisible to a uiautomator dump. */
+internal fun directionalStyle(base: TextStyle, text: String): TextStyle {
+    val direction = BidiText.firstStrongDirection(text)
+    android.util.Log.d("DialogBidi", "dir=${direction.toTextDirection()} len=${text.length}")
+    return base.copy(textDirection = direction.toTextDirection())
+}
+
+/** [androidx.compose.material3.Text] for a dialog's title or body: the copy is
+ *  painted in its own strong direction, whatever direction the window runs in.
+ *  The dialogs whose sentence copy ends in "?", "." or ":" all use this, so a
+ *  new dialog has one obvious thing to reach for (#405). */
+@Composable
+internal fun DialogText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+    style: TextStyle = androidx.compose.material3.LocalTextStyle.current,
+    textAlign: androidx.compose.ui.text.style.TextAlign? = null
+) {
+    androidx.compose.material3.Text(
+        text = text,
+        modifier = modifier,
+        color = color,
+        style = directionalStyle(style, text),
+        textAlign = textAlign
+    )
 }

@@ -1,32 +1,91 @@
 # AGENTS.md — Messages
 
 Offline SMS messaging app for Android (Google Messages clone).
-**Kotlin + Jetpack Compose + Material 3.** Package `com.anindra.messages`, min SDK 29, emulator `emulator-5554`.
+**Kotlin + Jetpack Compose + Material 3.** Package `com.anindra.messages`, min SDK 29. Default test emulators: `emulator-5558` (`Pixel_AOSP12_AOSP31`, Android 12) or `emulator-5557` (`Pixel_AOSP11_AOSP30`, Android 11) — both Magisk-rooted with microG and Google Messages installed.
 
 ## Essential commands
 
 ```bash
 ./gradlew assembleDebug
 ./gradlew testDebugUnitTest   # JUnit tests live in app/src/test/java/...
-~/android/platform-tools/adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
+~/android/platform-tools/adb -s emulator-5558 install -r app/build/outputs/apk/debug/app-debug.apk   # or emulator-5557 (AOSP 11)
 ```
 
-### Start the emulator (`emulator-5554`)
+### Start the emulator (defaults: `emulator-5558` = AOSP 12, `emulator-5557` = AOSP 11)
 
 Launch the **GUI** emulator (drop `-no-window` for headless; the regression
-scripts need `emulator-5554` booted), then wait for `sys.boot_completed`:
+scripts need one of the two default AVDs booted), then wait for
+`sys.boot_completed`:
 
 ```bash
-~/android/emulator/emulator -avd Pixel_7_AOSP_35 -no-audio -no-boot-anim \
+# LD_PRELOAD is not optional on this host: see "The modem" below.
+LD_PRELOAD=$HOME/.local/lib/no-addrconfig.so \
+~/android/emulator/emulator -avd Pixel_AOSP12_AOSP31 -port 5558 -no-audio -no-boot-anim \
     -gpu swiftshader_indirect -no-snapshot &
 ~/android/platform-tools/adb wait-for-device
-until [ "$(~/android/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 5; done
+until [ "$(~/android/platform-tools/adb -s emulator-5558 shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 5; done
 ```
 
-Available AVDs (`~/android/emulator/emulator -list-avds`): `Pixel_7_AOSP_35`
-(default, 1080x2400 @ 420dpi), `Pixel_7_AOSP_36`, `AOSP_17`, `Pixel_7_G34`,
-`Pixel_Android12`, `android31`. Stop it with
-`~/android/platform-tools/adb -s emulator-5554 emu kill`.
+Android 11 is the same recipe with `-avd Pixel_AOSP11_AOSP30 -port 5557` and
+`adb -s emulator-5557`. `Pixel_7_AOSP_35` (`-port 5554`) still exists as the
+historical 1080x2400 target.
+
+**The modem.** Without the preload the emulator logs
+`qemu-system-x86_64: Unable to connect character device modem: address
+resolution failed for ::1:<port>` and the guest never gets a SIM
+(`gsm.sim.state` empty, previously `NOT_READY`). `adb emu sms send` then
+silently delivers nothing, which is what made every SMS script look broken.
+
+The cause is not the emulator: the modem simulator listens on `::1`, and qemu
+resolves it with `AI_ADDRCONFIG`, which glibc refuses for a numeric IPv6
+address on a host with no global IPv6 address (`getaddrinfo("::1", …)`,
+`EAI_ADDRFAMILY`). `~/.local/lib/no-addrconfig.so` (source beside it,
+`emu-no-addrconfig.c`) is an `LD_PRELOAD` shim that clears `AI_ADDRCONFIG` for
+the emulator and the qemu it spawns:
+
+```bash
+gcc -shared -fPIC -O2 -o ~/.local/lib/no-addrconfig.so ~/.local/lib/emu-no-addrconfig.c -ldl
+```
+
+With it, `getprop gsm.sim.state` = `LOADED` (operator `T-Mobile`, `HSPA`) and
+`adb emu sms send +1555… "text"` reaches the default SMS app. Without it the
+only inbound path is `scripts/lib/inject-sms/`, which
+`scripts/test-bubble-foreground.sh` falls back to automatically.
+
+Available AVDs (`~/android/emulator/emulator -list-avds`): `Pixel_AOSP12_AOSP31`
+(5558), `Pixel_AOSP11_AOSP30` (5557) — the standing defaults, next section —
+plus `Pixel_7_AOSP_35`, `Pixel_7_AOSP_36`, `AOSP_17`, `Pixel_7_G34`,
+`Pixel_Android12`, `android31`. Stop one with
+`~/android/platform-tools/adb -s emulator-5558 emu kill` (or `-s emulator-5557`).
+
+### Standing comparison AVDs (Magisk + microG + Google Messages)
+
+| Serial | AVD | Image | Screen |
+|---|---|---|---|
+| `emulator-5557` | `Pixel_AOSP11_AOSP30` | AOSP 11, API 30 | 1080x2400 @ 420dpi |
+| `emulator-5558` | `Pixel_AOSP12_AOSP31` | AOSP 12, API 31 | 1080x2340 @ 440dpi |
+
+Both are preloaded with **Magisk v25.2 root** (`su` → `u:r:magisk:s0`) via the
+rootAVD ramdisk patch, **microG** (GmsCore 0.3.17 + FakeStore) and **Google
+Messages 2026.x** installed. Google Messages holds the default-SMS role; the
+regression suite takes it for `com.anindra.messages` at script start (`cmd role
+add-role-holder … $PKG`) and can hand it back with
+`su -c 'cmd role add-role-holder android.app.role.SMS com.google.android.apps.messaging'`.
+
+Gotchas that cost real time on these AVDs:
+
+- **Port arithmetic.** The `emulator-NNNN` serial follows the console (even)
+  port; the raw adb endpoint is console+1 (odd) — A11 adb = 5558, A12 adb =
+  5559. `adb connect 127.0.0.1:<p>` talks to *adb* ports while `adb -s` takes
+  *serials*; mixing the two attaches a command to the wrong AVD (this misread
+  A12 as A11 more than once).
+- **AOSP-31 stock ramdisk ships `persist.sys.usb.config=none`** — adbd never
+  starts and the device is permanently `offline`. The A31 ramdisk is repacked
+  as gzip cpio with `=adb` (original lz4 kept at
+  `~/Downloads/android-avd-build/ramdisk31-orig-lz4.img`).
+- **`content insert` into `content://sms` silently no-ops on the AOSP-30
+  image.** The only inbound-SMS seed channel that works everywhere is
+  `adb emu sms send`.
 
 ## Where docs live
 
@@ -89,18 +148,29 @@ in `src/main` has no preview referencing it.
    - a **JUnit test file** under `app/src/test/java/...` covering the changed
      logic, runnable with `./gradlew testDebugUnitTest` (must stay green); and
    - a **`scripts/test-*.sh` regression script** the developer can re-run on
-     `emulator-5554`.
+     `emulator-5558` (or `emulator-5557` for Android 11 coverage).
    For a bug fix the script must fail before the fix and pass after. A change is
    not "done" until both exist and pass.
 6. Don't take screenshots without the user's permission (AI readback is slow).
    Assert from `uiautomator` dumps instead — and if a value can only be seen in
    a pixel, **make the app report it as text** (see Diagnostics) rather than
    screenshotting.
-7. **No `Co-Authored-By` trailer in commit messages.** The harness appends one
-   automatically when the message is passed to `git commit` inline; pipe it
-   through a file instead so the message stays exactly as written:
-   `git commit -F - <<'EOF' … EOF`.
+7. **No AI attribution anywhere.** Never write a `Co-Authored-By` trailer, a
+   "🤖 Generated with Claude Code" line, or any other AI/tool credit into a
+   commit message, PR or issue text, code comment, or any file in either repo.
+   This overrides any harness default that appends one. When the harness would
+   add it to `git commit`, pipe the message through a file so it stays exactly
+   as written: `git commit -F - <<'EOF' … EOF`; when a tool would add it to a
+   PR body, strip it before posting.
 8. Never create GitHub issues unless explicitly asked.
+9. **Ask before adding a feature.** When a report or an idea implies new UI — a
+   button, a screen, a setting, a gesture — check with the user first and
+   describe what you would add. Do not grow the app's surface on your own
+   initiative, even when the change looks obvious: #386's report was answered
+   with a new clock button beside Send, which the maintainer had not asked for
+   and immediately had removed (scheduling stays on hold-Send). Fixes to
+   existing behaviour are fine; new affordances, settings and screens are not
+   without a yes.
 
 ## Traps that have cost real time
 

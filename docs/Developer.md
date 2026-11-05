@@ -345,6 +345,7 @@ Messages/
 │   │   │   │   ├── MarkReadReceiver.kt    # Notification mark-as-read
 │   │   │   │   ├── NoConfirmationSmsSendService.kt
 │   │   │   │   ├── ForegroundTracker.kt   # Foreground state for notifications
+│   │   │   │   ├── NotificationBubble.kt  # Conversation bubbles + shortcut
 │   │   │   │   └── ReceiverWakeLock.kt    # BroadcastReceiver wakelock helper
 │   │   │   └── ui/                        # Compose screens + helpers
 │   │   │       ├── ConversationsScreen.kt # Home list + search + archive

@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import com.anindra.messages.R
+import com.anindra.messages.data.Message
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -79,12 +80,72 @@ class SelectionToolbarTest {
     fun selectAllSkipsLockedMessages() {
         assertEquals(
             listOf(1L, 3L),
-            SelectionToolbar.selectAllCandidates(listOf(1L, 2L, 3L, 4L), setOf(2L, 4L))
+            SelectionToolbar.selectAllCandidates(
+                listOf(listOf(1L), listOf(2L), listOf(3L), listOf(4L)), setOf(2L, 4L)
+            )
         )
         assertEquals(
             listOf(1L, 2L),
-            SelectionToolbar.selectAllCandidates(listOf(1L, 2L), emptySet())
+            SelectionToolbar.selectAllCandidates(listOf(listOf(1L), listOf(2L)), emptySet())
         )
-        assertTrue(SelectionToolbar.selectAllCandidates(listOf(5L), setOf(5L)).isEmpty())
+        assertTrue(SelectionToolbar.selectAllCandidates(listOf(listOf(5L)), setOf(5L)).isEmpty())
+    }
+
+    @Test
+    fun selectAllTakesAWholeAlbumOrNoneOfIt() {
+        // A locked picture means the album cannot be bulk-deleted; selecting
+        // only its siblings left the bubble looking unselected while the delete
+        // still took them.
+        val albumAndSms = listOf(listOf(2L, 3L, 4L), listOf(5L))
+        assertEquals(
+            listOf(5L),
+            SelectionToolbar.selectAllCandidates(albumAndSms, setOf(3L))
+        )
+        assertEquals(
+            listOf(2L, 3L, 4L, 5L),
+            SelectionToolbar.selectAllCandidates(albumAndSms, emptySet())
+        )
+    }
+
+    @Test
+    fun severalPicturesReadAsPlural() {
+        // #398: selecting two pictures wrote both but still offered
+        // "Save image", which read as if only one would be saved.
+        assertEquals(R.string.chat_save_images, SelectionToolbar.saveLabelRes(count = 2))
+        assertEquals(R.string.chat_save_images, SelectionToolbar.saveLabelRes(count = 5))
+        assertEquals(R.string.chat_save_image, SelectionToolbar.saveLabelRes(count = 1))
+    }
+
+    @Test
+    fun saveCoversEverySelectedRowWithAMediaUri() {
+        fun message(id: Long, mediaType: String, mediaUri: String) = Message(
+            id = id,
+            conversationId = 1,
+            body = "",
+            timestamp = id,
+            isMe = true,
+            status = "sent",
+            mediaType = mediaType,
+            mediaUri = mediaUri,
+        )
+        val chat = listOf(
+            message(1, "image", "content://mms/part/1"),
+            message(2, "image", "content://mms/part/2"),
+            message(3, "image", "content://mms/part/3"),
+            message(4, "text", ""),
+            message(5, "image", ""),
+        )
+
+        // One multi-picture album is three rows; Save must keep all three, and
+        // must still ignore a text message and a row without a file.
+        assertEquals(
+            listOf(1L, 2L, 3L),
+            SelectionToolbar.saveTargets(chat, setOf(1L, 2L, 3L, 4L, 5L)).map { it.id }
+        )
+        assertEquals(
+            listOf(2L),
+            SelectionToolbar.saveTargets(chat, setOf(2L)).map { it.id }
+        )
+        assertTrue(SelectionToolbar.saveTargets(chat, setOf(4L, 5L)).isEmpty())
     }
 }

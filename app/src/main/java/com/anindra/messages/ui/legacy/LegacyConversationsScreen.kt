@@ -113,6 +113,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.repeatOnLifecycle
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.Motion
+import com.anindra.messages.ui.theme.startChatContainer
+import com.anindra.messages.ui.theme.startChatContent
 import com.anindra.messages.ui.theme.motionSpring
 import com.anindra.messages.ui.theme.motionTween
 import com.anindra.messages.AppViewModel
@@ -1041,19 +1043,19 @@ internal fun StartChatFab(
             )
             .onSizeChanged { if (naturalWidthPx <= 0) naturalWidthPx = it.width }
             .clip(RoundedCornerShape(16.dp))
-            .background(cs.secondaryContainer)
+            .background(cs.startChatContainer)
             .clickable(onClick = onClick)
             .semantics { contentDescription = context.getString(R.string.access_start_chat) },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Spacer(Modifier.width(16.dp))
-        Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null, tint = cs.primary)
+        Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null, tint = cs.startChatContent)
         if (p > 0.01f) {
             Spacer(Modifier.width(8.dp))
             Text(
                 stringResource(R.string.access_start_chat),
                 style = MaterialTheme.typography.labelLarge,
-                color = cs.primary,
+                color = cs.startChatContent,
                 maxLines = 1,
                 softWrap = false
             )

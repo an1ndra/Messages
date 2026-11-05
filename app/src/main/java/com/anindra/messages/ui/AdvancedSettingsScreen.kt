@@ -30,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -81,12 +82,19 @@ onOpenAccessibility: () -> Unit = {},
     var retentionTrashDays by remember(revision) { mutableStateOf(vm.settings.retentionTrashDays) }
     var retentionSpamDays by remember(revision) { mutableStateOf(vm.settings.retentionSpamDays) }
     var fontDialog by remember { mutableStateOf(false) }
+    var calendarDialog by remember { mutableStateOf(false) }
     var keywordsDialog by remember { mutableStateOf(false) }
     var diagReport by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
+        // Same sheet as General settings: page and app bar are surfaceContainer,
+        // rows are inset at the page background.
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = { Text(stringResource(R.string.settings_advanced_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -132,6 +140,16 @@ onOpenAccessibility: () -> Unit = {},
                 )
                 SettingsRow(
                 position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_calendar_title),
+                subtitle = calendarLabel(
+                    vm.settings.calendarChoice,
+                    vm.settings.calendarSystem,
+                    context
+                ),
+                onClick = { calendarDialog = true }
+                )
+                SettingsRow(
+                position = RowPosition.MIDDLE,
                 title = stringResource(R.string.settings_advanced_emoji_button),
                 checked = emojiButton,
                 onChecked = { emojiButton = it; vm.settings.emojiButtonEnabled = it }
@@ -160,6 +178,13 @@ onOpenAccessibility: () -> Unit = {},
                 title = stringResource(R.string.mms_check_title),
                 subtitle = stringResource(R.string.mms_check_subtitle),
                 onClick = onOpenMmsCheck
+                )
+                SettingsRow(
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_scheduled_title),
+                subtitle = stringResource(R.string.settings_scheduled_subtitle),
+                checked = vm.settings.scheduledMessagesEnabled,
+                onChecked = { vm.settings.scheduledMessagesEnabled = it }
                 )
                 SettingsRow(
                 position = RowPosition.MIDDLE,
@@ -195,7 +220,7 @@ onOpenAccessibility: () -> Unit = {},
             title = { Text(stringResource(R.string.settings_retention_after)) },
             text = {
                 Column {
-                    Text(
+                    DialogText(
                         stringResource(R.string.settings_choose_retention),
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -280,6 +305,14 @@ onOpenAccessibility: () -> Unit = {},
         )
     }
 
+    if (calendarDialog) {
+        CalendarPickerDialog(
+            choice = vm.settings.calendarChoice,
+            onChoose = { vm.settings.calendarChoice = it },
+            onDismiss = { calendarDialog = false }
+        )
+    }
+
     if (keywordsDialog) {
         BlockedKeywordsDialog(
             keywords = vm.settings.blockedKeywords.sorted(),
@@ -335,10 +368,10 @@ fun PermanentDeleteConfirmDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
-        title = { Text(stringResource(R.string.settings_advanced_delete_permanently)) },
+        title = { DialogText(stringResource(R.string.settings_advanced_delete_permanently)) },
         text = {
             Column(Modifier.fillMaxWidth()) {
-                Text(
+                DialogText(
                     stringResource(R.string.settings_advanced_permanent_delete_on)
                 )
                 Spacer(Modifier.height(4.dp))
@@ -349,7 +382,7 @@ fun PermanentDeleteConfirmDialog(
                 ) {
                     Checkbox(checked = dontShowAgain, onCheckedChange = { dontShowAgain = it })
                     Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.settings_advanced_warning))
+                    DialogText(stringResource(R.string.settings_advanced_warning))
                 }
             }
         },

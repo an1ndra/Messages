@@ -95,12 +95,11 @@ class AmoledThemeTest {
 
     @Test
     fun amoledStaysBlackInLightModeContext() {
-        // The semantic aliases branch on background luminance rather than on the
-        // mode string, so a true-black page has to land on the dark branch or
-        // the selected-bubble colours would be picked as if the page were light.
+        // The selected-bubble aliases now read through the scheme's own pair
+        // (#347), so AMOLED picks its primary/onPrimary like every other mode.
         assertTrue(amoled.background.luminance() < 0.5f)
-        assertEquals(Color(0xFF9CC0FF), amoled.selectedBubble)
-        assertEquals(Color(0xFF062E6F), amoled.onSelectedBubble)
+        assertEquals(amoled.primary, amoled.selectedBubble)
+        assertEquals(amoled.onPrimary, amoled.onSelectedBubble)
     }
 
     private fun contrast(a: Color, b: Color): Float {

@@ -196,7 +196,7 @@ fun SpamBlockedScreen(
         AlertDialog(
             onDismissRequest = { showEmptyDialog = false },
             title = { Text(stringResource(R.string.spam_empty)) },
-            text = { Text(String.format(context.getString(R.string.spam_empty_confirm), count)) },
+            text = { DialogText(String.format(context.getString(R.string.spam_empty_confirm), count)) },
             confirmButton = {
                 TextButton(onClick = {
                     if (tab == 0) {
@@ -241,6 +241,7 @@ internal fun ConversationsTab(
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .animateItem()
                     .semantics(mergeDescendants = true) {
                         contentDescription = A11y.describe(
                             sender, blockedLabel, formatListTime(convo.timestamp, now, context)
@@ -315,6 +316,7 @@ internal fun MessagesTab(
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .animateItem()
                     .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

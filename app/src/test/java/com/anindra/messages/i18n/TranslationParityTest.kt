@@ -90,6 +90,9 @@ class TranslationParityTest {
             "trash_reason_blocked", "translation_help",
             "spam_empty", "spam_empty_confirm", "spam_conversation_deleted",
             "spam_conversations_cleared", "spam_messages_cleared",
+            "settings_calendar_title", "settings_choose_calendar", "calendar_auto",
+            "calendar_gregorian", "calendar_persian", "calendar_hijri", "calendar_hebrew",
+            "calendar_buddhist", "calendar_japanese", "calendar_indian", "calendar_coptic",
         )
         assertTrue("base must define the tracked keys", baseStrings.keys.containsAll(mustBeLocalized))
         val problems = mutableListOf<String>()

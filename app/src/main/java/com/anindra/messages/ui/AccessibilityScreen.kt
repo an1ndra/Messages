@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.ScrollState
@@ -52,8 +53,14 @@ fun AccessibilityScreen(
     var fontDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        // Same sheet as General settings: page and app bar are surfaceContainer,
+        // rows are inset at the page background.
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
                 title = { Text(stringResource(R.string.accessibility_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
