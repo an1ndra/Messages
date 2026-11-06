@@ -107,6 +107,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -1307,6 +1308,7 @@ open class MainActivity : FragmentActivity() {
         intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { bootVm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, bootVm)
         applyLockSessionProbe(intent)
+        applyWidgetProbe(intent, bootVm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         com.anindra.messages.widget.WidgetRoute.forExtras(
             intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
@@ -2195,6 +2197,29 @@ onOpenAccessibility = { navRoute = "accessibility" },
      * It writes the real setting, exactly as the toggle does — nothing here
      * pretends an authentication happened.
      */
+    private fun applyWidgetProbe(intent: Intent, vm: AppViewModel) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        if (!intent.getBooleanExtra("widget_probe", false)) return
+        val repository = (application as MessagesApplication).repository
+        val unreadAtTop = vm.settings.unreadAtTopEnabled
+        val appLock = vm.settings.appLockEnabled
+        val privacy = vm.settings.privacyModeEnabled
+        // The snapshot query is a blocking DB read, so keep it off the main thread.
+        Thread {
+            val conversations = kotlinx.coroutines.runBlocking {
+                repository.conversations().first()
+            }
+            android.util.Log.d(
+                "WidgetProbe",
+                com.anindra.messages.widget.WidgetProbe.line(
+                    conversations, unreadAtTop, appLock, privacy
+                )
+            )
+        }.start()
+    }
+
     private fun applyAppLockProbe(intent: Intent, vm: AppViewModel) {
         val debuggable =
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -2226,6 +2251,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
         applyPrivacyModeProbe(intent, vm)
         applyAppLockProbe(intent, vm)
         applyLockSessionProbe(intent)
+        applyWidgetProbe(intent, vm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
         com.anindra.messages.widget.WidgetRoute.forExtras(
             intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
