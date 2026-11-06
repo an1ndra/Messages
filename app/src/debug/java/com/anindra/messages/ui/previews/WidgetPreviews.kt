@@ -12,14 +12,18 @@ import androidx.glance.material3.ColorProviders
 import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
 import com.anindra.messages.widget.MessagesListCard
+import com.anindra.messages.widget.UnreadCard
 import com.anindra.messages.widget.WidgetAvatar
+import com.anindra.messages.widget.WidgetBubble
 import com.anindra.messages.widget.WidgetComposeButton
 import com.anindra.messages.ui.theme.WidgetColors
 import com.anindra.messages.widget.WidgetConversation
 import com.anindra.messages.widget.WidgetListHeader
 import com.anindra.messages.widget.WidgetLockedCard
+import com.anindra.messages.widget.WidgetNewMessagePill
 import com.anindra.messages.widget.WidgetRow
 import com.anindra.messages.widget.WidgetSnapshot
+import com.anindra.messages.widget.WidgetUnreadHeader
 import com.anindra.messages.ui.theme.DarkColors
 import com.anindra.messages.ui.theme.LightColors
 
@@ -126,5 +130,56 @@ private fun WidgetAvatarPreview() {
         Box(GlanceModifier.size(40.dp).padding(8.dp)) {
             WidgetAvatar(sampleItems.first(), widgetColors)
         }
+    }
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 320, heightDp = 150)
+@Composable
+private fun UnreadCardPreview() {
+    GlanceTheme(widgetColors.providers) {
+        UnreadCard(
+            WidgetSnapshot(false, sampleItems, sampleItems.filter { it.unreadCount > 0 }, 3),
+            widgetColors,
+            rowLimit = 2
+        )
+    }
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 320, heightDp = 150)
+@Composable
+private fun UnreadCardEmptyPreview() {
+    GlanceTheme(widgetColors.providers) {
+        UnreadCard(emptySnapshot, widgetColors, rowLimit = 2)
+    }
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 320, heightDp = 32)
+@Composable
+private fun WidgetUnreadHeaderPreview() {
+    GlanceTheme(widgetColors.providers) {
+        Box(GlanceModifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+            WidgetUnreadHeader(12)
+        }
+    }
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 320, heightDp = 46)
+@Composable
+private fun WidgetBubblePreview() {
+    GlanceTheme(widgetColors.providers) {
+        Box(GlanceModifier.fillMaxWidth()) { WidgetBubble(sampleItems.first(), widgetColors) }
+    }
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 320, heightDp = 28)
+@Composable
+private fun WidgetNewMessagePillPreview() {
+    GlanceTheme(widgetColors.providers) {
+        Box(GlanceModifier.fillMaxWidth().padding(horizontal = 12.dp)) { WidgetNewMessagePill() }
     }
 }
