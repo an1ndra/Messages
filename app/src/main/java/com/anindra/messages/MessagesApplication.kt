@@ -24,6 +24,14 @@ class MessagesApplication : Application() {
         com.anindra.messages.crash.CrashReporter.install(this)
         PhoneNumberUtils.init(this)
         repository = Repository(this)
+        // Widgets render outside the app, so nothing there subscribes to the
+        // repository's flows: a change has to be pushed at them.
+        repository.onChanged = { com.anindra.messages.widget.WidgetRefresh.request(this) }
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            repository.settings.revision.collect {
+                com.anindra.messages.widget.WidgetRefresh.request(this@MessagesApplication)
+            }
+        }
         // An unlocked app-lock session ends with the screen (#354 follow-up):
         // the phone is out of the owner's hands again, which is the same moment
         // the device lock re-arms.
