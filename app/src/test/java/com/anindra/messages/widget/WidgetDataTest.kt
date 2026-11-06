@@ -60,8 +60,8 @@ class WidgetDataTest {
 
     @Test
     fun rowCountUsesFloorAndClamps() {
-        assertEquals(2, WidgetData.rowCount(110))
-        assertEquals(2, WidgetData.rowCount(127))
+        assertEquals(1, WidgetData.rowCount(110))
+        assertEquals(1, WidgetData.rowCount(127))
         assertEquals(1, WidgetData.rowCount(40))
         assertEquals(4, WidgetData.rowCount(400))
         assertEquals(1, WidgetData.rowCount(127, rowDp = 46, max = 3))
@@ -70,8 +70,8 @@ class WidgetDataTest {
     /** The card pads 6 dp top and bottom, so a row that ignores both is clipped. */
     @Test
     fun rowCountLeavesRoomForBothPaddings() {
-        assertEquals(3, WidgetData.rowCount(130))
-        assertEquals(2, WidgetData.rowCount(129))
+        assertEquals(2, WidgetData.rowCount(138))
+        assertEquals(1, WidgetData.rowCount(137))
     }
 
     /** The unread card keeps the New message pill at every size, so it must reserve it. */
@@ -87,7 +87,7 @@ class WidgetDataTest {
             )
         )
         assertEquals(
-            3,
+            2,
             WidgetData.rowCount(
                 255,
                 rowDp = WidgetData.UNREAD_BUBBLE_HEIGHT_DP,

@@ -12,13 +12,16 @@ object WidgetData {
 
     const val MAX_LIST_ROWS = 4
     const val MAX_UNREAD_ROWS = 3
-    const val HEADER_HEIGHT_DP = 28
-    const val ROW_HEIGHT_DP = 30
-    const val VERTICAL_PADDING_DP = 6
-    const val UNREAD_LABEL_ROW_DP = 28
-    const val UNREAD_SNIPPET_DP = 26
+    const val HEADER_HEIGHT_DP = 34
+    const val ROW_HEIGHT_DP = 44
+    const val VERTICAL_PADDING_DP = 8
+    const val HORIZONTAL_PADDING_DP = 14
+    const val AVATAR_DP = 30
+    const val COMPOSE_BUTTON_DP = 28
+    const val UNREAD_LABEL_ROW_DP = 36
+    const val UNREAD_SNIPPET_DP = 32
     const val UNREAD_BUBBLE_HEIGHT_DP = UNREAD_LABEL_ROW_DP + UNREAD_SNIPPET_DP
-    const val NEW_MESSAGE_PILL_HEIGHT_DP = 28
+    const val NEW_MESSAGE_PILL_HEIGHT_DP = 34
 
     /**
      * Rows that fit in [heightDp], after the header, both paddings and anything

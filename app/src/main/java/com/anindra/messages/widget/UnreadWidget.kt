@@ -77,7 +77,7 @@ internal fun UnreadCard(snapshot: WidgetSnapshot, colors: WidgetColors, rowLimit
             .appWidgetBackground()
             .background(GlanceTheme.colors.widgetBackground)
             .cornerRadius(20.dp)
-            .padding(vertical = 6.dp)
+            .padding(vertical = WidgetData.VERTICAL_PADDING_DP.dp)
     ) {
         if (snapshot.locked) {
             WidgetLockedCard()
@@ -110,7 +110,9 @@ internal fun UnreadCard(snapshot: WidgetSnapshot, colors: WidgetColors, rowLimit
 @Composable
 internal fun WidgetUnreadHeader(total: Int) {
     Row(
-        modifier = GlanceModifier.fillMaxWidth().height(28.dp).padding(horizontal = 12.dp),
+        modifier = GlanceModifier.fillMaxWidth()
+            .height(WidgetData.HEADER_HEIGHT_DP.dp)
+            .padding(horizontal = WidgetData.HORIZONTAL_PADDING_DP.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -118,7 +120,7 @@ internal fun WidgetUnreadHeader(total: Int) {
             modifier = GlanceModifier.defaultWeight(),
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = 14.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Medium
             ),
             maxLines = 1
@@ -128,8 +130,8 @@ internal fun WidgetUnreadHeader(total: Int) {
         Box(
             modifier = GlanceModifier
                 .background(GlanceTheme.colors.primary)
-                .cornerRadius(10.dp)
-                .padding(horizontal = 6.dp)
+                .cornerRadius(11.dp)
+                .padding(horizontal = 7.dp, vertical = 1.dp)
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center
         ) {
@@ -137,7 +139,7 @@ internal fun WidgetUnreadHeader(total: Int) {
                 text = total.toString(),
                 style = TextStyle(
                     color = GlanceTheme.colors.onPrimary,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 ),
                 maxLines = 1
@@ -151,7 +153,7 @@ internal fun WidgetBubble(item: WidgetConversation, colors: WidgetColors) {
     Column(
         modifier = GlanceModifier.fillMaxWidth()
             .height(WidgetData.UNREAD_BUBBLE_HEIGHT_DP.dp)
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = WidgetData.HORIZONTAL_PADDING_DP.dp)
             .clickable(
                 actionStartActivity(WidgetIntents.conversation(LocalContext.current, item.id))
             )
@@ -163,17 +165,17 @@ internal fun WidgetBubble(item: WidgetConversation, colors: WidgetColors) {
             WidgetAvatar(item, colors)
             Text(
                 text = item.title,
-                modifier = GlanceModifier.defaultWeight().padding(horizontal = 8.dp),
+                modifier = GlanceModifier.defaultWeight().padding(horizontal = 10.dp),
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurface,
-                    fontSize = 12.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 ),
                 maxLines = 1
             )
             Text(
                 text = item.time,
-                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp),
+                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
                 maxLines = 1
             )
         }
@@ -181,15 +183,15 @@ internal fun WidgetBubble(item: WidgetConversation, colors: WidgetColors) {
             modifier = GlanceModifier.fillMaxWidth()
                 .height(WidgetData.UNREAD_SNIPPET_DP.dp)
                 .background(GlanceTheme.colors.surfaceVariant)
-                .cornerRadius(14.dp)
-                .padding(horizontal = 10.dp),
+                .cornerRadius(16.dp)
+                .padding(horizontal = 12.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Text(
                 text = item.preview,
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 11.sp
+                    fontSize = 13.sp
                 ),
                 maxLines = 1
             )
@@ -201,10 +203,10 @@ internal fun WidgetBubble(item: WidgetConversation, colors: WidgetColors) {
 internal fun WidgetNewMessagePill() {
     Box(
         modifier = GlanceModifier.fillMaxWidth()
-            .height(28.dp)
-            .padding(horizontal = 12.dp)
+            .height(WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP.dp)
+            .padding(horizontal = WidgetData.HORIZONTAL_PADDING_DP.dp)
             .background(GlanceTheme.colors.primary)
-            .cornerRadius(14.dp)
+            .cornerRadius((WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP / 2).dp)
             .clickable(actionStartActivity(WidgetIntents.newMessage(LocalContext.current))),
         contentAlignment = Alignment.Center
     ) {
@@ -212,7 +214,7 @@ internal fun WidgetNewMessagePill() {
             text = LocalContext.current.getString(R.string.widget_new_message),
             style = TextStyle(
                 color = GlanceTheme.colors.onPrimary,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
             ),
             maxLines = 1

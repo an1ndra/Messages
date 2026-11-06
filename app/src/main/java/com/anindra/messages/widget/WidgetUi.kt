@@ -41,7 +41,7 @@ internal fun MessagesListCard(
             .appWidgetBackground()
             .background(GlanceTheme.colors.widgetBackground)
             .cornerRadius(20.dp)
-            .padding(vertical = 6.dp)
+            .padding(vertical = WidgetData.VERTICAL_PADDING_DP.dp)
     ) {
         when {
             snapshot.locked -> WidgetLockedCard()
@@ -55,7 +55,7 @@ internal fun MessagesListCard(
                         text = LocalContext.current.getString(R.string.widget_no_conversations),
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 12.sp
+                            fontSize = 13.sp
                         ),
                         maxLines = 1
                     )
@@ -80,21 +80,21 @@ internal fun WidgetLockedCard() {
         Image(
             provider = ImageProvider(R.drawable.ic_widget_lock),
             contentDescription = null,
-            modifier = GlanceModifier.size(22.dp),
+            modifier = GlanceModifier.size(26.dp),
             colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant)
         )
         Text(
             text = LocalContext.current.getString(R.string.app_name),
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             ),
             maxLines = 1
         )
         Text(
             text = LocalContext.current.getString(R.string.widget_locked_body),
-            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp),
+            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
             maxLines = 1
         )
     }
@@ -103,7 +103,9 @@ internal fun WidgetLockedCard() {
 @Composable
 internal fun WidgetListHeader() {
     Row(
-        modifier = GlanceModifier.fillMaxWidth().height(28.dp).padding(horizontal = 12.dp),
+        modifier = GlanceModifier.fillMaxWidth()
+            .height(WidgetData.HEADER_HEIGHT_DP.dp)
+            .padding(horizontal = WidgetData.HORIZONTAL_PADDING_DP.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -116,7 +118,7 @@ internal fun WidgetListHeader() {
                 text = LocalContext.current.getString(R.string.app_name),
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurface,
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Medium
                 ),
                 maxLines = 1
@@ -129,9 +131,9 @@ internal fun WidgetListHeader() {
 @Composable
 internal fun WidgetComposeButton() {
     Box(
-        modifier = GlanceModifier.size(24.dp)
+        modifier = GlanceModifier.size(WidgetData.COMPOSE_BUTTON_DP.dp)
             .background(GlanceTheme.colors.primary)
-            .cornerRadius(12.dp)
+            .cornerRadius((WidgetData.COMPOSE_BUTTON_DP / 2).dp)
             .clickable(actionStartActivity(WidgetIntents.newMessage(LocalContext.current))),
         contentAlignment = Alignment.Center
     ) {
@@ -139,7 +141,7 @@ internal fun WidgetComposeButton() {
             text = "+",
             style = TextStyle(
                 color = GlanceTheme.colors.onPrimary,
-                fontSize = 16.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Medium
             )
         )
@@ -151,40 +153,40 @@ internal fun WidgetRow(item: WidgetConversation, colors: WidgetColors) {
     Row(
         modifier = GlanceModifier.fillMaxWidth()
             .height(WidgetData.ROW_HEIGHT_DP.dp)
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = WidgetData.HORIZONTAL_PADDING_DP.dp)
             .clickable(
                 actionStartActivity(WidgetIntents.conversation(LocalContext.current, item.id))
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         WidgetAvatar(item, colors)
-        Column(modifier = GlanceModifier.defaultWeight().padding(horizontal = 8.dp)) {
+        Column(modifier = GlanceModifier.defaultWeight().padding(horizontal = 10.dp)) {
             Text(
                 text = item.title,
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurface,
-                    fontSize = 13.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Medium
                 ),
                 maxLines = 1
             )
             Text(
                 text = item.preview,
-                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
                 maxLines = 1
             )
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = item.time,
-                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp),
+                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
                 maxLines = 1
             )
             if (item.unreadCount > 0) {
                 Box(
-                    modifier = GlanceModifier.size(6.dp)
+                    modifier = GlanceModifier.size(8.dp)
                         .background(GlanceTheme.colors.primary)
-                        .cornerRadius(3.dp)
+                        .cornerRadius(4.dp)
                 ) {}
             }
         }
@@ -194,16 +196,16 @@ internal fun WidgetRow(item: WidgetConversation, colors: WidgetColors) {
 @Composable
 internal fun WidgetAvatar(item: WidgetConversation, colors: WidgetColors) {
     Box(
-        modifier = GlanceModifier.size(24.dp)
+        modifier = GlanceModifier.size(WidgetData.AVATAR_DP.dp)
             .background(colors.avatarFill(item.avatarKey))
-            .cornerRadius(12.dp),
+            .cornerRadius((WidgetData.AVATAR_DP / 2).dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = item.initials,
             style = TextStyle(
                 color = colors.avatarInk,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             ),
             maxLines = 1
