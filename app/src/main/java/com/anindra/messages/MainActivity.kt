@@ -1308,6 +1308,10 @@ open class MainActivity : FragmentActivity() {
         applyPrivacyModeProbe(intent, bootVm)
         applyLockSessionProbe(intent)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
+        com.anindra.messages.widget.WidgetRoute.forExtras(
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_NEW_MESSAGE, false)
+        )?.let { navRoute = it }
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
             // The bubble's own notification is the bubble: dismissing it here
@@ -2223,6 +2227,10 @@ onOpenAccessibility = { navRoute = "accessibility" },
         applyAppLockProbe(intent, vm)
         applyLockSessionProbe(intent)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
+        com.anindra.messages.widget.WidgetRoute.forExtras(
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_NEW_MESSAGE, false)
+        )?.let { navRoute = it }
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
             if (!isBubbleLaunch(intent)) {
