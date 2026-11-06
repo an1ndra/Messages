@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_unread_label">읽지 않음</string>
+    <string name="widget_new_message">새 메시지</string>
+    <string name="widget_all_caught_up">모두 확인함</string>
+    <string name="widget_no_conversations">아직 대화가 없습니다</string>
+    <string name="widget_locked_body">탭하여 잠금 해제</string>
+    <string name="widget_list_description">최근 대화</string>
+    <string name="widget_unread_description">읽지 않은 메시지</string>
+    <string name="widget_unread_content_description">읽지 않음 %1$d</string>
+</resources>
