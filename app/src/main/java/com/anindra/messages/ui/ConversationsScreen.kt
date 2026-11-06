@@ -1152,20 +1152,15 @@ internal fun ConversationRow(
         convo.groupTitle, convo.name, convo.address, BidiText.ltr(convo.display)
     )
     val hasDraft = convo.draft.isNotBlank()
-    val draftLabel = if (settings.hideLinks) hideUrls(convo.draft) else convo.draft
-    val snippetLabel = if (settings.hideLinks) hideUrls(convo.snippet) else convo.snippet
     val scheduledLabel = LocalScheduledPreview.current[convo.id]
-    val previewLabel = BidiText.isolateNumberRuns(
-        if (hasDraft) {
-            context.getString(R.string.chat_draft_prefix) + draftLabel
-        } else if (!scheduledLabel.isNullOrBlank()) {
-            context.getString(R.string.chat_scheduled_prefix) + scheduledLabel
-        } else if (convo.isMe && snippetLabel.isNotEmpty()) {
-            context.getString(R.string.convo_your_prefix) + snippetLabel
-        } else {
-            snippetLabel
-        }
-    ).text
+    val previewLabel = ConversationPreview.text(
+        convo,
+        settings.hideLinks,
+        scheduledLabel,
+        context.getString(R.string.chat_draft_prefix),
+        context.getString(R.string.chat_scheduled_prefix),
+        context.getString(R.string.convo_your_prefix)
+    )
     val a11yLabel = A11y.describe(
         senderLabel,
         previewLabel,
