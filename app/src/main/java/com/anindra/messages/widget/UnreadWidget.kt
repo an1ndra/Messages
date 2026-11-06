@@ -56,8 +56,9 @@ class UnreadWidget : GlanceAppWidget() {
                     colors = colors,
                     rowLimit = WidgetData.rowCount(
                         LocalSize.current.height.value.toInt(),
-                        rowDp = 46,
-                        max = WidgetData.MAX_UNREAD_ROWS
+                        rowDp = WidgetData.UNREAD_BUBBLE_HEIGHT_DP,
+                        max = WidgetData.MAX_UNREAD_ROWS,
+                        reserveDp = WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP
                     )
                 )
             }
@@ -84,7 +85,8 @@ internal fun UnreadCard(snapshot: WidgetSnapshot, colors: WidgetColors, rowLimit
             WidgetUnreadHeader(snapshot.unreadTotal)
             if (snapshot.unread.isEmpty()) {
                 Box(
-                    modifier = GlanceModifier.fillMaxWidth().height(46.dp),
+                    modifier = GlanceModifier.fillMaxWidth()
+                        .height(WidgetData.UNREAD_BUBBLE_HEIGHT_DP.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -146,10 +148,10 @@ internal fun WidgetUnreadHeader(total: Int) {
 @Composable
 internal fun WidgetBubble(item: WidgetConversation, colors: WidgetColors) {
     Column(
-        modifier = GlanceModifier.height(46.dp)
+        modifier = GlanceModifier.height(WidgetData.UNREAD_BUBBLE_HEIGHT_DP.dp)
             .padding(horizontal = 12.dp)
             .clickable(
-                actionStartActivity(WidgetIntents.conversation(LocalContext.current, item.address))
+                actionStartActivity(WidgetIntents.conversation(LocalContext.current, item.id))
             )
     ) {
         Row(

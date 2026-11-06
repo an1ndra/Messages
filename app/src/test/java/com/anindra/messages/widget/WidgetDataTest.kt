@@ -61,10 +61,49 @@ class WidgetDataTest {
     @Test
     fun rowCountUsesFloorAndClamps() {
         assertEquals(2, WidgetData.rowCount(110))
-        assertEquals(3, WidgetData.rowCount(127))
+        assertEquals(2, WidgetData.rowCount(127))
         assertEquals(1, WidgetData.rowCount(40))
         assertEquals(4, WidgetData.rowCount(400))
-        assertEquals(2, WidgetData.rowCount(127, rowDp = 46, max = 3))
+        assertEquals(1, WidgetData.rowCount(127, rowDp = 46, max = 3))
+    }
+
+    /** The card pads 6 dp top and bottom, so a row that ignores both is clipped. */
+    @Test
+    fun rowCountLeavesRoomForBothPaddings() {
+        assertEquals(3, WidgetData.rowCount(130))
+        assertEquals(2, WidgetData.rowCount(129))
+    }
+
+    /** The unread card keeps the New message pill at every size, so it must reserve it. */
+    @Test
+    fun unreadRowCountReservesTheNewMessagePill() {
+        assertEquals(
+            1,
+            WidgetData.rowCount(
+                127,
+                rowDp = WidgetData.UNREAD_BUBBLE_HEIGHT_DP,
+                max = WidgetData.MAX_UNREAD_ROWS,
+                reserveDp = WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP
+            )
+        )
+        assertEquals(
+            3,
+            WidgetData.rowCount(
+                255,
+                rowDp = WidgetData.UNREAD_BUBBLE_HEIGHT_DP,
+                max = WidgetData.MAX_UNREAD_ROWS,
+                reserveDp = WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP
+            )
+        )
+    }
+
+    /** A bubble is exactly its label row plus its snippet, or one of them is clipped. */
+    @Test
+    fun unreadBubbleFitsItsLabelAndSnippet() {
+        assertEquals(
+            WidgetData.UNREAD_LABEL_ROW_DP + WidgetData.UNREAD_SNIPPET_DP,
+            WidgetData.UNREAD_BUBBLE_HEIGHT_DP
+        )
     }
 
     @Test

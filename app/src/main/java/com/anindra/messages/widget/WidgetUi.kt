@@ -19,6 +19,7 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
+import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
@@ -43,19 +44,21 @@ internal fun MessagesListCard(
     ) {
         when {
             snapshot.locked -> WidgetLockedCard()
-            snapshot.list.isEmpty() -> Column(
-                modifier = GlanceModifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = LocalContext.current.getString(R.string.widget_no_conversations),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 12.sp
-                    ),
-                    maxLines = 1
-                )
+            snapshot.list.isEmpty() -> {
+                WidgetListHeader()
+                Box(
+                    modifier = GlanceModifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = LocalContext.current.getString(R.string.widget_no_conversations),
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 12.sp
+                        ),
+                        maxLines = 1
+                    )
+                }
             }
             else -> {
                 WidgetListHeader()
@@ -69,7 +72,7 @@ internal fun MessagesListCard(
 internal fun WidgetLockedCard() {
     Column(
         modifier = GlanceModifier.fillMaxSize()
-            .clickable(actionStartActivity(WidgetIntents.openApp(LocalContext.current))),
+            .clickable(actionStartActivity(WidgetIntents.inbox(LocalContext.current))),
         verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -102,16 +105,22 @@ internal fun WidgetListHeader() {
         modifier = GlanceModifier.height(28.dp).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = LocalContext.current.getString(R.string.app_name),
-            modifier = GlanceModifier.defaultWeight(),
-            style = TextStyle(
-                color = GlanceTheme.colors.onSurface,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            maxLines = 1
-        )
+        Box(
+            modifier = GlanceModifier.defaultWeight()
+                .fillMaxHeight()
+                .clickable(actionStartActivity(WidgetIntents.inbox(LocalContext.current))),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = LocalContext.current.getString(R.string.app_name),
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurface,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                maxLines = 1
+            )
+        }
         WidgetComposeButton()
     }
 }
@@ -142,7 +151,7 @@ internal fun WidgetRow(item: WidgetConversation, colors: WidgetColors) {
         modifier = GlanceModifier.height(30.dp)
             .padding(horizontal = 12.dp)
             .clickable(
-                actionStartActivity(WidgetIntents.conversation(LocalContext.current, item.address))
+                actionStartActivity(WidgetIntents.conversation(LocalContext.current, item.id))
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {

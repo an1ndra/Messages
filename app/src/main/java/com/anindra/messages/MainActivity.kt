@@ -1234,6 +1234,7 @@ open class MainActivity : FragmentActivity() {
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
+    private var pendingOpenConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
     private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
     private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
     private var stagedMediaProbe by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
@@ -1314,16 +1315,7 @@ open class MainActivity : FragmentActivity() {
             intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
             intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_NEW_MESSAGE, false)
         )?.let { navRoute = it }
-        intent.getStringExtra("open_conversation_address")?.let {
-            pendingOpenAddress = it
-            // The bubble's own notification is the bubble: dismissing it here
-            // would close the window this activity was launched into.
-            if (!isBubbleLaunch(intent)) {
-                com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
-                    this@MainActivity, null, it
-                )
-            }
-        }
+        applyConversationRoute(intent)
         if (isBubbleLaunch(intent)) navRoute = "opening"
         applyShareIntent(intent)
 
@@ -1553,6 +1545,16 @@ open class MainActivity : FragmentActivity() {
                         com.anindra.messages.sms.NotificationHelper
                             .retireBubbleForFullChat(this@MainActivity, id)
                     }
+                }
+
+                androidx.compose.runtime.LaunchedEffect(pendingOpenConversationId) {
+                    val id = pendingOpenConversationId ?: return@LaunchedEffect
+                    chatId = id
+                    chatSearchQuery = null
+                    navRoute = if (id > 0) "chat" else "list"
+                    pendingOpenConversationId = null
+                    com.anindra.messages.sms.NotificationHelper
+                        .retireBubbleForFullChat(this@MainActivity, id)
                 }
 
                 if (showDefaultSmsDialog) {
@@ -2257,16 +2259,35 @@ onOpenAccessibility = { navRoute = "accessibility" },
             intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
             intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_NEW_MESSAGE, false)
         )?.let { navRoute = it }
+        applyConversationRoute(intent)
+        if (isBubbleLaunch(intent)) navRoute = "opening"
+        applyShareIntent(intent)
+    }
+
+    /**
+     * Opens the chat an intent names. A widget row names its conversation by id,
+     * because a group created from a 1:1 keeps that contact's address, and the
+     * address route resolves back to the 1:1 thread.
+     */
+    private fun applyConversationRoute(intent: Intent) {
+        val widgetId = intent.getLongExtra(
+            com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_CONVERSATION_ID,
+            0L
+        )
+        if (widgetId > 0L) {
+            pendingOpenConversationId = widgetId
+            return
+        }
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
+            // The bubble's own notification is the bubble: dismissing it here
+            // would close the window this activity was launched into.
             if (!isBubbleLaunch(intent)) {
                 com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
                     this@MainActivity, null, it
                 )
             }
         }
-        if (isBubbleLaunch(intent)) navRoute = "opening"
-        applyShareIntent(intent)
     }
 
     /**

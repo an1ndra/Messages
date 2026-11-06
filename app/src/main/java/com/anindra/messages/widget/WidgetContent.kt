@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 
 /** One row of a widget: everything the Glance composition draws, already decided. */
 internal data class WidgetConversation(
+    val id: Long,
     val address: String,
     val title: String,
     val preview: String,
@@ -68,6 +69,7 @@ private fun Conversation.toWidgetConversation(
     now: Long,
     hideLinks: Boolean
 ): WidgetConversation = WidgetConversation(
+    id = id,
     address = address,
     title = ContactDetails.listLabel(groupTitle, name, address, BidiText.ltr(display)),
     preview = ConversationPreview.text(
