@@ -21,6 +21,7 @@ import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
@@ -102,7 +103,7 @@ internal fun WidgetLockedCard() {
 @Composable
 internal fun WidgetListHeader() {
     Row(
-        modifier = GlanceModifier.height(28.dp).padding(horizontal = 12.dp),
+        modifier = GlanceModifier.fillMaxWidth().height(28.dp).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -148,7 +149,8 @@ internal fun WidgetComposeButton() {
 @Composable
 internal fun WidgetRow(item: WidgetConversation, colors: WidgetColors) {
     Row(
-        modifier = GlanceModifier.height(30.dp)
+        modifier = GlanceModifier.fillMaxWidth()
+            .height(WidgetData.ROW_HEIGHT_DP.dp)
             .padding(horizontal = 12.dp)
             .clickable(
                 actionStartActivity(WidgetIntents.conversation(LocalContext.current, item.id))

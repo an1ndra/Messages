@@ -85,8 +85,7 @@ internal fun UnreadCard(snapshot: WidgetSnapshot, colors: WidgetColors, rowLimit
             WidgetUnreadHeader(snapshot.unreadTotal)
             if (snapshot.unread.isEmpty()) {
                 Box(
-                    modifier = GlanceModifier.fillMaxWidth()
-                        .height(WidgetData.UNREAD_BUBBLE_HEIGHT_DP.dp),
+                    modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -99,7 +98,9 @@ internal fun UnreadCard(snapshot: WidgetSnapshot, colors: WidgetColors, rowLimit
                     )
                 }
             } else {
-                snapshot.unread.take(rowLimit).forEach { WidgetBubble(it, colors) }
+                Column(modifier = GlanceModifier.defaultWeight()) {
+                    snapshot.unread.take(rowLimit).forEach { WidgetBubble(it, colors) }
+                }
             }
             WidgetNewMessagePill()
         }
@@ -109,7 +110,7 @@ internal fun UnreadCard(snapshot: WidgetSnapshot, colors: WidgetColors, rowLimit
 @Composable
 internal fun WidgetUnreadHeader(total: Int) {
     Row(
-        modifier = GlanceModifier.height(28.dp).padding(horizontal = 12.dp),
+        modifier = GlanceModifier.fillMaxWidth().height(28.dp).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -148,14 +149,15 @@ internal fun WidgetUnreadHeader(total: Int) {
 @Composable
 internal fun WidgetBubble(item: WidgetConversation, colors: WidgetColors) {
     Column(
-        modifier = GlanceModifier.height(WidgetData.UNREAD_BUBBLE_HEIGHT_DP.dp)
+        modifier = GlanceModifier.fillMaxWidth()
+            .height(WidgetData.UNREAD_BUBBLE_HEIGHT_DP.dp)
             .padding(horizontal = 12.dp)
             .clickable(
                 actionStartActivity(WidgetIntents.conversation(LocalContext.current, item.id))
             )
     ) {
         Row(
-            modifier = GlanceModifier.fillMaxWidth().padding(vertical = 2.dp),
+            modifier = GlanceModifier.fillMaxWidth().height(WidgetData.UNREAD_LABEL_ROW_DP.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             WidgetAvatar(item, colors)
@@ -177,7 +179,7 @@ internal fun WidgetBubble(item: WidgetConversation, colors: WidgetColors) {
         }
         Box(
             modifier = GlanceModifier.fillMaxWidth()
-                .height(26.dp)
+                .height(WidgetData.UNREAD_SNIPPET_DP.dp)
                 .background(GlanceTheme.colors.surfaceVariant)
                 .cornerRadius(14.dp)
                 .padding(horizontal = 10.dp),
