@@ -1,0 +1,87 @@
+package com.anindra.messages.widget
+
+import com.anindra.messages.data.Conversation
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class WidgetDataTest {
+
+    private fun convo(
+        id: Long,
+        unread: Int = 0,
+        archived: Boolean = false,
+        blocked: Boolean = false,
+        pinned: Boolean = false,
+        timestamp: Long = id
+    ) = Conversation(
+        id = id, address = "+1555000$id", name = "Name $id", snippet = "s$id",
+        timestamp = timestamp, unreadCount = unread, isMe = false,
+        archived = archived, blocked = blocked, pinned = pinned
+    )
+
+    private fun ids(list: List<Conversation>) = list.map { it.id }
+
+    @Test
+    fun inboxDropsArchivedAndBlocked() {
+        val list = listOf(convo(1), convo(2, archived = true), convo(3, blocked = true))
+        assertEquals(listOf(1L), ids(WidgetData.inbox(list, unreadAtTop = false)))
+    }
+
+    @Test
+    fun unreadAtTopKeepsPinnedFirst() {
+        val list = listOf(convo(1, unread = 0, timestamp = 30), convo(2, unread = 2, timestamp = 10))
+        assertEquals(
+            listOf(2L, 1L),
+            ids(WidgetData.inbox(list, unreadAtTop = true))
+        )
+        assertEquals(listOf(1L, 2L), ids(WidgetData.inbox(list, unreadAtTop = false)))
+    }
+
+    @Test
+    fun listRowsRespectTheCap() {
+        val list = (1L..6L).map { convo(it) }
+        assertEquals(4, WidgetData.listRows(list, 4).size)
+        assertEquals(2, WidgetData.listRows(list, 2).size)
+        assertEquals(0, WidgetData.listRows(list, 0).size)
+    }
+
+    @Test
+    fun unreadRowsOnlyUnreadAndCappedAtThree() {
+        val list = (1L..6L).map { convo(it, unread = if (it % 2 == 0L) 1 else 0) }
+        assertEquals(listOf(2L, 4L, 6L), ids(WidgetData.unreadRows(list, 3)))
+    }
+
+    @Test
+    fun unreadTotalSumsMessagesNotConversations() {
+        assertEquals(5, WidgetData.unreadTotal(listOf(convo(1, unread = 2), convo(2, unread = 3), convo(3))))
+    }
+
+    @Test
+    fun rowCountUsesFloorAndClamps() {
+        assertEquals(2, WidgetData.rowCount(110))
+        assertEquals(3, WidgetData.rowCount(127))
+        assertEquals(1, WidgetData.rowCount(40))
+        assertEquals(4, WidgetData.rowCount(400))
+        assertEquals(2, WidgetData.rowCount(127, rowDp = 46, max = 3))
+    }
+
+    @Test
+    fun lockedWhenEitherGateIsOn() {
+        assertFalse(WidgetData.isLocked(false, false))
+        assertTrue(WidgetData.isLocked(true, false))
+        assertTrue(WidgetData.isLocked(false, true))
+        assertTrue(WidgetData.isLocked(true, true))
+    }
+
+    @Test
+    fun initialsPreferNamesThenDigits() {
+        assertEquals("MC", WidgetData.initialsFor("Maya Chen", "+15550001"))
+        assertEquals("D", WidgetData.initialsFor("Dad", "+15550001"))
+        assertEquals("SD", WidgetData.initialsFor("Sarah + Dad", "+15550001"))
+        assertEquals("", WidgetData.initialsFor("", ""))
+        assertEquals("04", WidgetData.initialsFor("", "+15551230004"))
+        assertEquals("04", WidgetData.initialsFor("+15551230004", "+15551230004"))
+    }
+}
