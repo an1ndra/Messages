@@ -96,6 +96,7 @@ import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.TransferLogScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.A11yOptions
+import com.anindra.messages.ui.theme.a11yOptions
 import com.anindra.messages.ui.theme.MessagesTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -240,14 +241,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _a11yState = androidx.compose.runtime.mutableStateOf(readA11y())
 
-    private fun readA11y() = A11yOptions(
-        enabled = settings.a11yEnabled,
-        fontScalePercent = settings.a11yFontScalePercent,
-        bold = settings.a11yBold,
-        highContrast = settings.a11yHighContrast,
-        reduceMotion = settings.a11yReduceMotion,
-        largeTouchTargets = settings.a11yLargeTouch
-    )
+    private fun readA11y() = settings.a11yOptions()
 
     private fun refreshA11y() { _a11yState.value = readA11y() }
 
