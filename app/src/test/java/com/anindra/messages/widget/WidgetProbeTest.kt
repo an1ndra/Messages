@@ -18,7 +18,7 @@ class WidgetProbeTest {
     fun unlockedLineCarriesRowsAndTotal() {
         val line = WidgetProbe.line(list, unreadAtTop = false, appLock = false, privacy = false)
         assertTrue(line.contains("locked=false"))
-        assertTrue(line.contains("+15550001|Name 1|2"))
+        assertTrue(line.contains("1|+15550001|Name 1|2"))
         assertTrue(line.contains("total=2"))
     }
 

@@ -35,19 +35,19 @@ private val widgetColors = WidgetColors(
 
 private val sampleItems = listOf(
     WidgetConversation(
-        address = "+15551230001", title = "Maya Chen", preview = "See you at 6",
+        id = 1L, address = "+15551230001", title = "Maya Chen", preview = "See you at 6",
         time = "18:04", unreadCount = 2, initials = "MC", avatarKey = "+15551230001"
     ),
     WidgetConversation(
-        address = "+15551230002", title = "Dad", preview = "You: on my way",
+        id = 2L, address = "+15551230002", title = "Dad", preview = "You: on my way",
         time = "17:20", unreadCount = 0, initials = "D", avatarKey = "+15551230002"
     ),
     WidgetConversation(
-        address = "+15551230003", title = "Weekend plans", preview = "Priya: Sunday works",
+        id = 3L, address = "+15551230003", title = "Weekend plans", preview = "Priya: Sunday works",
         time = "Wed", unreadCount = 1, initials = "WP", avatarKey = "Weekend plans"
     ),
     WidgetConversation(
-        address = "+15551230004", title = "+1 555 123 0004", preview = "Draft: running late",
+        id = 4L, address = "+15551230004", title = "+1 555 123 0004", preview = "Draft: running late",
         time = "Tue", unreadCount = 0, initials = "04", avatarKey = "+15551230004"
     )
 )

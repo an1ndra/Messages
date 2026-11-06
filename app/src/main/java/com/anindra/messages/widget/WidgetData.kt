@@ -15,10 +15,23 @@ object WidgetData {
     const val HEADER_HEIGHT_DP = 28
     const val ROW_HEIGHT_DP = 30
     const val VERTICAL_PADDING_DP = 6
+    const val UNREAD_LABEL_ROW_DP = 28
+    const val UNREAD_SNIPPET_DP = 26
+    const val UNREAD_BUBBLE_HEIGHT_DP = UNREAD_LABEL_ROW_DP + UNREAD_SNIPPET_DP
+    const val NEW_MESSAGE_PILL_HEIGHT_DP = 28
 
-    /** Rows that fit in [heightDp], after the header and the padding. Never 0. */
-    fun rowCount(heightDp: Int, rowDp: Int = ROW_HEIGHT_DP, max: Int = MAX_LIST_ROWS): Int =
-        ((heightDp - HEADER_HEIGHT_DP - VERTICAL_PADDING_DP) / rowDp).coerceIn(1, max)
+    /**
+     * Rows that fit in [heightDp], after the header, both paddings and anything
+     * else the card keeps visible ([reserveDp]). Never 0.
+     */
+    fun rowCount(
+        heightDp: Int,
+        rowDp: Int = ROW_HEIGHT_DP,
+        max: Int = MAX_LIST_ROWS,
+        reserveDp: Int = 0
+    ): Int = (
+        (heightDp - HEADER_HEIGHT_DP - 2 * VERTICAL_PADDING_DP - reserveDp) / rowDp
+        ).coerceIn(1, max)
 
     /** The conversations a widget may show: blocked and archived dropped, then ordered. */
     fun inbox(conversations: List<Conversation>, unreadAtTop: Boolean): List<Conversation> =

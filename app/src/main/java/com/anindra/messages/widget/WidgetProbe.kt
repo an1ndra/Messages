@@ -24,5 +24,5 @@ object WidgetProbe {
     }
 
     private fun rows(list: List<Conversation>): String =
-        list.joinToString(",") { "${it.address}|${it.name}|${it.unreadCount}" }
+        list.joinToString(",") { "${it.id}|${it.address}|${it.name}|${it.unreadCount}" }
 }
