@@ -111,6 +111,33 @@ class WidgetWiringTest {
     }
 
     /**
+     * The picker preview is drawn by the launcher, so its colours have to come
+     * from the host's theme or they come out black on a dark launcher — the
+     * snippet bubble did, as a layer-list whose `<item android:alpha>` the host
+     * ignored.
+     */
+    @Test
+    fun pickerPreviewShapesPaintFromTheHostTheme() {
+        val previews = File(main, "res/drawable")
+            .listFiles { f -> f.name.startsWith("widget_preview_") && f.extension == "xml" }
+            .orEmpty()
+        assertTrue("no widget_preview_* drawables found", previews.isNotEmpty())
+        for (file in previews) {
+            val xml = file.readText()
+            assertTrue(
+                "${file.name} layers an alpha over a solid colour, which the launcher flattens",
+                !xml.contains("android:alpha=")
+            )
+            val solid = Regex("""<solid\s+android:color="([^"]+)"""").find(xml)
+                ?: continue
+            assertTrue(
+                "${file.name} paints '${solid.groupValues[1]}' instead of a theme attribute",
+                solid.groupValues[1].startsWith("?android:attr/")
+            )
+        }
+    }
+
+    /**
      * The inbox shows the contact photo or a silhouette, never initials, so the
      * widget must draw the same picture instead of text.
      */
