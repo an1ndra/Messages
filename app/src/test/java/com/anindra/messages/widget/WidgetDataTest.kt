@@ -98,13 +98,13 @@ class WidgetDataTest {
         assertTrue(WidgetData.isLocked(true, true))
     }
 
+    /**
+     * The inbox draws `PersonAvatar(convo.groupTitle.ifBlank { convo.address })`, so
+     * the widget must key its avatar on exactly that: a group names, a 1:1 numbers.
+     */
     @Test
-    fun initialsPreferNamesThenDigits() {
-        assertEquals("MC", WidgetData.initialsFor("Maya Chen", "+15550001"))
-        assertEquals("D", WidgetData.initialsFor("Dad", "+15550001"))
-        assertEquals("SD", WidgetData.initialsFor("Sarah + Dad", "+15550001"))
-        assertEquals("", WidgetData.initialsFor("", ""))
-        assertEquals("04", WidgetData.initialsFor("", "+15551230004"))
-        assertEquals("04", WidgetData.initialsFor("+15551230004", "+15551230004"))
+    fun avatarKeyMatchesTheInboxAvatarKey() {
+        assertEquals("Weekend plans", WidgetData.avatarKey("Weekend plans", "+15550001"))
+        assertEquals("+15550001", WidgetData.avatarKey("", "+15550001"))
     }
 }

@@ -86,4 +86,45 @@ class WidgetWiringTest {
             activity.contains("pendingOpenConversationId")
         )
     }
+
+    /**
+     * The launcher's picker draws `previewLayout` from the provider info (API 31+)
+     * and falls back to the app icon without it, which is what the picker showed.
+     */
+    @Test
+    fun bothProvidersDeclareAPickerPreview() {
+        val providers = mapOf(
+            "res/xml/widget_messages_list_info.xml" to "widget_messages_list_preview",
+            "res/xml/widget_unread_info.xml" to "widget_unread_preview"
+        )
+        for ((info, layoutName) in providers) {
+            val text = src(info)
+            assertTrue(
+                "$info must declare android:previewLayout=\"@layout/$layoutName\"",
+                text.contains("android:previewLayout=\"@layout/$layoutName\"")
+            )
+            assertTrue(
+                "$info names a preview layout that does not exist",
+                File(main, "res/layout/$layoutName.xml").isFile
+            )
+        }
+    }
+
+    /**
+     * The inbox shows the contact photo or a silhouette, never initials, so the
+     * widget must draw the same picture instead of text.
+     */
+    @Test
+    fun theAvatarDrawsTheInboxPictureNotInitials() {
+        val avatar = body(ui, "WidgetAvatar")
+        assertTrue(
+            "the widget avatar must draw the resolved picture",
+            avatar.contains("item.avatar") && avatar.contains("ImageProvider(")
+        )
+        assertTrue("the widget avatar must not draw initials", !avatar.contains("item.initials"))
+        assertTrue(
+            "the widget avatar must fall back to the person silhouette",
+            avatar.contains("R.drawable.ic_person_placeholder")
+        )
+    }
 }

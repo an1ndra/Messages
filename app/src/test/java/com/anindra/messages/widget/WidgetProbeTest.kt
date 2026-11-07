@@ -37,4 +37,14 @@ class WidgetProbeTest {
         assertTrue(line.contains("locked=true"))
         assertFalse(line.contains("+1555000"))
     }
+
+    /** The probe also reports the avatar key so the script can assert it matches the inbox's. */
+    @Test
+    fun rowsCarryTheInboxAvatarKey() {
+        val line = WidgetProbe.line(list, unreadAtTop = false, appLock = false, privacy = false)
+        assertTrue(
+            "a widget row must name the key the inbox draws its avatar for",
+            line.contains("1|+15550001|Name 1|2|+15550001")
+        )
+    }
 }

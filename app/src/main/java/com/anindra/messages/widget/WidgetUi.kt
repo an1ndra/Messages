@@ -18,6 +18,7 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
@@ -193,22 +194,35 @@ internal fun WidgetRow(item: WidgetConversation, colors: WidgetColors) {
     }
 }
 
+/**
+ * The inbox's picture for a conversation: [ConversationAvatar]'s bitmap, which is
+ * the contact photo when there is one and the palette silhouette otherwise — the
+ * same thing `PersonAvatar` draws in the list, so the widget never invents a
+ * number where the inbox shows a person.
+ */
 @Composable
 internal fun WidgetAvatar(item: WidgetConversation, colors: WidgetColors) {
-    Box(
-        modifier = GlanceModifier.size(WidgetData.AVATAR_DP.dp)
-            .background(colors.avatarFill(item.avatarKey))
-            .cornerRadius((WidgetData.AVATAR_DP / 2).dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = item.initials,
-            style = TextStyle(
-                color = colors.avatarInk,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            maxLines = 1
+    val shape = GlanceModifier.size(WidgetData.AVATAR_DP.dp)
+        .cornerRadius((WidgetData.AVATAR_DP / 2).dp)
+    val avatar = item.avatar
+    if (avatar != null) {
+        Image(
+            provider = ImageProvider(avatar),
+            contentDescription = null,
+            modifier = shape,
+            contentScale = ContentScale.Crop
         )
+    } else {
+        Box(
+            modifier = shape.background(colors.avatarFill(item.avatarKey)),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                provider = ImageProvider(R.drawable.ic_person_placeholder),
+                contentDescription = null,
+                modifier = GlanceModifier.size((WidgetData.AVATAR_DP * 0.62f).dp),
+                colorFilter = ColorFilter.tint(colors.avatarInk)
+            )
+        }
     }
 }
