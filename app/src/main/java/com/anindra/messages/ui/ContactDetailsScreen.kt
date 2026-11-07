@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.Call
@@ -349,6 +350,12 @@ onBack: () -> Unit,
                 DetailCardRow(
                     icon = Icons.Rounded.Notifications,
                     title = stringResource(R.string.contact_notification_profile),
+                    // The chevron and the hairline before the switch say the row
+                    // also opens something, the way Android Settings marks a row
+                    // that both toggles and drills in (#421). They appear only
+                    // while the channel exists, because only then is there a
+                    // page to open.
+                    drillIn = channelOn,
                     trailing = {
                         Switch(
                             checked = channelOn,
@@ -543,6 +550,7 @@ internal fun DetailCardRow(
     title: String,
     titleColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
     iconColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    drillIn: Boolean = false,
     trailing: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null
 ) {
@@ -566,6 +574,25 @@ internal fun DetailCardRow(
             color = titleColor,
             modifier = Modifier.weight(1f)
         )
+        if (drillIn) {
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (trailing != null) {
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    Modifier
+                        .width(1.dp)
+                        .height(24.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+                Spacer(Modifier.width(6.dp))
+            }
+        }
         trailing?.invoke()
     }
 }
