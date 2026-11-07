@@ -54,12 +54,7 @@ class UnreadWidget : GlanceAppWidget() {
                 UnreadCard(
                     snapshot = snapshot,
                     colors = colors,
-                    rowLimit = WidgetData.rowCount(
-                        LocalSize.current.height.value.toInt(),
-                        rowDp = WidgetData.UNREAD_BUBBLE_HEIGHT_DP,
-                        max = WidgetData.MAX_UNREAD_ROWS,
-                        reserveDp = WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP
-                    )
+                    rowLimit = WidgetData.unreadRowCount(LocalSize.current.height.value.toInt())
                 )
             }
         }
@@ -204,23 +199,31 @@ internal fun WidgetBubble(item: WidgetConversation, colors: WidgetColors) {
 
 @Composable
 internal fun WidgetNewMessagePill() {
+    // Glance paints a background over the whole node, so the margins have to
+    // come from a wrapper: padding on the pill itself would only inset its text.
     Box(
-        modifier = GlanceModifier.fillMaxWidth()
-            .height(WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP.dp)
-            .padding(horizontal = WidgetData.HORIZONTAL_PADDING_DP.dp)
-            .background(GlanceTheme.colors.primary)
-            .cornerRadius((WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP / 2).dp)
-            .clickable(actionStartActivity(WidgetIntents.newMessage(LocalContext.current))),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = LocalContext.current.getString(R.string.widget_new_message),
-            style = TextStyle(
-                color = GlanceTheme.colors.onPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            maxLines = 1
+        modifier = GlanceModifier.fillMaxWidth().padding(
+            horizontal = WidgetData.HORIZONTAL_PADDING_DP.dp,
+            vertical = WidgetData.NEW_MESSAGE_PILL_MARGIN_DP.dp
         )
+    ) {
+        Box(
+            modifier = GlanceModifier.fillMaxWidth()
+                .height(WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP.dp)
+                .background(GlanceTheme.colors.primary)
+                .cornerRadius((WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP / 2).dp)
+                .clickable(actionStartActivity(WidgetIntents.newMessage(LocalContext.current))),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = LocalContext.current.getString(R.string.widget_new_message),
+                style = TextStyle(
+                    color = GlanceTheme.colors.onPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                maxLines = 1
+            )
+        }
     }
 }
