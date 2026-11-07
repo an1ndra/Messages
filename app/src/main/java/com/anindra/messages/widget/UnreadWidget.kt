@@ -98,7 +98,10 @@ internal fun UnreadCard(snapshot: WidgetSnapshot, colors: WidgetColors, rowLimit
                     )
                 }
             } else {
-                Column(modifier = GlanceModifier.defaultWeight()) {
+                Column(
+                    modifier = GlanceModifier.defaultWeight(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     snapshot.unread.take(rowLimit).forEach { WidgetBubble(it, colors) }
                 }
             }
