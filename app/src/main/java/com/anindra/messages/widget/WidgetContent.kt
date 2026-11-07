@@ -1,9 +1,11 @@
 package com.anindra.messages.widget
 
 import android.content.Context
+import android.graphics.Bitmap
 import com.anindra.messages.MessagesApplication
 import com.anindra.messages.R
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.sms.ConversationAvatar
 import com.anindra.messages.ui.BidiText
 import com.anindra.messages.ui.ContactDetails
 import com.anindra.messages.ui.ConversationPreview
@@ -20,8 +22,8 @@ internal data class WidgetConversation(
     val preview: String,
     val time: String,
     val unreadCount: Int,
-    val initials: String,
-    val avatarKey: String
+    val avatarKey: String,
+    val avatar: Bitmap?
 )
 
 /** What both widgets render from. [locked] carries no conversation data at all. */
@@ -68,20 +70,25 @@ private fun Conversation.toWidgetConversation(
     context: Context,
     now: Long,
     hideLinks: Boolean
-): WidgetConversation = WidgetConversation(
-    id = id,
-    address = address,
-    title = ContactDetails.listLabel(groupTitle, name, address, BidiText.ltr(display)),
-    preview = ConversationPreview.text(
-        conversation = this,
-        hideLinks = hideLinks,
-        scheduled = null,
-        draftPrefix = context.getString(R.string.chat_draft_prefix),
-        scheduledPrefix = context.getString(R.string.chat_scheduled_prefix),
-        yourPrefix = context.getString(R.string.convo_your_prefix)
-    ),
-    time = formatListTime(timestamp, now, context),
-    unreadCount = unreadCount,
-    initials = WidgetData.initialsFor(name, display.ifBlank { address }),
-    avatarKey = groupTitle.ifBlank { address }
-)
+): WidgetConversation {
+    val key = WidgetData.avatarKey(groupTitle, address)
+    return WidgetConversation(
+        id = id,
+        address = address,
+        title = ContactDetails.listLabel(groupTitle, name, address, BidiText.ltr(display)),
+        preview = ConversationPreview.text(
+            conversation = this,
+            hideLinks = hideLinks,
+            scheduled = null,
+            draftPrefix = context.getString(R.string.chat_draft_prefix),
+            scheduledPrefix = context.getString(R.string.chat_scheduled_prefix),
+            yourPrefix = context.getString(R.string.convo_your_prefix)
+        ),
+        time = formatListTime(timestamp, now, context),
+        unreadCount = unreadCount,
+        avatarKey = key,
+        // The same picture the inbox and the notification draw: the contact's
+        // photo when there is one, else the silhouette on its palette colour.
+        avatar = ConversationAvatar.forAddress(context, key).bitmap
+    )
+}

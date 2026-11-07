@@ -65,17 +65,9 @@ object WidgetData {
     fun isLocked(appLock: Boolean, privacy: Boolean): Boolean = appLock || privacy
 
     /**
-     * The two letters an avatar shows: the first letter of up to two name words,
-     * else the last two digits of the address. Blank when there is nothing.
+     * The key the inbox draws an avatar for: `PersonAvatar(convo.groupTitle.ifBlank { convo.address })`.
+     * A group is keyed by its title, a one-to-one by the number.
      */
-    fun initialsFor(name: String, address: String): String {
-        val label = name.ifBlank { address }.trim()
-        if (label.isEmpty()) return ""
-        if (label.none { it.isLetter() }) return label.takeLast(2)
-        return label.split(Regex("\\s+"))
-            .filter { word -> word.any { it.isLetter() } }
-            .take(2)
-            .mapNotNull { word -> word.firstOrNull { it.isLetter() } }
-            .joinToString("") { it.uppercase() }
-    }
+    fun avatarKey(groupTitle: String, address: String): String =
+        groupTitle.ifBlank { address }
 }

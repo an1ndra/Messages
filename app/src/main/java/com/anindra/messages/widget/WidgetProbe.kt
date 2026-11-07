@@ -24,5 +24,8 @@ object WidgetProbe {
     }
 
     private fun rows(list: List<Conversation>): String =
-        list.joinToString(",") { "${it.id}|${it.address}|${it.name}|${it.unreadCount}" }
+        list.joinToString(",") {
+            val key = WidgetData.avatarKey(it.groupTitle, it.address)
+            "${it.id}|${it.address}|${it.name}|${it.unreadCount}|$key"
+        }
 }
