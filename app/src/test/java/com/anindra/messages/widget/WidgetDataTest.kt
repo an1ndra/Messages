@@ -76,25 +76,9 @@ class WidgetDataTest {
 
     /** The unread card keeps the New message pill at every size, so it must reserve it. */
     @Test
-    fun unreadRowCountReservesTheNewMessagePill() {
-        assertEquals(
-            1,
-            WidgetData.rowCount(
-                127,
-                rowDp = WidgetData.UNREAD_BUBBLE_HEIGHT_DP,
-                max = WidgetData.MAX_UNREAD_ROWS,
-                reserveDp = WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP
-            )
-        )
-        assertEquals(
-            2,
-            WidgetData.rowCount(
-                255,
-                rowDp = WidgetData.UNREAD_BUBBLE_HEIGHT_DP,
-                max = WidgetData.MAX_UNREAD_ROWS,
-                reserveDp = WidgetData.NEW_MESSAGE_PILL_HEIGHT_DP
-            )
-        )
+    fun unreadRowCountReservesTheNewMessagePillAndItsMargins() {
+        assertEquals(1, WidgetData.unreadRowCount(127))
+        assertEquals(2, WidgetData.unreadRowCount(255))
     }
 
     /** A bubble is exactly its label row plus its snippet, or one of them is clipped. */

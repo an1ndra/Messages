@@ -22,6 +22,7 @@ object WidgetData {
     const val UNREAD_SNIPPET_DP = 32
     const val UNREAD_BUBBLE_HEIGHT_DP = UNREAD_LABEL_ROW_DP + UNREAD_SNIPPET_DP
     const val NEW_MESSAGE_PILL_HEIGHT_DP = 34
+    const val NEW_MESSAGE_PILL_MARGIN_DP = 6
 
     /**
      * Rows that fit in [heightDp], after the header, both paddings and anything
@@ -46,6 +47,14 @@ object WidgetData {
 
     fun listRows(inbox: List<Conversation>, limit: Int): List<Conversation> =
         inbox.take(limit.coerceAtLeast(0))
+
+    /** Bubbles that fit above the New message pill and its margins. */
+    fun unreadRowCount(heightDp: Int): Int = rowCount(
+        heightDp,
+        rowDp = UNREAD_BUBBLE_HEIGHT_DP,
+        max = MAX_UNREAD_ROWS,
+        reserveDp = NEW_MESSAGE_PILL_HEIGHT_DP + 2 * NEW_MESSAGE_PILL_MARGIN_DP
+    )
 
     fun unreadRows(inbox: List<Conversation>, limit: Int): List<Conversation> =
         inbox.filter { it.unreadCount > 0 }.take(limit.coerceAtLeast(0))
