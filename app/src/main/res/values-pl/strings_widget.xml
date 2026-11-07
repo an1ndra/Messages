@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_unread_label">Nieprzeczytane</string>
+    <string name="widget_new_message">Nowa wiadomość</string>
+    <string name="widget_all_caught_up">Wszystko przeczytane</string>
+    <string name="widget_no_conversations">Brak konwersacji</string>
+    <string name="widget_locked_body">Dotknij, aby odblokować</string>
+    <string name="widget_list_description">Ostatnie konwersacje</string>
+    <string name="widget_unread_description">Nieprzeczytane wiadomości</string>
+    <string name="widget_unread_content_description">%1$d nieprzeczytanych</string>
+</resources>
