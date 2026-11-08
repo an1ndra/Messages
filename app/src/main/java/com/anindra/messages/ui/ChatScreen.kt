@@ -2836,11 +2836,15 @@ internal fun ScheduleDialog(
 }
 
 /** Locale-formatted number, LTR-isolated so RTL layouts don't reorder its groups. */
-fun formatPhoneNumber(raw: String): String =
+fun formatPhoneNumber(
+    raw: String,
+    region: String = com.anindra.messages.data.PhoneNumberUtils.region()
+): String =
     BidiText.ltr(
-        com.anindra.messages.data.PhoneNumberUtils.displayFor(
-            raw, com.anindra.messages.data.PhoneNumberUtils.region()
-        )
+        // A dial string is not a phone number: libphonenumber reads the digits
+        // of "*21*2258#" as 212258 and would paint "021 2258".
+        if (raw.any { it == '*' || it == '#' || it == ',' || it == ';' }) raw
+        else com.anindra.messages.data.PhoneNumberUtils.displayFor(raw, region)
     )
 
 /** Stable identity for cross-referencing a stored address against a contact
@@ -3708,7 +3712,7 @@ internal fun ForwardPicker(
                             val name = target.name
                             Column {
                                 Text(
-                                    name ?: BidiText.ltr(target.number),
+                                    name ?: formatPhoneNumber(target.number),
                                     style = LocalTextStyle.current.copy(
                                         textDirection = if (name != null) {
                                             BidiText.firstStrongDirection(name).toTextDirection()
@@ -3720,7 +3724,7 @@ internal fun ForwardPicker(
                                 )
                                 if (name != null) {
                                     Text(
-                                        BidiText.ltr(target.number),
+                                        formatPhoneNumber(target.number),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

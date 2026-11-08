@@ -29,12 +29,13 @@ class ForwardPickerDirectionTest {
     @Test
     fun everyNumberRowIsPaintedAsAnLtrIsolate() {
         // One for the primary line when the target has no name, one for the
-        // secondary line under a name.
+        // secondary line under a name. formatPhoneNumber() wraps its result in
+        // BidiText.ltr(), so it carries the isolate and the canonical spelling.
         assertEquals(
-            "both number slots must go through BidiText.ltr, like every other " +
+            "both number slots must go through formatPhoneNumber, like every other " +
                 "number row in an RTL window",
             2,
-            Regex("""BidiText\.ltr\(target\.number\)""").findAll(picker).count()
+            Regex("""formatPhoneNumber\(target\.number\)""").findAll(picker).count()
         )
     }
 
