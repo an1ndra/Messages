@@ -12,8 +12,8 @@ import org.junit.Test
  *
  * Back used to `finish()` the host whenever the window was a bubble, which
  * cancelled its notification and took the bubble with it. It now only does that
- * when the new setting says so; otherwise it shows the chat list and leaves the
- * bubble up.
+ * when the new setting says so. Otherwise it stays on the chat: a bubble hosts
+ * one conversation, so showing the app's chat list inside it is wrong.
  */
 class BubbleBackTest {
 
@@ -22,11 +22,24 @@ class BubbleBackTest {
 
     @Test
     fun backOnlyClosesTheBubbleWhenTheSettingIsOn() {
-        assertEquals(BubbleBack.SHOW_LIST, bubbleBackAction(bubbleMode = true, backClosesBubble = false))
+        assertEquals(BubbleBack.STAY, bubbleBackAction(bubbleMode = true, backClosesBubble = false))
         assertEquals(BubbleBack.FINISH, bubbleBackAction(bubbleMode = true, backClosesBubble = true))
         // Outside a bubble the setting is irrelevant: Back never finishes the app.
         assertEquals(BubbleBack.SHOW_LIST, bubbleBackAction(bubbleMode = false, backClosesBubble = false))
         assertEquals(BubbleBack.SHOW_LIST, bubbleBackAction(bubbleMode = false, backClosesBubble = true))
+    }
+
+    @Test
+    fun stayingOnTheChatDoesNotNavigateToTheList() {
+        val activity = src("java/com/anindra/messages/MainActivity.kt")
+        assertTrue(
+            "the bubble's Back has no path that stays on the chat",
+            activity.contains("BubbleBack.STAY -> Unit")
+        )
+        assertTrue(
+            "leaving for the list is no longer the non-bubble path",
+            activity.contains("BubbleBack.SHOW_LIST -> navRoute = \"list\"")
+        )
     }
 
     @Test
