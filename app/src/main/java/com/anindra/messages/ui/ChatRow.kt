@@ -34,6 +34,7 @@ import com.anindra.messages.data.Message
 import com.anindra.messages.ui.theme.outgoingBubble
 import com.anindra.messages.data.ScheduledCountdown
 import com.anindra.messages.data.ScheduledMessage
+import com.anindra.messages.data.SimCard
 import kotlinx.coroutines.delay
 
 /**
@@ -204,7 +205,8 @@ fun rememberSentIndexAt(rows: List<ChatRow>): List<Int> = remember(rows) {
 fun ScheduledBubble(
     scheduled: ScheduledMessage,
     showSimIndicator: Boolean,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    simCard: SimCard? = null
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -223,15 +225,8 @@ fun ScheduledBubble(
     val timeText = remember(scheduled.timestamp) {
         formatTimeOnly(scheduled.timestamp, is24HourFormat(context))
     }
-    val simLabel = remember(scheduled.subId, showSimIndicator) {
-        if (showSimIndicator && scheduled.subId > 0) {
-            try {
-                val slot = android.telephony.SubscriptionManager.getSlotIndex(scheduled.subId)
-                if (slot >= 0) String.format(context.getString(R.string.sim_slot_suffix), slot + 1) else ""
-            } catch (_: Exception) {
-                ""
-            }
-        } else ""
+    val simLabel = remember(scheduled.subId, showSimIndicator, simCard) {
+        simMessageSuffix(context, simCard, scheduled.subId, showSimIndicator)
     }
 
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {

@@ -1243,6 +1243,14 @@ open class MainActivity : FragmentActivity() {
     private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
     private var stagedMediaProbe by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
 
+    /**
+     * The conversation this window is showing. Held on the activity, not in the
+     * composition: the App lock gate stops composing the content when it re-arms
+     * on resume, and a remembered id went with it — the chat then came back as a
+     * blank conversation with no name (#354).
+     */
+    private var chatId by androidx.compose.runtime.mutableStateOf(-1L)
+
     /** The conversation this activity is showing inside a notification bubble, if any. */
     private var bubbleConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
 
@@ -1469,7 +1477,6 @@ open class MainActivity : FragmentActivity() {
             font = vm.fontFamily,
             a11y = vm.a11y,
         ) {
-                var chatId by remember { mutableStateOf(-1L) }
                 // The home-list query that opened the chat, so the chat can
                 // highlight and scroll to the matching message. Null for every
                 // other way into a chat (new, scheduled, spam, intent).
