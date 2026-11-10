@@ -146,7 +146,10 @@ fun ConversationsScreen(
     vm: AppViewModel,
     onOpenConversation: (Long, String) -> Unit,
     onNewChat: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    /** See the redesigned list: composed behind the chat, so it must not
+     *  swallow a bubble's Back when the chat leaves it to the platform. */
+    backHandled: Boolean = true
 ) {
     val reduceMotion = LocalReduceMotion.current
     val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
@@ -262,17 +265,17 @@ fun ConversationsScreen(
             if (scrolling) userScrolledAway = !(index == 0 && offset == 0)
         }
     }
-    BackHandler(enabled = selectionActive) {
+    BackHandler(enabled = backHandled && selectionActive) {
         selectedIds = emptySet()
     }
-    BackHandler(enabled = !selectionActive && searching) {
+    BackHandler(enabled = backHandled && !selectionActive && searching) {
         searching = false
         query = ""
     }
-    BackHandler(enabled = !selectionActive && !searching && showArchived) {
+    BackHandler(enabled = backHandled && !selectionActive && !searching && showArchived) {
         showArchived = false
     }
-    BackHandler(enabled = !selectionActive && !searching && !showArchived) {
+    BackHandler(enabled = backHandled && !selectionActive && !searching && !showArchived) {
         val now = System.currentTimeMillis()
         if (now - lastBackExitAt < 2000) {
             (context as? Activity)?.finish()
