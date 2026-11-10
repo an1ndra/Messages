@@ -405,7 +405,7 @@ fun ConversationsScreen(
         // Seed on the first real emission; the empty one is just the initial query.
         if (displayed.isEmpty()) return@LaunchedEffect
         val prev = surfacedUnread
-        val increased = displayed.firstOrNull { it.unreadCount > (prev[it.id] ?: 0) }
+        val increased = ConversationList.newlyUnread(displayed, prev)
         surfacedUnread = displayed.associate { it.id to it.unreadCount }
         if (unreadSeeded && increased != null && !userScrolledAway) {
             val idx = displayed.indexOfFirst { it.id == increased.id }
