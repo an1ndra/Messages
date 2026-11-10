@@ -1211,12 +1211,18 @@ internal enum class BubbleBack {
     /** Close the bubble, i.e. the behaviour before the setting existed. */
     FINISH,
 
-    /** Leave the bubble up and show the chat list inside it. */
-    SHOW_LIST
+    /** Leave the chat for the app's conversation list. */
+    SHOW_LIST,
+
+    /** Stay on the chat: a bubble hosts one conversation, so it has no list. */
+    STAY
 }
 
-internal fun bubbleBackAction(bubbleMode: Boolean, backClosesBubble: Boolean): BubbleBack =
-    if (bubbleMode && backClosesBubble) BubbleBack.FINISH else BubbleBack.SHOW_LIST
+internal fun bubbleBackAction(bubbleMode: Boolean, backClosesBubble: Boolean): BubbleBack = when {
+    !bubbleMode -> BubbleBack.SHOW_LIST
+    backClosesBubble -> BubbleBack.FINISH
+    else -> BubbleBack.STAY
+}
 
 open class MainActivity : FragmentActivity() {
 
@@ -1892,15 +1898,16 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                             pendingShareBody = ""
                                             pendingShareMedia = emptyList()
                                             stagedMediaProbe = emptyList()
-                                            // A bubble exists to keep the chat on
-                                            // screen, so Back hands back to the
-                                            // chat list and leaves the bubble up
-                                            // unless the user asked for the plain
-                                            // "Back dismisses it" behaviour (#354
+                                            // A bubble hosts one conversation, so
+                                            // Back stays on the chat unless the
+                                            // user asked for the plain "Back
+                                            // dismisses it" behaviour (#354
                                             // follow-up).
-                                            if (bubbleBackAction(bubbleMode, vm.settings.bubbleBackCloses) ==
-                                                BubbleBack.FINISH
-                                            ) finish() else navRoute = "list"
+                                            when (bubbleBackAction(bubbleMode, vm.settings.bubbleBackCloses)) {
+                                                BubbleBack.FINISH -> finish()
+                                                BubbleBack.SHOW_LIST -> navRoute = "list"
+                                                BubbleBack.STAY -> Unit
+                                            }
                                         },
                                         // Leaving for contact details consumes the
                                         // search handoff. ChatScreen lives inside
