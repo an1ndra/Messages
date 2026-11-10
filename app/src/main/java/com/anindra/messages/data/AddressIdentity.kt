@@ -9,9 +9,22 @@ package com.anindra.messages.data
 object AddressIdentity {
 
     /** E.164 canonical spelling when [address] is a phone number, else the
-     *  trimmed original so alphanumeric sender IDs survive intact. */
-    fun canonical(address: String, region: String): String =
-        PhoneNumberUtils.toE164(address, region) ?: address.trim()
+     *  trimmed original so alphanumeric sender IDs survive intact.
+     *
+     *  A parse is only trusted when the assumed region actually consumed a
+     *  leading trunk '0': if the input starts with '0' but that '0' survives
+     *  into the E.164 digits, the region guess was wrong (e.g. a Swedish
+     *  national number on a US device) and the address is kept verbatim instead
+     *  of being rewritten into a bogus "+10..." destination. */
+    fun canonical(address: String, region: String): String {
+        val e164 = PhoneNumberUtils.toE164(address, region) ?: return address.trim()
+        val inDigits = address.filter { it.isDigit() }
+        if (inDigits.startsWith("0")) {
+            val e164Digits = e164.filter { it.isDigit() }
+            if (e164Digits.endsWith(inDigits)) return address.trim()
+        }
+        return e164
+    }
 
     /** True when two spellings identify the same sender. Addresses containing
      *  a letter are alphanumeric sender IDs and must match exactly
