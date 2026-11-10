@@ -1001,7 +1001,11 @@ class Repository(private val context: Context) {
             // header and sends are rejected.
             val restored = db.writableDatabase.update(
                 "conversations",
-                ContentValues().apply { put("deleted_at", 0) },
+                ContentValues().apply {
+                    put("deleted_at", 0)
+                    // Back to the Inbox, not into a stale Archive flag (#405).
+                    put("archived", 0)
+                },
                 "id=? AND deleted_at>0",
                 arrayOf(convoId.toString())
             )
@@ -1850,8 +1854,11 @@ class Repository(private val context: Context) {
     }
 
     fun restoreFromTrashSuspend(conversationId: Long) {
+        // Restoring must also leave the Archive: a chat that was archived and
+        // then trashed would otherwise come back to Archived, where the Inbox
+        // (and its search) never shows it — #405.
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET deleted_at=0 WHERE id=?",
+            "UPDATE conversations SET deleted_at=0,archived=0 WHERE id=?",
             arrayOf(conversationId.toString())
         )
         notifyChanged()
@@ -3136,8 +3143,11 @@ class Repository(private val context: Context) {
                 }
                 db = Db(context)
                 // A restored backup should be fully visible: lift any
-                // conversations that were in the trash when the backup was made.
-                db.writableDatabase.execSQL("UPDATE conversations SET deleted_at=0 WHERE deleted_at>0")
+                // conversations that were in the trash when the backup was made,
+                // and keep them out of the Archive for the same reason (#405).
+                db.writableDatabase.execSQL(
+                    "UPDATE conversations SET deleted_at=0,archived=0 WHERE deleted_at>0"
+                )
                 db.writableDatabase.execSQL("UPDATE messages SET deleted_at=0")
                 // Mirror the restored history into the system SMS store.
                 pushLocalMessagesToProvider()
