@@ -64,20 +64,4 @@ class ContactLookupTest {
         assertTrue("expected digits fallback, got $c", c != null && c.all { it.isDigit() })
     }
 
-    @Test
-    fun numbersCompatibleHandlesCountryCodeAndTrunkZero() {
-        // Same subscriber, one side E.164, the other a foreign national form.
-        assertTrue(ContactLookup.numbersCompatible("46701234567", "0701234567"))
-        assertTrue(ContactLookup.numbersCompatible("46701234567", "701234567"))
-        // Identical.
-        assertTrue(ContactLookup.numbersCompatible("15558887777", "15558887777"))
-        // Different subscribers.
-        assertFalse(ContactLookup.numbersCompatible("46701234567", "46709998888"))
-    }
-
-    @Test
-    fun numbersCompatibleRejectsBlankOrShort() {
-        assertFalse(ContactLookup.numbersCompatible("", "15558887777"))
-        assertFalse(ContactLookup.numbersCompatible("123", "123"))
-    }
 }

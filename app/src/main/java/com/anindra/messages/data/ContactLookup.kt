@@ -166,40 +166,17 @@ object ContactLookup {
         return x.length == MIN_MATCH_DIGITS && x == y
     }
 
-    /**
-     * True when two digit strings plausibly identify the same subscriber even
-     * when one side carries a country code and the other a trunk prefix the
-     * assumed region did not strip. Tail equality (last [MIN_MATCH_DIGITS]
-     * digits) is enforced by the caller; this only rules out unrelated
-     * collisions.
-     */
-    fun numbersCompatible(a: String, b: String): Boolean {
-        val x = a.filter { it.isDigit() }
-        val y = b.filter { it.isDigit() }
-        if (x.length < MIN_MATCH_DIGITS || y.length < MIN_MATCH_DIGITS) return false
-        if (x.isEmpty() || y.isEmpty()) return false
-        if (x == y) return true
-        val (longer, shorter) = if (x.length >= y.length) x to y else y to x
-        if (longer.endsWith(shorter)) return true
-        val shorterNoZero = shorter.removePrefix("0")
-        if (shorterNoZero.isNotEmpty() && shorterNoZero != shorter &&
-            longer.endsWith(shorterNoZero)) return true
-        for (drop in 1..3) {
-            if (longer.length - drop >= shorter.length &&
-                longer.drop(drop).endsWith(shorter)) return true
-            if (shorterNoZero.isNotEmpty() && shorterNoZero != shorter &&
-                longer.length - drop >= shorterNoZero.length &&
-                longer.drop(drop).endsWith(shorterNoZero)) return true
-        }
-        return false
-    }
-
     /** Drops the cached contact index so the next scan re-reads Contacts. */
     fun invalidateIndex() {
         synchronized(indexLock) { indexEntries = null }
     }
 
-    private data class IndexEntry(val digits: String, val name: String?, val id: String)
+    private data class IndexEntry(
+        val number: String,
+        val digits: String,
+        val name: String?,
+        val id: String
+    )
 
     @Volatile private var indexEntries: List<IndexEntry>? = null
     private val indexLock = Any()
@@ -225,6 +202,7 @@ object ContactLookup {
                         val digits = n?.filter { it.isDigit() } ?: ""
                         if (digits.length < MIN_MATCH_DIGITS) continue
                         out += IndexEntry(
+                            n ?: "",
                             digits,
                             if (nameIdx >= 0) c.getString(nameIdx) else null,
                             if (idIdx >= 0) (c.getString(idIdx) ?: "") else ""
@@ -249,8 +227,15 @@ object ContactLookup {
         val wantedTail = wanted.takeLast(MIN_MATCH_DIGITS)
         val matches = index(context).filter {
             it.digits.takeLast(MIN_MATCH_DIGITS) == wantedTail &&
-                numbersCompatible(it.digits, wanted)
+                // libphonenumber decides, using the number's own country plan:
+                // trunk prefixes (0, 8, 06, …) and country codes are handled by
+                // metadata, and a same-tail number from another country is
+                // rejected (the Swiss +41 vs Swedish 070 case, #444).
+                AddressIdentity.samePerson(it.number, number)
         }
+            // One contact can hold the number in several spellings; that is still
+            // one person, not an ambiguity.
+            .distinctBy { it.id }
         if (matches.size != 1) return null
         val e = matches.first()
         if (e.id.isBlank()) return null
