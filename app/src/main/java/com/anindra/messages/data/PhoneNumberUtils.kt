@@ -23,6 +23,9 @@ object PhoneNumberUtils {
     @Volatile
     private var deviceRegion: String = ""
 
+    @Volatile
+    private var appContext: Context? = null
+
     private const val MISS = "∅"
     private val e164Cache = ConcurrentHashMap<String, String>()
     private val displayCache = ConcurrentHashMap<String, String>()
@@ -36,28 +39,51 @@ object PhoneNumberUtils {
     /** Resolves and caches the device region (SIM → active SIM → locale).
      *  Call once at startup; [region] falls back to the locale until then. */
     fun init(context: Context) {
+        appContext = context.applicationContext
         deviceRegion = resolveRegion(context)
     }
 
-    fun region(): String =
-        if (deviceRegion.isBlank()) Locale.getDefault().country.uppercase() else deviceRegion
+    fun region(): String {
+        if (deviceRegion.isNotBlank()) return deviceRegion
+        // The SIM may not have been ready at init(); retry now that the caller
+        // actually needs a region.
+        val ctx = appContext
+        if (ctx != null) {
+            val resolved = resolveRegion(ctx)
+            if (resolved.isNotBlank()) {
+                deviceRegion = resolved
+                return deviceRegion
+            }
+        }
+        val locale = Locale.getDefault().country.uppercase()
+        return if (locale.isNotBlank()) locale else deviceRegion
+    }
 
     private fun resolveRegion(context: Context): String {
+        // SIM country (no permission needed). Trim and validate length.
         try {
             (context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager)
-                .simCountryIso?.takeIf { it.isNotBlank() }?.let { return it.uppercase() }
+                .simCountryIso?.trim()?.takeIf { it.length == 2 }?.let { return it.uppercase() }
+        } catch (_: Exception) {
+        }
+        // Network country (no permission needed) - often available even when the
+        // SIM country iso is empty (some OEMs / Android 13).
+        try {
+            (context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager)
+                .networkCountryIso?.trim()?.takeIf { it.length == 2 }?.let { return it.uppercase() }
         } catch (_: Exception) {
         }
         try {
             // Needs READ_PHONE_STATE; falls through to the locale when denied.
             val sm = context.getSystemService(SubscriptionManager::class.java)
-            sm?.activeSubscriptionInfoList?.firstOrNull()
-                ?.countryIso?.takeIf { it.isNotBlank() }?.let { return it.uppercase() }
+            sm?.activeSubscriptionInfoList?.firstOrNull { !it.countryIso.isNullOrBlank() }
+                ?.countryIso?.trim()?.takeIf { it.length == 2 }?.let { return it.uppercase() }
         } catch (_: SecurityException) {
             // READ_PHONE_STATE revoked at runtime; falls through to the locale.
         } catch (_: Exception) {
         }
-        return Locale.getDefault().country.uppercase()
+        val locale = Locale.getDefault().country.trim().uppercase()
+        return if (locale.length == 2) locale else ""
     }
 
     /** True for a dialable numeric address — digits only, 3–15 long, no
