@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_unread_label">अपठित</string>
+    <string name="widget_new_message">नया संदेश</string>
+    <string name="widget_all_caught_up">सब पढ़ लिया</string>
+    <string name="widget_no_conversations">अभी कोई बातचीत नहीं</string>
+    <string name="widget_locked_body">अनलॉक करने के लिए टैप करें</string>
+    <string name="widget_list_description">हाल की बातचीत</string>
+    <string name="widget_unread_description">आपके अपठित संदेश</string>
+    <string name="widget_unread_content_description">%1$d अपठित</string>
+</resources>
