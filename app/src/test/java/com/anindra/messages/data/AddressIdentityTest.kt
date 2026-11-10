@@ -25,6 +25,15 @@ class AddressIdentityTest {
     }
 
     @Test
+    fun foreignTrunkZeroIsNotFabricated() {
+        // A national number whose trunk '0' the assumed region did not consume
+        // must not be rewritten into a bogus "+10..." destination (#444).
+        assertEquals("0701234567", AddressIdentity.canonical("0701234567", "US"))
+        // When the region is right the parse still happens.
+        assertEquals("+46701234567", AddressIdentity.canonical("0701234567", "SE"))
+    }
+
+    @Test
     fun alphanumericSenderNeverMatchesItsDigits() {
         assertFalse(AddressIdentity.samePerson("A1 SRB", "1"))
         assertFalse(AddressIdentity.samePerson("DK-AIRCEL", "99"))
@@ -50,6 +59,76 @@ class AddressIdentityTest {
         assertTrue(AddressIdentity.samePerson("+15551234567", "5551234567"))
         assertTrue(AddressIdentity.samePerson("+919876543210", "9876543210"))
         assertTrue(AddressIdentity.samePerson("+15551234567", "+1 555 123 4567"))
+    }
+
+    @Test
+    fun nationalAndInternationalFormsMergeThroughTheCountryPlan() {
+        // Issue #444: the national form keeps a trunk prefix that the E.164
+        // form drops. libphonenumber knows each country's trunk rule.
+        withRegion("SE") {
+            assertTrue(AddressIdentity.samePerson("0700000002", "+46700000002"))
+        }
+        withRegion("IN") {
+            assertTrue(AddressIdentity.samePerson("09876543210", "+919876543210"))
+        }
+        withRegion("KR") {
+            assertTrue(AddressIdentity.samePerson("01012345678", "+821012345678"))
+        }
+        withRegion("GB") {
+            assertTrue(AddressIdentity.samePerson("07911123456", "+447911123456"))
+        }
+        // The US has no trunk prefix, so its national form is already a match.
+        withRegion("US") {
+            assertTrue(AddressIdentity.samePerson("5551234567", "+15551234567"))
+        }
+    }
+
+    @Test
+    fun foreignNationalFormsMergeOnAnyDeviceRegion() {
+        // The device region is US, yet libphonenumber's own metadata resolves
+        // each country's trunk prefix without a per-country rule.
+        withRegion("US") {
+            assertTrue(AddressIdentity.samePerson("89161234567", "+79161234567"))   // Russia, trunk 8
+            assertTrue(AddressIdentity.samePerson("06301234567", "+36301234567"))   // Hungary, trunk 06
+            assertTrue(AddressIdentity.samePerson("015112345678", "+4915112345678")) // Germany, trunk 0
+        }
+    }
+
+    @Test
+    fun sameDigitsInAnotherCountryAreNotTheSamePerson() {
+        // 0700000002 is a valid Swedish mobile but only a "possible" Swiss
+        // number; +41 must not capture the Swedish form (or vice versa).
+        withRegion("US") {
+            assertFalse(AddressIdentity.samePerson("0700000002", "+41700000002"))
+            assertFalse(AddressIdentity.samePerson("+41700000002", "0700000002"))
+            assertTrue(AddressIdentity.samePerson("0700000002", "+46700000002"))
+        }
+    }
+
+    @Test
+    fun differentCountriesWithTheSameTailDoNotMerge() {
+        // The device's own numbering plan wins when it accepts the national
+        // form, so a foreign number that merely shares a tail is not merged.
+        withRegion("IN") {
+            assertFalse(AddressIdentity.samePerson("0700000002", "+46700000002"))
+        }
+        withRegion("US") {
+            assertFalse(AddressIdentity.samePerson("0700000002", "+15550000002"))
+            assertFalse(AddressIdentity.samePerson("+46700000002", "+15550000002"))
+            assertFalse(AddressIdentity.samePerson("5551234567", "+46700000002"))
+        }
+    }
+
+    /** Runs [block] with the JVM default locale set to [country], which is what
+     *  [PhoneNumberUtils.region] falls back to when no SIM region was resolved. */
+    private fun withRegion(country: String, block: () -> Unit) {
+        val previous = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale("", country))
+            block()
+        } finally {
+            java.util.Locale.setDefault(previous)
+        }
     }
 
     @Test

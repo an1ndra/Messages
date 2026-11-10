@@ -96,6 +96,7 @@ import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.TransferLogScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.A11yOptions
+import com.anindra.messages.ui.theme.a11yOptions
 import com.anindra.messages.ui.theme.MessagesTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -106,6 +107,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -240,14 +242,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _a11yState = androidx.compose.runtime.mutableStateOf(readA11y())
 
-    private fun readA11y() = A11yOptions(
-        enabled = settings.a11yEnabled,
-        fontScalePercent = settings.a11yFontScalePercent,
-        bold = settings.a11yBold,
-        highContrast = settings.a11yHighContrast,
-        reduceMotion = settings.a11yReduceMotion,
-        largeTouchTargets = settings.a11yLargeTouch
-    )
+    private fun readA11y() = settings.a11yOptions()
 
     private fun refreshA11y() { _a11yState.value = readA11y() }
 
@@ -1256,6 +1251,7 @@ open class MainActivity : FragmentActivity() {
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
+    private var pendingOpenConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
     private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
     private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
     private var stagedMediaProbe by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
@@ -1337,21 +1333,14 @@ open class MainActivity : FragmentActivity() {
         intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { bootVm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, bootVm)
         applyLockSessionProbe(intent)
+        applyWidgetProbe(intent, bootVm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
-        intent.getStringExtra("open_conversation_address")?.let {
-            pendingOpenAddress = it
-            // The bubble's own notification is the bubble: dismissing it here
-            // would close the window this activity was launched into.
-            if (!isBubbleLaunch(intent)) {
-                com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
-                    this@MainActivity, null, it
-                )
-            }
-        }
-        if (isBubbleLaunch(intent)) {
-            navRoute = "opening"
-            bubbleLaunchAddress = intent.getStringExtra("open_conversation_address")
-        }
+        com.anindra.messages.widget.WidgetRoute.forExtras(
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_NEW_MESSAGE, false)
+        )?.let { navRoute = it }
+        applyConversationRoute(intent)
+        if (isBubbleLaunch(intent)) navRoute = "opening"
         applyShareIntent(intent)
 
         val defaultSmsLauncher = registerForActivityResult(
@@ -1580,6 +1569,16 @@ open class MainActivity : FragmentActivity() {
                         com.anindra.messages.sms.NotificationHelper
                             .retireBubbleForFullChat(this@MainActivity, id)
                     }
+                }
+
+                androidx.compose.runtime.LaunchedEffect(pendingOpenConversationId) {
+                    val id = pendingOpenConversationId ?: return@LaunchedEffect
+                    chatId = id
+                    chatSearchQuery = null
+                    navRoute = if (id > 0) "chat" else "list"
+                    pendingOpenConversationId = null
+                    com.anindra.messages.sms.NotificationHelper
+                        .retireBubbleForFullChat(this@MainActivity, id)
                 }
 
                 if (showDefaultSmsDialog) {
@@ -2265,6 +2264,29 @@ onOpenAccessibility = { navRoute = "accessibility" },
      * It writes the real setting, exactly as the toggle does — nothing here
      * pretends an authentication happened.
      */
+    private fun applyWidgetProbe(intent: Intent, vm: AppViewModel) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        if (!intent.getBooleanExtra("widget_probe", false)) return
+        val repository = (application as MessagesApplication).repository
+        val unreadAtTop = vm.settings.unreadAtTopEnabled
+        val appLock = vm.settings.appLockEnabled
+        val privacy = vm.settings.privacyModeEnabled
+        // The snapshot query is a blocking DB read, so keep it off the main thread.
+        Thread {
+            val conversations = kotlinx.coroutines.runBlocking {
+                repository.conversations().first()
+            }
+            android.util.Log.d(
+                "WidgetProbe",
+                com.anindra.messages.widget.WidgetProbe.line(
+                    conversations, unreadAtTop, appLock, privacy
+                )
+            )
+        }.start()
+    }
+
     private fun applyAppLockProbe(intent: Intent, vm: AppViewModel) {
         val debuggable =
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -2296,9 +2318,35 @@ onOpenAccessibility = { navRoute = "accessibility" },
         applyPrivacyModeProbe(intent, vm)
         applyAppLockProbe(intent, vm)
         applyLockSessionProbe(intent)
+        applyWidgetProbe(intent, vm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
+        com.anindra.messages.widget.WidgetRoute.forExtras(
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_NEW_MESSAGE, false)
+        )?.let { navRoute = it }
+        applyConversationRoute(intent)
+        if (isBubbleLaunch(intent)) navRoute = "opening"
+        applyShareIntent(intent)
+    }
+
+    /**
+     * Opens the chat an intent names. A widget row names its conversation by id,
+     * because a group created from a 1:1 keeps that contact's address, and the
+     * address route resolves back to the 1:1 thread.
+     */
+    private fun applyConversationRoute(intent: Intent) {
+        val widgetId = intent.getLongExtra(
+            com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_CONVERSATION_ID,
+            0L
+        )
+        if (widgetId > 0L) {
+            pendingOpenConversationId = widgetId
+            return
+        }
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
+            // The bubble's own notification is the bubble: dismissing it here
+            // would close the window this activity was launched into.
             if (!isBubbleLaunch(intent)) {
                 com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
                     this@MainActivity, null, it
@@ -2309,7 +2357,6 @@ onOpenAccessibility = { navRoute = "accessibility" },
             navRoute = "opening"
             bubbleLaunchAddress = intent.getStringExtra("open_conversation_address")
         }
-        applyShareIntent(intent)
     }
 
     /**
