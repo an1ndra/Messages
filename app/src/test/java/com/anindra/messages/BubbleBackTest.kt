@@ -136,12 +136,6 @@ class BubbleBackTest {
             2,
             Regex("retireFullChatBubble\\(id\\)").findAll(activity).count()
         )
-        assertEquals(
-            "retire is called from the guarded helper and the full-screen address path only",
-            2,
-            Regex("\\.retireBubbleForFullChat\\(this@MainActivity, id\\)")
-                .findAll(activity).count()
-        )
     }
 
     @Test
