@@ -3666,12 +3666,17 @@ class Repository(private val context: Context) {
     /** Drops every cached contact name, so the next read re-queries Contacts. */
     fun invalidateContactNames() {
         contactCache.invalidate()
+        ContactLookup.invalidateIndex()
     }
 
     private fun lookupContactName(address: String): String? {
         if (address.isBlank()) return null
         queryPhoneLookup(android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI, address, null)
             ?.let { return it }
+        // Region-agnostic fallback (#444): a contact stored as "+46701234567"
+        // must be found for a conversation addressed as "0701234567" even when
+        // the platform's phone_lookup cannot resolve the country code.
+        ContactLookup.scanNameFor(context, address)?.let { return it }
         return try {
             val dirs = context.contentResolver.query(
                 android.provider.ContactsContract.Directory.ENTERPRISE_CONTENT_URI,
@@ -4015,6 +4020,7 @@ class Repository(private val context: Context) {
                 // pending message from the same sender reuses the repaired thread
                 // instead of creating a second one.
                 var changed = repairAlphanumericSenders()
+                changed = changed || repairFabricatedAddresses()
                 android.util.Log.d("RepoSync", "Starting syncFromSystem")
                 // Count first so the read phase (which can take a while on a phone
                 // with a large provider) shows a moving bar instead of an apparently
@@ -4282,6 +4288,62 @@ class Repository(private val context: Context) {
             android.util.Log.e("RepoSync", "alphanumeric repair skipped: ${e.message}", e)
         } catch (e: Exception) {
             android.util.Log.e("RepoSync", "alphanumeric repair failed: ${e.message}", e)
+        }
+        return false
+    }
+
+    /** One-shot heal for conversations whose address was fabricated as "+10..."
+     *  (or "+CC0...") before the trunk-zero guard in [AddressIdentity.canonical]:
+     *  a national number whose trunk '0' was not consumed got a bogus country
+     *  code prepended. The original national spelling is recovered by dropping
+     *  that country code, and the row is re-addressed in place. */
+    private fun repairFabricatedAddresses(): Boolean {
+        if (settings.fabricatedAddressRepairDone) return false
+        try {
+            val rows = mutableListOf<Pair<Long, String>>()
+            db.readableDatabase.rawQuery(
+                "SELECT id, address FROM conversations", null
+            ).use { c ->
+                while (c.moveToNext()) rows += c.getLong(0) to c.getString(1)
+            }
+            var changed = false
+            db.writableDatabase.beginTransaction()
+            try {
+                for ((id, addr) in rows) {
+                    if (!addr.startsWith("+")) continue
+                    val digits = addr.filter { it.isDigit() }
+                    val cc = PhoneNumberUtils.countryCodePrefix(digits)
+                    if (cc.isEmpty() || cc.length >= digits.length) continue
+                    val rest = digits.drop(cc.length)
+                    if (!rest.startsWith("0") || rest.length < 4) continue
+                    val raw = rest
+                    if (raw == addr) continue
+                    db.writableDatabase.execSQL(
+                        """UPDATE conversations
+                           SET address=?, name=CASE WHEN name=? THEN ? ELSE name END
+                           WHERE id=?""",
+                        arrayOf(raw, addr, raw, id.toString())
+                    )
+                    // Drop the fabricated participant row; the raw address is not
+                    // a parseable E.164 destination.
+                    db.writableDatabase.execSQL(
+                        "DELETE FROM participants WHERE normalized_destination=?",
+                        arrayOf(addr)
+                    )
+                    changed = true
+                }
+                db.writableDatabase.setTransactionSuccessful()
+            } finally {
+                db.writableDatabase.endTransaction()
+            }
+            settings.fabricatedAddressRepairDone = true
+            if (changed) {
+                invalidateContactNames()
+                refreshContactNames()
+            }
+            return changed
+        } catch (e: Exception) {
+            android.util.Log.e("RepoSync", "fabricated-address repair failed: ${e.message}", e)
         }
         return false
     }

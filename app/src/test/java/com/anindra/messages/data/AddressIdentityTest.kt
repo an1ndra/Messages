@@ -25,6 +25,15 @@ class AddressIdentityTest {
     }
 
     @Test
+    fun foreignTrunkZeroIsNotFabricated() {
+        // A national number whose trunk '0' the assumed region did not consume
+        // must not be rewritten into a bogus "+10..." destination (#444).
+        assertEquals("0701234567", AddressIdentity.canonical("0701234567", "US"))
+        // When the region is right the parse still happens.
+        assertEquals("+46701234567", AddressIdentity.canonical("0701234567", "SE"))
+    }
+
+    @Test
     fun alphanumericSenderNeverMatchesItsDigits() {
         assertFalse(AddressIdentity.samePerson("A1 SRB", "1"))
         assertFalse(AddressIdentity.samePerson("DK-AIRCEL", "99"))

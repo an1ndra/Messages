@@ -168,6 +168,20 @@ object PhoneNumberUtils {
         return out
     }
 
+    /** Longest valid country-code prefix (1-3 digits) of [digits], or "" when no
+     *  prefix of it is a real country code. Used to tell a genuine country code
+     *  apart from the first digits of a subscriber number. */
+    fun countryCodePrefix(digits: String): String {
+        if (digits.isEmpty()) return ""
+        val max = minOf(3, digits.length)
+        for (len in max downTo 1) {
+            val code = digits.take(len).toIntOrNull() ?: continue
+            val region = try { util.getRegionCodeForCountryCode(code) } catch (_: Exception) { null }
+            if (!region.isNullOrBlank() && region != "ZZ") return digits.take(len)
+        }
+        return ""
+    }
+
     /** ISO 3166-1 alpha-2 country code for an E.164 number, or "" when unknown. */
     fun regionFor(e164: String): String = try {
         val code = util.getRegionCodeForNumber(util.parse(e164, null))
