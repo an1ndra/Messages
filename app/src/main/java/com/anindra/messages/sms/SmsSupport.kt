@@ -601,6 +601,30 @@ object NotificationHelper {
     }
 
     /**
+     * A contact edit — a new picture or a new name — has to reach the things
+     * the app already drew: the avatar cache holds a built icon for ten
+     * minutes, a published bubble shortcut keeps the icon it was first
+     * published with, and the shade's notification keeps the large icon it was
+     * posted with. Redrawing all three is what makes a bubble follow the
+     * contact instead of showing the previous image (#441).
+     */
+    fun refreshContactAvatars(context: Context) {
+        ConversationAvatar.invalidate()
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val ids = NotificationBubble.publishedShortcutIds(context)
+            .mapNotNull { it.removePrefix("conversation_").toLongOrNull() }
+        Thread({
+            for (id in ids) {
+                val address = app.repository.addressForConversationBlocking(id) ?: continue
+                val name = app.repository.contactNameFor(address) ?: address
+                NotificationBubble.ensureShortcut(context, id, address, name)
+            }
+            // Silent: the pictures change, the messages they announce do not.
+            repostUnread(context)
+        }, "contact-avatar-refresh").start()
+    }
+
+    /**
      * Whether an incoming message should carry a full-screen intent and wake
      * the device. Pure so it can be unit-tested without a device.
      */

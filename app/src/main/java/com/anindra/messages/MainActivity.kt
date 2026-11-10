@@ -1261,6 +1261,13 @@ open class MainActivity : FragmentActivity() {
     private var bubbleConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
 
     /**
+     * The address the bubble was launched for. The conversation id is resolved
+     * off the main thread, so a bubble that is closed before that finishes
+     * would otherwise leave its notification — and therefore its bubble — up.
+     */
+    private var bubbleLaunchAddress: String? = null
+
+    /**
      * Whether this window is behind App lock, held in Compose state rather than
      * in a local: the gate turns the setting off when the device has no
      * credential, and the probe that enables it on an emulator lands on the
@@ -1330,7 +1337,10 @@ open class MainActivity : FragmentActivity() {
                 )
             }
         }
-        if (isBubbleLaunch(intent)) navRoute = "opening"
+        if (isBubbleLaunch(intent)) {
+            navRoute = "opening"
+            bubbleLaunchAddress = intent.getStringExtra("open_conversation_address")
+        }
         applyShareIntent(intent)
 
         val defaultSmsLauncher = registerForActivityResult(
@@ -1629,14 +1639,19 @@ open class MainActivity : FragmentActivity() {
                 }
 
                 // Single back dispatcher for all routes; child screen BackHandlers win.
-                // A bubble hosts only the chat, so its root hands back to the
-                // system, which collapses the bubble instead of showing the list.
+                // A bubble hosts only the chat: while the chat is still opening
+                // it has no handler of its own yet, so this one answers for it
+                // through the same rule, or Back looked like it did nothing.
                 val bubbleMode = isBubbleLaunch(intent)
                 androidx.activity.compose.BackHandler(
-                    enabled = if (bubbleMode) navRoute != "chat" && navRoute != "opening"
-                    else navRoute != "list"
+                    enabled = if (bubbleMode) navRoute != "chat" else navRoute != "list"
                 ) {
                     when (navRoute) {
+                        "opening" -> when (bubbleBackAction(bubbleMode, vm.settings.bubbleBackCloses)) {
+                            BubbleBack.FINISH -> finish()
+                            BubbleBack.STAY -> Unit
+                            BubbleBack.SHOW_LIST -> navRoute = "list"
+                        }
                         "details" -> navRoute = "chat"
                         "add-people" -> navRoute = "details"
                         "transfer-log" -> navRoute = "advanced"
@@ -2011,10 +2026,19 @@ onOpenAccessibility = { navRoute = "accessibility" },
      * which is why only a real finish releases it.
      */
     override fun onDestroy() {
-        val bubbleId = bubbleConversationId
-        if (bubbleId != null && isFinishing) {
-            com.anindra.messages.sms.BubbleHost.leave(bubbleId)
-            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(this, bubbleId)
+        if (isFinishing) {
+            // Back can land while the conversation id is still being resolved.
+            // The bubble is the notification, so finishing without releasing
+            // it left the bubble floating on its own (#441).
+            val bubbleId = bubbleConversationId ?: bubbleLaunchAddress?.let { address ->
+                (application as com.anindra.messages.MessagesApplication).repository
+                    .conversationForInboundBlocking(address)
+            }
+            if (bubbleId != null) {
+                com.anindra.messages.sms.BubbleHost.leave(bubbleId)
+                com.anindra.messages.sms.NotificationHelper
+                    .clearConversationNotification(this, bubbleId)
+            }
         }
         super.onDestroy()
     }
@@ -2244,7 +2268,10 @@ onOpenAccessibility = { navRoute = "accessibility" },
                 )
             }
         }
-        if (isBubbleLaunch(intent)) navRoute = "opening"
+        if (isBubbleLaunch(intent)) {
+            navRoute = "opening"
+            bubbleLaunchAddress = intent.getStringExtra("open_conversation_address")
+        }
         applyShareIntent(intent)
     }
 

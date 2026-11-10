@@ -1202,6 +1202,19 @@ class Repository(private val context: Context) {
         conversationIdForAddressBlocking(address) ?: soleGroupBlocking(address)
 
     /**
+     * The address a conversation row is keyed on. A published bubble shortcut
+     * is identified only by its conversation id, so this is how a contact edit
+     * finds the picture it has to redraw (#441).
+     */
+    fun addressForConversationBlocking(conversationId: Long): String? {
+        var address: String? = null
+        db.readableDatabase.rawQuery(
+            "SELECT address FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) address = c.getString(0) }
+        return address
+    }
+
+    /**
      * The conversation [address] names, or null when there is none.
      *
      * A group started from a 1:1 shares its primary contact's address, so this
@@ -3942,6 +3955,9 @@ class Repository(private val context: Context) {
         // has to be dropped first or an edit within the TTL is invisible.
         invalidateContactNames()
         refreshContactNames()
+        // The pictures the app published outside itself cache too, and #441 is
+        // the bubble that kept the contact's previous photo.
+        NotificationHelper.refreshContactAvatars(context)
     }
 
     /**

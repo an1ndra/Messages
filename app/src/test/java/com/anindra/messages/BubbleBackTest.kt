@@ -3,6 +3,7 @@ package com.anindra.messages
 import com.anindra.messages.i18n.LocaleCatalog
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -52,6 +53,46 @@ class BubbleBackTest {
         assertTrue(
             "the setting defaults to closing the bubble, the opposite of the request",
             store.contains("prefs.getBoolean(KEY_BUBBLE_BACK_CLOSES, false)")
+        )
+    }
+
+    @Test
+    fun theAppReceivesBackThroughTheDispatcher() {
+        val manifest = src("AndroidManifest.xml")
+        val application = Regex("""<application[\s\S]*?>""").find(manifest)?.value
+            ?: error("no <application> element")
+        assertTrue(
+            "an opted-out app has no OnBackInvokedCallback, which is why a bubble on " +
+                "Android 16 received no Back at all (#441)",
+            application.contains("android:enableOnBackInvokedCallback=\"true\"")
+        )
+        assertFalse(
+            "the legacy back path is back",
+            application.contains("enableOnBackInvokedCallback=\"false\"")
+        )
+    }
+
+    @Test
+    fun backWhileTheChatOpensObeysTheSameRule() {
+        val activity = src("java/com/anindra/messages/MainActivity.kt")
+        assertTrue(
+            "Back during the opening phase is unhandled in a bubble, so it looks dead",
+            activity.contains(
+                "\"opening\" -> when (bubbleBackAction(bubbleMode, vm.settings.bubbleBackCloses))"
+            )
+        )
+    }
+
+    @Test
+    fun finishingABubbleReleasesItsNotification() {
+        val activity = src("java/com/anindra/messages/MainActivity.kt")
+        assertTrue(
+            "a bubble finished before its conversation id resolved leaves its notification behind",
+            activity.contains("bubbleConversationId ?: bubbleLaunchAddress?.let { address ->")
+        )
+        assertTrue(
+            "the finished bubble does not cancel its notification",
+            activity.contains("clearConversationNotification(this, bubbleId)")
         )
     }
 
