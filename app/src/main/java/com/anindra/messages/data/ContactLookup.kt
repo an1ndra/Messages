@@ -211,12 +211,14 @@ object ContactLookup {
             try {
                 context.contentResolver.query(
                     ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                    arrayOf(NUMBER, ContactsContract.Contacts._ID,
+                    arrayOf(NUMBER, CONTACT_ID,
                         ContactsContract.Contacts.DISPLAY_NAME),
                     null, null, null
                 )?.use { c ->
                     val numIdx = c.getColumnIndex(NUMBER)
-                    val idIdx = c.getColumnIndex(ContactsContract.Contacts._ID)
+                    // Phone._ID and Contacts._ID are both "_id"; on the phone table
+                    // "_id" is the data row, so the contact id is CONTACT_ID.
+                    val idIdx = c.getColumnIndex(CONTACT_ID)
                     val nameIdx = c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)
                     while (c.moveToNext()) {
                         val n = if (numIdx >= 0) c.getString(numIdx) else null
