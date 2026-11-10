@@ -4,11 +4,13 @@ name: PR Build
 # 7 GB of RAM against CircleCI's 2 GB "small" class, which is what the old job
 # was OOM-killed on ("Gradle build daemon disappeared unexpectedly").
 #
-# Runs only for pull requests targeting main, matching what CircleCI did.
+# Runs for pull requests targeting main or Develop: Develop is the default
+# branch, so feature work lands there first and only reaches main through a
+# release pull request.
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, Develop]
     types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
