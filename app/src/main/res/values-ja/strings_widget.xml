@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_unread_label">未読</string>
+    <string name="widget_new_message">新規メッセージ</string>
+    <string name="widget_all_caught_up">すべて確認済み</string>
+    <string name="widget_no_conversations">会話はまだありません</string>
+    <string name="widget_locked_body">タップしてロック解除</string>
+    <string name="widget_list_description">最近の会話</string>
+    <string name="widget_unread_description">未読メッセージ</string>
+    <string name="widget_unread_content_description">未読 %1$d</string>
+</resources>

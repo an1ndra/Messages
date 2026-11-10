@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_unread_label">خوانده‌نشده</string>
+    <string name="widget_new_message">پیام جدید</string>
+    <string name="widget_all_caught_up">همه را خوانده‌اید</string>
+    <string name="widget_no_conversations">هنوز گفتگویی نیست</string>
+    <string name="widget_locked_body">برای باز کردن ضربه بزنید</string>
+    <string name="widget_list_description">گفتگوهای اخیر</string>
+    <string name="widget_unread_description">پیام‌های خوانده‌نشده شما</string>
+    <string name="widget_unread_content_description">%1$d خوانده‌نشده</string>
+</resources>

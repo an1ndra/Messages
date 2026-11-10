@@ -569,7 +569,17 @@ class Repository(private val context: Context) {
 
     private val notifyThread = HandlerThread("repo-notify").apply { start() }
     private val notifyHandler = Handler(notifyThread.looper)
-    private val notifyRunnable = Runnable { listeners.forEach { it() } }
+    private val notifyRunnable = Runnable {
+        listeners.forEach { it() }
+        onChanged?.invoke()
+    }
+
+    /**
+     * Runs after the listeners whenever the data changed. The app sets this to
+     * refresh the home-screen widgets, which cannot hold a flow of their own.
+     */
+    @Volatile
+    var onChanged: (() -> Unit)? = null
 
     fun notifyChanged() {
         notifyHandler.removeCallbacks(notifyRunnable)
