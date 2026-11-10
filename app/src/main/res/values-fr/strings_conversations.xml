@@ -36,8 +36,8 @@
     <string name="convo_blocked">Numéro bloqué</string>
     <string name="search_scope_all">Tous</string>
     <string name="search_scope_unread">Non lus</string>
-    <string name="search_scope_starred">Avec étoile</string>
-    <string name="starred_empty">Aucun message avec étoile</string>
+    <string name="search_scope_starred">Favoris</string>
+    <string name="starred_empty">Aucun message favori pour l\'instant</string>
     <string name="starred_empty_hint">Appuyez longuement sur un message puis sur l’étoile pour le garder ici</string>
     <string name="search_scope_unread_empty">Aucune conversation non lue</string>
     <string name="search_scope_contacts">Contacts</string>
