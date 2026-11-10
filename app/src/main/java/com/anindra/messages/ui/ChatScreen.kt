@@ -2836,11 +2836,15 @@ internal fun ScheduleDialog(
 }
 
 /** Locale-formatted number, LTR-isolated so RTL layouts don't reorder its groups. */
-fun formatPhoneNumber(raw: String): String =
+fun formatPhoneNumber(
+    raw: String,
+    region: String = com.anindra.messages.data.PhoneNumberUtils.region()
+): String =
     BidiText.ltr(
-        com.anindra.messages.data.PhoneNumberUtils.displayFor(
-            raw, com.anindra.messages.data.PhoneNumberUtils.region()
-        )
+        // A dial string is not a phone number: libphonenumber reads the digits
+        // of "*21*2258#" as 212258 and would paint "021 2258".
+        if (raw.any { it == '*' || it == '#' || it == ',' || it == ';' }) raw
+        else com.anindra.messages.data.PhoneNumberUtils.displayFor(raw, region)
     )
 
 /** Stable identity for cross-referencing a stored address against a contact
@@ -3658,6 +3662,22 @@ internal fun ForwardPicker(
     val targets = remember(contacts, conversations, query) {
         ForwardTargets.build(contacts, conversations, query)
     }
+    // A phone number or a typed search reads left to right even when the
+    // window runs RTL: plain Text inherits the window direction, and an RTL
+    // paragraph reorders the digits and separators of "+98 912 762 0912" or
+    // "*21*2258#" into "0912 762 98+" (#405 follow-up).
+    val queryDirection = BidiText.firstStrongDirection(query)
+    val queryStyle = LocalTextStyle.current.copy(
+        textDirection = queryDirection.toTextDirection()
+    )
+    // A text direction is invisible in a `uiautomator` dump, so report what
+    // this picker painted with, as ComposerDirection does for the composer.
+    LaunchedEffect(queryDirection, targets.size) {
+        android.util.Log.d(
+            "ForwardBidi",
+            "query dir=${queryDirection.toTextDirection()} rows=${targets.size}"
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.chat_forward_to)) },
@@ -3668,6 +3688,7 @@ internal fun ForwardPicker(
                     onValueChange = { query = it },
                     placeholder = { Text(stringResource(R.string.chat_search_contacts)) },
                     singleLine = true,
+                    textStyle = queryStyle,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
@@ -3688,14 +3709,22 @@ internal fun ForwardPicker(
                         ) {
                             PersonAvatar(target.number, size = 36.dp)
                             Spacer(Modifier.width(12.dp))
+                            val name = target.name
                             Column {
                                 Text(
-                                    target.name ?: target.number,
+                                    name ?: formatPhoneNumber(target.number),
+                                    style = LocalTextStyle.current.copy(
+                                        textDirection = if (name != null) {
+                                            BidiText.firstStrongDirection(name).toTextDirection()
+                                        } else {
+                                            TextDirection.Ltr
+                                        }
+                                    ),
                                     fontWeight = FontWeight.Medium
                                 )
-                                if (target.name != null) {
+                                if (name != null) {
                                     Text(
-                                        target.number,
+                                        formatPhoneNumber(target.number),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
