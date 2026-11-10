@@ -8,7 +8,6 @@
     <string name="common_open">खोलें</string>
     <string name="common_close">बंद करें</string>
     <string name="common_next">अगला</string>
-
     <!-- Time formatting -->
     <string name="time_now">अभी</string>
     <string name="time_today">आज</string>
@@ -16,10 +15,8 @@
     <string name="time_format_hour">h:mm a</string>
     <string name="time_format_date">MMM d</string>
     <string name="time_format_divider">EEE, MMM d</string>
-
     <!-- Contacts -->
     <string name="contact_work_profile">कार्य प्रोफ़ाइल संपर्क</string>
-
     <!-- Accessibility -->
     <string name="access_restore">बहाल करें</string>
     <string name="access_delete_forever">स्थायी रूप से हटाएं</string>

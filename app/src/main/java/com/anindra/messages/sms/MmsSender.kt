@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import com.anindra.messages.MessagesApplication
 import com.anindra.messages.data.MmsSupport
+import com.anindra.messages.mms.OutgoingAttachment
 import com.anindra.messages.mms.OutgoingMessage
 import com.anindra.messages.mms.SendOutcome
 import com.anindra.messages.mms.fit.AttachmentReader
@@ -23,6 +24,19 @@ import com.anindra.messages.mms.spi.MmsDiagnostics
 internal object MmsSender {
     private const val TAG = "MmsSender"
 
+    /** What the app row needs once the stack reports a hand-off outcome. */
+    internal enum class HandoffOutcome { NONE, UNLINK, ADOPT }
+
+    /**
+     * A refused hand-off deletes the outbox row, so the link has to come out
+     * with it; anything the platform accepted may adopt the provider's part.
+     */
+    internal fun handoffAction(outcome: String, outboxRowId: Long): HandoffOutcome = when {
+        outboxRowId <= 0L -> HandoffOutcome.NONE
+        outcome == "not_started" -> HandoffOutcome.UNLINK
+        else -> HandoffOutcome.ADOPT
+    }
+
     /** An image is decoded and re-encoded, so it has to be read whole; this only
      *  stops a runaway source from filling memory. */
     const val IMAGE_READ_CAP_BYTES = 32L * 1024 * 1024
@@ -40,58 +54,66 @@ internal object MmsSender {
     /** @return true when the platform has the message (or the carrier took it). */
     fun send(
         context: Context,
-        messageId: Long,
+        messageIds: List<Long>,
         addresses: List<String>,
-        media: Uri,
-        mimeType: String,
+        media: List<Uri>,
+        mimeTypes: List<String>,
         caption: String,
         subscriptionId: Int
     ): Boolean {
+        if (messageIds.isEmpty() || media.isEmpty()) return false
         val app = context.applicationContext
         val maxSize = MmsFacade.profiles(app).of(subscriptionId).maxMessageSize()
         MmsTrace.i(
             TAG,
-            "sendMms start id=$messageId sub=$subscriptionId addrs=${addresses.size} " +
-                "media=$media mime=$mimeType cap=${maxSize}B"
+            "sendMms start ids=${messageIds.size} sub=$subscriptionId addrs=${addresses.size} " +
+                "parts=${media.size} mimes=$mimeTypes cap=${maxSize}B"
         )
-        val bytes = try {
-            app.contentResolver.openInputStream(media)?.use {
-                AttachmentReader.readBounded(it, readLimit(mimeType, maxSize))
+        val attachments = ArrayList<OutgoingAttachment>(media.size)
+        for (index in media.indices) {
+            val uri = media[index]
+            val mimeType = mimeTypes.getOrNull(index).orEmpty().ifBlank {
+                MmsSupport.defaultAttachmentMime(app.contentResolver.getType(uri), uri.toString())
             }
-        } catch (t: Throwable) {
-            MmsTrace.w(TAG, "could not read attachment $media", t)
-            null
-        }
-        if (bytes == null) {
-            MmsTrace.w(TAG, "MMS not sent: attachment unreadable or over the size cap")
-            return false
+            val bytes = try {
+                app.contentResolver.openInputStream(uri)?.use {
+                    AttachmentReader.readBounded(it, readLimit(mimeType, maxSize))
+                }
+            } catch (t: Throwable) {
+                MmsTrace.w(TAG, "could not read attachment $uri", t)
+                null
+            }
+            if (bytes == null) {
+                MmsTrace.w(TAG, "MMS not sent: attachment $uri unreadable or over the size cap")
+                return false
+            }
+            attachments.add(OutgoingAttachment(mimeType, bytes))
         }
         val outcome = kotlinx.coroutines.runBlocking {
             MmsFacade.of(
                 app,
                 ChainedDiagnostics(
                     MmsFacade.diagnostics,
-                    Recorder(app, messageId, MmsSupport.mediaKind(mimeType))
+                    Recorder(app, messageIds)
                 )
             ).send(
                 OutgoingMessage(
                     addresses = addresses,
                     caption = caption,
-                    attachmentMimeType = mimeType,
-                    attachmentBytes = bytes,
+                    attachments = attachments,
                     subscriptionId = subscriptionId,
                 )
             )
         }
         return when (outcome) {
             is SendOutcome.Queued, is SendOutcome.Sent -> {
-                MmsTrace.i(TAG, "MMS handed off id=$messageId outcome=${outcome.javaClass.simpleName}")
+                MmsTrace.i(TAG, "MMS handed off ids=${messageIds.size} outcome=${outcome.javaClass.simpleName}")
                 true
             }
             is SendOutcome.Failed -> {
                 MmsTrace.w(
                     TAG,
-                    "MMS failed id=$messageId result=${outcome.resultCode} http=${outcome.httpStatus}"
+                    "MMS failed ids=${messageIds.size} result=${outcome.resultCode} http=${outcome.httpStatus}"
                 )
                 false
             }
@@ -167,33 +189,66 @@ internal object MmsSender {
             both { it.noted(tag, level, message) }
     }
 
-    /** Links the outbox row to the app message just before the PDU is handed over. */
+    /** Links the outbox row to the app messages just before the PDU is handed over. */
     private class Recorder(
         private val context: Context,
-        private val messageId: Long,
-        private val mediaType: String
+        private val messageIds: List<Long>
     ) : MmsDiagnostics {
+
+        @Volatile
+        private var outboxRowId = 0L
 
         override fun sendStarted(transportId: String, subscriptionId: Int, messageUri: String?) {
             val row = messageUri?.let(Uri::parse) ?: return
             // Without this link the provider's sent copy of the message is
-            // imported as a second one, so the picture shows twice.
+            // imported as a second one, so the picture shows twice. Every row of
+            // an album shares the provider row, which is what folds them into one
+            // bubble.
             row.lastPathSegment?.toLongOrNull()?.let { rowId ->
-                runCatching {
-                    val repository = (context.applicationContext as MessagesApplication).repository
-                    repository.linkMmsRow(messageId, rowId)
-                    // The picker's (or recorder's) URI is dead after the app is
-                    // closed; show the provider's copy of the attachment instead.
-                    repository.adoptProviderMedia(messageId, rowId, mediaType)
-                }.onFailure { Log.w(TAG, "could not link message $messageId: ${it.message}") }
+                outboxRowId = rowId
+                val repository = (context.applicationContext as MessagesApplication).repository
+                messageIds.forEach { messageId ->
+                    runCatching { repository.linkMmsRow(messageId, rowId) }
+                        .onFailure { Log.w(TAG, "could not link message $messageId: ${it.message}") }
+                }
             }
             val transactionId = MmsPendingSends.transactionIdOf(context, row)
             if (transactionId == null) {
                 MmsTrace.w(TAG, "outbox row $row has no transaction id; result cannot be matched")
                 return
             }
-            MmsPendingSends.remember(context, transactionId, messageId)
-            MmsTrace.i(TAG, "outbox row $row linked to message $messageId")
+            MmsPendingSends.remember(context, transactionId, messageIds.first())
+            MmsTrace.i(TAG, "outbox row $row linked to ${messageIds.size} message(s)")
+        }
+
+        override fun sendCompleted(
+            transportId: String,
+            outcome: String,
+            responseStatus: Int?,
+            httpStatus: Int
+        ) {
+            val rowId = outboxRowId
+            val repository = (context.applicationContext as MessagesApplication).repository
+            when (handoffAction(outcome, rowId)) {
+                HandoffOutcome.NONE -> return
+                HandoffOutcome.UNLINK -> {
+                    // The stack deletes this outbox row on a refused hand-off. A
+                    // link left behind would both hide a later provider row
+                    // with the same id and keep the bubble on a dead part URI.
+                    messageIds.forEach { messageId ->
+                        runCatching { repository.unlinkMmsRow(messageId, rowId) }
+                            .onFailure { Log.w(TAG, "could not unlink message $messageId: ${it.message}") }
+                    }
+                    return
+                }
+                HandoffOutcome.ADOPT -> {
+                    // The picker's (or recorder's) URI is dead after the app is
+                    // closed; show the provider's copy of the attachment
+                    // instead. This only runs once the platform has taken it.
+                    runCatching { repository.adoptProviderMediaRows(rowId, messageIds) }
+                        .onFailure { Log.w(TAG, "could not adopt media for $messageIds: ${it.message}") }
+                }
+            }
         }
     }
 }

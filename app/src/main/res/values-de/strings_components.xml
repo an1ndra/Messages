@@ -8,7 +8,6 @@
     <string name="common_open">Öffnen</string>
     <string name="common_close">Schließen</string>
     <string name="common_next">Weiter</string>
-
     <!-- Time formatting -->
     <string name="time_now">Jetzt</string>
     <string name="time_today">Heute</string>
@@ -16,10 +15,8 @@
     <string name="time_format_hour">h:mm a</string>
     <string name="time_format_date">MMM d</string>
     <string name="time_format_divider">EEE, MMM d</string>
-
     <!-- Contacts -->
     <string name="contact_work_profile">Work-Profile-Kontakt</string>
-
     <!-- Accessibility -->
     <string name="access_restore">Wiederherstellen</string>
     <string name="access_delete_forever">Immer löschen</string>

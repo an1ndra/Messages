@@ -41,9 +41,10 @@ class SmilBuilderTest {
     }
 
     @Test
-    fun severalMediaBeforeACaptionShareOneParallel() {
-        // Two images then a caption: the par never holds both kinds until the
-        // caption arrives, so nothing splits.
+    fun eachPictureIsItsOwnSlideAndTheCaptionJoinsTheFirst() {
+        // Two pictures are a slideshow, not one slide: a handset showing both in
+        // one par renders the second over the first. The caption still shares a
+        // par with the picture it describes.
         val document = SmilBuilder.build(
             bodyOf(
                 part("image/jpeg", "a.jpg"),
@@ -51,8 +52,9 @@ class SmilBuilderTest {
                 part("text/plain", "c.txt"),
             )
         )!!
-        assertEquals(1, document.pars.size)
-        assertEquals(3, document.pars[0].items.size)
+        assertEquals(2, document.pars.size)
+        assertEquals(listOf("a.jpg"), document.pars[0].items.map { it.src })
+        assertEquals(listOf("b.jpg", "c.txt"), document.pars[1].items.map { it.src })
     }
 
     @Test

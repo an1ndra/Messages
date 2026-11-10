@@ -21,11 +21,14 @@
     <string name="chat_select_all">모두 선택</string>
     <string name="chat_select_text">텍스트 선택</string>
     <string name="chat_save_image">이미지 저장</string>
+    <string name="chat_save_images">이미지 저장</string>
     <string name="chat_save_voice">음성 메시지 저장</string>
     <string name="chat_image_saved">이미지를 Pictures/Messages에 저장했습니다</string>
     <string name="chat_image_save_failed">이미지를 저장할 수 없습니다</string>
+
     <string name="chat_voice_saved">음성 메시지를 Music/Messages에 저장했습니다</string>
     <string name="chat_voice_save_failed">음성 메시지를 저장할 수 없습니다</string>
+
     <string name="chat_voice_slide_cancel">밀어서 취소</string>
     <string name="chat_voice_release_cancel">놓아서 취소</string>
     <string name="chat_voice_permission_denied">음성 메시지를 녹음하려면 마이크 접근 권한이 필요합니다</string>
@@ -117,4 +120,7 @@
     <string name="chat_starred">메시지에 별표를 추가했습니다</string>
     <string name="chat_unstarred">별표를 제거했습니다</string>
     <string name="chat_message_starred">별표 표시된 메시지</string>
+    <string name="chat_album_photos">사진 %1$d장</string>
+    <string name="chat_album_more">사진 %1$d장 더</string>
+    <string name="chat_album_previous">이전 사진</string>
 </resources>

@@ -11,7 +11,6 @@
     <string name="settings_advanced_turn_off">ابتدا «</string>
     <string name="settings_advanced_turn_off_suffix">» را خاموش کنید</string>
     <string name="settings_advanced_permanent_delete_on">حذف دائمی روشن است. این گفتگو و پیام‌هایش فوراً از دستگاه شما پاک می‌شوند و به سطل زباله نمی‌روند؛ بازیابی آن‌ها ممکن نیست.</string>
-
     <string name="settings_font_title">فونت</string>
     <string name="settings_advanced_emoji_button">دکمه ایموجی</string>
     <string name="settings_advanced_emoji_button_desc">نمایش دکمه ایموجی در کادر پیام</string>
@@ -21,7 +20,6 @@
     <string name="font_figtree">Figtree</string>
     <string name="font_poppins">Poppins</string>
     <string name="font_system">پیش‌فرض سیستم</string>
-
     <string name="keywords_title">کلیدواژه‌های مسدود</string>
     <string name="keywords_hint">پیام‌هایی که یکی از این واژه‌ها را داشته باشند به سطل زباله منتقل می‌شوند: در صندوق ورودی نمایش داده نمی‌شوند و صدای اعلان ندارند.</string>
     <string name="keywords_add_hint">افزودن کلیدواژه</string>
@@ -30,7 +28,6 @@
     <string name="keywords_remove">حذف کلیدواژه</string>
     <string name="keywords_subtitle_none">هیچ</string>
     <string name="keywords_subtitle_count">%1$d مسدود</string>
-
     <string name="diagnostics_title">عیب‌یابی</string>
     <string name="diagnostics_subtitle">اطلاعات دستگاه و برنامه برای رفع اشکال</string>
     <string name="diagnostics_save">ذخیره</string>
@@ -38,7 +35,6 @@
     <string name="diagnostics_close">بستن</string>
     <string name="diagnostics_clip_label">اطلاعات عیب‌یابی پیام‌ها</string>
     <string name="settings_sim_unknown">سیم‌کارت ناشناس</string>
-
     <string name="mms_check_title">پشتیبانی MMS</string>
     <string name="mms_check_subtitle">بررسی MMS برای هر سیم‌کارت</string>
     <string name="mms_check_summary">%1$d از %2$d سیم‌کارت، MMS را از اپراتور خود فعال دارند</string>
@@ -50,7 +46,6 @@
     <string name="mms_check_country">%1$s · %2$s</string>
     <string name="mms_check_footer">هر سیم‌کارت با تنظیم MMS اپراتور خودش بررسی می‌شود، چون دو اپراتور در یک کشور می‌توانند با هم اختلاف داشته باشند. این گزارش چیزی است که اپراتور اعلام می‌کند، نه یک سرویس MMS آزمایش‌شده: راستی‌آزمایی آن به تنظیمات APN سیستم نیاز دارد که فقط برنامه‌های دارای دسترسی ویژه می‌توانند بخوانند. کد کشور از شماره سیم‌کارت (اگر اپراتور آن را به اشتراک بگذارد) و در غیر این صورت از شبکه سیم‌کارت گرفته می‌شود.</string>
     <string name="mms_check_no_sims">سیم‌کارت فعالی پیدا نشد</string>
-
     <string name="transfer_log_title">گزارش ورود و خروج</string>
     <string name="transfer_log_subtitle">ورود و خروج‌های اخیر و موارد نادیده‌گرفته‌شده</string>
     <string name="transfer_log_empty">هنوز ورود یا خروجی ثبت نشده است.</string>

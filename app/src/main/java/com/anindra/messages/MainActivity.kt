@@ -96,6 +96,7 @@ import com.anindra.messages.ui.TrashScreen
 import com.anindra.messages.ui.TransferLogScreen
 import com.anindra.messages.ui.isPhoneNumber
 import com.anindra.messages.ui.theme.A11yOptions
+import com.anindra.messages.ui.theme.a11yOptions
 import com.anindra.messages.ui.theme.MessagesTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -106,6 +107,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -240,14 +242,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _a11yState = androidx.compose.runtime.mutableStateOf(readA11y())
 
-    private fun readA11y() = A11yOptions(
-        enabled = settings.a11yEnabled,
-        fontScalePercent = settings.a11yFontScalePercent,
-        bold = settings.a11yBold,
-        highContrast = settings.a11yHighContrast,
-        reduceMotion = settings.a11yReduceMotion,
-        largeTouchTargets = settings.a11yLargeTouch
-    )
+    private fun readA11y() = settings.a11yOptions()
 
     private fun refreshA11y() { _a11yState.value = readA11y() }
 
@@ -548,74 +543,129 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         conversationId: Long,
         uri: Uri,
         caption: String = "",
-        mediaType: String = ""
+        mediaType: String = "",
+        onStored: (Boolean) -> Unit = {}
     ) {
+        sendMediaAlbum(conversationId, listOf(uri), caption, listOf(mediaType)) { stored ->
+            onStored(stored > 0)
+        }
+    }
+
+    /**
+     * Sends several attachments as one MMS.
+     *
+     * They leave in one PDU and one SMIL slideshow, so a three-picture message
+     * arrives as one message rather than three (#364). [onStored] receives how
+     * many app rows were written; zero means nothing was stored and the caller
+     * should keep whatever it was holding.
+     */
+    fun sendMediaAlbum(
+        conversationId: Long,
+        uris: List<Uri>,
+        caption: String = "",
+        mediaTypes: List<String> = emptyList(),
+        onStored: (Int) -> Unit = {}
+    ) {
+        if (uris.isEmpty()) {
+            onStored(0)
+            return
+        }
         scope.launch {
-            val convo = repo.conversationByIdSuspend(conversationId) ?: return@launch
-            if (!isPhoneNumber(convo.address)) return@launch
-            val kind = mediaType.ifBlank {
-                MmsSupport.mediaKind(
+            val convo = repo.conversationByIdSuspend(conversationId)
+                ?: return@launch onStored(0)
+            if (!isPhoneNumber(convo.address)) return@launch onStored(0)
+            // The composer asks before it stages a picture, but the share path
+            // reaches this function directly. A block has to stop every
+            // attachment, not only the ones picked in the tray.
+            if (isNumberBlocked(convo.address)) {
+                Toast.makeText(
+                    getApplication(), R.string.chat_blocked_send, Toast.LENGTH_SHORT
+                ).show()
+                return@launch onStored(0)
+            }
+            val kinds = uris.mapIndexed { index, uri ->
+                mediaTypes.getOrNull(index)?.takeIf { it.isNotBlank() } ?: MmsSupport.mediaKind(
                     runCatching {
                         getApplication<Application>().contentResolver.getType(uri)
                     }.getOrNull().orEmpty()
                 )
             }
-            val stored = repo.sendMedia(conversationId, kind, uri.toString(), caption) ?: return@launch
+            val stored = repo.sendMediaAlbum(
+                conversationId, kinds, uris.map { it.toString() }, caption
+            )
+            if (stored.isEmpty()) return@launch onStored(0)
+            // The rows exist now, so the composer may stop holding the pictures
+            // and their caption; the hand-off below only decides the status.
+            onStored(stored.size)
             // A group MMS addresses every member in one PDU, unlike SMS which
             // is sent once per person.
             val recipients = repo.conversationRecipients(conversationId)
                 .filter { isPhoneNumber(it) }
                 .ifEmpty { listOf(convo.address) }
             val handedOff = SmsSender.sendMms(
-                getApplication(), stored.id, recipients, uri, settings.simSubscriptionId,
-                stored.body,
-                if (kind == "audio") "audio/mp4" else null
+                getApplication(), stored.map { it.id }, recipients, uris,
+                settings.simSubscriptionId, stored.first().body,
+                kinds.map { if (it == "audio") "audio/mp4" else null }
             )
             if (!handedOff) {
-                repo.markMessageStatusSuspend(stored.id, "failed")
+                stored.forEach { repo.markMessageStatusSuspend(it.id, "failed") }
                 NotificationHelper.showSendFailed(getApplication(), convo.address)
             }
         }
     }
 
-    /** Saves a message attachment (a picture to the gallery, a voice note to
-     *  Music) (#235, #364). Reads the bytes through the resolver so
-     *  provider-backed `content://mms/part/...` URIs and our own cache URIs both
-     *  work. The message's own kind decides the collection, never the menu item
-     *  that happened to be tapped. */
-    fun saveMessageAttachment(messageId: Long) {
+    /** Saves a message attachment (e.g. an MMS picture) to the gallery (#235). */
+    fun saveMessageImage(messageId: Long) = saveMessageImages(listOf(messageId))
+
+    /**
+     * Saves every attachment of the selection: pictures to the gallery, voice
+     * notes to Music (#235, #364). A multi-picture MMS is one bubble backed by a
+     * row per picture, so saving only the first row stored one picture and still
+     * reported success. The message's own kind decides the collection, never the
+     * menu item that was tapped.
+     */
+    fun saveMessageImages(messageIds: List<Long>) {
         scope.launch {
             val app = getApplication<Application>()
             val resolver = app.contentResolver
-            val msg = repo.messageByIdSuspend(messageId)
-            if (msg == null || msg.mediaUri.isBlank()) {
+            val messages = messageIds.mapNotNull { repo.messageByIdSuspend(it) }
+                .filter { it.mediaUri.isNotBlank() }
+            if (messages.isEmpty()) {
                 Toast.makeText(app, R.string.chat_image_save_failed, Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            val target = MmsSupport.saveTargetFor(msg.mediaType)
-            val audio = target == MmsSupport.SaveTarget.AUDIO
-            val uri = Uri.parse(msg.mediaUri)
-            val bytes = runCatching { resolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-            val mime = MmsSupport.mimeForSavedAttachment(
-                msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull(), target
-            )
-            val convo = repo.conversationByIdSuspend(msg.conversationId)
-            val name = MmsSupport.savedAttachmentName(
-                convo?.name ?: convo?.address ?: "message", msg.timestamp, mime, target
-            )
-            val ok = bytes != null && bytes.isNotEmpty() &&
-                DownloadsStore.writeMedia(app, name, mime, bytes, target)
-            // The toast is the only evidence a user gets, so the same outcome
-            // names itself for the regression script.
-            android.util.Log.d(
-                "AttachmentSave",
-                "target=$target mime=$mime name=$name ok=$ok"
-            )
+            var saved = 0
+            var allAudio = true
+            for (msg in messages) {
+                val target = MmsSupport.saveTargetFor(msg.mediaType)
+                if (target != MmsSupport.SaveTarget.AUDIO) allAudio = false
+                val uri = Uri.parse(msg.mediaUri)
+                val bytes = runCatching {
+                    resolver.openInputStream(uri)?.use { it.readBytes() }
+                }.getOrNull()
+                val mime = MmsSupport.mimeForSavedAttachment(
+                    msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull(), target
+                )
+                val convo = repo.conversationByIdSuspend(msg.conversationId)
+                val name = MmsSupport.savedAttachmentName(
+                    convo?.name ?: convo?.address ?: "message", msg.timestamp, mime, target
+                )
+                val ok = bytes != null && bytes.isNotEmpty() &&
+                    DownloadsStore.writeMedia(app, name, mime, bytes, target)
+                // The toast is the only evidence a user gets, so the same outcome
+                // names itself for the regression script.
+                android.util.Log.d(
+                    "AttachmentSave",
+                    "target=$target mime=$mime name=$name ok=$ok"
+                )
+                if (ok) saved++
+            }
             withContext(Dispatchers.Main) {
+                val savedAll = saved == messages.size
                 val message = when {
-                    audio && ok -> R.string.chat_voice_saved
-                    audio -> R.string.chat_voice_save_failed
-                    ok -> R.string.chat_image_saved
+                    allAudio && savedAll -> R.string.chat_voice_saved
+                    allAudio -> R.string.chat_voice_save_failed
+                    savedAll -> R.string.chat_image_saved
                     else -> R.string.chat_image_save_failed
                 }
                 Toast.makeText(app, message, Toast.LENGTH_SHORT).show()
@@ -635,9 +685,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val handedOff = if (msg.mediaType.let { it == "image" || it == "audio" } &&
                 msg.mediaUri.isNotBlank()
             ) {
+                // A multi-picture message failed as a whole, so retrying one
+                // row of it has to resend every row (#364).
+                val album = if (msg.sysId > 0) repo.messagesBySysId(msg.sysId) else emptyList()
+                val rows = album.filter { it.mediaUri.isNotBlank() }.ifEmpty { listOf(msg) }
                 SmsSender.sendMms(
-                    getApplication(), messageId, recipients, Uri.parse(msg.mediaUri), simId,
-                    "", if (msg.mediaType == "audio") "audio/mp4" else null
+                    getApplication(), rows.map { it.id }, recipients,
+                    rows.map { Uri.parse(it.mediaUri) }, simId,
+                    rows.firstOrNull { it.body.isNotBlank() }?.body.orEmpty(),
+                    rows.map { if (it.mediaType == "audio") "audio/mp4" else null }
                 )
             } else {
                 val results = recipients.map { address ->
@@ -969,48 +1025,89 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Stores the forwarded row in the target conversation *and* hands it to
      *  the framework, so SmsStatusReceiver can flip it to sent/failed. Storing
      *  alone would leave it on "Sending…" forever. */
-    fun forwardMessage(messageId: Long, targetConversationId: Long) {
+    fun forwardMessage(messageId: Long, targetConversationId: Long) =
+        forwardMessages(listOf(messageId), targetConversationId)
+
+    /**
+     * Forwards every selected row, one message each.
+     *
+     * The rows of one provider MMS are forwarded together, as one multi-picture
+     * message, even though the selection names each row separately (#364).
+     */
+    fun forwardMessages(messageIds: List<Long>, targetConversationId: Long) {
         scope.launch {
-            val msg = repo.messageByIdSuspend(messageId) ?: return@launch
+            val msgs = messageIds.distinct().mapNotNull { repo.messageByIdSuspend(it) }
+            if (msgs.isEmpty()) return@launch
             val target = repo.conversationByIdSuspend(targetConversationId) ?: return@launch
             if (!isPhoneNumber(target.address)) return@launch
+            // A forward is still a send: a blocked number must not receive the
+            // message by picking it from the forward sheet instead of the chat.
+            if (isNumberBlocked(target.address)) {
+                Toast.makeText(
+                    getApplication(), R.string.chat_blocked_send, Toast.LENGTH_SHORT
+                ).show()
+                return@launch
+            }
             val subId = settings.simSubscriptionId
-            val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
-when (val plan = ForwardPlan.of(msg, text)) {
-                is ForwardPlan.Sms -> {
-                    // An attachment with no caption has no text to forward, but
-                    // it now travels as MMS below. Anything else blank would put
-                    // an empty SMS on the wire, so drop it.
-                    if (plan.body.isBlank()) return@launch
-                    val stored = repo.sendText(targetConversationId, plan.body, subId) ?: return@launch
-                    handOff(stored.id, target.address) {
-                        SmsSender.send(
-                            getApplication(), stored.id, target.address, plan.body,
-                            subId, settings.deliveryReportsEnabled
-                        )
-                    }
+            val seen = mutableSetOf<Long>()
+            for (msg in msgs) {
+                if (msg.sysId > 0 && !seen.add(msg.sysId)) continue
+                forwardOne(msg, target, targetConversationId, subId)
+            }
+        }
+    }
+
+    private suspend fun forwardOne(
+        msg: Message,
+        target: Conversation,
+        targetConversationId: Long,
+        subId: Int
+    ) {
+        val text = if (settings.hideLinks) hideUrls(msg.body) else msg.body
+        when (val plan = ForwardPlan.of(msg, text)) {
+            is ForwardPlan.Sms -> {
+                // An attachment with no caption has no text to forward, but
+                // it now travels as MMS below. Anything else blank would put
+                // an empty SMS on the wire, so drop it.
+                if (plan.body.isBlank()) return
+                val stored = repo.sendText(targetConversationId, plan.body, subId) ?: return
+                handOff(listOf(stored.id), target.address) {
+                    SmsSender.send(
+                        getApplication(), stored.id, target.address, plan.body,
+                        subId, settings.deliveryReportsEnabled
+                    )
                 }
-                is ForwardPlan.Mms -> {
-                    val uri = Uri.parse(plan.mediaUri)
-                    val stored = repo.sendMedia(
-                        targetConversationId, plan.mediaType, plan.mediaUri, plan.caption
-                    ) ?: return@launch
-                    handOff(stored.id, target.address) {
-                        SmsSender.sendMms(
-                            getApplication(), stored.id, listOf(target.address), uri, subId,
-                            plan.caption, if (plan.mediaType == "audio") "audio/mp4" else null
-                        )
-                    }
+            }
+            is ForwardPlan.Mms -> {
+                // The other rows of an album travel with this one; forwarding
+                // one of them alone would deliver a single picture of three.
+                val album = if (msg.sysId > 0) repo.messagesBySysId(msg.sysId) else emptyList()
+                val rows = album.filter { ForwardPlan.of(it, it.body) is ForwardPlan.Mms }
+                    .ifEmpty { listOf(msg) }
+                val types = rows.map { it.mediaType }
+                val uris = rows.map { it.mediaUri }
+                val rawCaption = rows.firstOrNull { it.body.isNotBlank() }?.body ?: plan.caption
+                val caption = if (settings.hideLinks) hideUrls(rawCaption) else rawCaption
+                val stored = repo.sendMediaAlbum(targetConversationId, types, uris, caption)
+                if (stored.isEmpty()) return
+                handOff(stored.map { it.id }, target.address) {
+                    SmsSender.sendMms(
+                        getApplication(), stored.map { it.id }, listOf(target.address),
+                        uris.map { Uri.parse(it) }, subId, caption,
+                        types.map { if (it == "audio") "audio/mp4" else null }
+                    )
                 }
             }
         }
     }
 
-    /** Marks the row failed and notifies when the framework declines the
-     *  handoff; on success SmsStatusReceiver confirms sent/failed. */
-    private suspend fun handOff(rowId: Long, address: String, send: () -> Boolean) {
+    /** Marks the rows failed and notifies when the framework declines the
+     *  handoff; on success SmsStatusReceiver confirms sent/failed. Every row of
+     *  an album is marked because a refusal happens before any row is linked to
+     *  the provider, so the sys_id cascade has nothing to follow. */
+    private suspend fun handOff(rowIds: List<Long>, address: String, send: () -> Boolean) {
         if (send()) return
-        repo.markMessageStatusSuspend(rowId, "failed")
+        rowIds.forEach { repo.markMessageStatusSuspend(it, "failed") }
         NotificationHelper.showSendFailed(getApplication(), address)
     }
 
@@ -1099,7 +1196,8 @@ when (val plan = ForwardPlan.of(msg, text)) {
                     settings,
                     repo.totalConversationCount(),
                     repo.totalMessageCount(),
-                    voiceNoteDiagnostics()
+                    voiceNoteDiagnostics(),
+                    mmsDiagnostics()
                 )
             }
             onReady(text)
@@ -1128,6 +1226,28 @@ when (val plan = ForwardPlan.of(msg, text)) {
             lastUri = last?.mediaUri.orEmpty()
         )
     }
+
+    /**
+     * The MMS shape for Diagnostics (#398): what the store holds per provider
+     * message, and what the newest multi-part provider MMS actually contains.
+     * Both halves are read from their owners — the database and the provider —
+     * never re-derived from what a bubble drew.
+     */
+    private suspend fun mmsDiagnostics(): com.anindra.messages.diagnostics.MmsDetails {
+        val app = getApplication<Application>()
+        val (rows, multi, max) = repo.mmsPartStats()
+        val probe = runCatching {
+            com.anindra.messages.data.MmsProviderReader(app.contentResolver).newestMultiPart()
+        }.getOrNull()
+        return com.anindra.messages.diagnostics.MmsDetails(
+            rows = rows,
+            multiPart = multi,
+            maxParts = max,
+            providerId = probe?.id ?: 0L,
+            scanned = probe?.scanned ?: 20,
+            parts = probe?.parts.orEmpty().map { "seq=${it.seq} ${it.mime}" }
+        )
+    }
 }
 
 /** logcat tag the transfer-log dump is written under; see applyTransferLogProbe. */
@@ -1138,12 +1258,18 @@ internal enum class BubbleBack {
     /** Close the bubble, i.e. the behaviour before the setting existed. */
     FINISH,
 
-    /** Leave the bubble up and show the chat list inside it. */
-    SHOW_LIST
+    /** Leave the chat for the app's conversation list. */
+    SHOW_LIST,
+
+    /** Stay on the chat: a bubble hosts one conversation, so it has no list. */
+    STAY
 }
 
-internal fun bubbleBackAction(bubbleMode: Boolean, backClosesBubble: Boolean): BubbleBack =
-    if (bubbleMode && backClosesBubble) BubbleBack.FINISH else BubbleBack.SHOW_LIST
+internal fun bubbleBackAction(bubbleMode: Boolean, backClosesBubble: Boolean): BubbleBack = when {
+    !bubbleMode -> BubbleBack.SHOW_LIST
+    backClosesBubble -> BubbleBack.FINISH
+    else -> BubbleBack.STAY
+}
 
 open class MainActivity : FragmentActivity() {
 
@@ -1166,8 +1292,18 @@ open class MainActivity : FragmentActivity() {
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
+    private var pendingOpenConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
     private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
     private var pendingShareMedia by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
+    private var stagedMediaProbe by androidx.compose.runtime.mutableStateOf<List<Uri>>(emptyList())
+
+    /**
+     * The conversation this window is showing. Held on the activity, not in the
+     * composition: the App lock gate stops composing the content when it re-arms
+     * on resume, and a remembered id went with it — the chat then came back as a
+     * blank conversation with no name (#354).
+     */
+    private var chatId by androidx.compose.runtime.mutableStateOf(-1L)
 
     /** The conversation this activity is showing inside a notification bubble, if any. */
     private var bubbleConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
@@ -1231,17 +1367,13 @@ open class MainActivity : FragmentActivity() {
         intent.getFloatExtra("chat_zoom", 0f).takeIf { it > 0f }?.let { bootVm.debugChatZoom = it }
         applyPrivacyModeProbe(intent, bootVm)
         applyLockSessionProbe(intent)
+        applyWidgetProbe(intent, bootVm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
-        intent.getStringExtra("open_conversation_address")?.let {
-            pendingOpenAddress = it
-            // The bubble's own notification is the bubble: dismissing it here
-            // would close the window this activity was launched into.
-            if (!isBubbleLaunch(intent)) {
-                com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
-                    this@MainActivity, null, it
-                )
-            }
-        }
+        com.anindra.messages.widget.WidgetRoute.forExtras(
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_NEW_MESSAGE, false)
+        )?.let { navRoute = it }
+        applyConversationRoute(intent)
         if (isBubbleLaunch(intent)) navRoute = "opening"
         applyShareIntent(intent)
 
@@ -1395,7 +1527,6 @@ open class MainActivity : FragmentActivity() {
             font = vm.fontFamily,
             a11y = vm.a11y,
         ) {
-                var chatId by remember { mutableStateOf(-1L) }
                 // The home-list query that opened the chat, so the chat can
                 // highlight and scroll to the matching message. Null for every
                 // other way into a chat (new, scheduled, spam, intent).
@@ -1472,6 +1603,16 @@ open class MainActivity : FragmentActivity() {
                         com.anindra.messages.sms.NotificationHelper
                             .retireBubbleForFullChat(this@MainActivity, id)
                     }
+                }
+
+                androidx.compose.runtime.LaunchedEffect(pendingOpenConversationId) {
+                    val id = pendingOpenConversationId ?: return@LaunchedEffect
+                    chatId = id
+                    chatSearchQuery = null
+                    navRoute = if (id > 0) "chat" else "list"
+                    pendingOpenConversationId = null
+                    com.anindra.messages.sms.NotificationHelper
+                        .retireBubbleForFullChat(this@MainActivity, id)
                 }
 
                 if (showDefaultSmsDialog) {
@@ -1806,18 +1947,21 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         searchQuery = chatSearchQuery,
                                         initialDraft = pendingShareBody,
                                         initialMedia = pendingShareMedia,
+                                        initialStagedMedia = stagedMediaProbe,
                                         onBack = {
                                             pendingShareBody = ""
                                             pendingShareMedia = emptyList()
-                                            // A bubble exists to keep the chat on
-                                            // screen, so Back hands back to the
-                                            // chat list and leaves the bubble up
-                                            // unless the user asked for the plain
-                                            // "Back dismisses it" behaviour (#354
+                                            stagedMediaProbe = emptyList()
+                                            // A bubble hosts one conversation, so
+                                            // Back stays on the chat unless the
+                                            // user asked for the plain "Back
+                                            // dismisses it" behaviour (#354
                                             // follow-up).
-                                            if (bubbleBackAction(bubbleMode, vm.settings.bubbleBackCloses) ==
-                                                BubbleBack.FINISH
-                                            ) finish() else navRoute = "list"
+                                            when (bubbleBackAction(bubbleMode, vm.settings.bubbleBackCloses)) {
+                                                BubbleBack.FINISH -> finish()
+                                                BubbleBack.SHOW_LIST -> navRoute = "list"
+                                                BubbleBack.STAY -> Unit
+                                            }
                                         },
                                         // Leaving for contact details consumes the
                                         // search handoff. ChatScreen lives inside
@@ -1837,7 +1981,8 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                             navRoute = "add-people"
                                         },
                                         onInitialDraftConsumed = { pendingShareBody = "" },
-                                        onInitialMediaConsumed = { pendingShareMedia = emptyList() }
+                                        onInitialMediaConsumed = { pendingShareMedia = emptyList() },
+                                        onInitialStagedMediaConsumed = { stagedMediaProbe = emptyList() }
                                     )
                                 }
                             }
@@ -1937,6 +2082,27 @@ onOpenAccessibility = { navRoute = "accessibility" },
             intent.getBooleanExtra("fake_dual_sim", false),
             debuggable
         )
+    }
+
+    /** Debug builds only: `--esa mms_stage <uri>,<uri>... --es mms_probe_to
+     *  <number>` opens the chat with the media already staged, so the composer's
+     *  send and retry path can be asserted on an emulator without a system
+     *  photo picker (the comparison AVDs have none). `--esa` is the spelling
+     *  that carries several URIs; a single `--es` is accepted as well. */
+    private fun applyMmsStageProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        val media: List<String> = intent.getStringArrayExtra("mms_stage")?.toList()
+            ?: intent.getStringExtra("mms_stage")?.split(',')
+            ?: return
+        val to = intent.getStringExtra("mms_probe_to") ?: return
+        stagedMediaProbe = media
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .map { android.net.Uri.parse(it) }
+        android.util.Log.d("MmsStageProbe", "staged=${stagedMediaProbe.size} to=$to")
+        pendingOpenAddress = to
     }
 
     /** Debug builds only: `--es mms_probe <media uri> --es mms_probe_to <number>`
@@ -2092,6 +2258,29 @@ onOpenAccessibility = { navRoute = "accessibility" },
      * It writes the real setting, exactly as the toggle does — nothing here
      * pretends an authentication happened.
      */
+    private fun applyWidgetProbe(intent: Intent, vm: AppViewModel) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        if (!intent.getBooleanExtra("widget_probe", false)) return
+        val repository = (application as MessagesApplication).repository
+        val unreadAtTop = vm.settings.unreadAtTopEnabled
+        val appLock = vm.settings.appLockEnabled
+        val privacy = vm.settings.privacyModeEnabled
+        // The snapshot query is a blocking DB read, so keep it off the main thread.
+        Thread {
+            val conversations = kotlinx.coroutines.runBlocking {
+                repository.conversations().first()
+            }
+            android.util.Log.d(
+                "WidgetProbe",
+                com.anindra.messages.widget.WidgetProbe.line(
+                    conversations, unreadAtTop, appLock, privacy
+                )
+            )
+        }.start()
+    }
+
     private fun applyAppLockProbe(intent: Intent, vm: AppViewModel) {
         val debuggable =
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -2109,6 +2298,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
         setIntent(intent)
         applyFakeDualSim(intent)
         applyMmsProbe(intent)
+        applyMmsStageProbe(intent)
         applySmsIeProbe(intent)
         applyBackupProbe(intent)
         applyBackupExportProbe(intent)
@@ -2122,17 +2312,41 @@ onOpenAccessibility = { navRoute = "accessibility" },
         applyPrivacyModeProbe(intent, vm)
         applyAppLockProbe(intent, vm)
         applyLockSessionProbe(intent)
+        applyWidgetProbe(intent, vm)
         if (intent.getBooleanExtra("open_settings", false)) navRoute = "settings"
+        com.anindra.messages.widget.WidgetRoute.forExtras(
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_INBOX, false),
+            intent.getBooleanExtra(com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_NEW_MESSAGE, false)
+        )?.let { navRoute = it }
+        applyConversationRoute(intent)
+        if (isBubbleLaunch(intent)) navRoute = "opening"
+        applyShareIntent(intent)
+    }
+
+    /**
+     * Opens the chat an intent names. A widget row names its conversation by id,
+     * because a group created from a 1:1 keeps that contact's address, and the
+     * address route resolves back to the 1:1 thread.
+     */
+    private fun applyConversationRoute(intent: Intent) {
+        val widgetId = intent.getLongExtra(
+            com.anindra.messages.widget.WidgetIntents.EXTRA_OPEN_CONVERSATION_ID,
+            0L
+        )
+        if (widgetId > 0L) {
+            pendingOpenConversationId = widgetId
+            return
+        }
         intent.getStringExtra("open_conversation_address")?.let {
             pendingOpenAddress = it
+            // The bubble's own notification is the bubble: dismissing it here
+            // would close the window this activity was launched into.
             if (!isBubbleLaunch(intent)) {
                 com.anindra.messages.sms.NotificationHelper.clearConversationNotification(
                     this@MainActivity, null, it
                 )
             }
         }
-        if (isBubbleLaunch(intent)) navRoute = "opening"
-        applyShareIntent(intent)
     }
 
     /**

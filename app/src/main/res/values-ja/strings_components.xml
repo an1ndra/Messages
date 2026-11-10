@@ -8,7 +8,6 @@
     <string name="common_open">開く</string>
     <string name="common_close">閉じる</string>
     <string name="common_next">次へ</string>
-
     <!-- Time formatting -->
     <string name="time_now">今</string>
     <string name="time_today">今日</string>
@@ -16,10 +15,8 @@
     <string name="time_format_hour">h:mm a</string>
     <string name="time_format_date">MMM d日</string>
     <string name="time_format_divider">EEE, MMM d日</string>
-
     <!-- Contacts -->
     <string name="contact_work_profile">職場プロフィールの連絡先</string>
-
     <!-- Accessibility -->
     <string name="access_restore">復元</string>
     <string name="access_delete_forever">永久に削除</string>

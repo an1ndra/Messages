@@ -8,7 +8,6 @@
     <string name="common_open">فتح</string>
     <string name="common_close">إغلاق</string>
     <string name="common_next">التالي</string>
-
     <!-- Time formatting -->
     <string name="time_now">الآن</string>
     <string name="time_today">اليوم</string>
@@ -16,10 +15,8 @@
     <string name="time_format_hour">h:mm a</string>
     <string name="time_format_date">MMM d</string>
     <string name="time_format_divider">EEE, MMM d</string>
-
     <!-- Contacts -->
     <string name="contact_work_profile">جهة اتصال من ملف العمل</string>
-
     <!-- Accessibility -->
     <string name="access_restore">استعادة</string>
     <string name="access_delete_forever">حذف نهائيًا</string>

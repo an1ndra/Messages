@@ -9,7 +9,7 @@
     <string name="settings_advanced_permanent_delete">Trwałe usunięcie</string>
     <string name="settings_advanced_permanent_delete_desc">Usuwaj wiadomości natychmiast zamiast przenosić je do kosza</string>
     <string name="settings_advanced_turn_off">Najpierw wyłącz „</string>
-    <string name="settings_advanced_turn_off_suffix">"</string>
+    <string name="settings_advanced_turn_off_suffix">\"</string>
     <string name="settings_advanced_permanent_delete_on">Trwałe usuwanie jest włączone. Ta rozmowa i jej wiadomości zostaną natychmiast usunięte z urządzenia — nie przeniesione do kosza — i nie mogą zostać przywrócone.</string>
     <string name="settings_font_title">Czcionka</string>
     <string name="settings_advanced_emoji_button">Przycisk emoji</string>

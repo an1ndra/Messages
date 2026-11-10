@@ -8,8 +8,8 @@
     <string name="settings_advanced_link_warning">Link-Öffnen-Warnung</string>
     <string name="settings_advanced_permanent_delete">Endgültig löschen</string>
     <string name="settings_advanced_permanent_delete_desc">Nachrichten sofort löschen statt in den Papierkorb verschieben</string>
-    <string name="settings_advanced_turn_off">"„"</string>
-    <string name="settings_advanced_turn_off_suffix">" "aktivieren zuerst</string>
+    <string name="settings_advanced_turn_off">„</string>
+    <string name="settings_advanced_turn_off_suffix">\" \"aktivieren zuerst</string>
     <string name="settings_advanced_permanent_delete_on">Endgültiges Löschen ist aktiviert. Diese Unterhaltung und ihre Nachrichten werden sofort von Ihrem Gerät entfernt — nicht in den Papierkorb verschoben — und können nicht wiederhergestellt werden.</string>
     <string name="settings_font_title">Schriftart</string>
     <string name="settings_advanced_emoji_button">Emoji-Schaltfläche</string>
