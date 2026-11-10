@@ -1,5 +1,6 @@
 package com.anindra.messages.sms
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -60,9 +61,13 @@ class NotificationBubbleFullChatRetireTest {
     @Test
     fun openingTheListThreadRetiresItsBubbleInBothUis() {
         val activity = src("MainActivity.kt")
-        Regex("""clearConversationNotification\(this@MainActivity, id\)\s*com\.anindra\.messages\.sms\.NotificationHelper\s+\.retireBubbleForFullChat\(this@MainActivity, id\)""")
+        Regex("""clearConversationNotification\(this@MainActivity, id\)\s*retireFullChatBubble\(id\)""")
             .findAll(activity)
-            .let { assertTrue("the in-app open path skips the retire", it.count() >= 2) }
+            .let { assertEquals("the in-app open path skips the retire", 2, it.count()) }
+        assertTrue(
+            "opening a chat from the list inside the bubble retires the bubble that hosts it",
+            activity.contains("if (!bubbleMode) com.anindra.messages.sms.NotificationHelper")
+        )
     }
 
     @Test
