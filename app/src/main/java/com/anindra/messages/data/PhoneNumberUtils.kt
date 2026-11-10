@@ -30,6 +30,9 @@ object PhoneNumberUtils {
     private val e164Cache = ConcurrentHashMap<String, String>()
     private val displayCache = ConcurrentHashMap<String, String>()
     private val nationalCache = ConcurrentHashMap<String, String>()
+    private val regionCache = ConcurrentHashMap<String, String>()
+    private val significantCache = ConcurrentHashMap<String, String>()
+    private val validityCache = ConcurrentHashMap<String, String>()
 
     /** Regions sharing the NANP country code (1): US, CA, PR, … */
     private val nanpRegions: Set<String> by lazy {
@@ -194,6 +197,44 @@ object PhoneNumberUtils {
         return out
     }
 
+    /** The national significant number of [input] as parsed in [region], with
+     *  leading zeros preserved, or null when it does not parse. Used to tell
+     *  whether the assumed region actually consumed the input's trunk prefix. */
+    fun nationalSignificantDigits(input: String, region: String): String? {
+        if (!isLikelyPhoneNumber(input)) return null
+        val cleaned = input.replace(Regex("[^0-9+]"), "")
+        val reg = region.uppercase()
+        val key = "$cleaned|$reg"
+        significantCache[key]?.let { return if (it == MISS) null else it }
+        val out = try {
+            util.getNationalSignificantNumber(util.parse(cleaned, reg)).ifEmpty { null }
+        } catch (_: Exception) {
+            null
+        }
+        significantCache[key] = out ?: MISS
+        return out
+    }
+
+    /** True when [input] is a *valid* number for [region]. Stricter than
+     *  [toE164]'s isPossibleNumber gate: used only to decide whether a national
+     *  form can be attributed to a country, where a merely "possible" match
+     *  (Switzerland accepts a Swedish national form as possible) is not enough. */
+    fun isValidInRegion(input: String, region: String): Boolean {
+        if (!isLikelyPhoneNumber(input)) return false
+        val cleaned = input.replace(Regex("[^0-9+]"), "")
+        val reg = region.uppercase()
+        val key = "$cleaned|$reg"
+        validityCache[key]?.let { return it == "1" }
+        val out = try {
+            val number = util.parse(cleaned, reg)
+            util.isValidNumberForRegion(number, reg)
+        } catch (_: Exception) {
+            false
+        }
+        validityCache[key] = if (out) "1" else "0"
+        return out
+    }
+
     /** Longest valid country-code prefix (1-3 digits) of [digits], or "" when no
      *  prefix of it is a real country code. Used to tell a genuine country code
      *  apart from the first digits of a subscriber number. */
@@ -208,11 +249,17 @@ object PhoneNumberUtils {
         return ""
     }
 
-    /** ISO 3166-1 alpha-2 country code for an E.164 number, or "" when unknown. */
-    fun regionFor(e164: String): String = try {
-        val code = util.getRegionCodeForNumber(util.parse(e164, null))
-        if (code == "ZZ" || code == null) "" else code
-    } catch (_: Exception) {
-        ""
+    /** ISO 3166-1 alpha-2 country code for an E.164 number, or "" when unknown.
+     *  Cached: same-person checks call it per conversation. */
+    fun regionFor(e164: String): String {
+        regionCache[e164]?.let { return it }
+        val out = try {
+            val code = util.getRegionCodeForNumber(util.parse(e164, null))
+            if (code == "ZZ" || code == null) "" else code
+        } catch (_: Exception) {
+            ""
+        }
+        regionCache[e164] = out
+        return out
     }
 }

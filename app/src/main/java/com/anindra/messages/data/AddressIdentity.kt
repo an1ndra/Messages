@@ -20,16 +20,24 @@ object AddressIdentity {
         val e164 = PhoneNumberUtils.toE164(address, region) ?: return address.trim()
         val inDigits = address.filter { it.isDigit() }
         if (inDigits.startsWith("0")) {
-            val e164Digits = e164.filter { it.isDigit() }
-            if (e164Digits.endsWith(inDigits)) return address.trim()
+            // The region's plan must have consumed that leading '0'. If the
+            // parsed national significant number is the whole input, the '0'
+            // was not consumed — but that is only a wrong guess when the result
+            // is not a valid number for the region (Italy's fixed lines keep a
+            // significant leading 0, so they are valid and pass).
+            if (PhoneNumberUtils.nationalSignificantDigits(address, region) == inDigits &&
+                !PhoneNumberUtils.isValidInRegion(address, region)) {
+                return address.trim()
+            }
         }
         return e164
     }
 
     /** True when two spellings identify the same sender. Addresses containing
      *  a letter are alphanumeric sender IDs and must match exactly
-     *  (case-insensitive); digit/punctuation-only addresses keep the issue
-     *  #183 digit-run comparison. */
+     *  (case-insensitive); dialable numbers go through libphonenumber, and
+     *  digit/punctuation-only addresses keep the issue #183 digit-run
+     *  comparison as a last resort. */
     fun samePerson(a: String, b: String): Boolean {
         if (a == b) return true
         if (a.any { it.isLetter() } || b.any { it.isLetter() }) {
@@ -39,10 +47,51 @@ object AddressIdentity {
         val db = b.filter { it.isDigit() }
         if (da.isEmpty() || db.isEmpty()) return false
         if (da == db) return true
+        // Cheap digit-run checks first: they settle the common cases without
+        // touching libphonenumber.
         val diff = da.length - db.length
         if (diff in 1..3 && da.drop(diff) == db) return true
         val rev = db.length - da.length
-        return rev in 1..3 && db.drop(rev) == da
+        if (rev in 1..3 && db.drop(rev) == da) return true
+        // Only now pay for the country-plan comparison.
+        return sameNumberAcrossRegions(a, b)
+    }
+
+    /** True when one spelling is E.164 and the other is a national form that
+     *  yields the same E.164 when parsed in that E.164's own country.
+     *
+     *  libphonenumber carries each country's trunk prefix, so this needs no
+     *  per-country rule (Sweden's 0, Korea's 0, India's 0, the US's none).
+     *  A number that merely shares a tail cannot pass: parsing it under the
+     *  other country's numbering plan either produces a different E.164 or
+     *  does not parse at all. */
+    private fun sameNumberAcrossRegions(a: String, b: String): Boolean {
+        val ea = e164Of(a)
+        val eb = e164Of(b)
+        if (ea != null && eb != null) return ea == eb
+        if (ea != null) {
+            val region = PhoneNumberUtils.regionFor(ea)
+            return region.isNotEmpty() &&
+                PhoneNumberUtils.isValidInRegion(b, region) &&
+                PhoneNumberUtils.toE164(b, region) == ea
+        }
+        if (eb != null) {
+            val region = PhoneNumberUtils.regionFor(eb)
+            return region.isNotEmpty() &&
+                PhoneNumberUtils.isValidInRegion(a, region) &&
+                PhoneNumberUtils.toE164(a, region) == eb
+        }
+        return false
+    }
+
+    /** The E.164 spelling of [address] under the device region, or null when the
+     *  region cannot be trusted for it (see [canonical]'s trunk-zero guard) or
+     *  the address is not a parseable number. */
+    private fun e164Of(address: String): String? {
+        val normalized = canonical(address, PhoneNumberUtils.region())
+        if (!normalized.startsWith("+")) return null
+        // Re-validate: an unparseable "+..." string was kept verbatim above.
+        return PhoneNumberUtils.toE164(normalized, "ZZ")
     }
 
     /** True for dialable phone/short-code addresses; false for alphanumeric
