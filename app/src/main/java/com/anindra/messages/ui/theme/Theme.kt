@@ -168,7 +168,7 @@ internal val AmoledColors = darkColorScheme(
 // ─────────────── High-contrast schemes (accessibility mode) ───────────────
 // Same M3 roles, pushed to pure black/white text-on-background and stronger
 // outlines to meet WCAG AAA contrast in accessibility mode.
-private val LightHighContrastColors = lightColorScheme(
+internal val LightHighContrastColors = lightColorScheme(
     primary = Color(0xFF003C8F),
     onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFBBD3FF),
@@ -206,7 +206,7 @@ private val LightHighContrastColors = lightColorScheme(
     surfaceContainerHighest = Color(0xFFE1E2E8)
 )
 
-private val DarkHighContrastColors = darkColorScheme(
+internal val DarkHighContrastColors = darkColorScheme(
     primary = Color(0xFFD6E3FF),
     onPrimary = Color(0xFF000000),
     primaryContainer = Color(0xFFA8C7FA),

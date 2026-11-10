@@ -21,11 +21,14 @@
     <string name="chat_select_all">Выбрать все</string>
     <string name="chat_select_text">Выделить текст</string>
     <string name="chat_save_image">Сохранить изображение</string>
+    <string name="chat_save_images">Сохранить изображения</string>
     <string name="chat_save_voice">Сохранить голосовое сообщение</string>
     <string name="chat_image_saved">Изображение сохранено в Pictures/Messages</string>
     <string name="chat_image_save_failed">Не удалось сохранить изображение</string>
+
     <string name="chat_voice_saved">Голосовое сообщение сохранено в Music/Messages</string>
     <string name="chat_voice_save_failed">Не удалось сохранить голосовое сообщение</string>
+
     <string name="chat_voice_slide_cancel">Сдвиньте, чтобы отменить</string>
     <string name="chat_voice_release_cancel">Отпустите, чтобы отменить</string>
     <string name="chat_voice_permission_denied">Для записи голосового сообщения нужен доступ к микрофону</string>
@@ -117,4 +120,7 @@
     <string name="chat_starred">Сообщение отмечено</string>
     <string name="chat_unstarred">Звезда убрана</string>
     <string name="chat_message_starred">Помеченное сообщение</string>
+    <string name="chat_album_photos">%1$d фото</string>
+    <string name="chat_album_more">Ещё %1$d фото</string>
+    <string name="chat_album_previous">Предыдущие фото</string>
 </resources>

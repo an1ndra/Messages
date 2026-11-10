@@ -34,11 +34,11 @@ Built with **Kotlin + Jetpack Compose + Material 3 (M3)**. No internet permissio
 
 | Conversations | Advanced settings | Contact details | Reactions |
 |---|---|---|---|
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01-home.png" alt="Conversations" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03-advanced-settings.png" alt="Advanced settings" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04-contact.png" alt="Contact details" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05-reaction.png" alt="Reactions" width="160" height="356"> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01-chats.png" alt="Conversations" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/07-advanced.png" alt="Advanced settings" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05-contact.png" alt="Contact details" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03-reactions.png" alt="Reactions" width="160" height="356"> |
 
 | Typing | Import messages | Settings | New chat |
 |---|---|---|---|
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/06-typing.png" alt="Typing" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/07-import-messages.png" alt="Import messages" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02-settings.png" alt="Settings" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/08-new-chat.png" alt="New chat" width="160" height="356"> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02-replying.png" alt="Typing" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/08-import.png" alt="Import messages" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/06-themes.png" alt="Settings" width="160" height="356"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04-new-chat.png" alt="New chat" width="160" height="356"> |
 
 ## Download
 

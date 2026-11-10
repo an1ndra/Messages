@@ -21,11 +21,14 @@
     <string name="chat_select_all">Seleccionar todo</string>
     <string name="chat_select_text">Seleccionar texto</string>
     <string name="chat_save_image">Guardar imagen</string>
+    <string name="chat_save_images">Guardar imágenes</string>
     <string name="chat_save_voice">Guardar mensaje de voz</string>
     <string name="chat_image_saved">Imagen guardada en Pictures/Messages</string>
     <string name="chat_image_save_failed">No se pudo guardar la imagen</string>
+
     <string name="chat_voice_saved">Mensaje de voz guardado en Music/Messages</string>
     <string name="chat_voice_save_failed">No se pudo guardar el mensaje de voz</string>
+
     <string name="chat_voice_slide_cancel">Desliza para cancelar</string>
     <string name="chat_voice_release_cancel">Suelta para cancelar</string>
     <string name="chat_voice_permission_denied">Se necesita acceso al micrófono para grabar un mensaje de voz</string>
@@ -117,4 +120,7 @@
     <string name="chat_starred">Mensaje destacado</string>
     <string name="chat_unstarred">Destacado quitado</string>
     <string name="chat_message_starred">Mensaje destacado</string>
+    <string name="chat_album_photos">%1$d fotos</string>
+    <string name="chat_album_more">%1$d fotos más</string>
+    <string name="chat_album_previous">Fotos anteriores</string>
 </resources>

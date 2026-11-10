@@ -20,11 +20,14 @@
     <string name="chat_select_all">全選</string>
     <string name="chat_select_text">選取文字</string>
     <string name="chat_save_image">儲存圖片</string>
+    <string name="chat_save_images">儲存圖片</string>
     <string name="chat_save_voice">儲存語音訊息</string>
     <string name="chat_image_saved">圖片已儲存至 Pictures/Messages</string>
     <string name="chat_image_save_failed">無法儲存圖片</string>
+
     <string name="chat_voice_saved">語音訊息已儲存至 Music/Messages</string>
     <string name="chat_voice_save_failed">無法儲存語音訊息</string>
+
     <string name="chat_voice_slide_cancel">滑動以取消</string>
     <string name="chat_voice_release_cancel">放開以取消</string>
     <string name="chat_voice_permission_denied">錄製語音訊息需要麥克風存取權</string>
@@ -113,4 +116,7 @@
     <string name="chat_starred">已加星號</string>
     <string name="chat_unstarred">已取消星號</string>
     <string name="chat_message_starred">已加星號的訊息</string>
+    <string name="chat_album_photos">%1$d 張相片</string>
+    <string name="chat_album_more">還有 %1$d 張相片</string>
+    <string name="chat_album_previous">上一組相片</string>
 </resources>

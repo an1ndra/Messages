@@ -896,28 +896,32 @@ object SmsSender {
     }
 
     /**
-     * Sends MMS through the `:mms` stack (see [MmsSender]).
+     * Sends attachments as one MMS through the `:mms` stack (see [MmsSender]).
      *
-     * The stack fits the attachment to the carrier, builds the PDU, writes the
-     * outbox row and hands it over; SmsStatusReceiver settles the app row when
-     * the platform reports the result.
+     * The stack fits every attachment to the carrier, builds one PDU, writes the
+     * outbox row and hands it over; SmsStatusReceiver settles the app rows when
+     * the platform reports the result. [messageIds] and [media] are in the same
+     * order — the ith row is the ith attachment.
      */
     fun sendMms(
         context: Context,
-        messageId: Long,
+        messageIds: List<Long>,
         addresses: List<String>,
-        media: Uri,
+        media: List<Uri>,
         subscriptionId: Int = -1,
         caption: String = "",
-        mimeType: String? = null
+        mimeTypes: List<String?> = emptyList()
     ): Boolean {
-        val mime = com.anindra.messages.data.MmsSupport.canonicalMime(
-            mimeType ?: com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
-                context.contentResolver.getType(media), media.toString()
+        val mimes = media.mapIndexed { index, uri ->
+            com.anindra.messages.data.MmsSupport.canonicalMime(
+                mimeTypes.getOrNull(index)
+                    ?: com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
+                        context.contentResolver.getType(uri), uri.toString()
+                    )
             )
-        )
+        }
         return MmsSender.send(
-            context, messageId, addresses, media, mime, caption, subscriptionId
+            context, messageIds, addresses, media, mimes, caption, subscriptionId
         )
     }
 

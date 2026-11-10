@@ -93,6 +93,26 @@ class MmsSenderTest {
             !source.contains("MmsComposer")
         )
     }
+
+    @Test
+    fun aRefusedHandoffDropsTheLinkInsteadOfAdopting() {
+        assertEquals(
+            MmsSender.HandoffOutcome.UNLINK,
+            MmsSender.handoffAction("not_started", 42)
+        )
+        assertEquals(
+            MmsSender.HandoffOutcome.ADOPT,
+            MmsSender.handoffAction("queued", 42)
+        )
+        assertEquals(
+            MmsSender.HandoffOutcome.ADOPT,
+            MmsSender.handoffAction("sent", 42)
+        )
+        assertEquals(
+            MmsSender.HandoffOutcome.NONE,
+            MmsSender.handoffAction("queued", 0)
+        )
+    }
 }
 
 /**
@@ -140,6 +160,30 @@ class MmsSendResultWiringTest {
         val body = repository.substring(start, start + 900)
         assertTrue(body.contains("UPDATE messages SET sys_id="))
         assertTrue(body.contains("message_provider_ids"))
+    }
+
+    @Test
+    fun aRefusedHandoffLeavesNoLinkOrDeadPartUri() {
+        val sender = sourceOf("app/src/main/java/com/anindra/messages/sms/MmsSender.kt")
+        val start = sender.indexOf("override fun sendStarted(")
+        val completed = sender.indexOf("override fun sendCompleted(")
+
+        assertTrue("sendStarted must exist", start in 0 until completed)
+        // Adopting the provider's part here pointed the bubble at a row the
+        // stack deletes when the transport refuses the hand-off.
+        assertTrue(
+            "sendStarted must not adopt a part the hand-off may delete",
+            !sender.substring(start, completed).contains("adoptProviderMedia")
+        )
+        assertTrue(
+            "the refusal branch must undo the link",
+            sender.substring(completed).contains("HandoffOutcome.UNLINK")
+        )
+        val repository = sourceOf("app/src/main/java/com/anindra/messages/data/Repository.kt")
+        assertTrue(repository.contains("fun unlinkMmsRow("))
+        assertTrue(
+            repository.contains("DELETE FROM message_provider_ids WHERE message_id=?")
+        )
     }
 
 }

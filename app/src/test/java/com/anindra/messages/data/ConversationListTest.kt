@@ -283,4 +283,31 @@ class ConversationListTest {
     fun aBlankQueryHandsOverNothing() {
         assertEquals("", ConversationList.handoffQuery(convo(1, name = "Alice"), "   "))
     }
+
+    // --- newlyUnread -----------------------------------------------------
+
+    @Test
+    fun aChatReturningToListWithUnreadIsNotAFreshMessage() {
+        // Undo of archive (or restore from Trash / unarchive) re-enters the list
+        // with its old unread count. prev has no entry for it, so its count only
+        // looks new; scrolling to it jumped the list down and hid the newer chats
+        // above it.
+        val list = listOf(convo(1, unread = 0), convo(2, unread = 3))
+
+        assertEquals(null, ConversationList.newlyUnread(list, mapOf(1L to 0)))
+    }
+
+    @Test
+    fun aCountThatGrewForAListedChatIsFresh() {
+        val list = listOf(convo(1, unread = 0), convo(2, unread = 3))
+
+        assertEquals(2L, ConversationList.newlyUnread(list, mapOf(1L to 0, 2L to 1))?.id)
+    }
+
+    @Test
+    fun anUnchangedCountIsNotFresh() {
+        val list = listOf(convo(1, unread = 3), convo(2, unread = 2))
+
+        assertEquals(null, ConversationList.newlyUnread(list, mapOf(1L to 3, 2L to 2)))
+    }
 }

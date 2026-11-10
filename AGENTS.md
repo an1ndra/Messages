@@ -128,6 +128,15 @@ git -C scripts add -A && git -C scripts commit -m "..." && git -C scripts push
 git add scripts && git commit -m "chore: bump scripts submodule"
 ```
 
+**Land the script commit on Messages-scripts `Develop` before opening the app
+PR.** The app records a bare commit SHA, and a gitlink merge only resolves when
+one side's pointer is an ancestor of the other's. A feature branch that keeps
+its scripts commit to itself is a pointer with no relation to `Develop`'s, so
+the next merge of `Develop` stops on `UU scripts` — this hit #421, #423 and
+#425 in a row. Push the script work first, merge Messages-scripts `Develop`
+into the branch's checkout, and never let `Develop`'s pointer lag behind a
+branch's.
+
 ## Compose previews
 
 Previews live in **`app/src/debug/java/com/anindra/messages/ui/previews/`** (8
