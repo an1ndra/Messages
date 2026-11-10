@@ -1,9 +1,10 @@
 # Messages
 
-|  |  |  |  |  |
-|:---:|:---:|:---:|:---:|:---:|
-| [![VirusTotal](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/an1ndra/Messages/main/.github/virustotal.json)](https://github.com/an1ndra/Messages/releases/latest) | [![Release](https://img.shields.io/github/v/release/an1ndra/Messages?label=Release&logo=github)](https://github.com/an1ndra/Messages/releases/latest) | [![Downloads](https://img.shields.io/github/downloads/an1ndra/Messages/total?label=Downloads&logo=github)](https://github.com/an1ndra/Messages/releases) | [![F-Droid](https://img.shields.io/f-droid/v/com.anindra.messages?label=F-Droid&logo=fdroid)](https://f-droid.org/en/packages/com.anindra.messages/) | [![License](https://img.shields.io/github/license/an1ndra/Messages?label=License)](LICENSE) |
-| [![Android](https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white)](#requirements) | [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org) | [![Security](https://img.shields.io/github/actions/workflow/status/an1ndra/Messages/security.yml?label=Security%20scan)](https://github.com/an1ndra/Messages/actions/workflows/security.yml) | [![Last commit](https://img.shields.io/github/last-commit/an1ndra/Messages?label=Last%20commit)](https://github.com/an1ndra/Messages/commits/main) | [![Stars](https://img.shields.io/github/stars/an1ndra/Messages?label=Stars&logo=github)](https://github.com/an1ndra/Messages/stargazers) |
+[![VirusTotal](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/an1ndra/Messages/main/.github/virustotal.json)](https://github.com/an1ndra/Messages/releases/latest)
+[![Release](https://img.shields.io/github/v/release/an1ndra/Messages?label=Release&logo=github)](https://github.com/an1ndra/Messages/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/an1ndra/Messages/total?label=Downloads&logo=github)](https://github.com/an1ndra/Messages/releases)
+[![F-Droid](https://img.shields.io/f-droid/v/com.anindra.messages?label=F-Droid&logo=fdroid)](https://f-droid.org/en/packages/com.anindra.messages/)
+[![License](https://img.shields.io/github/license/an1ndra/Messages?label=License)](LICENSE)
 
 Simple, private SMS messaging. Offline-first, no ads, no tracking.
 
