@@ -57,9 +57,12 @@ class ComposerShapeTest {
             "the composer pill must be as tall as the circle beside it",
             chat.contains("Modifier.fillMaxWidth().heightIn(min = 56.dp)")
         )
+        // Record, Send and the locked send share one circle now, so there is a
+        // single 56dp box behind every state rather than one per branch.
         assertTrue(
-            "both circle states must be that same height",
-            Regex("""\.size\(56\.dp\)""").findAll(chat).count() >= 2
+            "the one composer circle must be that same height",
+            Regex("""\.size\(56\.dp\)[\s\S]{0,900}?\.background\(discColor, CircleShape\)""")
+                .containsMatchIn(chat)
         )
     }
 }

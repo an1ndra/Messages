@@ -5,12 +5,10 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The record button follows Google Messages' own palette; Send keeps the accent.
- *
- * Measured off GM's composer: idle, the record disc is the inverse surface with
- * an inverse-ink glyph; while recording it is red with white ink. Both are theme
- * roles, so dynamic colour repaints them with the wallpaper, and the accent
- * stays reserved for Send.
+ * WhatsApp's composer: one accent-filled circle for Record, Send and the locked
+ * send, with only the glyph changing. The accent fills the circle in both idle
+ * states, so the swap recolours nothing, and the disc turns red for the length
+ * of a note. The input pill's fill is no longer involved.
  */
 class ComposerRecordButtonTest {
 
@@ -26,28 +24,34 @@ class ComposerRecordButtonTest {
     ).readText()
 
     @Test
-    fun theIdleRecordButtonMatchesThePill() {
-        // Google Messages' own idle composer: the record disc is the pill's own
-        // fill (#1A2025 on its dark theme) with a #C0C7CD glyph.
+    fun theIdleRecordButtonUsesTheAccent() {
         assertTrue(
-            "the idle record disc must use the composer fill",
-            chat.contains("else MaterialTheme.colorScheme.inputPill")
+            "the fill must be decided once, by the button's own state",
+            chat.contains("val usesAccent = ComposerButton.usesAccentFill(circleMode, recording)")
         )
         assertTrue(
-            "its glyph must be the light variant ink that reads on it",
-            chat.contains("else MaterialTheme.colorScheme.onSurfaceVariant")
+            "the idle record disc must be the accent, like Send",
+            chat.contains("val fillTarget = if (usesAccent) accent")
+        )
+        assertTrue(
+            "its glyph must be the on-accent ink",
+            chat.contains("val inkTarget = if (usesAccent) MaterialTheme.colorScheme.onPrimary")
+        )
+        assertTrue(
+            "the record disc must not fall back to the input pill's fill",
+            !chat.contains("else MaterialTheme.colorScheme.inputPill")
         )
     }
 
     @Test
     fun recordingRepaintsTheRecordButtonRed() {
         assertTrue(
-            "recording must turn the record circle red, as Google Messages does",
-            chat.contains("if (recording) MaterialTheme.colorScheme.recordActive")
+            "recording must turn the record circle red",
+            chat.contains("else MaterialTheme.colorScheme.recordActive")
         )
         assertTrue(
             "the glyph must switch to the ink that reads on that red",
-            chat.contains("if (recording) MaterialTheme.colorScheme.onRecordActive")
+            chat.contains("else MaterialTheme.colorScheme.onRecordActive")
         )
     }
 
@@ -67,28 +71,31 @@ class ComposerRecordButtonTest {
 
     @Test
     fun theCircleSwapsMeaningWithAMotion() {
-        // Record, Send and the locked Send are one slot; a hard `if/else` swap
-        // made them look like two widgets trading places, so the whole circle
-        // cross-fades and scales between them.
+        // The circle stays put and only the glyph turns over, which is what makes
+        // the swap read as WhatsApp's: one button changing its mind.
         assertTrue(
-            "the circle must swap through AnimatedContent",
-            chat.contains("AnimatedContent(") && chat.contains("label = \"composerCircle\"")
+            "the glyph must swap through AnimatedContent",
+            chat.contains("AnimatedContent(") && chat.contains("label = \"composerGlyph\"")
         )
         assertTrue(
-            "the swap must fade and scale, not just cut",
-            chat.contains("fadeIn(spec)") && chat.contains("scaleIn(initialScale = CIRCLE_SWAP_SCALE")
+            "the swap must pinch and spring, not just cut",
+            chat.contains("scaleIn(initialScale = ComposerSwap.SCALE")
+        )
+        assertTrue(
+            "and the outgoing glyph must turn a quarter",
+            chat.contains("ComposerSwap.TURN_DEGREES")
         )
     }
 
     @Test
     fun theSendCircleKeepsTheAccent() {
         assertTrue(
-            "the send arrow must stay on primary, or it stops looking like Send",
-            chat.contains(".background(MaterialTheme.colorScheme.primary, CircleShape)")
+            "the send arrow must be drawn by the shared circle",
+            chat.contains("ComposerGlyph.Send -> Icon(")
         )
         assertTrue(
-            "its glyph stays on onPrimary",
-            chat.contains("Icons.AutoMirrored.Rounded.Send, null,\n                    tint = MaterialTheme.colorScheme.onPrimary")
+            "its glyph is inked against the disc, which is the accent",
+            chat.contains("tint = discInk")
         )
     }
 }

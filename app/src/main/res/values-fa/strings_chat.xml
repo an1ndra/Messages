@@ -35,13 +35,6 @@
     <string name="chat_voice_too_short">ضبط بسیار کوتاه بود. برای ضبط، دکمه میکروفون را نگه دارید.</string>
     <string name="chat_voice_max_reached">پیام صوتی در محدودیت حجم MMS متوقف شد</string>
     <string name="chat_voice_cancel_recording">لغو ضبط</string>
-    <string name="chat_voice_lock_hint">برای قفل کردن ضبط، به بالا بکشید</string>
-    <string name="chat_voice_recording_locked">ضبط بدون استفاده از دست</string>
-    <string name="voice_guide_title">ارسال پیام صوتی</string>
-    <string name="voice_guide_hold">برای ضبط، دکمه موج را نگه دارید</string>
-    <string name="voice_guide_slide">برای لغو ضبط، به چپ بکشید</string>
-    <string name="voice_guide_lock">برای قفل کردن و ضبط بدون دست، به بالا بکشید</string>
-    <string name="voice_guide_dismiss">متوجه شدم</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">نمی‌توان پیام فرستاد</string>

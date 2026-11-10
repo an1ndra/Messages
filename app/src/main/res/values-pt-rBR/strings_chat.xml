@@ -33,13 +33,6 @@
     <string name="chat_voice_too_short">A gravação foi muito curta. Mantenha o microfone pressionado para gravar.</string>
     <string name="chat_voice_max_reached">Mensagem de voz interrompida no limite de tamanho do MMS</string>
     <string name="chat_voice_cancel_recording">Cancelar gravação</string>
-    <string name="chat_voice_lock_hint">Deslize para cima para fixar a gravação</string>
-    <string name="chat_voice_recording_locked">Gravando em mãos livres</string>
-    <string name="voice_guide_title">Enviar uma mensagem de voz</string>
-    <string name="voice_guide_hold">Mantenha o botão de onda pressionado para gravar</string>
-    <string name="voice_guide_slide">Deslize para a esquerda para cancelar a gravação</string>
-    <string name="voice_guide_lock">Deslize para cima para fixar e gravar sem as mãos</string>
-    <string name="voice_guide_dismiss">Entendi</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Não é possível enviar mensagem</string>

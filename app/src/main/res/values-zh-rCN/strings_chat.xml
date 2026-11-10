@@ -32,13 +32,6 @@
     <string name="chat_voice_too_short">录音太短。请按住麦克风进行录音。</string>
     <string name="chat_voice_max_reached">语音消息已达 MMS 大小上限并停止</string>
     <string name="chat_voice_cancel_recording">取消录音</string>
-    <string name="chat_voice_lock_hint">上滑以锁定录音</string>
-    <string name="chat_voice_recording_locked">正在免提录音</string>
-    <string name="voice_guide_title">发送语音消息</string>
-    <string name="voice_guide_hold">长按波形按钮开始录音</string>
-    <string name="voice_guide_slide">向左滑动可取消录音</string>
-    <string name="voice_guide_lock">上滑可锁定并免提录音</string>
-    <string name="voice_guide_dismiss">知道了</string>
 
     <string name="chat_cant_send">无法发送消息</string>
     <string name="chat_archived">对话已归档</string>
