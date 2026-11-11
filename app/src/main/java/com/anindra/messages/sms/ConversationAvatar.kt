@@ -37,13 +37,18 @@ object ConversationAvatar {
     /** Where the picture came from, for Diagnostics and the regression script. */
     enum class Source { PHOTO, AVATAR }
 
-    /** [bitmap] is kept alongside: NotificationCompat wants a Bitmap for the
-     *  large icon while shortcuts and bubble metadata want the IconCompat. */
+    /**
+     * [bitmap] is kept alongside: NotificationCompat wants a Bitmap for the
+     * large icon while shortcuts and bubble metadata want the IconCompat.
+     * [pixels] identifies the picture itself, so a published bubble shortcut
+     * can tell a new contact photo from the one it already carries (#441).
+     */
     class Icon(
         val icon: IconCompat,
         val bitmap: Bitmap,
         val source: Source,
-        val shade: Int
+        val shade: Int,
+        val pixels: Int
     )
 
     /**
@@ -63,6 +68,15 @@ object ConversationAvatar {
         return icon
     }
 
+    /**
+     * Drops every cached picture. A contact edit changes the photo behind an
+     * address whose cache entry is otherwise still fresh, and waiting out the
+     * TTL is what left an edited contact showing its old picture (#441).
+     */
+    fun invalidate() {
+        cache.clear()
+    }
+
     private fun build(context: Context, address: String): Icon {
         val shade = avatarColor(address).toArgb()
         val photo = photoBitmap(context, address)
@@ -71,13 +85,21 @@ object ConversationAvatar {
             IconCompat.createWithAdaptiveBitmap(bitmap),
             bitmap,
             if (photo != null) Source.PHOTO else Source.AVATAR,
-            shade
+            shade,
+            pixels(bitmap)
         )
         android.util.Log.d(
             "BubbleIcon",
             "address=$address source=${icon.source} shade=#%06X".format(shade and 0xFFFFFF)
         )
         return icon
+    }
+
+    /** A fingerprint of the drawn picture, cheap enough to take per build. */
+    private fun pixels(bitmap: Bitmap): Int {
+        val buffer = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(buffer, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        return java.util.Arrays.hashCode(buffer)
     }
 
     /**

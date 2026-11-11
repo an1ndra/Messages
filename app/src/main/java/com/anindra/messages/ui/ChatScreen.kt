@@ -804,6 +804,17 @@ fun ChatScreen(
     initialMedia: List<android.net.Uri> = emptyList(),
     initialStagedMedia: List<android.net.Uri> = emptyList(),
     onBack: () -> Unit,
+    /**
+     * Whether Back leaves the chat. A bubble whose "Close bubble with Back"
+     * setting is off leaves Back to the platform, which collapses the expanded
+     * bubble instead of the app swallowing the gesture (#441).
+     */
+    backHandled: Boolean = true,
+    /**
+     * Where the toolbar arrow goes in a bubble whose Back is left to the
+     * platform. Null keeps the arrow on [onBack].
+     */
+    onOpenConversationList: (() -> Unit)? = null,
     onOpenDetails: () -> Unit = {},
     onAddPeople: () -> Unit = {},
     onInitialDraftConsumed: () -> Unit = {},
@@ -1123,6 +1134,16 @@ fun ChatScreen(
         onBack()
     }
 
+    /**
+     * A bubble that leaves Back to the platform has no system route to the
+     * conversation list, so its toolbar arrow opens the list in place (#441).
+     */
+    fun openConversationList() {
+        vm.saveDraftAndMaybeTrash(conversationId, draft.trim())
+        val toList = onOpenConversationList
+        if (toList != null) toList() else onBack()
+    }
+
     /** Sends the pictures waiting in the composer. The draft rides along as
      *  the first picture's caption, which is how a text+photo message is sent. */
     fun sendPendingMedia() {
@@ -1344,7 +1365,7 @@ fun ChatScreen(
     // Registered last so it is the innermost handler: while the preview is up,
     // back closes it instead of leaving the chat.
     BackHandler(enabled = previewImageUri != null) { previewImageUri = null }
-    BackHandler(onBack = ::leaveChat)
+    BackHandler(enabled = backHandled, onBack = ::leaveChat)
     BackHandler(enabled = selectionActive) { clearSelection() }
     BackHandler(enabled = searchOpen) {
         searchOpen = false
@@ -1684,7 +1705,7 @@ fun ChatScreen(
                 numberIsBlocked = numberIsBlocked,
                 blockingEnabled = vm.settings.blockingEnabled,
                 sendCountdown = sendCountdown,
-                onBack = ::leaveChat,
+                onBack = ::openConversationList,
                 onOpenDetails = onOpenDetails,
                 onMenuToggle = { menuOpen = true },
                 onMenuDismiss = { menuOpen = false },
