@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_unread_label">未讀</string>
+    <string name="widget_new_message">新訊息</string>
+    <string name="widget_all_caught_up">全部已讀</string>
+    <string name="widget_no_conversations">尚無對話</string>
+    <string name="widget_locked_body">輕觸即可解鎖</string>
+    <string name="widget_list_description">最近的對話</string>
+    <string name="widget_unread_description">未讀訊息</string>
+    <string name="widget_unread_content_description">%1$d 則未讀</string>
+</resources>

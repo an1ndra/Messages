@@ -40,18 +40,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.R
+import com.anindra.messages.data.AddressIdentity
 
 data class Contact(val name: String, val number: String, val workProfile: Boolean = false)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onPick: (String, String) -> Unit) {
+fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onPick: (String, String?) -> Unit) {
     var query by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
     androidx.activity.compose.BackHandler(onBack = onBack)
     val contacts by vm.contacts.collectAsState()
     val filtered = contacts.filter {
-        it.name.contains(query, ignoreCase = true) || it.number.contains(query)
+        it.name.contains(query, ignoreCase = true) || it.number.contains(query) ||
+            (isPhoneNumber(query.trim()) && AddressIdentity.matchesNumber(it.number, query.trim()))
     }
 
     val focusRequester = remember { FocusRequester() }
@@ -89,7 +91,10 @@ fun NewChatScreen(vm: com.anindra.messages.AppViewModel, onBack: () -> Unit, onP
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(enabled = canSendToQuery) {
-                        onPick(query.trim(), query.trim())
+                        // No name: the repository resolves the saved contact, so a
+                        // national-form number typed here still shows the contact
+                        // name instead of the raw digits (#444).
+                        onPick(query.trim(), null)
                     }
                     .padding(SettingsLayout.ROW_CONTENT_PADDING)
             ) {

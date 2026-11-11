@@ -90,6 +90,24 @@ object ConversationList {
     }
 
     /**
+     * The conversation whose unread count grew since [previous], or null.
+     *
+     * A chat that returns to this list — undo of archive, unarchive, restore
+     * from Trash — was absent from [previous], so its count only looks new.
+     * Scrolling to it would jump the list to that row and push the newer chats
+     * above it out of view, where the user expects the list to stay put. Only a
+     * count that grew for a conversation already listed is a fresh message
+     * worth revealing.
+     */
+    fun newlyUnread(
+        conversations: List<Conversation>,
+        previous: Map<Long, Int>
+    ): Conversation? = conversations.firstOrNull { convo ->
+        val before = previous[convo.id] ?: return@firstOrNull false
+        convo.unreadCount > before
+    }
+
+    /**
      * Unread-at-top: stable reorder — pinned stays on top, then unread
      * conversations above read ones, timestamp order preserved within a tier.
      * On by default, so anything unread is visible without scrolling; archived

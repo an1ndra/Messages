@@ -97,13 +97,13 @@
     <string name="chat_search_next">Correspondance suivante</string>
     <string name="chat_search_counter">%1$d sur %2$d</string>
     <string name="chat_scroll_to_latest">Défiler jusqu\'au dernier message</string>
-    <string name="access_zoom_reset">Zoom %1$d%%, touchez pour réinitialiser</string>
-    <string name="chat_star">Ajouter une étoile</string>
-    <string name="chat_unstar">Retirer l’étoile</string>
-    <string name="chat_starred">Message marqué d’une étoile</string>
-    <string name="chat_unstarred">Étoile retirée</string>
-    <string name="chat_message_starred">Message avec étoile</string>
-    <string name="chat_album_photos">%1$d photos</string>
-    <string name="chat_album_more">%1$d photos de plus</string>
+    <string name="access_zoom_reset">Zoom %1$d%%, appuyez pour réinitialiser</string>
+    <string name="chat_star">Ajouter aux favoris</string>
+    <string name="chat_unstar">Retirer des favoris</string>
+    <string name="chat_starred">Message ajouté aux favoris</string>
+    <string name="chat_unstarred">Supprimé des favoris</string>
+    <string name="chat_message_starred">Message ajouté aux favoris</string>
+    <string name="chat_album_photos">%1$d photos</string>
+    <string name="chat_album_more">%1$d photos supplémentaires</string>
     <string name="chat_album_previous">Photos précédentes</string>
 </resources>

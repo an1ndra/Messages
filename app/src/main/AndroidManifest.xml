@@ -38,10 +38,16 @@
         android:name="android.hardware.telephony"
         android:required="false" />
 
+    <!-- Predictive back. Opting out kept Back on the legacy path, which a
+         bubble's embedded window does not reliably get: on Android 16 the
+         system reads the Back gesture through OnBackInvokedDispatcher, and an
+         opted-out app has no callback to receive it (#441). Every back exit in
+         the app is a Compose BackHandler, so the dispatcher path covers them
+         all. -->
     <application
         android:name=".MessagesApplication"
         android:allowBackup="false"
-        android:enableOnBackInvokedCallback="false"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
@@ -244,6 +250,30 @@
             <intent-filter>
                 <action android:name="com.anindra.messages.MMS_DOWNLOAD_COMPLETE" />
             </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".widget.MessagesListWidgetReceiver"
+            android:exported="false"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_messages_list_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.UnreadWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_unread_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_unread_info" />
         </receiver>
 
         <provider
