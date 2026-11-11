@@ -1219,6 +1219,17 @@ internal fun bubbleBackAction(bubbleMode: Boolean, backClosesBubble: Boolean): B
     else -> BubbleBack.STAY
 }
 
+/**
+ * Whether this window answers Back itself. From Android 12 the platform hosts
+ * a bubble's chat in a task of its own and collapses the expanded bubble when
+ * Back reaches the task root, so consuming Back there is what made the gesture
+ * do nothing (#441). Below 12 there is no such interception, and an unhandled
+ * Back would finish the chat and take the bubble down with it, so the app keeps
+ * the no-op behaviour on those releases.
+ */
+internal fun bubbleBackHandled(bubbleMode: Boolean, backClosesBubble: Boolean, sdk: Int): Boolean =
+    !bubbleMode || backClosesBubble || sdk < Build.VERSION_CODES.S
+
 open class MainActivity : FragmentActivity() {
 
     private val permissionLauncher =
@@ -1255,6 +1266,13 @@ open class MainActivity : FragmentActivity() {
 
     /** The conversation this activity is showing inside a notification bubble, if any. */
     private var bubbleConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
+
+    /**
+     * The address the bubble was launched for. The conversation id is resolved
+     * off the main thread, so a bubble that is closed before that finishes
+     * would otherwise leave its notification — and therefore its bubble — up.
+     */
+    private var bubbleLaunchAddress: String? = null
 
     /**
      * Whether this window is behind App lock, held in Compose state rather than
@@ -1631,14 +1649,43 @@ open class MainActivity : FragmentActivity() {
                 }
 
                 // Single back dispatcher for all routes; child screen BackHandlers win.
-                // A bubble hosts only the chat, so its root hands back to the
-                // system, which collapses the bubble instead of showing the list.
+                // A bubble hosts only the chat: while the chat is still opening
+                // it has no handler of its own yet, so this one answers for it
+                // through the same rule, or Back looked like it did nothing.
                 val bubbleMode = isBubbleLaunch(intent)
+                val bubbleBackHandled = bubbleBackHandled(
+                    bubbleMode, vm.settings.bubbleBackCloses, Build.VERSION.SDK_INT
+                )
+                // A bubble whose Back belongs to the platform has no system
+                // route to the list, so its toolbar arrow opens it in place.
+                val bubbleArrowOpensList: (() -> Unit)? =
+                    if (bubbleMode && !vm.settings.bubbleBackCloses) {
+                        { navRoute = "list" }
+                    } else {
+                        null
+                    }
+                // A full-screen open retires a conversation's floating bubble,
+                // but opening from the list inside the bubble is not that: the
+                // bubble hosts this window, and cancelling its notification
+                // removes it under the app (the bubble "crashes").
+                val retireFullChatBubble: (Long) -> Unit = { id ->
+                    if (!bubbleMode) com.anindra.messages.sms.NotificationHelper
+                        .retireBubbleForFullChat(this@MainActivity, id)
+                }
                 androidx.activity.compose.BackHandler(
-                    enabled = if (bubbleMode) navRoute != "chat" && navRoute != "opening"
-                    else navRoute != "list"
+                    enabled = if (bubbleMode) {
+                        bubbleBackHandled && navRoute != "chat"
+                    } else {
+                        navRoute != "list"
+                    }
                 ) {
                     when (navRoute) {
+                        "list" -> navRoute = "chat"
+                        "opening" -> when (bubbleBackAction(bubbleMode, vm.settings.bubbleBackCloses)) {
+                            BubbleBack.FINISH -> finish()
+                            BubbleBack.STAY -> Unit
+                            BubbleBack.SHOW_LIST -> navRoute = "list"
+                        }
                         "details" -> navRoute = "chat"
                         "add-people" -> navRoute = "details"
                         "transfer-log" -> navRoute = "advanced"
@@ -1669,27 +1716,27 @@ open class MainActivity : FragmentActivity() {
                         onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
-                            com.anindra.messages.sms.NotificationHelper
-                                .retireBubbleForFullChat(this@MainActivity, id)
+                            retireFullChatBubble(id)
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
                         onOpenSettings = { navRoute = "settings" },
+                        backHandled = bubbleBackHandled,
                     ) else com.anindra.messages.ui.legacy.ConversationsScreen(
                         vm = vm,
                         onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
-                            com.anindra.messages.sms.NotificationHelper
-                                .retireBubbleForFullChat(this@MainActivity, id)
+                            retireFullChatBubble(id)
                             chatId = id
                             chatSearchQuery = handoffSearchQuery(query)
                             navRoute = "chat"
                         },
                         onNewChat = { navRoute = "new" },
                         onOpenSettings = { navRoute = "settings" },
+                        backHandled = bubbleBackHandled,
                     )
 
                     AnimatedContent(
@@ -1896,6 +1943,8 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         initialDraft = pendingShareBody,
                                         initialMedia = pendingShareMedia,
                                         initialStagedMedia = stagedMediaProbe,
+                                        backHandled = bubbleBackHandled,
+                                        onOpenConversationList = bubbleArrowOpensList,
                                         onBack = {
                                             pendingShareBody = ""
                                             pendingShareMedia = emptyList()
@@ -2013,10 +2062,19 @@ onOpenAccessibility = { navRoute = "accessibility" },
      * which is why only a real finish releases it.
      */
     override fun onDestroy() {
-        val bubbleId = bubbleConversationId
-        if (bubbleId != null && isFinishing) {
-            com.anindra.messages.sms.BubbleHost.leave(bubbleId)
-            com.anindra.messages.sms.NotificationHelper.clearConversationNotification(this, bubbleId)
+        if (isFinishing) {
+            // Back can land while the conversation id is still being resolved.
+            // The bubble is the notification, so finishing without releasing
+            // it left the bubble floating on its own (#441).
+            val bubbleId = bubbleConversationId ?: bubbleLaunchAddress?.let { address ->
+                (application as com.anindra.messages.MessagesApplication).repository
+                    .conversationForInboundBlocking(address)
+            }
+            if (bubbleId != null) {
+                com.anindra.messages.sms.BubbleHost.leave(bubbleId)
+                com.anindra.messages.sms.NotificationHelper
+                    .clearConversationNotification(this, bubbleId)
+            }
         }
         super.onDestroy()
     }
@@ -2294,6 +2352,10 @@ onOpenAccessibility = { navRoute = "accessibility" },
                     this@MainActivity, null, it
                 )
             }
+        }
+        if (isBubbleLaunch(intent)) {
+            navRoute = "opening"
+            bubbleLaunchAddress = intent.getStringExtra("open_conversation_address")
         }
     }
 
