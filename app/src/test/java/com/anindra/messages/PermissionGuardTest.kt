@@ -50,7 +50,7 @@ class PermissionGuardTest {
         ),
         Gated(
             "com/anindra/messages/data/PhoneNumberUtils.kt",
-            "sm?.activeSubscriptionInfoList?.firstOrNull()",
+            "sm?.activeSubscriptionInfoList",
             default = "the locale's country, as a last-resort region",
         ),
     )

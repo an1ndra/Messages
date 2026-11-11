@@ -569,7 +569,17 @@ class Repository(private val context: Context) {
 
     private val notifyThread = HandlerThread("repo-notify").apply { start() }
     private val notifyHandler = Handler(notifyThread.looper)
-    private val notifyRunnable = Runnable { listeners.forEach { it() } }
+    private val notifyRunnable = Runnable {
+        listeners.forEach { it() }
+        onChanged?.invoke()
+    }
+
+    /**
+     * Runs after the listeners whenever the data changed. The app sets this to
+     * refresh the home-screen widgets, which cannot hold a flow of their own.
+     */
+    @Volatile
+    var onChanged: (() -> Unit)? = null
 
     fun notifyChanged() {
         notifyHandler.removeCallbacks(notifyRunnable)
@@ -1006,7 +1016,11 @@ class Repository(private val context: Context) {
             // header and sends are rejected.
             val restored = db.writableDatabase.update(
                 "conversations",
-                ContentValues().apply { put("deleted_at", 0) },
+                ContentValues().apply {
+                    put("deleted_at", 0)
+                    // Back to the Inbox, not into a stale Archive flag (#405).
+                    put("archived", 0)
+                },
                 "id=? AND deleted_at>0",
                 arrayOf(convoId.toString())
             )
@@ -1205,6 +1219,19 @@ class Repository(private val context: Context) {
 
     fun conversationForInboundBlocking(address: String): Long? =
         conversationIdForAddressBlocking(address) ?: soleGroupBlocking(address)
+
+    /**
+     * The address a conversation row is keyed on. A published bubble shortcut
+     * is identified only by its conversation id, so this is how a contact edit
+     * finds the picture it has to redraw (#441).
+     */
+    fun addressForConversationBlocking(conversationId: Long): String? {
+        var address: String? = null
+        db.readableDatabase.rawQuery(
+            "SELECT address FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) address = c.getString(0) }
+        return address
+    }
 
     /**
      * The conversation [address] names, or null when there is none.
@@ -1855,8 +1882,11 @@ class Repository(private val context: Context) {
     }
 
     fun restoreFromTrashSuspend(conversationId: Long) {
+        // Restoring must also leave the Archive: a chat that was archived and
+        // then trashed would otherwise come back to Archived, where the Inbox
+        // (and its search) never shows it — #405.
         db.writableDatabase.execSQL(
-            "UPDATE conversations SET deleted_at=0 WHERE id=?",
+            "UPDATE conversations SET deleted_at=0,archived=0 WHERE id=?",
             arrayOf(conversationId.toString())
         )
         notifyChanged()
@@ -3141,8 +3171,11 @@ class Repository(private val context: Context) {
                 }
                 db = Db(context)
                 // A restored backup should be fully visible: lift any
-                // conversations that were in the trash when the backup was made.
-                db.writableDatabase.execSQL("UPDATE conversations SET deleted_at=0 WHERE deleted_at>0")
+                // conversations that were in the trash when the backup was made,
+                // and keep them out of the Archive for the same reason (#405).
+                db.writableDatabase.execSQL(
+                    "UPDATE conversations SET deleted_at=0,archived=0 WHERE deleted_at>0"
+                )
                 db.writableDatabase.execSQL("UPDATE messages SET deleted_at=0")
                 // Mirror the restored history into the system SMS store.
                 pushLocalMessagesToProvider()
@@ -3651,12 +3684,17 @@ class Repository(private val context: Context) {
     /** Drops every cached contact name, so the next read re-queries Contacts. */
     fun invalidateContactNames() {
         contactCache.invalidate()
+        ContactLookup.invalidateIndex()
     }
 
     private fun lookupContactName(address: String): String? {
         if (address.isBlank()) return null
         queryPhoneLookup(android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI, address, null)
             ?.let { return it }
+        // Region-agnostic fallback (#444): a contact stored as "+46701234567"
+        // must be found for a conversation addressed as "0701234567" even when
+        // the platform's phone_lookup cannot resolve the country code.
+        ContactLookup.scanNameFor(context, address)?.let { return it }
         return try {
             val dirs = context.contentResolver.query(
                 android.provider.ContactsContract.Directory.ENTERPRISE_CONTENT_URI,
@@ -3947,6 +3985,9 @@ class Repository(private val context: Context) {
         // has to be dropped first or an edit within the TTL is invisible.
         invalidateContactNames()
         refreshContactNames()
+        // The pictures the app published outside itself cache too, and #441 is
+        // the bubble that kept the contact's previous photo.
+        NotificationHelper.refreshContactAvatars(context)
     }
 
     /**
@@ -4000,6 +4041,7 @@ class Repository(private val context: Context) {
                 // pending message from the same sender reuses the repaired thread
                 // instead of creating a second one.
                 var changed = repairAlphanumericSenders()
+                changed = changed || repairFabricatedAddresses()
                 android.util.Log.d("RepoSync", "Starting syncFromSystem")
                 // Count first so the read phase (which can take a while on a phone
                 // with a large provider) shows a moving bar instead of an apparently
@@ -4267,6 +4309,62 @@ class Repository(private val context: Context) {
             android.util.Log.e("RepoSync", "alphanumeric repair skipped: ${e.message}", e)
         } catch (e: Exception) {
             android.util.Log.e("RepoSync", "alphanumeric repair failed: ${e.message}", e)
+        }
+        return false
+    }
+
+    /** One-shot heal for conversations whose address was fabricated as "+10..."
+     *  (or "+CC0...") before the trunk-zero guard in [AddressIdentity.canonical]:
+     *  a national number whose trunk '0' was not consumed got a bogus country
+     *  code prepended. The original national spelling is recovered by dropping
+     *  that country code, and the row is re-addressed in place. */
+    private fun repairFabricatedAddresses(): Boolean {
+        if (settings.fabricatedAddressRepairDone) return false
+        try {
+            val rows = mutableListOf<Pair<Long, String>>()
+            db.readableDatabase.rawQuery(
+                "SELECT id, address FROM conversations", null
+            ).use { c ->
+                while (c.moveToNext()) rows += c.getLong(0) to c.getString(1)
+            }
+            var changed = false
+            db.writableDatabase.beginTransaction()
+            try {
+                for ((id, addr) in rows) {
+                    if (!addr.startsWith("+")) continue
+                    val digits = addr.filter { it.isDigit() }
+                    val cc = PhoneNumberUtils.countryCodePrefix(digits)
+                    if (cc.isEmpty() || cc.length >= digits.length) continue
+                    val rest = digits.drop(cc.length)
+                    if (!rest.startsWith("0") || rest.length < 4) continue
+                    val raw = rest
+                    if (raw == addr) continue
+                    db.writableDatabase.execSQL(
+                        """UPDATE conversations
+                           SET address=?, name=CASE WHEN name=? THEN ? ELSE name END
+                           WHERE id=?""",
+                        arrayOf(raw, addr, raw, id.toString())
+                    )
+                    // Drop the fabricated participant row; the raw address is not
+                    // a parseable E.164 destination.
+                    db.writableDatabase.execSQL(
+                        "DELETE FROM participants WHERE normalized_destination=?",
+                        arrayOf(addr)
+                    )
+                    changed = true
+                }
+                db.writableDatabase.setTransactionSuccessful()
+            } finally {
+                db.writableDatabase.endTransaction()
+            }
+            settings.fabricatedAddressRepairDone = true
+            if (changed) {
+                invalidateContactNames()
+                refreshContactNames()
+            }
+            return changed
+        } catch (e: Exception) {
+            android.util.Log.e("RepoSync", "fabricated-address repair failed: ${e.message}", e)
         }
         return false
     }

@@ -44,8 +44,15 @@ object ContactLookup {
             val hit = queryLookup(context, candidate, wanted) ?: continue
             return hit
         }
-        return null
+        // Region-agnostic fallback (#444): a contact stored as "+46701234567"
+        // must be found for a conversation addressed as "0701234567", which the
+        // platform's provider cannot resolve when the country codes differ.
+        return scanFor(context, number)
     }
+
+    /** Contact name for [number], or null when no unique contact matches. */
+    fun scanNameFor(context: Context, number: String): String? =
+        scanFor(context, number)?.displayName
 
     /** The number shapes worth asking the provider about, best first. */
     fun queryForms(number: String, canonicalNumber: String): List<String> {
@@ -157,6 +164,82 @@ object ContactLookup {
         val x = a.filter { it.isDigit() }.takeLast(MIN_MATCH_DIGITS)
         val y = b.filter { it.isDigit() }.takeLast(MIN_MATCH_DIGITS)
         return x.length == MIN_MATCH_DIGITS && x == y
+    }
+
+    /** Drops the cached contact index so the next scan re-reads Contacts. */
+    fun invalidateIndex() {
+        synchronized(indexLock) { indexEntries = null }
+    }
+
+    private data class IndexEntry(
+        val number: String,
+        val digits: String,
+        val name: String?,
+        val id: String
+    )
+
+    @Volatile private var indexEntries: List<IndexEntry>? = null
+    private val indexLock = Any()
+
+    private fun index(context: Context): List<IndexEntry> {
+        synchronized(indexLock) {
+            indexEntries?.let { return it }
+            val out = mutableListOf<IndexEntry>()
+            try {
+                context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(NUMBER, CONTACT_ID,
+                        ContactsContract.Contacts.DISPLAY_NAME),
+                    null, null, null
+                )?.use { c ->
+                    val numIdx = c.getColumnIndex(NUMBER)
+                    // Phone._ID and Contacts._ID are both "_id"; on the phone table
+                    // "_id" is the data row, so the contact id is CONTACT_ID.
+                    val idIdx = c.getColumnIndex(CONTACT_ID)
+                    val nameIdx = c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)
+                    while (c.moveToNext()) {
+                        val n = if (numIdx >= 0) c.getString(numIdx) else null
+                        val digits = n?.filter { it.isDigit() } ?: ""
+                        if (digits.length < MIN_MATCH_DIGITS) continue
+                        out += IndexEntry(
+                            n ?: "",
+                            digits,
+                            if (nameIdx >= 0) c.getString(nameIdx) else null,
+                            if (idIdx >= 0) (c.getString(idIdx) ?: "") else ""
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+            }
+            indexEntries = out
+            return out
+        }
+    }
+
+    /**
+     * Region-agnostic contact lookup: scans the whole Contacts phone table and
+     * returns the contact whose number matches [number] by tail + compatibility,
+     * but only when the match is unique.
+     */
+    fun scanFor(context: Context, number: String): SavedContact? {
+        val wanted = number.filter { it.isDigit() }
+        if (wanted.length < MIN_MATCH_DIGITS) return null
+        val wantedTail = wanted.takeLast(MIN_MATCH_DIGITS)
+        val matches = index(context).filter {
+            it.digits.takeLast(MIN_MATCH_DIGITS) == wantedTail &&
+                // libphonenumber decides, using the number's own country plan:
+                // trunk prefixes (0, 8, 06, …) and country codes are handled by
+                // metadata, and a same-tail number from another country is
+                // rejected (the Swiss +41 vs Swedish 070 case, #444).
+                AddressIdentity.samePerson(it.number, number)
+        }
+            // One contact can hold the number in several spellings; that is still
+            // one person, not an ambiguity.
+            .distinctBy { it.id }
+        if (matches.size != 1) return null
+        val e = matches.first()
+        if (e.id.isBlank()) return null
+        return SavedContact(contactId = e.id, displayName = e.name)
     }
 
     /** Shortest run of digits worth treating as a subscriber number. */
