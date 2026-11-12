@@ -2,19 +2,19 @@
 <resources>
     <string name="about_description">Eine freie, private SMS-App. Nachrichten, Sicherungen und Verlauf bleiben auf diesem Telefon.</string>
     <string name="about_developer_format">Entwickelt von %1$s</string>
-    <string name="about_diagnostics_body">Im Browser öffnet sich ein GitHub-Issue-Formular mit vorausgefüllter Zusammenfassung und Diagnosedaten: App-Version, Design, Benachrichtigungen, SIM-Details. Nachrichtenverlauf, Kontakte und deine Telefonnummer sind nie dabei.</string>
+    <string name="about_diagnostics_body">Im Browser öffnet sich ein GitHub-Issue-Formular mit vorausgefüllter Zusammenfassung und Diagnosedaten: App-Version, Design, Benachrichtigungen, SIM-Details. Nachrichtenverlauf, Kontakte und deine Telefonnummer sind nie enthalten.</string>
     <string name="about_issue_subtitle">Hängt Diagnosedaten an: App-Infos, Einstellungen, SIM. Nie deine Nachrichten.</string>
     <string name="about_issue_title">Problem melden</string>
-    <string name="about_licences_intro">Messages baut auf diesen Open-Source-Projekten auf.</string>
+    <string name="about_licences_intro">Nachrichten basieren auf diesen Open-Source-Projekten.</string>
     <string name="about_licences_subtitle">AndroidX · Compose · Coil · libphonenumber (Apache 2.0)</string>
     <string name="about_licences_title">Open-Source-Lizenzen</string>
     <string name="about_open_failed">Kein Browser zum Öffnen dieses Links gefunden.</string>
-    <string name="about_open_with_diagnostics">Mit Diagnosedaten öffnen</string>
+    <string name="about_open_with_diagnostics">Mit Diagnose öffnen</string>
     <string name="about_open_without">Ohne öffnen</string>
     <string name="about_share_subtitle">Erzähl einem Freund von dieser App.</string>
     <string name="about_share_text">Schau dir Messages an — eine freie Offline-SMS-App ohne Werbung, ohne Konto und ohne Tracking.\n\nDownload: %1$s\nF-Droid: %2$s</string>
     <string name="about_share_title">Messages teilen</string>
-    <string name="about_star_subtitle">Gefällt dir die App? Gib ihr einen Stern, so finden sie andere leichter.</string>
+    <string name="about_star_subtitle">Gefällt mir die App? Gib ihr einen Stern, es hilft anderen, sie zu finden.</string>
     <string name="about_star_title">Auf GitHub mit Stern markieren</string>
     <string name="settings_about_title">Über</string>
     <string name="settings_about_version">Version %1$s (%2$d)</string>
@@ -36,7 +36,7 @@
     <string name="settings_advanced_warning">Diese Warnung nicht wieder anzeigen</string>
     <string name="settings_sim_indicator">SIM-Indikator</string>
     <string name="settings_sim_indicator_desc">Anzeigen, welche SIM für jede Nachricht verwendet wurde</string>
-    <string name="sim_slot_suffix"> · SIM %s</string>
+    <string name="sim_slot_suffix">" · SIM %s"</string>
     <string name="settings_sim_label">SIM %s</string>
     <string name="settings_notif_title">Benachrichtigungen</string>
     <string name="settings_notif_subtitle">Ton und Benachrichtigungen</string>
@@ -87,7 +87,7 @@
     <string name="settings_scheduled_reschedule">Sendezeit ändern</string>
     <string name="settings_scheduled_no_match">Keine geplante Nachricht mit diesem Namen</string>
     <string name="settings_scheduled_meta">An: %1$s · %2$s</string>
-        <string name="settings_scheduled_count">%d geplant</string>
+    <string name="settings_scheduled_count">%d geplant</string>
     <string name="settings_link_behaviour_title">Link-Verhalten</string>
     <string name="settings_link_behaviour_subtitle">Ausblenden, hervorheben, warnen</string>
     <string name="settings_link_needs_highlight">Zuerst „Links hervorheben“ aktivieren</string>
@@ -150,7 +150,7 @@
     <string name="settings_import_source_title">Zu importierende Sicherung auswählen</string>
     <string name="settings_import_source_own_title">Messages (.enc)</string>
     <string name="settings_import_source_sms_ie_title">SMS-Import/-Export (.zip, .json)</string>
-    <string name="settings_import_quik_title">QUIK-Sicherung (QKSMS)</string>
+    <string name="settings_import_quik_title">QUIK (QKSMS) Sicherung</string>
     <string name="settings_pinch_zoom_title">Text per Pinch zoomen</string>
     <string name="settings_import_sms_ie_failed">Diese Sicherungsdatei konnte nicht gelesen werden</string>
     <string name="settings_import_failed">Import fehlgeschlagen: %s</string>
