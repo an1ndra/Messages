@@ -50,6 +50,8 @@
     <string name="notif_title_private">پیام جدید</string>
     <string name="notif_body_private">پیام جدیدی دارید</string>
     <string name="notif_action_delete">حذف</string>
+    <string name="notif_action_reply">پاسخ</string>
+    <string name="notif_action_mark_read">علامت‌گذاری به‌عنوان خوانده‌شده</string>
     <string name="notif_you">شما</string>
     <string name="notif_photo">عکس</string>
     <string name="notif_send_fail_private">پیام فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>

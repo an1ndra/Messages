@@ -439,12 +439,15 @@ object NotificationHelper {
             PendingIntent.FLAG_MUTABLE
         )
 
-        val remoteInput = RemoteInput.Builder("quick_reply").setLabel("Reply").build()
+        // The action labels are resolved from the app's own resources so they
+        // follow the language picked in the app, not the system one (#452).
+        val replyLabel = context.getString(R.string.notif_action_reply)
+        val remoteInput = RemoteInput.Builder("quick_reply").setLabel(replyLabel).build()
 
         // Alphanumeric sender IDs cannot receive replies, so no reply action.
         val replyAction = if (replyable) {
             NotificationCompat.Action.Builder(
-                R.drawable.ic_reply, "Reply", replyIntent
+                R.drawable.ic_reply, replyLabel, replyIntent
             ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
                 .addRemoteInput(remoteInput).build()
         } else {
@@ -462,7 +465,7 @@ object NotificationHelper {
             PendingIntent.FLAG_IMMUTABLE
         )
         val markReadAction = NotificationCompat.Action.Builder(
-            0, "Mark as read", markReadIntent
+            0, context.getString(R.string.notif_action_mark_read), markReadIntent
         ).build()
 
         val deleteData = Intent(context, DeleteMessageReceiver::class.java)
