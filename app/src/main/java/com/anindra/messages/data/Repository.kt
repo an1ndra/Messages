@@ -698,6 +698,7 @@ class Repository(private val context: Context) {
     }
 
     fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> = observe {
+        val t0 = android.os.SystemClock.uptimeMillis()
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
             """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id,
@@ -728,6 +729,10 @@ class Repository(private val context: Context) {
                 )
             }
         }
+        android.util.Log.d(
+            "ChatLoad",
+            "query conv=$conversationId limit=$limit rows=${out.size} took=${android.os.SystemClock.uptimeMillis() - t0}ms"
+        )
         out.reversed()
     }
 
