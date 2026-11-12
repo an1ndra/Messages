@@ -146,6 +146,8 @@ data class AppDetails(
     val bubblesEnabled: Boolean = false,
     val bubbleChannels: List<String> = emptyList(),
     val bubbleShortcuts: List<String> = emptyList(),
+    /** What each published shortcut draws, so a contact edit is readable as text. */
+    val bubbleIcons: List<String> = emptyList(),
     val keyguardLocked: Boolean = false,
     val wakeEligible: Boolean = false
 )
@@ -330,6 +332,7 @@ object DiagnosticsReport {
                 appendLine("Bubble shortcuts: none published")
             } else {
                 appendLine("Bubble shortcuts: ${data.appDetails.bubbleShortcuts.joinToString()}")
+                appendLine("Bubble icons: ${data.appDetails.bubbleIcons.joinToString()}")
             }
             appendLine("Keyguard locked: ${if (data.appDetails.keyguardLocked) "yes" else "no"}")
             appendLine("Wake screen for new messages: ${if (data.appDetails.wakeEligible) "will wake" else "headsup only"}")
@@ -722,6 +725,7 @@ object DiagnosticsReport {
             bubblesEnabled = NotificationHelper.bubblesAllowed(context),
             bubbleChannels = NotificationHelper.bubbleChannels(context),
             bubbleShortcuts = com.anindra.messages.sms.NotificationBubble.publishedShortcutIds(context),
+            bubbleIcons = com.anindra.messages.sms.NotificationBubble.publishedShortcutIcons(context),
             keyguardLocked = context.getSystemService(KeyguardManager::class.java)
                 ?.isKeyguardLocked == true,
             wakeEligible = NotificationHelper.shouldWake(

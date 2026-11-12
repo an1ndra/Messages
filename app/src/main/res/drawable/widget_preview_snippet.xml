@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The grey message bubble on the picker preview. colorControlHighlight is the
+  platform's translucent highlight (a 12% black in a light theme, a 20% white in
+  a dark one), so the bubble tints itself for whichever theme the launcher
+  renders the preview in. A layer-list <item android:alpha> was not honoured by
+  the launcher and painted the bubble solid black.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?android:attr/colorControlHighlight" />
+    <corners android:radius="16dp" />
+</shape>

@@ -33,7 +33,6 @@
     <string name="chat_blocked_send">Ce numéro est bloqué. Débloquer pour envoyer ?</string>
     <string name="chat_number_blocked">Numéro bloqué</string>
     <string name="chat_number_unblocked">Numéro débloqué</string>
-    <string name="chat_loading_earlier">Charger les messages plus anciens</string>
     <string name="chat_retry">Réessayer</string>
     <string name="chat_retry_sim">Réessayer avec SIM</string>
     <string name="chat_sending_via">Envoi via %s</string>

@@ -75,6 +75,8 @@ dependencies {
     implementation(project(":mms"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.fragment:fragment-ktx:1.9.1")
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -91,6 +93,7 @@ dependencies {
     implementation(libs.libphone)
     implementation(libs.coil.compose)
     debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.glance.preview)
     testImplementation("junit:junit:4.13.2")
 
     // Test-only: production still sends through the vendored stack. This is

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_unread_label">Ungelesen</string>
+    <string name="widget_new_message">Neue Nachricht</string>
+    <string name="widget_all_caught_up">Alles auf dem neuesten Stand</string>
+    <string name="widget_no_conversations">Noch keine Unterhaltungen</string>
+    <string name="widget_locked_body">Zum Entsperren tippen</string>
+    <string name="widget_list_description">Neueste Unterhaltungen</string>
+    <string name="widget_unread_description">Deine ungelesenen Nachrichten</string>
+    <string name="widget_unread_content_description">%1$d ungelesen</string>
+</resources>
