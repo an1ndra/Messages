@@ -19,7 +19,9 @@ import com.anindra.messages.crash.CrashReportDialog
 import com.anindra.messages.data.CalendarSystem
 import com.anindra.messages.diagnostics.DiagnosticsDialog
 import com.anindra.messages.ui.AutoDeleteDurationAction
+import com.anindra.messages.data.BlockedNumber
 import com.anindra.messages.ui.BlockedKeywordsDialog
+import com.anindra.messages.ui.BlockedNumbersDialog
 import com.anindra.messages.ui.CalendarPickerDialog
 import com.anindra.messages.ui.DetailActionButton
 import com.anindra.messages.ui.DetailCardRow
@@ -128,6 +130,21 @@ private fun BlockedKeywordsDialogPreview() {
             keywords = listOf("WIN", "prize", "claim now"),
             onAdd = {},
             onRemove = {},
+            onDismiss = {}
+        )
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Blocked numbers dialog", showBackground = true, widthDp = 380)
+@Composable
+private fun BlockedNumbersDialogPreview() {
+    Stage {
+        BlockedNumbersDialog(
+            blockedNumbers = (1..12).map { i ->
+                BlockedNumber(id = i.toLong(), number = "+1555123%04d".format(i))
+            },
+            onUnblock = {},
             onDismiss = {}
         )
     }
