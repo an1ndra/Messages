@@ -219,10 +219,24 @@ class NotificationChannelWiringTest {
     @Test
     fun contactDetailsHandsTheSettingToTheSystem() {
         val screen = read("java/com/anindra/messages/ui/ContactDetailsScreen.kt")
-        assertTrue(screen.contains("R.string.contact_notifications"))
-        assertTrue(screen.contains("R.string.contact_customize_notifications"))
+        assertTrue(screen.contains("R.string.contact_notification_profile"))
         assertTrue(screen.contains("setConversationCustomChannel"))
         assertTrue(screen.contains("openConversationChannelSettings"))
+        // One row, not two (#421): the switch creates the chat's channel and
+        // the label opens Android's page for it. "Notifications" read as a master
+        // switch for alerts, which it never was.
+        assertTrue(
+            "the old Notifications switch is back",
+            !screen.contains("R.string.contact_notifications")
+        )
+        val row = screen
+            .substringAfter("title = stringResource(R.string.contact_notification_profile)")
+            .substringBefore("Icons.Rounded.ChatBubble")
+        assertTrue("the merged row lost its switch", row.contains("Switch("))
+        assertTrue(
+            "the label must only open Android's page once the chat has a channel",
+            row.contains("onClick = if (channelOn)")
+        )
         // One control per chat: the app keeps no mute of its own, so the second
         // switch and its stored flag are gone (#339 follow-up).
         assertTrue(
@@ -294,8 +308,7 @@ class NotificationChannelWiringTest {
             "notification_channel_group_title",
             "notification_channel_unknown_title",
             "notification_channel_convo_desc",
-            "contact_notifications",
-            "contact_customize_notifications",
+            "contact_notification_profile",
             "settings_notif_manage_channels",
             "settings_notif_manage_channels_subtitle"
         )
