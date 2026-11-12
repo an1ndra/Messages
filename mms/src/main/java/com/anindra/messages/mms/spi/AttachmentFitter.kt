@@ -36,10 +36,10 @@ sealed interface FitOutcome {
     data class Fitted(val bytes: ByteArray, val mimeType: String, val width: Int, val height: Int) : FitOutcome
 
     /** The attachment could not be read or decoded at all. */
-    data object Unreadable : FitOutcome
+    object Unreadable : FitOutcome
 
     /** Readable, but it cannot be made to fit even after downscaling. */
-    data object TooLarge : FitOutcome
+    object TooLarge : FitOutcome
 }
 
 /** Largest part of the budget the text body may claim, leaving room for SMIL and headers. */
