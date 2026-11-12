@@ -139,8 +139,8 @@ data class SendReqRequest(
 /** Why a SendReq could not be built, which is not the same as a failed send. */
 sealed interface SendReqOutcome {
     data class Built(val pdu: Pdu) : SendReqOutcome
-    data object NoRecipients : SendReqOutcome
-    data object GroupMmsUnsupported : SendReqOutcome
+    object NoRecipients : SendReqOutcome
+    object GroupMmsUnsupported : SendReqOutcome
 
     /**
      * Nothing in the body can be laid out.
@@ -150,7 +150,7 @@ sealed interface SendReqOutcome {
      * reference. Emitting a slideshow with nothing in it renders as an empty
      * message on the receiving handset, which is worse than saying so here.
      */
-    data object NoPresentation : SendReqOutcome
+    object NoPresentation : SendReqOutcome
 }
 
 /**
@@ -704,8 +704,8 @@ class Mms(
 
     private sealed interface FitAllOutcome {
         data class Fitted(val attachments: List<FittedAttachment>) : FitAllOutcome
-        data object Unreadable : FitAllOutcome
-        data object TooLarge : FitAllOutcome
+        object Unreadable : FitAllOutcome
+        object TooLarge : FitAllOutcome
     }
 
     private fun sendHeadersFor(subscriptionId: Int): SendHeaderPolicy = SendHeaderPolicy.withCarrierConfig(
