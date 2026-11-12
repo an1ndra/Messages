@@ -439,12 +439,15 @@ object NotificationHelper {
             PendingIntent.FLAG_MUTABLE
         )
 
-        val remoteInput = RemoteInput.Builder("quick_reply").setLabel("Reply").build()
+        // The action labels are resolved from the app's own resources so they
+        // follow the language picked in the app, not the system one (#452).
+        val replyLabel = context.getString(R.string.notif_action_reply)
+        val remoteInput = RemoteInput.Builder("quick_reply").setLabel(replyLabel).build()
 
         // Alphanumeric sender IDs cannot receive replies, so no reply action.
         val replyAction = if (replyable) {
             NotificationCompat.Action.Builder(
-                R.drawable.ic_reply, "Reply", replyIntent
+                R.drawable.ic_reply, replyLabel, replyIntent
             ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
                 .addRemoteInput(remoteInput).build()
         } else {
@@ -462,7 +465,7 @@ object NotificationHelper {
             PendingIntent.FLAG_IMMUTABLE
         )
         val markReadAction = NotificationCompat.Action.Builder(
-            0, "Mark as read", markReadIntent
+            0, context.getString(R.string.notif_action_mark_read), markReadIntent
         ).build()
 
         val deleteData = Intent(context, DeleteMessageReceiver::class.java)
@@ -598,6 +601,30 @@ object NotificationHelper {
             if (settings.notifClearedUpTo(row.conversationId) >= row.newest) continue
             show(context, row.address, row.snippet, silentRepost = true)
         }
+    }
+
+    /**
+     * A contact edit — a new picture or a new name — has to reach the things
+     * the app already drew: the avatar cache holds a built icon for ten
+     * minutes, a published bubble shortcut keeps the icon it was first
+     * published with, and the shade's notification keeps the large icon it was
+     * posted with. Redrawing all three is what makes a bubble follow the
+     * contact instead of showing the previous image (#441).
+     */
+    fun refreshContactAvatars(context: Context) {
+        ConversationAvatar.invalidate()
+        val app = context.applicationContext as com.anindra.messages.MessagesApplication
+        val ids = NotificationBubble.publishedShortcutIds(context)
+            .mapNotNull { it.removePrefix("conversation_").toLongOrNull() }
+        Thread({
+            for (id in ids) {
+                val address = app.repository.addressForConversationBlocking(id) ?: continue
+                val name = app.repository.contactNameFor(address) ?: address
+                NotificationBubble.ensureShortcut(context, id, address, name)
+            }
+            // Silent: the pictures change, the messages they announce do not.
+            repostUnread(context)
+        }, "contact-avatar-refresh").start()
     }
 
     /**

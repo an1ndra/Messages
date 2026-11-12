@@ -84,8 +84,6 @@ import com.anindra.messages.data.PeriodicBackupScheduler
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimSelection
-import com.anindra.messages.data.SimLabel
-import com.anindra.messages.data.SimLabels
 import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
 import com.anindra.messages.sms.NotificationHelper
@@ -355,18 +353,7 @@ fun SettingsScreen(
                 val currentSimLabel = if (selectedSub == null) {
                     context.getString(R.string.sim_default)
                 } else {
-                    when (val label = SimLabels.resolve(
-                        selectedSub.subscriptionId, selectedSub.slotIndex, selectedSub.carrierName
-                    )) {
-                        SimLabel.Default -> context.getString(R.string.sim_default)
-                        is SimLabel.Carrier -> String.format(
-                            context.getString(R.string.settings_sim_label_format), label.carrier, label.slot
-                        )
-                        is SimLabel.Slot -> String.format(
-                            context.getString(R.string.settings_sim_label), label.slot
-                        )
-                        SimLabel.Unknown -> context.getString(R.string.sim_default)
-                    }
+                    simSettingsLabel(context, selectedSub)
                 }
                 SettingsRow(
                     position = RowPosition.MIDDLE,
@@ -559,9 +546,7 @@ fun SettingsScreen(
         var selected by remember { mutableIntStateOf(vm.settings.simSubscriptionId) }
         val options = mutableListOf(-1 to context.getString(R.string.settings_sim_default))
         sims.forEach { sub ->
-            val carrier = sub.carrierName?.ifBlank { null }
-            val label = if (carrier != null) String.format(context.getString(R.string.settings_sim_label_format), carrier, sub.slotIndex + 1) else String.format(context.getString(R.string.settings_sim_label), sub.slotIndex + 1)
-            options += sub.subscriptionId to label
+            options += sub.subscriptionId to simSettingsLabel(context, sub)
         }
         AlertDialog(
             onDismissRequest = { simDialog = false },

@@ -1,6 +1,7 @@
 package com.anindra.messages.ui.theme
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.anindra.messages.data.SettingsStore
 
 /**
  * Accessibility mode options. [enabled] is the master gate: while it is false
@@ -36,3 +37,13 @@ data class A11yOptions(
 
 val LocalReduceMotion = staticCompositionLocalOf { false }
 val LocalLargeTouchTargets = staticCompositionLocalOf { false }
+
+/** The accessibility options as stored, for code that has no AppViewModel. */
+internal fun SettingsStore.a11yOptions(): A11yOptions = A11yOptions(
+    enabled = a11yEnabled,
+    fontScalePercent = a11yFontScalePercent,
+    bold = a11yBold,
+    highContrast = a11yHighContrast,
+    reduceMotion = a11yReduceMotion,
+    largeTouchTargets = a11yLargeTouch
+)

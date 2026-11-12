@@ -1,7 +1,9 @@
 # Messages
 
-[![VirusTotal](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/an1ndra/Messages/main/.github/virustotal.json)](https://github.com/an1ndra/Messages/releases/latest)
+[![VirusTotal](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/an1ndra/Messages/Develop/.github/virustotal.json)](https://github.com/an1ndra/Messages/releases/latest)
+[![Release](https://img.shields.io/github/v/release/an1ndra/Messages?label=Release&logo=github)](https://github.com/an1ndra/Messages/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/an1ndra/Messages/total?label=Downloads&logo=github)](https://github.com/an1ndra/Messages/releases)
+[![F-Droid](https://img.shields.io/f-droid/v/com.anindra.messages?label=F-Droid&logo=fdroid)](https://f-droid.org/en/packages/com.anindra.messages/)
 [![License](https://img.shields.io/github/license/an1ndra/Messages?label=License)](LICENSE)
 
 Simple, private SMS messaging. Offline-first, no ads, no tracking.
