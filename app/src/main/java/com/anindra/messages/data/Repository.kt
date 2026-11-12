@@ -1893,6 +1893,11 @@ class Repository(private val context: Context) {
             .use { c -> while (c.moveToNext()) trashed.add(c.getLong(0)) }
         purgeProviderMessages(trashed)
         db.writableDatabase.execSQL(
+            "DELETE FROM message_provider_ids WHERE message_id IN " +
+                "(SELECT id FROM messages WHERE conversation_id IN " +
+                "(SELECT id FROM conversations WHERE deleted_at>0))"
+        )
+        db.writableDatabase.execSQL(
             "DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE deleted_at>0)"
         )
         db.writableDatabase.execSQL("DELETE FROM conversations WHERE deleted_at>0")
@@ -1916,6 +1921,14 @@ class Repository(private val context: Context) {
                 """SELECT p.transport, p.sys_id FROM message_provider_ids p
                    JOIN messages m ON m.id = p.message_id
                    WHERE m.conversation_id IN ($ph)""",
+                conversationIds.map { it.toString() }.toTypedArray()
+            ).use { c -> while (c.moveToNext()) ids.add(Purge(c.getString(0), c.getLong(1))) }
+            // Plus the primary row recorded on the message itself: a row this
+            // build stored before the linkage table knew about it would
+            // otherwise survive the purge and be re-imported on the next sync.
+            db.readableDatabase.rawQuery(
+                """SELECT transport, sys_id FROM messages
+                   WHERE conversation_id IN ($ph) AND sys_id>0""",
                 conversationIds.map { it.toString() }.toTypedArray()
             ).use { c -> while (c.moveToNext()) ids.add(Purge(c.getString(0), c.getLong(1))) }
             ids.groupBy { it.transport }.forEach { (transport, messages) ->
@@ -2030,6 +2043,11 @@ class Repository(private val context: Context) {
     /** Permanently deletes a conversation and its messages. */
     fun deleteConversationSuspend(conversationId: Long) {
         purgeProviderMessages(listOf(conversationId))
+        db.writableDatabase.execSQL(
+            "DELETE FROM message_provider_ids WHERE message_id IN " +
+                "(SELECT id FROM messages WHERE conversation_id=?)",
+            arrayOf(conversationId)
+        )
         db.writableDatabase.execSQL(
             "DELETE FROM messages WHERE conversation_id=?", arrayOf(conversationId)
         )
@@ -3787,6 +3805,24 @@ class Repository(private val context: Context) {
         }
     }
 
+    /**
+     * Records every provider row this app already stores in the linkage table.
+     *
+     * Received SMS, sent SMS and imported MMS used to write only
+     * `messages.sys_id`, leaving `message_provider_ids` empty for them. The next
+     * sync then saw their provider rows as never imported, so it tried to
+     * re-insert them (the unique index rejected that) and asked
+     * [getOrCreateConversationBlocking] for the address -- which un-trashed a
+     * conversation the user had deleted, so deletions came back on restart
+     * (#449). Older databases carry the same gap, hence the backfill.
+     */
+    private fun linkStoredProviderIds() {
+        db.writableDatabase.execSQL(
+            """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+               SELECT id, transport, sys_id FROM messages WHERE sys_id>0"""
+        )
+    }
+
     /** Imports system SMS into the local DB, grouped by address, deduped by sys_id. */
     /**
      * Deletes local message rows whose provider row no longer exists.
@@ -4038,6 +4074,7 @@ class Repository(private val context: Context) {
                 var changed = repairAlphanumericSenders()
                 changed = changed || repairFabricatedAddresses()
                 android.util.Log.d("RepoSync", "Starting syncFromSystem")
+                linkStoredProviderIds()
                 // Count first so the read phase (which can take a while on a phone
                 // with a large provider) shows a moving bar instead of an apparently
                 // frozen loading screen; the count is cheap and indexed.
@@ -4473,6 +4510,16 @@ class Repository(private val context: Context) {
                                 ) && cid != viewedConversationId
                             ) database.execSQL(
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
+                            )
+                            // The provider row this import just consumed must be
+                            // linkable, or a permanent delete cannot purge it and
+                            // the thread returns on the next restart (#449). One
+                            // row per part: every part shares the provider id.
+                            database.execSQL(
+                                """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                                   SELECT id, transport, sys_id FROM messages
+                                   WHERE transport=? AND sys_id=?""",
+                                arrayOf(MmsSupport.TRANSPORT_MMS, message.id)
                             )
                             refreshed.add(cid)
                             upsertParticipant(database, address, message.subId)
