@@ -335,7 +335,8 @@ class MmsSupportTest {
     fun attachmentKindFollowsTheMimeType() {
         assertEquals("image", MmsSupport.mediaKind("image/png"))
         assertEquals("audio", MmsSupport.mediaKind("audio/mp4"))
-        assertEquals("file", MmsSupport.mediaKind("video/mp4"))
+        assertEquals("video", MmsSupport.mediaKind("video/mp4"))
+        assertEquals("file", MmsSupport.mediaKind("application/pdf"))
     }
 
     @Test

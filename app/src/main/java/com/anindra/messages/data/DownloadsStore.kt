@@ -60,6 +60,22 @@ object DownloadsStore {
         )
     }
 
+    /** Saves a message attachment next to the other media of its kind, so it
+     *  outlives the provider row. The folder is the one [destinationFor] names. */
+    fun writeMedia(
+        context: Context,
+        displayName: String,
+        mime: String,
+        bytes: ByteArray,
+        target: MmsSupport.SaveTarget
+    ): Boolean = try {
+        val resolver = context.contentResolver
+        val destination = destinationFor(target)
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mime)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, destination.relativePath)
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val uri = resolver.insert(destination.collection, values) ?: return false
         val written = resolver.openOutputStream(uri)?.use { it.write(bytes) } != null
