@@ -24,6 +24,9 @@
     <string name="chat_save_voice">儲存語音訊息</string>
     <string name="chat_image_saved">圖片已儲存至 Pictures/Messages</string>
     <string name="chat_image_save_failed">無法儲存圖片</string>
+    <string name="chat_save_video">儲存影片</string>
+    <string name="chat_video_saved">影片已儲存到 Movies/Messages</string>
+    <string name="chat_video_save_failed">無法儲存影片</string>
 
     <string name="chat_voice_saved">語音訊息已儲存至 Music/Messages</string>
     <string name="chat_voice_save_failed">無法儲存語音訊息</string>

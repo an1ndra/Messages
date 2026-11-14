@@ -77,12 +77,14 @@ object MmsSupport {
     /**
      * What one MMS carries, as far as this app can show it.
      *
-     * [imageId] and [extraImageIds] are the picture part ids the provider will
-     * hand the bytes out under; each one is imported as a message row of its own,
-     * so a four-picture MMS shows four pictures instead of one and a note about
-     * the rest (#398). [audioId] is a voice note, shown only when the MMS carries
-     * no picture. [mediaType] is the label the first row is stored under, so the
-     * bubble and the notification agree with what was read.
+     * [imageId], [extraImageIds] and [videoIds] are the attachment part ids the
+     * provider will hand the bytes out under; each one is imported as a message
+     * row of its own, so a four-picture MMS shows four pictures instead of one
+     * and a note about the rest (#398), and a clip arrives as a clip rather than
+     * as that same note (#461). [audioId] is a voice note, shown only when the
+     * MMS carries no picture and no clip. [mediaType] is the label the first row
+     * is stored under, so the bubble and the notification agree with what was
+     * read.
      */
     data class Content(
         val body: String,
@@ -90,25 +92,28 @@ object MmsSupport {
         val omittedParts: Int,
         /** The second and later pictures of a multi-picture MMS. */
         val extraImageIds: List<Long> = emptyList(),
+        /** The clips of this MMS; a clip is never folded into a picture album. */
+        val videoIds: List<Long> = emptyList(),
         val audioId: Long? = null,
         val audioMime: String = ""
     ) {
         val mediaType: String
             get() = when {
                 imageId != null -> "image"
+                videoIds.isNotEmpty() -> "video"
                 audioId != null -> "audio"
                 else -> "text"
             }
 
         val mediaId: Long?
-            get() = imageId ?: audioId
+            get() = imageId ?: videoIds.firstOrNull() ?: audioId
 
         /** Every attachment this MMS carries, in the order it should be shown, as
          *  (mediaType, partId). Empty for a text-only MMS. */
         fun mediaRows(): List<Pair<String, Long>> = buildList {
             imageId?.let { add("image" to it) }
             extraImageIds.forEach { add("image" to it) }
-            audioId?.let { add("audio" to it) }
+            videoIds.forEach { add("video" to it) }
         }
     }
     data class InboundMms(
@@ -289,9 +294,19 @@ object MmsSupport {
      *  received voice note can arrive as AMR, MP3 or OGG. */
     fun isAudio(raw: String): Boolean = mime(raw).startsWith("audio/")
 
-    /** The message `media_type` for an attachment of this type. */
+    /** The MIME the app labels a clip with when the provider does not say. */
+    const val DEFAULT_VIDEO_MIME = "video/mp4"
+
+    fun isVideo(raw: String): Boolean = mime(raw) in setOf(
+        "video/mp4", "video/3gpp", "video/3gpp2", "video/webm", "video/x-matroska", "video/quicktime"
+    )
+
+    /** The message `media_type` for an attachment of this type: pictures get the
+     *  album layout, a clip its own bubble, a voice note its waveform, and
+     *  everything else is a plain file. */
     fun mediaKind(rawMime: String): String = when {
         isImage(rawMime) -> "image"
+        isVideo(rawMime) -> "video"
         isAudio(rawMime) -> "audio"
         else -> "file"
     }
@@ -303,17 +318,19 @@ object MmsSupport {
     fun carriesNotice(body: String): Boolean = body.contains(NOTICE_MARKER)
 
     fun content(parts: List<Part>): Content {
-        // Every picture the provider can hand out gets a message row of its own,
-        // so a four-picture MMS arrives as four pictures rather than one picture
-        // and a note about the others (#398). A voice note is shown when there
-        // is no picture; anything else — video, documents, an extra note — is
-        // reported rather than dropped silently.
+        // Every attachment the provider can hand out gets a message row of its
+        // own, so a four-picture MMS arrives as four pictures rather than one
+        // picture and a note about the others (#398), and a clip arrives as a
+        // clip (#461). A voice note is shown when there is neither; anything the
+        // app cannot show at all — a document — is reported rather than dropped
+        // silently.
         val images = parts.filter { it.id > 0 && isImage(it.mime) }
         val audio = parts.firstOrNull { it.id > 0 && isAudio(it.mime) }
             ?.takeIf { images.isEmpty() }
+        val videos = parts.filter { it.id > 0 && isVideo(it.mime) }
         val text = parts.filter { mime(it.mime) == "text/plain" }.mapNotNull { it.text }
             .filter { it.isNotBlank() }.joinToString("\n")
-        val shownIds = images.map { it.id }.toSet()
+        val shownIds = (images + videos).map { it.id }.toSet()
         val omitted = parts.count {
             mime(it.mime) !in setOf("text/plain", "application/smil") &&
                 it.id !in shownIds && it !== audio
@@ -324,6 +341,7 @@ object MmsSupport {
             imageId = images.firstOrNull()?.id,
             omittedParts = omitted,
             extraImageIds = images.drop(1).map { it.id },
+            videoIds = videos.map { it.id },
             audioId = audio?.id,
             audioMime = audio?.let { mime(it.mime) } ?: ""
         )
@@ -367,10 +385,11 @@ object MmsSupport {
     /** Where a saved attachment belongs. One decision, read by the menu that
      *  offers the save and by the store that performs it, so a voice note can
      *  never be labelled "Save image" and written into the gallery. */
-    enum class SaveTarget { IMAGE, AUDIO, FILE }
+    enum class SaveTarget { IMAGE, VIDEO, AUDIO, FILE }
 
     fun saveTargetFor(mediaType: String): SaveTarget = when (mediaType) {
         "image" -> SaveTarget.IMAGE
+        "video" -> SaveTarget.VIDEO
         "audio" -> SaveTarget.AUDIO
         else -> SaveTarget.FILE
     }
@@ -379,6 +398,7 @@ object MmsSupport {
         "image/jpeg" to "jpg", "image/jpg" to "jpg", "image/png" to "png",
         "image/gif" to "gif", "image/webp" to "webp", "image/bmp" to "bmp",
         "image/heic" to "heic", "image/heif" to "heif", "video/mp4" to "mp4",
+        "video/3gpp" to "3gp", "video/3gpp2" to "3g2", "video/webm" to "webm",
         "audio/mp4" to "m4a", "audio/m4a" to "m4a", "audio/x-m4a" to "m4a",
         "audio/mp4a-latm" to "m4a", "audio/aac" to "aac", "audio/3gpp" to "3gp",
         "audio/amr" to "amr", "audio/mpeg" to "mp3", "audio/ogg" to "ogg",
@@ -390,6 +410,7 @@ object MmsSupport {
      *  saving a voice note. */
     private fun fallbackMime(target: SaveTarget): String = when (target) {
         SaveTarget.IMAGE -> "image/jpeg"
+        SaveTarget.VIDEO -> DEFAULT_VIDEO_MIME
         SaveTarget.AUDIO -> "audio/mp4"
         SaveTarget.FILE -> "application/octet-stream"
     }

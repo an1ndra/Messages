@@ -30,6 +30,7 @@
     <string name="access_voice">Голосовое сообщение</string>
     <string name="access_voice_play">Воспроизвести голосовое сообщение</string>
     <string name="access_voice_pause">Приостановить голосовое сообщение</string>
+    <string name="access_video">Видео</string>
     <string name="action_call">Вызов</string>
     <string name="access_chat_top_bar">Верхняя панель чата</string>
     <string name="access_swipe_background">Фон свайпа</string>

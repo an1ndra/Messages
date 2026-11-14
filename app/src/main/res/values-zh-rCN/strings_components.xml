@@ -30,6 +30,7 @@
     <string name="access_voice">语音消息</string>
     <string name="access_voice_play">播放语音消息</string>
     <string name="access_voice_pause">暂停语音消息</string>
+    <string name="access_video">视频</string>
     <string name="action_call">拨打电话</string>
     <string name="access_chat_top_bar">对话顶部栏</string>
     <string name="access_swipe_background">滑动背景</string>

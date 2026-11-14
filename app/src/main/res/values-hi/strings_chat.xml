@@ -25,6 +25,9 @@
     <string name="chat_save_voice">वॉइस संदेश सहेजें</string>
     <string name="chat_image_saved">छवि Pictures/Messages में सहेजी गई</string>
     <string name="chat_image_save_failed">छवि सहेजी नहीं जा सकी</string>
+    <string name="chat_save_video">वीडियो सहेजें</string>
+    <string name="chat_video_saved">वीडियो Movies/Messages में सहेजा गया</string>
+    <string name="chat_video_save_failed">वीडियो सहेजा नहीं जा सका</string>
 
     <string name="chat_voice_saved">वॉइस संदेश Music/Messages में सहेजा गया</string>
     <string name="chat_voice_save_failed">वॉइस संदेश सहेजा नहीं जा सका</string>

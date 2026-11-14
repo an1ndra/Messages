@@ -30,6 +30,7 @@
     <string name="access_voice">رسالة صوتية</string>
     <string name="access_voice_play">تشغيل الرسالة الصوتية</string>
     <string name="access_voice_pause">إيقاف مؤقت للرسالة الصوتية</string>
+    <string name="access_video">فيديو</string>
     <string name="action_call">اتصال</string>
     <string name="access_chat_top_bar">الشريط العلوي للمحادثة</string>
     <string name="access_swipe_background">خلفية التمرير</string>

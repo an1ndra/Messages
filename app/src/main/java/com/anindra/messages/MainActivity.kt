@@ -614,15 +614,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Saves a message attachment (e.g. an MMS picture) to the gallery (#235). */
+    /** Saves a message attachment (an MMS picture, clip or voice note) to the
+     *  gallery, Movies or Music (#235, #364, #461). */
     fun saveMessageImage(messageId: Long) = saveMessageImages(listOf(messageId))
 
     /**
-     * Saves every attachment of the selection: pictures to the gallery, voice
-     * notes to Music (#235, #364). A multi-picture MMS is one bubble backed by a
-     * row per picture, so saving only the first row stored one picture and still
-     * reported success. The message's own kind decides the collection, never the
-     * menu item that was tapped.
+     * Saves every attachment of the selection: pictures to the gallery, clips to
+     * Movies and voice notes to Music (#235, #364, #461). A multi-picture MMS is
+     * one bubble backed by a row per picture, so saving only the first row
+     * stored one picture and still reported success.
      */
     fun saveMessageImages(messageIds: List<Long>) {
         scope.launch {
@@ -636,13 +636,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             var saved = 0
             var allAudio = true
+            var allVideo = true
             for (msg in messages) {
                 val target = MmsSupport.saveTargetFor(msg.mediaType)
                 if (target != MmsSupport.SaveTarget.AUDIO) allAudio = false
+                if (target != MmsSupport.SaveTarget.VIDEO) allVideo = false
                 val uri = Uri.parse(msg.mediaUri)
                 val bytes = runCatching {
                     resolver.openInputStream(uri)?.use { it.readBytes() }
                 }.getOrNull()
+                // A clip's part reports no MIME and has no extension to fall
+                // back on, so the target names its type (#461).
                 val mime = MmsSupport.mimeForSavedAttachment(
                     msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull(), target
                 )
@@ -658,17 +662,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     "AttachmentSave",
                     "target=$target mime=$mime name=$name ok=$ok"
                 )
-                if (ok) saved++
             }
             withContext(Dispatchers.Main) {
                 val savedAll = saved == messages.size
                 val message = when {
                     allAudio && savedAll -> R.string.chat_voice_saved
                     allAudio -> R.string.chat_voice_save_failed
+                    allVideo && savedAll -> R.string.chat_video_saved
+                    allVideo -> R.string.chat_video_save_failed
                     savedAll -> R.string.chat_image_saved
                     else -> R.string.chat_image_save_failed
                 }
-                Toast.makeText(app, message, Toast.LENGTH_SHORT).show()
             }
         }
     }

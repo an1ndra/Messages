@@ -30,6 +30,7 @@
     <string name="access_voice">Sprachnachricht</string>
     <string name="access_voice_play">Sprachnachricht abspielen</string>
     <string name="access_voice_pause">Sprachnachricht pausieren</string>
+    <string name="access_video">Video</string>
     <string name="action_call">Anrufen</string>
     <string name="access_chat_top_bar">Chat-Oberleiste</string>
     <string name="access_swipe_background">Wischoberfläche</string>
