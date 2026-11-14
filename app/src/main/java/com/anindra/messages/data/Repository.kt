@@ -1397,21 +1397,20 @@ class Repository(private val context: Context) {
     }
 
     /**
-     * Points a sent picture at the copy the provider holds for it.
+     * Points a sent attachment at the copy the provider holds for it.
      *
-     * [sendMedia] stores the URI the picker returned. That grant lasts only as
-     * long as the app's process, so after the app is closed and reopened the
-     * bubble has nothing to read and shows an empty black box. The provider's
-     * own copy of the picture (the part of the outbox row) is readable by the
-     * default SMS app for as long as the message exists, and it is the same
-     * place a received or imported MMS picture is read from.
+     * [sendMedia] stores the URI the picker (or the recorder) returned. That
+     * grant lasts only as long as the app's process — a camera/voice file in
+     * `cacheDir` is not even readable through the picker URI after a restart —
+     * so after the app is closed and reopened the bubble has nothing to read and
+     * shows an empty box. The provider's own copy of the attachment (the part of
+     * the outbox row) is readable by the default SMS app for as long as the
+     * message exists, and it is the same place a received or imported MMS
+     * picture is read from.
      */
-    fun adoptProviderMedia(messageId: Long, outboxRowId: Long, mediaType: String) {
-        adoptProviderMediaRows(outboxRowId, listOf(messageId))
-    }
-
     /**
-     * Points every row of an outgoing album at its own part of the outbox row.
+     * Points every row of an outgoing album — pictures or a voice note — at its
+     * own part of the outbox row.
      *
      * Order, not media type, is what matches a row to a part: every picture of a
      * three-picture MMS has `ct=image/...`, so picking the first image for each
@@ -1429,7 +1428,9 @@ class Repository(private val context: Context) {
                 val ids = mutableListOf<Long>()
                 while (c.moveToNext()) {
                     val mime = c.getString(1).orEmpty()
-                    if (MmsSupport.isImage(mime)) ids.add(c.getLong(0))
+                    if (MmsSupport.isImage(mime) || MmsSupport.isAudio(mime)) {
+                        ids.add(c.getLong(0))
+                    }
                 }
                 ids
             }
@@ -2029,7 +2030,8 @@ class Repository(private val context: Context) {
                         timestamp = c.getLong(1),
                         fromMe = false,
                         isImage = c.getString(2) == "image",
-                        imageUri = c.getString(3)?.takeIf { it.isNotEmpty() }
+                        imageUri = c.getString(3)?.takeIf { it.isNotEmpty() },
+                        isAudio = c.getString(2) == "audio"
                     )
                 )
             }
@@ -3600,6 +3602,24 @@ class Repository(private val context: Context) {
     }
 
     /**
+     * The newest voice note this account sent or received, for Diagnostics.
+     *
+     * A script cannot see inside a recorded file from a UI dump, so the report
+     * names the note's size instead. That is the one fact that says a real
+     * recording went through the recorder and the send path.
+     */
+    suspend fun latestVoiceNote(): Message? {
+        val id = runOnIoAsync {
+            db.readableDatabase.rawQuery(
+                "SELECT id FROM messages WHERE media_type='audio' AND deleted_at=0" +
+                    " ORDER BY timestamp DESC, id DESC LIMIT 1",
+                null
+            ).use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+        }
+        return if (id <= 0) null else messageByIdSuspend(id)
+    }
+
+    /**
      * Imported MMS rows: how many there are, how many provider messages they
      * came from with two or more rows, and the largest number of rows one
      * provider message produced.
@@ -4533,7 +4553,8 @@ class Repository(private val context: Context) {
                                     address,
                                     message.content.body,
                                     message.timestamp,
-                                    imageUri = message.content.imageId?.let { "content://mms/part/$it" }
+                                    imageUri = message.content.imageId?.let { "content://mms/part/$it" },
+                                    audioUri = message.content.audioId?.let { "content://mms/part/$it" }
                                 )
                             )
                             MmsTrace.i(

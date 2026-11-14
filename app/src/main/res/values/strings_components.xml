@@ -30,6 +30,9 @@
     <string name="access_start_chat">Start chat</string>
     <string name="access_loading_messages">Loading messages</string>
     <string name="access_photo">Photo</string>
+    <string name="access_voice">Voice message</string>
+    <string name="access_voice_play">Play voice message</string>
+    <string name="access_voice_pause">Pause voice message</string>
     <string name="access_video">Video</string>
     <string name="action_call">Call</string>
     <string name="access_chat_top_bar">Chat top bar</string>
@@ -45,6 +48,7 @@
     <string name="icon_attach">Attach</string>
     <string name="icon_emoji">Emoji</string>
     <string name="icon_send">Send</string>
+    <string name="icon_voice">Record voice message</string>
     <string name="icon_close_search">Close search</string>
     <string name="icon_back_to_inbox">Back to inbox</string>
     <string name="icon_search">Search</string>

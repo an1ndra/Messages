@@ -200,6 +200,10 @@ hw.trackBall=no
 # Start emulator in background
 emulator -avd Pixel_7_API_36 -no-window -no-audio &
 
+# `-no-audio` disables the emulator's audio devices, and MediaRecorder cannot
+# open the microphone without them. Voice messages (`scripts/test-voice-message.sh`)
+# need an emulator started WITHOUT that flag.
+
 # Or start with GUI (requires display)
 emulator -avd Pixel_7_API_36
 

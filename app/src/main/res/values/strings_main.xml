@@ -58,6 +58,7 @@
     <string name="notif_action_mark_read">Mark as read</string>
     <string name="notif_you">You</string>
     <string name="notif_photo">Photo</string>
+    <string name="notif_voice">Voice message</string>
     <string name="notif_send_fail_private">Couldn\'t send message. Tap to retry.</string>
     <string name="notif_send_fail">Couldn\'t send message to %s. Tap to retry.</string>
     <string name="notif_not_delivered">Message not delivered</string>

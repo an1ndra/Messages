@@ -2,7 +2,9 @@ package com.anindra.messages.ui
 
 import com.anindra.messages.R
 import com.anindra.messages.data.Message
+import com.anindra.messages.data.MmsSupport
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -111,9 +113,23 @@ class SelectionToolbarTest {
     fun severalPicturesReadAsPlural() {
         // #398: selecting two pictures wrote both but still offered
         // "Save image", which read as if only one would be saved.
-        assertEquals(R.string.chat_save_images, SelectionToolbar.saveLabelRes(count = 2))
-        assertEquals(R.string.chat_save_images, SelectionToolbar.saveLabelRes(count = 5))
-        assertEquals(R.string.chat_save_image, SelectionToolbar.saveLabelRes(count = 1))
+        assertEquals(
+            R.string.chat_save_images,
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.IMAGE, count = 2)
+        )
+        assertEquals(
+            R.string.chat_save_images,
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.IMAGE, count = 5)
+        )
+        assertEquals(
+            R.string.chat_save_image,
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.IMAGE, count = 1)
+        )
+        // A voice note is one note, so the plural rule never reaches it.
+        assertEquals(
+            R.string.chat_save_voice,
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.AUDIO, count = 3)
+        )
     }
 
     @Test
@@ -161,5 +177,32 @@ class SelectionToolbarTest {
             SelectionToolbar.saveTargets(chat, setOf(2L)).map { it.id }
         )
         assertTrue(SelectionToolbar.saveTargets(chat, setOf(4L, 5L)).isEmpty())
+    }
+
+    @Test
+    fun aVoiceNoteIsOfferedAsAVoiceMessageNotAnImage() {
+        // #364: the overflow offered "Save image" on a voice note, and the
+        // save then wrote audio bytes into the gallery.
+        assertEquals(
+            MmsSupport.SaveTarget.AUDIO,
+            SelectionToolbar.saveTargetFor("audio")
+        )
+        assertEquals(R.string.chat_save_voice, SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.AUDIO, count = 1))
+    }
+
+    @Test
+    fun aPictureKeepsTheImageLabel() {
+        assertEquals(
+            MmsSupport.SaveTarget.IMAGE,
+            SelectionToolbar.saveTargetFor("image")
+        )
+        assertEquals(R.string.chat_save_image, SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.IMAGE))
+    }
+
+    @Test
+    fun textAndFilesOfferNoSave() {
+        assertNull(SelectionToolbar.saveTargetFor("text"))
+        assertNull(SelectionToolbar.saveTargetFor("file"))
+        assertNull(SelectionToolbar.saveTargetFor(""))
     }
 }
