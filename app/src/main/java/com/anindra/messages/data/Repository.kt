@@ -1819,6 +1819,7 @@ class Repository(private val context: Context) {
                 subId, address
             )
         )
+        unarchiveForInbound(convoId)
         db.writableDatabase.execSQL(
             """UPDATE conversations SET snippet=?,timestamp=?,last_is_me=0,
                unread_count=unread_count+? WHERE id=?""",
@@ -1826,6 +1827,21 @@ class Repository(private val context: Context) {
         )
         notifyChanged()
         return convoId
+    }
+
+    /**
+     * A new message brings an archived conversation back to the inbox (#468).
+     *
+     * Archiving is a filing decision, and Google Messages — which this app
+     * follows elsewhere — undoes it as soon as the chat speaks again. Blocked and
+     * spam threads never reach this: a sender the user filtered must not be able
+     * to pull a conversation out of the archive.
+     */
+    private fun unarchiveForInbound(conversationId: Long) {
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET archived=0 WHERE id=? AND archived=1",
+            arrayOf(conversationId.toString())
+        )
     }
 
     /** Stores a keyword-blocked message soft-deleted, so it is listed under
@@ -4534,6 +4550,14 @@ class Repository(private val context: Context) {
                                                 m.sysId, MmsSupport.TRANSPORT_SMS, m.subId)
                                         )
                                         linkProviderId(db, m.sysId, MmsSupport.TRANSPORT_SMS)
+                                        // An inbound text that arrives while the
+                                        // app is not running is imported here,
+                                        // not through receiveMessage, so the
+                                        // unarchive rule has to hold on this
+                                        // path too (#468).
+                                        if (m.type == android.provider.Telephony.Sms.MESSAGE_TYPE_INBOX) {
+                                            unarchiveForInbound(cid)
+                                        }
                                     }
                                 } catch (e: android.database.sqlite.SQLiteException) {
                                     android.util.Log.e("RepoSync", "INSERT failed: ${e.message}", e)
@@ -4931,6 +4955,9 @@ class Repository(private val context: Context) {
                             ) database.execSQL(
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
                             )
+                            // An inbound picture is a new message too, so the
+                            // conversation comes back to the inbox (#468).
+                            if (!message.isMe) unarchiveForInbound(cid)
                             // The provider row this import just consumed must be
                             // linkable, or a permanent delete cannot purge it and
                             // the thread returns on the next restart (#449). One
