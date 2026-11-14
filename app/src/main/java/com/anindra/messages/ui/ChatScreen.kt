@@ -2488,7 +2488,11 @@ internal fun ChatTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable { onOpenDetails() }
             ) {
-                PersonAvatar(convo?.groupTitle?.ifBlank { convo.address } ?: "?", size = 36.dp)
+                PersonAvatar(
+                    convo?.groupTitle?.ifBlank { convo.address } ?: "?",
+                    size = 36.dp,
+                    photoModel = convo?.groupAvatar?.takeIf { it.isNotBlank() }
+                )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f, fill = false)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

@@ -64,7 +64,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 32
+private const val DB_VERSION = 33
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -157,6 +157,7 @@ class Db(context: Context) :
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title_custom INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE conversations ADD COLUMN provider_thread_id INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE conversations ADD COLUMN group_avatar TEXT NOT NULL DEFAULT ''")
         db.execSQL(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_provider_thread " +
                 "ON conversations(provider_thread_id) WHERE provider_thread_id>0"
@@ -384,6 +385,12 @@ class Db(context: Context) :
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_provider_thread " +
                     "ON conversations(provider_thread_id) WHERE provider_thread_id>0"
             )
+        }
+        if (oldVersion < 33) {
+            // A picture the user picked for a group (#448 follow-up). The path
+            // points inside this app's files directory; blank means the
+            // generated avatar.
+            db.execSQL("ALTER TABLE conversations ADD COLUMN group_avatar TEXT NOT NULL DEFAULT ''")
         }
     }
 
@@ -614,7 +621,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.blocked,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address), c.group_title
+               COALESCE(p.display_destination, c.address), c.group_title, c.group_avatar
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.deleted_at=0 ORDER BY c.pinned DESC, c.timestamp DESC""",
@@ -637,7 +644,8 @@ class Repository(private val context: Context) {
                         draftDate = c.getLong(11),
                         deletedAt = c.getLong(12),
                         display = c.getString(13),
-                        groupTitle = c.getString(14).orEmpty()
+                        groupTitle = c.getString(14).orEmpty(),
+                        groupAvatar = c.getString(15).orEmpty()
                     )
                 )
             }
@@ -650,7 +658,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address), c.group_title
+               COALESCE(p.display_destination, c.address), c.group_title, c.group_avatar
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.id=? AND c.deleted_at=0""",
@@ -671,7 +679,8 @@ class Repository(private val context: Context) {
                     draftDate = c.getLong(10),
                     deletedAt = c.getLong(11),
                     display = c.getString(12),
-                    groupTitle = c.getString(13).orEmpty()
+                    groupTitle = c.getString(13).orEmpty(),
+                    groupAvatar = c.getString(14).orEmpty()
                 )
             }
         }
@@ -1105,7 +1114,7 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.pinned,c.draft,c.draft_date,
-               COALESCE(p.display_destination, c.address), c.group_title
+               COALESCE(p.display_destination, c.address), c.group_title, c.group_avatar
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.id=? AND c.deleted_at=0""",
@@ -1124,7 +1133,8 @@ class Repository(private val context: Context) {
                 draft = c.getString(9),
                 draftDate = c.getLong(10),
                 display = c.getString(11),
-                groupTitle = c.getString(12).orEmpty()
+                groupTitle = c.getString(12).orEmpty(),
+                groupAvatar = c.getString(13).orEmpty()
             )
         }
         found
@@ -1412,15 +1422,20 @@ class Repository(private val context: Context) {
     }
 
     /** How many groups exist, and the newest one's thread — for Diagnostics. */
-    suspend fun groupFacts(): Triple<Int, Long, Int> = runOnIoAsync { groupFactsBlocking() }
+    suspend fun groupFacts(): GroupFacts = runOnIoAsync { groupFactsBlocking() }
 
-    fun groupFactsBlocking(): Triple<Int, Long, Int> {
+    /** [avatar] is true when the newest group has a picture of its own. */
+    data class GroupFacts(val chats: Int, val thread: Long, val members: Int, val avatar: Boolean)
+
+    fun groupFactsBlocking(): GroupFacts {
         var total = 0
         var thread = 0L
         var members = 0
+        var avatar = false
         db.readableDatabase.rawQuery(
             """SELECT c.id, c.provider_thread_id,
-                      (SELECT COUNT(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)
+                      (SELECT COUNT(*) FROM conversation_recipients r WHERE r.conversation_id=c.id),
+                      c.group_avatar
                FROM conversations c
                WHERE c.deleted_at=0
                  AND (SELECT COUNT(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)>1
@@ -1430,6 +1445,7 @@ class Repository(private val context: Context) {
             if (c.moveToFirst()) {
                 thread = c.getLong(1)
                 members = c.getInt(2)
+                avatar = c.getString(3).orEmpty().isNotBlank()
             }
         }
         db.readableDatabase.rawQuery(
@@ -1437,7 +1453,7 @@ class Repository(private val context: Context) {
                AND (SELECT COUNT(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)>1""",
             null
         ).use { c -> if (c.moveToFirst()) total = c.getInt(0) }
-        return Triple(total, thread, members)
+        return GroupFacts(total, thread, members, avatar)
     }
 
     /**
@@ -1514,6 +1530,23 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             "SELECT group_title FROM conversations WHERE id=?", arrayOf(conversationId.toString())
         ).use { c -> if (c.moveToFirst()) c.getString(0).orEmpty() else "" }
+
+    /** The picture a group chose, as a path in this app's files dir, or blank. */
+    fun groupAvatarBlocking(conversationId: Long): String =
+        db.readableDatabase.rawQuery(
+            "SELECT group_avatar FROM conversations WHERE id=?",
+            arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getString(0).orEmpty() else "" }
+
+    /** Stores or clears the group's picture. */
+    suspend fun setGroupAvatar(conversationId: Long, path: String) = runOnIoAsync {
+        db.writableDatabase.update(
+            "conversations",
+            ContentValues().apply { put("group_avatar", path) },
+            "id=?", arrayOf(conversationId.toString())
+        )
+        notifyChanged()
+    }
 
     /** Renames a group. Blank input clears it, restoring the default. */
     suspend fun setGroupTitle(conversationId: Long, title: String) = runOnIoAsync {

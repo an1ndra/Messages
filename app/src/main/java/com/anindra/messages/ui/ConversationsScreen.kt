@@ -1207,7 +1207,10 @@ internal fun ConversationRow(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PersonAvatar(convo.groupTitle.ifBlank { convo.address })
+            PersonAvatar(
+                convo.groupTitle.ifBlank { convo.address },
+                photoModel = convo.groupAvatar.takeIf { it.isNotBlank() }
+            )
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

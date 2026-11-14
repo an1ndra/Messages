@@ -75,6 +75,7 @@
     <string name="contact_people_count">%1$d чел.</string>
     <string name="contact_selected">Выбрано</string>
     <string name="contact_remove_people">Удалить из группы</string>
+    <string name="contact_group_photo">Фото группы</string>
     <string name="contact_group_name">Название группы</string>
     <string name="contact_create_group">Создать группу</string>
     <string name="contact_group_name_optional">Необязательно - мы назовём её сами</string>
