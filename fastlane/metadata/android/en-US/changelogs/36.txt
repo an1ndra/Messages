@@ -1,0 +1,7 @@
+New in 1.0.33:
+• Voice messages, recorded in the composer with a level meter and a hands-free lock.
+• Group texts now stay one thread, and a group can carry its own picture.
+• Pinch to zoom and save in the full-screen picture viewer.
+• MMS video plays in the chat and can be saved.
+• A chat you archived comes back to the inbox when someone replies.
+• Contact names refresh while the app is running.

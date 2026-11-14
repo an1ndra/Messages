@@ -172,7 +172,7 @@ class ContactDetailsWiringTest {
         // redesigned list lose it in the first place.
         assertTrue(
             "the rule must live in ContactDetails",
-            Regex("""fun listLabel\([\s\S]{0,200}?groupTitle\.isNotBlank\(\)\) groupTitle""")
+            Regex("""fun listLabel\([\s\S]{0,400}?BidiText\.groupTitle\(groupTitle\)""")
                 .containsMatchIn(helpers),
         )
         listOf("ui/ConversationsScreen.kt", "ui/legacy/LegacyConversationsScreen.kt").forEach { path ->
@@ -190,12 +190,12 @@ class ContactDetailsWiringTest {
         // Beside a long group name the icon reads as part of the name.
         assertTrue(
             "the title and pencil must share a Column",
-            Regex("""text = groupTitle[\s\S]{0,1400}?Icons\.Rounded\.Edit""")
+            Regex("""text = groupTitleDisplay[\s\S]{0,1400}?Icons\.Rounded\.Edit""")
                 .containsMatchIn(screen),
         )
         assertTrue(
             "the pencil must not sit in the name's Row",
-            !Regex("""Row\([\s\S]{0,300}?text = groupTitle""").containsMatchIn(screen),
+            !Regex("""Row\([\s\S]{0,300}?text = groupTitleDisplay""").containsMatchIn(screen),
         )
     }
 

@@ -22,8 +22,23 @@
     <string name="chat_select_text">टेक्स्ट चुनें</string>
     <string name="chat_save_image">छवि सहेजें</string>
     <string name="chat_save_images">छवियाँ सहेजें</string>
+    <string name="chat_save_voice">वॉइस संदेश सहेजें</string>
     <string name="chat_image_saved">छवि Pictures/Messages में सहेजी गई</string>
     <string name="chat_image_save_failed">छवि सहेजी नहीं जा सकी</string>
+    <string name="chat_save_video">वीडियो सहेजें</string>
+    <string name="chat_video_saved">वीडियो Movies/Messages में सहेजा गया</string>
+    <string name="chat_video_save_failed">वीडियो सहेजा नहीं जा सका</string>
+
+    <string name="chat_voice_saved">वॉइस संदेश Music/Messages में सहेजा गया</string>
+    <string name="chat_voice_save_failed">वॉइस संदेश सहेजा नहीं जा सका</string>
+
+    <string name="chat_voice_slide_cancel">रद्द करने के लिए स्लाइड करें</string>
+    <string name="chat_voice_release_cancel">रद्द करने के लिए छोड़ें</string>
+    <string name="chat_voice_permission_denied">वॉइस संदेश रिकॉर्ड करने के लिए माइक्रोफ़ोन की अनुमति आवश्यक है</string>
+    <string name="chat_voice_start_failed">रिकॉर्डिंग शुरू नहीं हो सकी</string>
+    <string name="chat_voice_too_short">रिकॉर्डिंग बहुत छोटी थी। रिकॉर्ड करने के लिए माइक दबाकर रखें।</string>
+    <string name="chat_voice_max_reached">MMS आकार सीमा पर वॉइस संदेश रोका गया</string>
+    <string name="chat_voice_cancel_recording">रिकॉर्डिंग रद्द करें</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">संदेश भेजा नहीं जा सकता</string>

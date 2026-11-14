@@ -114,6 +114,39 @@ class SendReqBuilderTest {
     }
 
     @Test
+    fun aTextOnlyGroupMessageStillBuildsItsPresentation() {
+        // A group text leaves as one MMS with no attachment (#448); it is a text
+        // part and a SMIL slide, addressed to everyone.
+        val outcome = SendReqBuilder.build(request().copy(attachments = emptyList()), noSender, now)
+        assertTrue("expected a built PDU, got $outcome", outcome is SendReqOutcome.Built)
+        val pdu = (outcome as SendReqOutcome.Built).pdu
+        val body = pdu.body!!
+        assertEquals(2, body.size)
+        assertTrue("the SMIL must still lead", body.partAt(0)!!.isSmil)
+        assertEquals("hello", body.textContent())
+        assertEquals(listOf("+15551230000", "+15559998888"), pdu.to.map { it.text })
+    }
+
+    @Test
+    fun aTextOnlyMessageWithNothingToLayOutIsStillRefused() {
+        val outcome = SendReqBuilder.build(
+            request().copy(attachments = emptyList(), caption = "   "), noSender, now,
+        )
+        assertEquals(SendReqOutcome.NoPresentation, outcome)
+    }
+
+    @Test
+    fun aTextOnlyMessageStillObeysTheCarrierGroupCheck() {
+        val outcome = SendReqBuilder.build(
+            request(profile = profileOf(CarrierProfile.KEY_GROUP_MMS_ENABLED to false))
+                .copy(attachments = emptyList()),
+            noSender,
+            now,
+        )
+        assertEquals(SendReqOutcome.GroupMmsUnsupported, outcome)
+    }
+
+    @Test
     fun partCountGrowsWithEachAttachment() {
         assertEquals(2, SendReqBuilder.partCount(""))
         assertEquals(3, SendReqBuilder.partCount("cap"))

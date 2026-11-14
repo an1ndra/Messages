@@ -22,11 +22,20 @@ class StoreScreenshotTest {
     }
 
     @Test
-    fun theListingHasTheCuratedSetOfScreenshots() {
-        assertEquals(
-            "the listing is published as 8 phone screenshots, numbered 01..08",
-            (1..8).map { "%02d".format(it) },
-            shots.map { it.name.substringBefore('-') }
+    fun theListingCarriesTheFullFdroidNameSet() {
+        // F-Droid serves every screenshot filename an app has ever published
+        // (fdroidserver#490), so the listing is the union of the current frames
+        // and the names earlier releases left behind — 51 of them, not the eight
+        // Play accepts. A Play upload would need its own directory.
+        assertEquals("the listing publishes the whole F-Droid name set", 51, shots.size)
+        assertTrue(
+            "the eight frames Play knows about must survive",
+            shots.map { it.name }.containsAll(
+                listOf(
+                    "01-chats.png", "02-replying.png", "03-reactions.png", "04-new-chat.png",
+                    "05-contact.png", "06-themes.png", "07-advanced.png", "08-import.png"
+                )
+            )
         )
     }
 
