@@ -3176,9 +3176,14 @@ internal fun ImagePreview(
                                 viewport.height
                             )
                         )
+                        // Locale.ROOT: the device may run in a locale whose
+                        // digits or decimal separator are not ASCII, and the
+                        // regression script reads this line.
                         android.util.Log.d(
                             "ImageViewer",
-                            "scale=%.2f x=%.0f y=%.0f".format(scale, offset.x, offset.y)
+                            "scale=%.2f x=%.0f y=%.0f".format(
+                                java.util.Locale.ROOT, scale, offset.x, offset.y
+                            )
                         )
                     }
                 }
@@ -3194,7 +3199,7 @@ internal fun ImagePreview(
                             offset = Offset.Zero
                             android.util.Log.d(
                                 "ImageViewer",
-                                "scale=%.2f x=0 y=0".format(scale)
+                                "scale=%.2f x=0 y=0".format(java.util.Locale.ROOT, scale)
                             )
                         }
                     )
