@@ -2494,7 +2494,7 @@ internal fun ChatTopBar(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             convo?.let {
-                                if (it.groupTitle.isNotBlank()) it.groupTitle
+                                if (it.groupTitle.isNotBlank()) BidiText.groupTitle(it.groupTitle)
                                 else if (it.name != it.address) it.name
                                 else BidiText.ltr(it.display)
                             } ?: "",

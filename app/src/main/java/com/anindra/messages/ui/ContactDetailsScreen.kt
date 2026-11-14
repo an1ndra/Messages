@@ -143,6 +143,9 @@ onBack: () -> Unit,
     } else {
         ContactDetails.title(name, address, display)
     }
+    // The name as painted; the raw value is what the editor loads, so the
+    // bidi isolates never end up in a name the user types.
+    val groupTitleDisplay = if (isGroup) BidiText.groupTitle(groupTitle) else groupTitle
 
     // Edited in place. The pencil sits below the name rather than beside it: a
     // long group name would read an icon next to it as part of the name.
@@ -243,7 +246,7 @@ onBack: () -> Unit,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                     ) {
                         Text(
-                            text = groupTitle,
+                            text = groupTitleDisplay,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Medium,
                             textAlign = TextAlign.Center,
