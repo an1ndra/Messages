@@ -20,11 +20,7 @@ class GroupNamingTest {
     ): String {
         if (members.size <= 1) return current
         if (current.isNotBlank()) return current
-        val names = members.map { nameOf(it) ?: it }.take(3)
-        return when {
-            names.size <= 1 -> names.first()
-            else -> names.dropLast(1).joinToString(", ") + " +" + names.last()
-        }
+        return members.map { nameOf(it) ?: it }.joinToString(", ")
     }
 
     private val allKnown: (String) -> String? = { number ->
@@ -34,19 +30,22 @@ class GroupNamingTest {
     @Test
     fun aGroupIsNamedFromItsMembers() {
         val title = deriveTitle(listOf("a", "b", "c"), current = "", nameOf = allKnown)
-        assertEquals("Alex, Anindra +Dr. Patel Clinic", title)
+        assertEquals("Alex, Anindra, Dr. Patel Clinic", title)
     }
 
     @Test
-    fun onlyTheFirstThreeMembersAreNamed() {
+    fun everyMemberIsNamedTheWayAospDoesIt() {
+        // AOSP joins every participant with ", ". No "+N" tail and no "+"
+        // separator: with numbers saved as contacts that "+" read as part of
+        // the next number, and in RTL it moved to the wrong side entirely.
         val title = deriveTitle(listOf("a", "b", "c", "x", "y"), current = "", nameOf = allKnown)
-        assertEquals("Alex, Anindra +Dr. Patel Clinic", title)
+        assertEquals("Alex, Anindra, Dr. Patel Clinic, x, y", title)
     }
 
     @Test
     fun aMemberWithNoContactNameFallsBackToTheirNumber() {
         val title = deriveTitle(listOf("a", "+1555773020"), current = "", nameOf = allKnown)
-        assertEquals("Alex ++1555773020", title)
+        assertEquals("Alex, +1555773020", title)
     }
 
     @Test
@@ -72,14 +71,14 @@ class GroupNamingTest {
         // add step has to be applied afterwards to take effect.
         val derived = deriveTitle(listOf("a", "b", "c"), current = "", nameOf = allKnown)
         val chosen = deriveTitle(listOf("a", "b", "c"), current = "Weekend Trip", nameOf = allKnown)
-        assertEquals("Alex, Anindra +Dr. Patel Clinic", derived)
+        assertEquals("Alex, Anindra, Dr. Patel Clinic", derived)
         assertEquals("Weekend Trip", chosen)
     }
 
     @Test
     fun aBlankRenameRestoresTheDerivedDefault() {
         val cleared = deriveTitle(listOf("a", "b", "c"), current = "", nameOf = allKnown)
-        assertEquals("Alex, Anindra +Dr. Patel Clinic", cleared)
+        assertEquals("Alex, Anindra, Dr. Patel Clinic", cleared)
     }
 
     @Test
@@ -93,6 +92,6 @@ class GroupNamingTest {
         // setGroupTitle trims before storing, so whitespace-only input is the
         // same as clearing and the default comes back.
         val title = deriveTitle(listOf("a", "b", "c"), current = "   ".trim(), nameOf = allKnown)
-        assertEquals("Alex, Anindra +Dr. Patel Clinic", title)
+        assertEquals("Alex, Anindra, Dr. Patel Clinic", title)
     }
 }

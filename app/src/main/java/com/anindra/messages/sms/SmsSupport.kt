@@ -77,7 +77,8 @@ object NotificationHelper {
         fallbackText: String,
         imageUri: String? = null,
         privacyMode: Boolean = false,
-        senderIcon: IconCompat? = null
+        senderIcon: IconCompat? = null,
+        audio: Boolean = false
     ): NotificationCompat.Style {
         val hideLinks = app.repository.settings.hideLinks
         val person = Person.Builder().setName(senderName)
@@ -95,12 +96,13 @@ object NotificationHelper {
         // A picture-only MMS has a blank body: it gets a label instead of an
         // empty row, and the picture itself rides along as message data.
         val photoLabel = context.getString(R.string.notif_photo)
+        val voiceLabel = context.getString(R.string.notif_voice)
         val lines = NotificationHistory.window(
             if (history.isEmpty()) {
                 listOf(
                     NotificationLine(
                         fallbackText, System.currentTimeMillis(), false,
-                        isImage = imageUri != null, imageUri = imageUri
+                        isImage = imageUri != null, imageUri = imageUri, isAudio = audio
                     )
                 )
             } else history.map {
@@ -109,7 +111,8 @@ object NotificationHelper {
                     it.timestamp,
                     fromMe = false,
                     isImage = it.isImage,
-                    imageUri = it.imageUri
+                    imageUri = it.imageUri,
+                    isAudio = it.isAudio
                 )
             }
         )
@@ -117,7 +120,12 @@ object NotificationHelper {
         // on a receiver thread for lines that sit below the visible one.
         val newestImage = lines.lastOrNull { it.isImage }
         lines.forEach {
-            val text = if (it.text.isBlank() && it.isImage) photoLabel else it.text
+            val text = when {
+                it.text.isNotBlank() -> it.text
+                it.isImage -> photoLabel
+                it.isAudio -> voiceLabel
+                else -> it.text
+            }
             val message = NotificationCompat.MessagingStyle.Message(
                 text, it.timestamp, if (it.fromMe) me else person
             )
@@ -363,7 +371,14 @@ object NotificationHelper {
         from: String,
         body: String,
         imageUri: String? = null,
-        silentRepost: Boolean = false
+        silentRepost: Boolean = false,
+        audio: Boolean = false,
+        /**
+         * The chat the import filed this message under (#448). A group has no
+         * single address, so looking it up by [from] would post the group on the
+         * sender's private channel and title it with the sender's name.
+         */
+        conversationId: Long = 0
     ) {
         // Skip notification if user is already reading this conversation
         if (NotificationPolicy.skipForOpenThread(
@@ -378,7 +393,8 @@ object NotificationHelper {
         if (!canPost(context)) return
 
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        val convoId = app.repository.conversationIdForAddress(from)
+        val convoId = conversationId.takeIf { it > 0 }
+            ?: app.repository.conversationIdForAddress(from)
 
         val replyable = com.anindra.messages.data.AddressIdentity.isReplyable(from)
         val contactName = app.repository.contactNameFor(from)
@@ -490,9 +506,10 @@ object NotificationHelper {
         val title = if (privacyMode) context.getString(R.string.notif_title_private) else senderName
         val text = when {
             privacyMode -> context.getString(R.string.notif_body_private)
-            // A picture-only MMS has no text; an empty text is what made the
-            // whole notification blank.
+            // A picture- or voice-only MMS has no text; an empty text is what
+            // made the whole notification blank.
             body.isBlank() && imageUri != null -> context.getString(R.string.notif_photo)
+            body.isBlank() && audio -> context.getString(R.string.notif_voice)
             app.repository.settings.hideLinks -> hideUrls(body)
             else -> body
         }
@@ -531,7 +548,7 @@ object NotificationHelper {
             .setStyle(
                 groupedStyle(
                     context, app, convoId, senderName, text, imageUri, privacyMode,
-                    senderIcon = avatar?.icon
+                    senderIcon = avatar?.icon, audio = audio
                 )
             )
         avatar?.let { builder.setLargeIcon(it.bitmap) }
@@ -913,6 +930,18 @@ object SmsSender {
     }
 
     /**
+     * Whether the carrier profile allows one MMS addressed to several people.
+     *
+     * A group text has to leave as a single MMS or the recipients never see a
+     * group (#448). A profile that forbids it — or a platform that cannot say —
+     * means falling back to one SMS per person, which is what the app did for
+     * every group before this existed.
+     */
+    fun groupMmsEnabled(context: Context, subscriptionId: Int): Boolean = runCatching {
+        MmsFacade.profiles(context).of(subscriptionId).groupMmsEnabled()
+    }.getOrDefault(false)
+
+    /**
      * Sends attachments as one MMS through the `:mms` stack (see [MmsSender]).
      *
      * The stack fits every attachment to the carrier, builds one PDU, writes the
@@ -930,10 +959,12 @@ object SmsSender {
         mimeTypes: List<String?> = emptyList()
     ): Boolean {
         val mimes = media.mapIndexed { index, uri ->
-            mimeTypes.getOrNull(index)
-                ?: com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
-                    context.contentResolver.getType(uri), uri.toString()
-                )
+            com.anindra.messages.data.MmsSupport.canonicalMime(
+                mimeTypes.getOrNull(index)
+                    ?: com.anindra.messages.data.MmsSupport.defaultAttachmentMime(
+                        context.contentResolver.getType(uri), uri.toString()
+                    )
+            )
         }
         return MmsSender.send(
             context, messageIds, addresses, media, mimes, caption, subscriptionId

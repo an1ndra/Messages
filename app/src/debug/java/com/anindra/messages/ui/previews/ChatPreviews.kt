@@ -2,6 +2,7 @@ package com.anindra.messages.ui.previews
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,7 +11,9 @@ import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Chat
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
@@ -22,10 +25,13 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import com.anindra.messages.data.Message
+import com.anindra.messages.data.MmsSupport
 import com.anindra.messages.ui.AlphanumericNotice
 import com.anindra.messages.ui.AlbumGrid
 import com.anindra.messages.ui.ChatSearchBar
@@ -35,6 +41,9 @@ import com.anindra.messages.ui.DetailRow
 import com.anindra.messages.ui.LinkWarningDialog
 import com.anindra.messages.ui.MessageSelectionToolbar
 import com.anindra.messages.ui.MessageRow
+import com.anindra.messages.ui.PreviewControl
+import com.anindra.messages.ui.VideoBubble
+import com.anindra.messages.ui.VideoPlayerDialog
 import com.anindra.messages.ui.ScheduledBubble
 import com.anindra.messages.ui.SimPickerDialog
 import com.anindra.messages.ui.SkeletonMessageRow
@@ -119,7 +128,8 @@ private fun MessageSelectionToolbarPreview() {
             allStarred = false,
             onSelectAll = {},
             onSelectText = {},
-            onSaveImage = {},
+            saveTarget = MmsSupport.SaveTarget.AUDIO,
+            onSaveMedia = {},
             onClose = {},
             onCopy = {},
             onForward = {},
@@ -137,7 +147,8 @@ private fun MessageSelectionToolbarPreview() {
             allStarred = true,
             onSelectAll = {},
             onSelectText = null,
-            onSaveImage = null,
+            saveTarget = null,
+            onSaveMedia = {},
             onClose = {},
             onCopy = {},
             onForward = {},
@@ -274,8 +285,44 @@ private fun ImagePreviewPreview() {
     // themed Stage — a surface here would only hide it.
     ImagePreview(
         uri = "android.resource://com.anindra.messages/drawable/ic_launcher",
-        onDismiss = {}
+        onDismiss = {},
+        onSave = {}
     )
+}
+
+@PreviewLightDark
+@Preview(name = "Video bubble", showBackground = true, widthDp = 320)
+@Composable
+private fun VideoBubblePreview() {
+    // No frame is decoded in a preview, so this is the placeholder a clip the
+    // device cannot decode draws: the badge on the themed block (#461).
+    VideoBubble(uri = "content://mms/part/9", isMe = false, onClick = {})
+}
+
+@PreviewLightDark
+@Preview(name = "Video player", showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun VideoPlayerDialogPreview() {
+    // The player has no state of its own beyond the URI, so the preview is the
+    // real dialog; the URI simply never prepares.
+    VideoPlayerDialog(uri = "content://mms/part/9", onSave = {}, onDismiss = {})
+}
+
+@PreviewLightDark
+@Preview(name = "Viewer controls", showBackground = true, widthDp = 220)
+@Composable
+private fun PreviewControlPreview() {
+    // The controls sit on the viewer's black backdrop, so the preview shows
+    // them on one: white ink on a light surface would be invisible.
+    Row(
+        modifier = Modifier
+            .background(Color.Black)
+            .padding(16.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+    ) {
+        PreviewControl(Icons.Rounded.Download, "Save image", {})
+        PreviewControl(Icons.Rounded.Close, "Close", {})
+    }
 }
 
 @PreviewLightDark
@@ -347,13 +394,18 @@ private fun AlbumGridPreview() {
         horizontalAlignment = androidx.compose.ui.Alignment.End
     ) {
         AlbumGrid(
-            uris = listOf(
-                "content://mms/part/1",
-                "content://mms/part/2",
-                "content://mms/part/3",
-                "content://mms/part/4",
-                "content://mms/part/5"
-            ),
+            messages = (1..5).map { part ->
+                Message(
+                    id = part.toLong(),
+                    conversationId = 1,
+                    body = "",
+                    timestamp = 0,
+                    isMe = true,
+                    status = "sent",
+                    mediaType = "image",
+                    mediaUri = "content://mms/part/$part"
+                )
+            },
             isMe = true,
             onImageTap = {}
         )
