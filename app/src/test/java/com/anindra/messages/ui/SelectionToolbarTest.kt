@@ -138,11 +138,11 @@ class SelectionToolbarTest {
         // name the wrong destination.
         assertEquals(
             R.string.chat_save_video,
-            SelectionToolbar.saveLabelRes(count = 1, hasVideo = true)
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.VIDEO, count = 1)
         )
         assertEquals(
             R.string.chat_save_video,
-            SelectionToolbar.saveLabelRes(count = 3, hasVideo = true)
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.VIDEO, count = 3)
         )
     }
 
