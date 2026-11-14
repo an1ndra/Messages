@@ -1208,11 +1208,9 @@ class Repository(private val context: Context) {
             "SELECT group_title_custom FROM conversations WHERE id=?", arrayOf(conversationId.toString())
         ).use { c -> if (c.moveToFirst()) c.getInt(0) == 1 else false }
         if (custom) return
-        val names = members.map { contactNameFor(it) ?: it }.take(3)
-        val title = when {
-            names.size <= 1 -> names.first()
-            else -> names.dropLast(1).joinToString(", ") + " +" + names.last()
-        }
+        // AOSP's own format: every member's name, joined with ", " (no "+N"
+        // and no "+" separator, which read as part of the next phone number).
+        val title = members.joinToString(", ") { contactNameFor(it) ?: it }
         db.writableDatabase.update(
             "conversations",
             ContentValues().apply { put("group_title", title) },

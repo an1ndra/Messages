@@ -1,6 +1,7 @@
 package com.anindra.messages.ui
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -21,8 +22,10 @@ class ContactDetailsListLabelTest {
 
     @Test
     fun `a group's own name wins over its primary contact`() {
+        // The label is bidi-isolated so a number inside it cannot be reordered
+        // by an RTL paragraph; the words are unchanged.
         assertEquals(
-            "Sarah +Dad",
+            BidiText.ltr("Sarah +Dad"),
             ContactDetails.listLabel(
                 groupTitle = "Sarah +Dad",
                 name = "Sarah",
@@ -30,6 +33,19 @@ class ContactDetailsListLabelTest {
                 display = formatted,
             ),
         )
+    }
+
+    @Test
+    fun `a group of numbers keeps every number intact and in order`() {
+        // The reported bug: in RTL "+12345678, +12345789" painted as
+        // "8765431+, 98754321+". Each member is isolated, and an all-LTR list
+        // is pinned as a whole so its order survives too.
+        val title = "+12345678, +12345789"
+        val label = ContactDetails.listLabel(title, "+12345678", "+12345678", "12345678")
+        assertEquals(BidiText.groupTitle(title), label)
+        assertTrue("the first number must be isolated", label.contains(BidiText.ltr("+12345678")))
+        assertTrue("the second number must be isolated", label.contains(BidiText.ltr("+12345789")))
+        assertTrue("the list order must be pinned", label.startsWith(BidiText.LRI.toString()))
     }
 
     @Test
