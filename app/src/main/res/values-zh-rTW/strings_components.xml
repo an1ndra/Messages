@@ -27,6 +27,10 @@
     <string name="access_start_chat">開始對話</string>
     <string name="access_loading_messages">正在載入訊息</string>
     <string name="access_photo">照片</string>
+    <string name="access_voice">語音訊息</string>
+    <string name="access_voice_play">播放語音訊息</string>
+    <string name="access_voice_pause">暫停語音訊息</string>
+    <string name="access_video">影片</string>
     <string name="action_call">撥打電話</string>
     <string name="access_chat_top_bar">對話頂部列</string>
     <string name="access_swipe_background">滑動背景</string>
@@ -41,6 +45,7 @@
     <string name="icon_attach">附加</string>
     <string name="icon_emoji">表情符號</string>
     <string name="icon_send">傳送</string>
+    <string name="icon_voice">錄製語音訊息</string>
     <string name="icon_close_search">關閉搜尋</string>
     <string name="icon_back_to_inbox">返回收件匣</string>
     <string name="icon_search">搜尋</string>

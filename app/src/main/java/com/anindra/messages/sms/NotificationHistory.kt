@@ -9,7 +9,10 @@ data class NotificationLine(
      *  body, so without this flag the line would look empty and be dropped. */
     val isImage: Boolean = false,
     /** Where the picture can be read from, when [isImage]. */
-    val imageUri: String? = null
+    val imageUri: String? = null,
+    /** True when the message carries a voice note. Like a picture, a voice MMS
+     *  has a blank body and is dropped unless it says what it is. */
+    val isAudio: Boolean = false
 )
 
 /**
@@ -27,7 +30,7 @@ object NotificationHistory {
      *  empty line as an empty row. A picture line is kept even when its text is
      *  blank, because the caller gives it a label and the image itself. */
     fun window(lines: List<NotificationLine>): List<NotificationLine> =
-        lines.filter { it.text.isNotBlank() || it.isImage }
+        lines.filter { it.text.isNotBlank() || it.isImage || it.isAudio }
             .takeLast(MAX_LINES)
 
     /** How many of their messages to carry. Bounded by what is actually

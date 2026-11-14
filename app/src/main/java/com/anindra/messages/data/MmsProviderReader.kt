@@ -44,7 +44,7 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
                         continue
                     }
                     val content = MmsSupport.content(parts(id))
-                    if (content.imageId == null && content.body.isBlank()) continue
+                    if (content.mediaRows().isEmpty() && content.body.isBlank()) continue
                     Message(id, address, timestamp, box == 2, cursor.getInt(5) != 0,
                         if (cursor.isNull(6)) -1 else cursor.getInt(6), content)
                 } catch (e: SecurityException) {
@@ -82,7 +82,9 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
                 val partId = it.getLong(0)
                 val mid = it.getLong(1)
                 val mime = it.getString(2).orEmpty()
-                if (partId > 0 && mid > 0 && MmsSupport.isImage(mime)) {
+                if (partId > 0 && mid > 0 &&
+                    (MmsSupport.isImage(mime) || MmsSupport.isVideo(mime))
+                ) {
                     out.getOrPut(mid) { mutableListOf() }.add(partId)
                 }
             }

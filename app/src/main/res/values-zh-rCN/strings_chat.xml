@@ -21,8 +21,23 @@
     <string name="chat_select_text">选择文本</string>
     <string name="chat_save_image">保存图片</string>
     <string name="chat_save_images">保存图片</string>
+    <string name="chat_save_voice">保存语音消息</string>
     <string name="chat_image_saved">图片已保存到 Pictures/Messages</string>
     <string name="chat_image_save_failed">无法保存图片</string>
+    <string name="chat_save_video">保存视频</string>
+    <string name="chat_video_saved">视频已保存到 Movies/Messages</string>
+    <string name="chat_video_save_failed">无法保存视频</string>
+
+    <string name="chat_voice_saved">语音消息已保存到 Music/Messages</string>
+    <string name="chat_voice_save_failed">无法保存语音消息</string>
+
+    <string name="chat_voice_slide_cancel">滑动取消</string>
+    <string name="chat_voice_release_cancel">松开取消</string>
+    <string name="chat_voice_permission_denied">录制语音消息需要访问麦克风</string>
+    <string name="chat_voice_start_failed">无法开始录音</string>
+    <string name="chat_voice_too_short">录音太短。请按住麦克风进行录音。</string>
+    <string name="chat_voice_max_reached">语音消息已达 MMS 大小上限并停止</string>
+    <string name="chat_voice_cancel_recording">取消录音</string>
 
     <string name="chat_cant_send">无法发送消息</string>
     <string name="chat_archived">对话已归档</string>
