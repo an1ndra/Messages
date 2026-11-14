@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.anindra.messages.R
+import com.anindra.messages.data.Message
 
 /**
  * Layout of the pictures one multi-picture MMS carries, which share a single
@@ -81,11 +82,12 @@ private val TileCorner = RoundedCornerShape(12.dp)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun AlbumGrid(
-    uris: List<String>,
+    messages: List<Message>,
     isMe: Boolean,
-    onImageTap: (String) -> Unit,
+    onImageTap: (Message) -> Unit,
     onLongPress: () -> Unit = {}
 ) {
+    val uris = messages.map { it.mediaUri }
     var page by remember(uris) { mutableIntStateOf(0) }
     val lastPage = (ImageAlbum.pageCount(uris.size) - 1).coerceAtLeast(0)
     val current = page.coerceIn(0, lastPage)
@@ -115,7 +117,7 @@ internal fun AlbumGrid(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .combinedClickable(
-                                    onClick = { onImageTap(uris[index]) },
+                                    onClick = { onImageTap(messages[index]) },
                                     onLongClick = onLongPress
                                 )
                         )

@@ -27,6 +27,7 @@
     <string name="access_start_chat">شروع گفتگو</string>
     <string name="access_loading_messages">در حال بارگذاری پیام‌ها</string>
     <string name="access_photo">عکس</string>
+    <string name="access_video">ویدیو</string>
     <string name="action_call">تماس</string>
     <string name="access_chat_top_bar">نوار بالای گفتگو</string>
     <string name="access_swipe_background">پس‌زمینه کشیدن</string>

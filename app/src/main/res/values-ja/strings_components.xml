@@ -27,6 +27,7 @@
     <string name="access_start_chat">チャットを開始</string>
     <string name="access_loading_messages">メッセージを読み込み中</string>
     <string name="access_photo">写真</string>
+    <string name="access_video">動画</string>
     <string name="action_call">電話</string>
     <string name="access_chat_top_bar">チャット上部バー</string>
     <string name="access_swipe_background">スワイプ背景</string>

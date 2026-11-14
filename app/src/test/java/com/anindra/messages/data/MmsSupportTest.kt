@@ -132,7 +132,7 @@ class MmsSupportTest {
     }
 
     @Test
-    fun combinesTextAndReportsAttachmentsNotDisplayed() {
+    fun combinesTextAndKeepsEveryAttachmentItCanShow() {
         val content = MmsSupport.content(listOf(
             MmsSupport.Part(1, "application/smil"),
             MmsSupport.Part(2, "text/plain", "Caption"),
@@ -141,12 +141,74 @@ class MmsSupportTest {
             MmsSupport.Part(5, "video/mp4")
         ))
         assertEquals(3L, content.imageId)
-        // The second picture is imported as its own row now, so only the video
-        // is left over (#398).
+        // Each picture and the clip get a row of their own (#398, #461), so
+        // nothing here is left to apologise for.
         assertEquals(listOf(4L), content.extraImageIds)
+        assertEquals(listOf(5L), content.videoIds)
+        assertEquals(0, content.omittedParts)
+        assertEquals("Caption", content.body)
+        assertEquals(
+            listOf("image" to 3L, "image" to 4L, "video" to 5L),
+            content.mediaRows()
+        )
+    }
+
+    @Test
+    fun aVideoMmsIsAVideoRatherThanANotice() {
+        // #461: a clip-only MMS used to arrive as one grey line saying the
+        // attachment could not be displayed.
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(1, "application/smil"),
+            MmsSupport.Part(7, "video/mp4")
+        ))
+        assertEquals("video", content.mediaType)
+        assertEquals(7L, content.mediaId)
+        assertEquals(listOf(7L), content.videoIds)
+        assertEquals("", content.body)
+        assertEquals(listOf("video" to 7L), content.mediaRows())
+    }
+
+    @Test
+    fun aClipIsNotFoldedIntoThePictureAlbum() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(2, "image/jpeg"),
+            MmsSupport.Part(3, "video/3gpp")
+        ))
+        assertEquals("image", content.mediaType)
+        assertEquals(listOf(3L), content.videoIds)
+        // The one picture is the message's own, so the album list stays empty;
+        // the clip is still a row of its own.
+        assertEquals(emptyList<Long>(), content.extraImageIds)
+        assertEquals(listOf("image" to 2L, "video" to 3L), content.mediaRows())
+    }
+
+    @Test
+    fun onlyWhatTheAppCannotShowIsCountedAsUnsupported() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(1, "image/png"),
+            MmsSupport.Part(2, "application/pdf"),
+            MmsSupport.Part(3, "video/3gpp")
+        ))
         assertEquals(1, content.omittedParts)
-        assertTrue(content.body.startsWith("Caption\n"))
         assertTrue(content.body.contains("1 additional/unsupported"))
+    }
+
+    @Test
+    fun aMimeDecidesWhichBubbleTheAttachmentGets() {
+        assertEquals("image", MmsSupport.mediaKind("image/jpeg"))
+        assertEquals("video", MmsSupport.mediaKind("video/mp4"))
+        assertEquals("video", MmsSupport.mediaKind("VIDEO/3GPP"))
+        assertEquals("file", MmsSupport.mediaKind("application/pdf"))
+        assertTrue(MmsSupport.isVideo("video/quicktime"))
+        assertFalse(MmsSupport.isVideo("image/jpeg"))
+    }
+
+    @Test
+    fun aSavedClipKeepsAVideoExtension() {
+        assertEquals("Alex_1700000000000.mp4",
+            MmsSupport.savedAttachmentName("Alex", 1700000000000, "video/mp4"))
+        assertEquals("Alex_1700000000000.3gp",
+            MmsSupport.savedAttachmentName("Alex", 1700000000000, "video/3gpp"))
     }
 
     @Test
@@ -288,9 +350,11 @@ class MmsSupportTest {
 
     @Test
     fun theBodyNoticeIsRecognisable() {
+        // A document is the case the notice still exists for; a clip is shown
+        // in its own bubble since #461.
         val notice = MmsSupport.content(listOf(
             MmsSupport.Part(1, "image/png"),
-            MmsSupport.Part(2, "video/mp4")
+            MmsSupport.Part(2, "application/pdf")
         )).body
         assertEquals("[MMS: 1 additional/unsupported attachment(s) not displayed]", notice)
         assertTrue(MmsSupport.carriesNotice(notice))

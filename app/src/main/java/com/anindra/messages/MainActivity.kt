@@ -663,13 +663,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Saves a message attachment (e.g. an MMS picture) to the gallery (#235).
-     *  Reads the bytes through the resolver so provider-backed
+    /** Saves a message attachment (an MMS picture or clip) to the gallery
+     *  (#235, #461). Reads the bytes through the resolver so provider-backed
      *  `content://mms/part/...` URIs and our own cache URIs both work. */
     fun saveMessageImage(messageId: Long) = saveMessageImages(listOf(messageId))
 
     /**
-     * Saves every picture of the selection. A multi-picture MMS is one bubble
+     * Saves every attachment of the selection. A multi-picture MMS is one bubble
      * backed by a row per picture, so saving only the first row stored one
      * picture and still reported success (#364).
      */
@@ -684,27 +684,43 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             var saved = 0
+            var clip = false
             for (msg in messages) {
                 val uri = Uri.parse(msg.mediaUri)
                 val bytes = runCatching {
                     resolver.openInputStream(uri)?.use { it.readBytes() }
                 }.getOrNull()
-                val mime = MmsSupport.mimeForSavedAttachment(
-                    msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
-                )
+                val video = msg.mediaType == "video"
+                // The provider reports no MIME for a part, and a clip has no
+                // extension to fall back on, so a video row names its own type.
+                val mime = if (video) {
+                    MmsSupport.DEFAULT_VIDEO_MIME
+                } else {
+                    MmsSupport.mimeForSavedAttachment(
+                        msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
+                    )
+                }
                 val convo = repo.conversationByIdSuspend(msg.conversationId)
                 val name = MmsSupport.savedAttachmentName(
                     convo?.name ?: convo?.address ?: "message", msg.timestamp, mime
                 )
-                if (bytes != null && bytes.isNotEmpty() &&
-                    DownloadsStore.writeImage(app, name, mime, bytes)
-                ) saved++
+                val written = bytes != null && bytes.isNotEmpty() &&
+                    if (video) DownloadsStore.writeVideo(app, name, mime, bytes)
+                    else DownloadsStore.writeImage(app, name, mime, bytes)
+                if (written) {
+                    saved++
+                    clip = clip || video
+                }
             }
             withContext(Dispatchers.Main) {
                 Toast.makeText(
                     app,
-                    if (saved == messages.size) R.string.chat_image_saved
-                    else R.string.chat_image_save_failed,
+                    when {
+                        saved != messages.size -> if (clip) R.string.chat_video_save_failed
+                            else R.string.chat_image_save_failed
+                        clip -> R.string.chat_video_saved
+                        else -> R.string.chat_image_saved
+                    },
                     Toast.LENGTH_SHORT
                 ).show()
             }
