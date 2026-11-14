@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.ContactsContract
 import android.telephony.SubscriptionManager
 import android.widget.Toast
+import android.widget.VideoView
 import android.text.SpannableStringBuilder
 import android.text.style.URLSpan
 import android.text.util.Linkify
@@ -32,12 +33,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -95,6 +92,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Schedule
 
 import androidx.compose.material3.AlertDialog
@@ -118,6 +116,8 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -153,6 +153,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -219,13 +220,13 @@ import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 import androidx.compose.runtime.mutableStateListOf
 
@@ -316,6 +317,7 @@ internal fun ChatBubble(
     senderName: String? = null,
     onTap: () -> Unit,
     onImageTap: (Message) -> Unit = {},
+    onVideoTap: (Message) -> Unit = {},
     deliveryReports: Boolean,
     highlightLinks: Boolean,
     linkWarningEnabled: Boolean,
@@ -449,7 +451,14 @@ internal fun ChatBubble(
             Layout(
                 content = {
             Box {
-                if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
+                if (msg.mediaType == "video" && msg.mediaUri.isNotBlank()) {
+                    VideoBubble(
+                        uri = msg.mediaUri,
+                        isMe = msg.isMe,
+                        onClick = { onVideoTap(msg) },
+                        onLongPress = onLongPress
+                    )
+                } else if (msg.mediaType == "image" && msg.mediaUri.isNotBlank()) {
                     Column(
                         horizontalAlignment = if (msg.isMe) Alignment.End else Alignment.Start,
                         modifier = Modifier.combinedClickable(
@@ -981,6 +990,7 @@ fun ChatScreen(
     // picture through the same message-id path the selection toolbar uses, and
     // each album picture is a row of its own (#398).
     var previewImage by remember { mutableStateOf<Message?>(null) }
+    var playingVideo by remember { mutableStateOf<Message?>(null) }
 
     var pendingSendText by remember { mutableStateOf("") }
     var sendCountdown by remember { mutableIntStateOf(0) }
@@ -1507,6 +1517,7 @@ fun ChatScreen(
                         ?.takeIf { it.body.isNotBlank() }
                         ?.let { m -> { startTextSelection(m.id) } },
                     saveCount = saveTargets.size,
+                    saveHasVideo = saveTargets.any { it.mediaType == "video" },
                     onSaveImage = saveTargets.takeIf { it.isNotEmpty() }
                         ?.let { targets -> { saveMessageImages(targets.map { it.id }) } },
                     onClose = { clearSelection() },
@@ -1828,6 +1839,10 @@ fun ChatScreen(
                                 if (selectionActive) toggleRowSelection(rowIds)
                                 else previewImage = picture
                             },
+                            onVideoTap = { clip ->
+                                if (selectionActive) toggleRowSelection(rowIds)
+                                else playingVideo = clip
+                            },
                             deliveryReports = deliveryReports,
                             highlightLinks = vm.settings.highlightLinks,
                             linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
@@ -2027,6 +2042,14 @@ fun ChatScreen(
         )
     }
 
+    playingVideo?.let { clip ->
+        VideoPlayerDialog(
+            uri = clip.mediaUri,
+            onSave = { vm.saveMessageImage(clip.id) },
+            onDismiss = { playingVideo = null }
+        )
+    }
+
     if (showForwardPicker) {
         val vmContacts by vm.contacts.collectAsState()
         val vmConversations by vm.conversations.collectAsState(initial = emptyList())
@@ -2111,6 +2134,7 @@ internal fun MessageSelectionToolbar(
     onSelectText: (() -> Unit)?,
     onSaveImage: (() -> Unit)?,
     saveCount: Int = 1,
+    saveHasVideo: Boolean = false,
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
@@ -2187,7 +2211,13 @@ internal fun MessageSelectionToolbar(
                         }
                         if (onSaveImage != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(SelectionToolbar.saveLabelRes(saveCount))) },
+                                text = {
+                                    Text(
+                                        stringResource(
+                                            SelectionToolbar.saveLabelRes(saveCount, saveHasVideo)
+                                        )
+                                    )
+                                },
                                 onClick = { overflow = false; onSaveImage() }
                             )
                         }
@@ -3257,6 +3287,118 @@ internal fun PreviewControl(
             tint = Color.White,
             modifier = Modifier.size(28.dp)
         )
+    }
+}
+
+/**
+ * The still of an MMS clip with a play badge over it (#461).
+ *
+ * The bubble shows the clip's first frame, the way Google Messages does, and a
+ * tap opens [VideoPlayerDialog]. The badge is the only control: the still is not
+ * a playback surface, so a tap anywhere on it means "play this".
+ */
+@Composable
+internal fun VideoBubble(
+    uri: String,
+    isMe: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val cs = MaterialTheme.colorScheme
+    val still by produceState<ImageBitmap?>(initialValue = null, uri) {
+        value = withContext(Dispatchers.IO) { VideoThumbnail.frame(context, uri) }
+    }
+    Box(
+        modifier = Modifier
+            .widthIn(max = 260.dp)
+            .heightIn(max = 300.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(cs.surfaceVariant)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress),
+        contentAlignment = Alignment.Center
+    ) {
+        still?.let {
+            Image(
+                bitmap = it,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(cs.scrim.copy(alpha = 0.55f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.PlayArrow,
+                contentDescription = stringResource(R.string.access_video),
+                tint = cs.inverseOnSurface,
+                modifier = Modifier.size(34.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Plays one MMS clip full screen (#461).
+ *
+ * A plain `VideoView` rather than a player library: the app already ships no
+ * media stack, and the platform decodes the mp4/3gp a carrier will deliver. Save
+ * writes the same bytes the player is reading, through the shared attachment
+ * path, so it lands in Movies/Messages.
+ */
+@Composable
+internal fun VideoPlayerDialog(
+    uri: String,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    val cs = MaterialTheme.colorScheme
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .windowInsetsPadding(WindowInsets.statusBars)
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    VideoView(ctx).apply {
+                        setMediaController(android.widget.MediaController(ctx).also {
+                            it.setAnchorView(this)
+                        })
+                        setVideoURI(Uri.parse(uri))
+                        setOnPreparedListener { start() }
+                    }
+                },
+                modifier = Modifier.fillMaxSize().padding(8.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PreviewControl(
+                    icon = Icons.Rounded.Download,
+                    description = stringResource(R.string.chat_save_video),
+                    onClick = onSave
+                )
+                PreviewControl(
+                    icon = Icons.Rounded.Close,
+                    description = stringResource(R.string.chat_close),
+                    onClick = onDismiss
+                )
+            }
+        }
     }
 }
 

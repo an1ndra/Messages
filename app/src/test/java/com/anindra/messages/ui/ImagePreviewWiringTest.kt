@@ -23,7 +23,11 @@ class ImagePreviewWiringTest {
         assertTrue("could not find $function in ChatScreen.kt", start >= 0)
         // Cut at the next top-level `fun ` so a later function cannot satisfy
         // an assertion that belonged to this one.
-        val next = chatSource.indexOf("\nfun ", start)
+        // Any top-level declaration ends the body, whatever its visibility:
+        // cutting only on "\nfun " ran this test's assertions into the next
+        // `internal fun` and counted its inset paddings as this composable's.
+        val next = Regex("\\n(?:@\\w+|(?:internal |private |public )?fun )")
+            .find(chatSource, start + 1)?.range?.first ?: -1
         return if (next < 0) chatSource.substring(start) else chatSource.substring(start, next)
     }
 

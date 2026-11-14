@@ -59,9 +59,14 @@ object SelectionToolbar {
         groups.filter { group -> group.isNotEmpty() && group.none { it in lockedIds } }.flatten()
 
     /** Save names the number of files it will write: selecting several pictures
-     *  offered "Save image" and read as if only one would be saved (#398). */
-    fun saveLabelRes(count: Int): Int =
-        if (count > 1) R.string.chat_save_images else R.string.chat_save_image
+     *  offered "Save image" and read as if only one would be saved (#398). A
+     *  selection holding a clip says so, since it lands in Movies/Messages
+     *  rather than the gallery (#461). */
+    fun saveLabelRes(count: Int, hasVideo: Boolean = false): Int = when {
+        hasVideo -> R.string.chat_save_video
+        count > 1 -> R.string.chat_save_images
+        else -> R.string.chat_save_image
+    }
     /** Whether an action dismisses the selection afterwards. Non-destructive
      *  actions (copy, share, forward) leave the selection in place so the user
      *  can chain actions; destructive/state-changing ones (trash, lock) clear it. */
