@@ -27,6 +27,7 @@
     <string name="access_start_chat">بدء محادثة</string>
     <string name="access_loading_messages">جارٍ تحميل الرسائل</string>
     <string name="access_photo">صورة</string>
+    <string name="access_video">فيديو</string>
     <string name="action_call">اتصال</string>
     <string name="access_chat_top_bar">الشريط العلوي للمحادثة</string>
     <string name="access_swipe_background">خلفية التمرير</string>

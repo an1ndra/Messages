@@ -24,6 +24,9 @@
     <string name="chat_save_images">Salvar imagens</string>
     <string name="chat_image_saved">Imagem salva em Pictures/Messages</string>
     <string name="chat_image_save_failed">Não foi possível salvar a imagem</string>
+    <string name="chat_save_video">Salvar vídeo</string>
+    <string name="chat_video_saved">Vídeo salvo em Movies/Messages</string>
+    <string name="chat_video_save_failed">Não foi possível salvar o vídeo</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Não é possível enviar mensagem</string>

@@ -24,6 +24,9 @@
     <string name="chat_save_images">छवियाँ सहेजें</string>
     <string name="chat_image_saved">छवि Pictures/Messages में सहेजी गई</string>
     <string name="chat_image_save_failed">छवि सहेजी नहीं जा सकी</string>
+    <string name="chat_save_video">वीडियो सहेजें</string>
+    <string name="chat_video_saved">वीडियो Movies/Messages में सहेजा गया</string>
+    <string name="chat_video_save_failed">वीडियो सहेजा नहीं जा सका</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">संदेश भेजा नहीं जा सकता</string>
