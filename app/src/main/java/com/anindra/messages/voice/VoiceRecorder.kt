@@ -27,10 +27,10 @@ class VoiceRecorder(private val context: Context) {
         data class Recorded(val note: Note) : FinishResult
 
         /** The press was too brief for the encoder to write a container. */
-        data object TooShort : FinishResult
+        object TooShort : FinishResult
 
         /** The recorder stopped or produced nothing readable. */
-        data object Failed : FinishResult
+        object Failed : FinishResult
     }
 
     private var recorder: MediaRecorder? = null
