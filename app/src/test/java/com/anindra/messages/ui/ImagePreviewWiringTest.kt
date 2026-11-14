@@ -23,7 +23,11 @@ class ImagePreviewWiringTest {
         assertTrue("could not find $function in ChatScreen.kt", start >= 0)
         // Cut at the next top-level `fun ` so a later function cannot satisfy
         // an assertion that belonged to this one.
-        val next = chatSource.indexOf("\nfun ", start)
+        // Any top-level declaration ends the body, whatever its visibility:
+        // cutting only on "\nfun " ran this test's assertions into the next
+        // `internal fun` and counted its inset paddings as this composable's.
+        val next = Regex("\\n(?:@\\w+|(?:internal |private |public )?fun )")
+            .find(chatSource, start + 1)?.range?.first ?: -1
         return if (next < 0) chatSource.substring(start) else chatSource.substring(start, next)
     }
 
@@ -33,23 +37,25 @@ class ImagePreviewWiringTest {
         val imageBranch = bubble.substringAfter("if (msg.mediaType == \"image\"")
         assertTrue(
             "the image branch must route its tap to onImageTap",
-            imageBranch.contains("onClick = { onImageTap(msg.mediaUri) }"),
+            imageBranch.contains("onClick = { onImageTap(msg) }"),
         )
     }
 
     @Test
-    fun chatScreenKeepsTheUriItWasTappedWith() {
+    fun chatScreenKeepsTheTappedRow() {
+        // The row, not just the URI: Save goes through the message id, which is
+        // also what tells two pictures of one album apart (#398, #460).
         assertTrue(
-            "ChatScreen must hold the previewed URI in state",
-            chatSource.contains("var previewImageUri by remember { mutableStateOf<String?>(null) }"),
+            "ChatScreen must hold the previewed message in state",
+            chatSource.contains("var previewImage by remember { mutableStateOf<Message?>(null) }"),
         )
         assertTrue(
-            "the tapped URI must be what is stored",
-            chatSource.contains("previewImageUri = uri"),
+            "the tapped message must be what is stored",
+            chatSource.contains("previewImage = picture"),
         )
         assertTrue(
             "the preview must be rendered from that state",
-            chatSource.contains("previewImageUri?.let { uri ->"),
+            chatSource.contains("previewImage?.let { picture ->"),
         )
     }
 
@@ -95,11 +101,48 @@ class ImagePreviewWiringTest {
     }
 
     @Test
+    fun theImageViewerZoomsWithAPinchAndADoubleTap() {
+        val preview = bodyOf("ImagePreview")
+        assertTrue(
+            "a pinch must drive the viewer's scale",
+            preview.contains("detectTransformGestures"),
+        )
+        assertTrue(
+            "a double tap must jump between fit and the zoom step",
+            preview.contains("onDoubleTap =") &&
+                preview.contains("ViewerZoom.doubleTapTarget(scale)"),
+        )
+        assertTrue(
+            "the transform must be a graphics layer, not a re-layout",
+            preview.contains("graphicsLayer {") && preview.contains("scaleX = scale"),
+        )
+        assertTrue(
+            "panning must be clamped so the picture cannot leave its frame",
+            preview.contains("ViewerZoom.clampPan"),
+        )
+    }
+
+    @Test
+    fun theViewerCanSaveThePictureItShows() {
+        val preview = bodyOf("ImagePreview")
+        assertTrue(
+            "the viewer must offer a save control",
+            preview.contains("onSave") && preview.contains("Icons.Rounded.Download"),
+        )
+        // A save control with no handler behind it is the dead control this
+        // project forbids; the chat has to wire it to the real save path.
+        assertTrue(
+            "the save control must reach the message save path",
+            chatSource.contains("onSave = { vm.saveMessageImage(picture.id) }"),
+        )
+    }
+
+    @Test
     fun backClosesThePreviewInsteadOfLeavingTheChat() {
-        val handlers = chatSource.substringAfter("BackHandler(enabled = previewImageUri != null)")
+        val handlers = chatSource.substringAfter("BackHandler(enabled = previewImage != null)")
         assertTrue(
             "back must dismiss the preview",
-            handlers.substringBefore("\n").contains("previewImageUri = null"),
+            handlers.substringBefore("\n").contains("previewImage = null"),
         )
         assertTrue(
             "the preview's own BackHandler must dismiss it too",

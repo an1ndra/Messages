@@ -24,6 +24,9 @@
     <string name="chat_save_images">이미지 저장</string>
     <string name="chat_image_saved">이미지를 Pictures/Messages에 저장했습니다</string>
     <string name="chat_image_save_failed">이미지를 저장할 수 없습니다</string>
+    <string name="chat_save_video">동영상 저장</string>
+    <string name="chat_video_saved">동영상을 Movies/Messages에 저장했습니다</string>
+    <string name="chat_video_save_failed">동영상을 저장할 수 없습니다</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">메시지를 보낼 수 없습니다</string>
