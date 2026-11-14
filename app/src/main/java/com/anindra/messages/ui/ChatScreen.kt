@@ -41,6 +41,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -89,6 +90,7 @@ import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -151,10 +153,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -305,11 +311,11 @@ internal fun ChatBubble(
      * single bubble a multi-picture MMS gets (#398); one or none keeps the
      * ordinary [ImageBubble].
      */
-    albumUris: List<String> = emptyList(),
+    albumMessages: List<Message> = emptyList(),
     showTime: Boolean,
     senderName: String? = null,
     onTap: () -> Unit,
-    onImageTap: (String) -> Unit = {},
+    onImageTap: (Message) -> Unit = {},
     deliveryReports: Boolean,
     highlightLinks: Boolean,
     linkWarningEnabled: Boolean,
@@ -450,13 +456,13 @@ internal fun ChatBubble(
                             // A tap on an image opens the full-screen preview;
                             // `onTap` alone only toggled link reveal, which an
                             // image has none of, so the tap did nothing visible.
-                            onClick = { onImageTap(msg.mediaUri) },
+                            onClick = { onImageTap(msg) },
                             onLongClick = { onLongPress() }
                         )
                     ) {
-                        if (albumUris.size > 1) {
+                        if (albumMessages.size > 1) {
                             AlbumGrid(
-                                uris = albumUris,
+                                messages = albumMessages,
                                 isMe = msg.isMe,
                                 onImageTap = onImageTap,
                                 onLongPress = onLongPress
@@ -971,7 +977,10 @@ fun ChatScreen(
     var showForwardPicker by remember { mutableStateOf(false) }
 
     var detailsMessage by remember { mutableStateOf<Message?>(null) }
-    var previewImageUri by remember { mutableStateOf<String?>(null) }
+    // The row the viewer is showing, not just its URI: Save writes the
+    // picture through the same message-id path the selection toolbar uses, and
+    // each album picture is a row of its own (#398).
+    var previewImage by remember { mutableStateOf<Message?>(null) }
 
     var pendingSendText by remember { mutableStateOf("") }
     var sendCountdown by remember { mutableIntStateOf(0) }
@@ -1298,7 +1307,7 @@ fun ChatScreen(
 
     // Registered last so it is the innermost handler: while the preview is up,
     // back closes it instead of leaving the chat.
-    BackHandler(enabled = previewImageUri != null) { previewImageUri = null }
+    BackHandler(enabled = previewImage != null) { previewImage = null }
     BackHandler(enabled = backHandled, onBack = ::leaveChat)
     BackHandler(enabled = selectionActive) { clearSelection() }
     BackHandler(enabled = searchOpen) {
@@ -1760,7 +1769,7 @@ fun ChatScreen(
                     val rowIds = row.messageIds()
                     // A multi-picture MMS is one message stored as a row per
                     // picture; the bubble draws them together (#398).
-                    val albumUris = (row as? ChatRow.Album)?.messages?.map { it.mediaUri }.orEmpty()
+                    val albumMessages = (row as? ChatRow.Album)?.messages.orEmpty()
                     val prevRow = chatRows.getOrNull(idx - 1)
                     val prev = prevRow?.firstMessage()
                     val groupStart = prev == null || startsNewGroup(prev, msg)
@@ -1797,7 +1806,7 @@ fun ChatScreen(
                         }
                         ChatBubble(
                             msg = msg,
-                            albumUris = albumUris,
+                            albumMessages = albumMessages,
                             showTime = isLastMessage || isRevealed,
                             // Only a group needs a sender: in a 1:1 chat there is
                             // only one other person and the header names them.
@@ -1815,9 +1824,9 @@ fun ChatScreen(
                             // Selection still wins over the preview, otherwise a
                             // tap while selecting would open a full-screen view
                             // instead of marking the message.
-                            onImageTap = { uri ->
+                            onImageTap = { picture ->
                                 if (selectionActive) toggleRowSelection(rowIds)
-                                else previewImageUri = uri
+                                else previewImage = picture
                             },
                             deliveryReports = deliveryReports,
                             highlightLinks = vm.settings.highlightLinks,
@@ -2010,8 +2019,12 @@ fun ChatScreen(
         )
     }
 
-    previewImageUri?.let { uri ->
-        ImagePreview(uri = uri, onDismiss = { previewImageUri = null })
+    previewImage?.let { picture ->
+        ImagePreview(
+            uri = picture.mediaUri,
+            onSave = { vm.saveMessageImage(picture.id) },
+            onDismiss = { previewImage = null }
+        )
     }
 
     if (showForwardPicker) {
@@ -3090,18 +3103,24 @@ fun MessageRow(
  * Full-screen view of one image attachment, opened by tapping the bubble.
  *
  * The bubble crops to a fixed thumbnail, so anything readable in the original
- * is unreadable there — this is the only place the full frame is shown. It is
- * deliberately minimal: no chrome beyond a close control, because the only
- * question it answers is "what is in this picture". Back and a tap on the
- * backdrop both dismiss.
+ * is unreadable there — this is the only place the full frame is shown. Pinching
+ * zooms towards the fingers and dragging pans while zoomed (#460); double-tapping
+ * jumps between fit and [ViewerZoom.DOUBLE_TAP], and Save writes the picture to
+ * Pictures/Messages without backing out first. Back and a tap on the backdrop
+ * both dismiss, and a tap on the picture still dismisses: the viewer answers
+ * "what is in this picture", so every way out has to stay obvious.
  */
 @Composable
 internal fun ImagePreview(
     uri: String,
     onDismiss: () -> Unit,
+    onSave: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     BackHandler(onBack = onDismiss)
+    var scale by remember(uri) { mutableFloatStateOf(ViewerZoom.MIN) }
+    var offset by remember(uri) { mutableStateOf(Offset.Zero) }
+    var viewport by remember(uri) { mutableStateOf(Size.Zero) }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -3120,38 +3139,119 @@ internal fun ImagePreview(
         coil3.compose.AsyncImage(
             model = uri,
             contentDescription = stringResource(R.string.access_photo),
-            // Fit, not Crop: the point is to see the whole frame.
+            // Fit, not Crop: the point is to see the whole frame, and the
+            // transform below scales that fitted frame rather than cropping it.
             contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize().padding(8.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+                .onSizeChanged { viewport = Size(it.width.toFloat(), it.height.toFloat()) }
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = offset.x
+                    translationY = offset.y
+                }
+                // The centre the anchor maths measures from: a pinch holds the
+                // point under the fingers, which for a fitted picture is the
+                // point inside its frame.
+                .pointerInput(uri) {
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        val from = scale
+                        val next = ViewerZoom.apply(from, zoom)
+                        val fromCentre = Offset(
+                            centroid.x - viewport.width / 2f,
+                            centroid.y - viewport.height / 2f
+                        )
+                        scale = next
+                        offset = Offset(
+                            ViewerZoom.clampPan(
+                                ViewerZoom.anchoredPan(pan.x, offset.x, fromCentre.x, from, next),
+                                next,
+                                viewport.width
+                            ),
+                            ViewerZoom.clampPan(
+                                ViewerZoom.anchoredPan(pan.y, offset.y, fromCentre.y, from, next),
+                                next,
+                                viewport.height
+                            )
+                        )
+                        android.util.Log.d(
+                            "ImageViewer",
+                            "scale=%.2f x=%.0f y=%.0f".format(scale, offset.x, offset.y)
+                        )
+                    }
+                }
+                // A single tap still dismisses, but it has to be decided here:
+                // with a double tap registered, the detector holds the tap for
+                // its timeout, and leaving it to the backdrop's clickable meant
+                // the first tap of a double tap closed the viewer.
+                .pointerInput(uri) {
+                    detectTapGestures(
+                        onTap = { onDismiss() },
+                        onDoubleTap = {
+                            scale = ViewerZoom.doubleTapTarget(scale)
+                            offset = Offset.Zero
+                            android.util.Log.d(
+                                "ImageViewer",
+                                "scale=%.2f x=0 y=0".format(scale)
+                            )
+                        }
+                    )
+                }
         )
         // The backdrop clickable lives on the Box above, which is declared
-        // before this button and therefore hit-tests first.
-        Box(
+        // before this row and therefore hit-tests first.
+        Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                // Clear of the status bar, or the button renders but sits in
-                // the inset where touches never arrive — it looked present and
-                // did nothing. `align(TopEnd)` alone put it at y=21..147 with
+                // Clear of the status bar, or the controls render but sit in
+                // the inset where touches never arrive — they looked present and
+                // did nothing. `align(TopEnd)` alone put them at y=21..147 with
                 // the status bar covering everything above y=137.
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(8.dp)
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.55f))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = onDismiss
-                ),
-            contentAlignment = Alignment.Center
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                Icons.Rounded.Close,
-                contentDescription = stringResource(R.string.chat_close),
-                tint = Color.White,
-                modifier = Modifier.size(28.dp)
+            PreviewControl(
+                icon = Icons.Rounded.Download,
+                description = stringResource(R.string.chat_save_image),
+                onClick = onSave
+            )
+            PreviewControl(
+                icon = Icons.Rounded.Close,
+                description = stringResource(R.string.chat_close),
+                onClick = onDismiss
             )
         }
+    }
+}
+
+/** One round control on the viewer's black backdrop. */
+@Composable
+internal fun PreviewControl(
+    icon: ImageVector,
+    description: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.55f))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = description,
+            tint = Color.White,
+            modifier = Modifier.size(28.dp)
+        )
     }
 }
 
