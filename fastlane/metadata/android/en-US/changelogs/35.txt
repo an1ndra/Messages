@@ -1,0 +1,7 @@
+New in 1.0.32:
+• Home screen widgets: a conversation list and an unread bubble count, both tapping through to the app.
+• Deleted conversations stay deleted, even after a restart.
+• Notification Reply and Mark as read follow the app's language.
+• Phone numbers read left to right in the forward list, and contacts saved with a country code match their threads.
+• Opening a chat loads its whole history; an expanded bubble survives Back.
+• Sim names you set yourself appear in the app.
