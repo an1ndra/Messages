@@ -30,6 +30,7 @@
     <string name="access_voice">Message vocal</string>
     <string name="access_voice_play">Lire le message vocal</string>
     <string name="access_voice_pause">Mettre le message vocal en pause</string>
+    <string name="access_video">Vidéo</string>
     <string name="action_call">Appeler</string>
     <string name="access_chat_top_bar">Barre supérieure du chat</string>
     <string name="access_swipe_background">Arrière-plan du balayage</string>

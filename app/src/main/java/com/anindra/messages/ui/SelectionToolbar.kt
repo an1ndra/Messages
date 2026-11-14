@@ -63,19 +63,21 @@ object SelectionToolbar {
      *  A voice note is never offered as "Save image" (#364). */
     fun saveTargetFor(mediaType: String): MmsSupport.SaveTarget? = when (mediaType) {
         "image" -> MmsSupport.SaveTarget.IMAGE
+        "video" -> MmsSupport.SaveTarget.VIDEO
         "audio" -> MmsSupport.SaveTarget.AUDIO
         else -> null
     }
 
     /** Save names the number of files it will write: selecting several pictures
      *  offered "Save image" and read as if only one would be saved (#398). A
-     *  voice note is always one note, so it says so whatever the count (#364). */
+     *  voice note is always one note and a clip always a clip, so each says so
+     *  whatever the count (#364, #461). */
     fun saveLabelRes(target: MmsSupport.SaveTarget, count: Int = 1): Int = when {
         target == MmsSupport.SaveTarget.AUDIO -> R.string.chat_save_voice
+        target == MmsSupport.SaveTarget.VIDEO -> R.string.chat_save_video
         count > 1 -> R.string.chat_save_images
         else -> R.string.chat_save_image
     }
-
     /** Whether an action dismisses the selection afterwards. Non-destructive
      *  actions (copy, share, forward) leave the selection in place so the user
      *  can chain actions; destructive/state-changing ones (trash, lock) clear it. */

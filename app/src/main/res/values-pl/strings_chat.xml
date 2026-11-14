@@ -25,6 +25,9 @@
     <string name="chat_save_voice">Zapisz wiadomość głosową</string>
     <string name="chat_image_saved">Obraz zapisano w Pictures/Messages</string>
     <string name="chat_image_save_failed">Nie można zapisać obrazu</string>
+    <string name="chat_save_video">Zapisz film</string>
+    <string name="chat_video_saved">Film zapisano w Movies/Messages</string>
+    <string name="chat_video_save_failed">Nie można zapisać filmu</string>
 
     <string name="chat_voice_saved">Wiadomość głosowa zapisana w Music/Messages</string>
     <string name="chat_voice_save_failed">Nie można zapisać wiadomości głosowej</string>

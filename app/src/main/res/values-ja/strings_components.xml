@@ -30,6 +30,7 @@
     <string name="access_voice">ボイス メッセージ</string>
     <string name="access_voice_play">ボイス メッセージを再生</string>
     <string name="access_voice_pause">ボイス メッセージを一時停止</string>
+    <string name="access_video">動画</string>
     <string name="action_call">電話</string>
     <string name="access_chat_top_bar">チャット上部バー</string>
     <string name="access_swipe_background">スワイプ背景</string>

@@ -25,6 +25,9 @@
     <string name="chat_save_voice">ボイスメッセージを保存</string>
     <string name="chat_image_saved">画像を Pictures/Messages に保存しました</string>
     <string name="chat_image_save_failed">画像を保存できませんでした</string>
+    <string name="chat_save_video">動画を保存</string>
+    <string name="chat_video_saved">動画を Movies/Messages に保存しました</string>
+    <string name="chat_video_save_failed">動画を保存できませんでした</string>
 
     <string name="chat_voice_saved">ボイスメッセージを Music/Messages に保存しました</string>
     <string name="chat_voice_save_failed">ボイスメッセージを保存できませんでした</string>

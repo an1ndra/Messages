@@ -30,6 +30,7 @@
     <string name="access_voice">Mensaje de voz</string>
     <string name="access_voice_play">Reproducir mensaje de voz</string>
     <string name="access_voice_pause">Pausar mensaje de voz</string>
+    <string name="access_video">Vídeo</string>
     <string name="action_call">Llamar</string>
     <string name="access_chat_top_bar">Barra superior del chat</string>
     <string name="access_swipe_background">Fondo al deslizar</string>

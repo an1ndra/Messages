@@ -30,6 +30,7 @@
     <string name="access_voice">वॉइस संदेश</string>
     <string name="access_voice_play">वॉइस संदेश चलाएँ</string>
     <string name="access_voice_pause">वॉइस संदेश रोकें</string>
+    <string name="access_video">वीडियो</string>
     <string name="action_call">कॉल करें</string>
     <string name="access_chat_top_bar">चैट टॉप बार</string>
     <string name="access_swipe_background">स्वाइप बैकग्राउंड</string>

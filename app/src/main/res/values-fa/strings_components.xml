@@ -30,6 +30,7 @@
     <string name="access_voice">پیام صوتی</string>
     <string name="access_voice_play">پخش پیام صوتی</string>
     <string name="access_voice_pause">توقف پیام صوتی</string>
+    <string name="access_video">ویدیو</string>
     <string name="action_call">تماس</string>
     <string name="access_chat_top_bar">نوار بالای گفتگو</string>
     <string name="access_swipe_background">پس‌زمینه کشیدن</string>
