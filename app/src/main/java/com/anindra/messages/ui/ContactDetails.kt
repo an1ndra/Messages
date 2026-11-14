@@ -33,5 +33,7 @@ object ContactDetails {
         name: String,
         address: String,
         display: String
-    ): String = if (groupTitle.isNotBlank()) groupTitle else title(name, address, display)
+    ): String =
+        if (groupTitle.isNotBlank()) BidiText.groupTitle(groupTitle)
+        else title(name, address, display)
 }

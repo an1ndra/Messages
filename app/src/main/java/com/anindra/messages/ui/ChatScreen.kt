@@ -2488,18 +2488,27 @@ internal fun ChatTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable { onOpenDetails() }
             ) {
-                PersonAvatar(convo?.groupTitle?.ifBlank { convo.address } ?: "?", size = 36.dp)
+                PersonAvatar(
+                    convo?.groupTitle?.ifBlank { convo.address } ?: "?",
+                    size = 36.dp,
+                    photoModel = convo?.groupAvatar?.takeIf { it.isNotBlank() }
+                )
                 Spacer(Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             convo?.let {
-                                if (it.groupTitle.isNotBlank()) it.groupTitle
+                                if (it.groupTitle.isNotBlank()) BidiText.groupTitle(it.groupTitle)
                                 else if (it.name != it.address) it.name
                                 else BidiText.ltr(it.display)
                             } ?: "",
                             style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1
+                            maxLines = 1,
+                            // A group title lists every member, so it is almost
+                            // always longer than the bar. Clipped at the comma it
+                            // read as a broken name; ellipsized it reads as more.
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         if (workProfile) {
                             Spacer(Modifier.width(6.dp))
