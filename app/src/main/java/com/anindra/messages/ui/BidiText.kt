@@ -146,6 +146,50 @@ object BidiText {
         return "$LRI$value$PDI"
     }
 
+    /** RLI opens a right-to-left isolate, closed by [PDI]. */
+    private const val RLI = '\u2067'
+
+    /**
+     * A group title is a list of people, and a phone number in that list is a
+     * number run: inside an RTL paragraph its leading '+' is a neutral
+     * character, so "+12345678, +12345789" painted as "8765431+, 98754321+" —
+     * every number broken and the order reversed.
+     *
+     * Each member is isolated in its own direction, and a title that is
+     * entirely left-to-right (numbers, Latin names) is pinned as a whole, so
+     * its order survives an RTL paragraph. A title with a Persian or Arabic
+     * name is left to the paragraph, where right-to-left order is what the
+     * reader expects; each number inside it is still isolated.
+     *
+     * A title the user typed is formatted the same way — the transform only
+     * adds the invisible isolates, it never changes the words. Idempotent.
+     */
+    fun groupTitle(title: String): String {
+        if (title.isBlank()) return title
+        if (title.first() in setOf(LRI, RLI) && title.last() == PDI) return title
+        val members = title.split(", ").map { it.trim() }.filter { it.isNotEmpty() }
+        if (members.isEmpty()) return title
+        val joined = members.joinToString(", ") { member(it) }
+        val allLtr = members.none { firstStrongDirection(it) == Direction.RTL }
+        // The outer pin is what keeps the *order* from flipping; a single
+        // member is already isolated by [member]. Wrapped directly rather than
+        // through [ltr], which would see the member isolates at both edges and
+        // decide the string was already pinned.
+        if (allLtr && members.size > 1) return "$LRI$joined$PDI"
+        return joined
+    }
+
+    private fun member(value: String): String {
+        if (value.isEmpty()) return value
+        // Digits are read left to right whatever the paragraph does, so a
+        // number (or a name holding one) gets a stable isolate.
+        if (value.any { it.isDigit() }) return ltr(value)
+        return when (firstStrongDirection(value)) {
+            Direction.RTL -> "$RLI$value$PDI"
+            Direction.LTR -> ltr(value)
+        }
+    }
+
     /** Isolated [text] plus a boundary map enabling [remap] of styled ranges. */
     class Isolated internal constructor(
         val text: String,

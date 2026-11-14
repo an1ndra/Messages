@@ -372,7 +372,13 @@ object NotificationHelper {
         body: String,
         imageUri: String? = null,
         silentRepost: Boolean = false,
-        audio: Boolean = false
+        audio: Boolean = false,
+        /**
+         * The chat the import filed this message under (#448). A group has no
+         * single address, so looking it up by [from] would post the group on the
+         * sender's private channel and title it with the sender's name.
+         */
+        conversationId: Long = 0
     ) {
         // Skip notification if user is already reading this conversation
         if (NotificationPolicy.skipForOpenThread(
@@ -387,7 +393,8 @@ object NotificationHelper {
         if (!canPost(context)) return
 
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
-        val convoId = app.repository.conversationIdForAddress(from)
+        val convoId = conversationId.takeIf { it > 0 }
+            ?: app.repository.conversationIdForAddress(from)
 
         val replyable = com.anindra.messages.data.AddressIdentity.isReplyable(from)
         val contactName = app.repository.contactNameFor(from)
@@ -921,6 +928,18 @@ object SmsSender {
         if (digits.isEmpty() || address.any { it.isLetter() }) return address.trim()
         return if (address.trimStart().startsWith("+")) "+$digits" else digits
     }
+
+    /**
+     * Whether the carrier profile allows one MMS addressed to several people.
+     *
+     * A group text has to leave as a single MMS or the recipients never see a
+     * group (#448). A profile that forbids it — or a platform that cannot say —
+     * means falling back to one SMS per person, which is what the app did for
+     * every group before this existed.
+     */
+    fun groupMmsEnabled(context: Context, subscriptionId: Int): Boolean = runCatching {
+        MmsFacade.profiles(context).of(subscriptionId).groupMmsEnabled()
+    }.getOrDefault(false)
 
     /**
      * Sends attachments as one MMS through the `:mms` stack (see [MmsSender]).

@@ -75,6 +75,7 @@
     <string name="contact_people_count">%1$d personne(s)</string>
     <string name="contact_selected"> Séléctionné(s)</string>
     <string name="contact_remove_people">Retirer du groupe</string>
+    <string name="contact_group_photo">Photo du groupe</string>
     <string name="contact_group_name">Nom du groupe</string>
     <string name="contact_create_group">Créer un groupe</string>
     <string name="contact_group_name_optional">Facultatif : nous lui trouverons un nom pour vous</string>

@@ -17,7 +17,13 @@ data class Conversation(
     val display: String = address,
     val deletedReason: String = TrashReason.MANUAL,
     /** Set once a conversation has more than one recipient; blank otherwise. */
-    val groupTitle: String = ""
+    val groupTitle: String = "",
+    /**
+     * A picture the user chose for a group, as an absolute path inside this
+     * app's files directory (#448 follow-up). Blank means the generated
+     * initial-based avatar.
+     */
+    val groupAvatar: String = ""
 )
 
 data class Message(

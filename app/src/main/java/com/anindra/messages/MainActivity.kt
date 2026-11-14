@@ -543,6 +543,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun conversationGroupTitle(conversationId: Long): String =
         repo.groupTitleBlocking(conversationId)
 
+    /** The picture this group chose, or blank for the generated avatar. */
+    fun conversationGroupAvatar(conversationId: Long): String =
+        repo.groupAvatarBlocking(conversationId)
+
+    /**
+     * Sets (or replaces) a group's picture. The picked URI is copied into the
+     * app's files first: a picker grant does not outlive the process, so a URI
+     * stored as-is would render once and then go blank.
+     */
+    fun setGroupAvatar(conversationId: Long, source: android.net.Uri) = scope.launch {
+        val previous = repo.groupAvatarBlocking(conversationId)
+        val saved = com.anindra.messages.data.GroupAvatarStore.save(
+            getApplication(), conversationId, source
+        ) ?: return@launch
+        repo.setGroupAvatar(conversationId, saved)
+        if (previous.isNotBlank() && previous != saved) {
+            com.anindra.messages.data.GroupAvatarStore.delete(previous)
+        }
+        membershipRevision.value++
+    }
+
     /** Renames a group. Blank restores the default name. */
     fun setGroupTitle(conversationId: Long, title: String) =
         scope.launch {
@@ -562,11 +583,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun dispatchText(conversationId: Long, body: String, subId: Int) {
         val convo = repo.conversationByIdSuspend(conversationId) ?: return
         if (!isPhoneNumber(convo.address)) return
-        val stored = repo.sendText(conversationId, body, subId) ?: return
-        if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
         val recipients = repo.conversationRecipients(conversationId)
             .filter { isPhoneNumber(it) }
             .ifEmpty { listOf(convo.address) }
+        // A group text is one message to the whole group. Sent per person, the
+        // recipients never see a group and their replies come back private
+        // (#448); this is the same rule AOSP, QKSMS and Fossify follow. Where the
+        // carrier forbids a group MMS, the per-person SMS below is the fallback.
+        if (recipients.size > 1 && SmsSender.groupMmsEnabled(getApplication(), subId)) {
+            val stored = repo.sendTextAsMms(conversationId, body, subId) ?: return
+            if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
+            val handedOff = SmsSender.sendMms(
+                getApplication(), listOf(stored.id), recipients, emptyList(), subId, body
+            )
+            if (!handedOff) {
+                repo.markMessageStatusSuspend(stored.id, "failed")
+                NotificationHelper.showSendFailed(getApplication(), convo.address)
+            }
+            return
+        }
+        val stored = repo.sendText(conversationId, body, subId) ?: return
+        if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
         // A group is one stored message sent once per recipient. The row is
         // marked failed only when every hand-off failed, since a partial
         // send is still a send.
@@ -735,27 +772,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val recipients = repo.conversationRecipients(msg.conversationId)
                 .filter { isPhoneNumber(it) }
                 .ifEmpty { listOf(convo.address) }
-            val handedOff = if (msg.mediaType.let { it == "image" || it == "audio" } &&
-                msg.mediaUri.isNotBlank()
-            ) {
-                // A multi-picture message failed as a whole, so retrying one
-                // row of it has to resend every row (#364).
-                val album = if (msg.sysId > 0) repo.messagesBySysId(msg.sysId) else emptyList()
-                val rows = album.filter { it.mediaUri.isNotBlank() }.ifEmpty { listOf(msg) }
-                SmsSender.sendMms(
-                    getApplication(), rows.map { it.id }, recipients,
-                    rows.map { Uri.parse(it.mediaUri) }, simId,
-                    rows.firstOrNull { it.body.isNotBlank() }?.body.orEmpty(),
-                    rows.map { if (it.mediaType == "audio") "audio/mp4" else null }
-                )
-            } else {
-                val results = recipients.map { address ->
-                    SmsSender.send(
-                        getApplication(), messageId, address, msg.body,
-                        simId, settings.deliveryReportsEnabled
+            val handedOff = when {
+                // A group text was stored as one group MMS; retrying it as N SMS
+                // would put it back on the wire as the broadcast it is not
+                // (#448).
+                msg.mediaType == "text" && msg.transport == MmsSupport.TRANSPORT_MMS &&
+                    recipients.size > 1 ->
+                    SmsSender.sendMms(
+                        getApplication(), listOf(messageId), recipients, emptyList(), simId, msg.body
+                    )
+                msg.mediaType.let { it == "image" || it == "audio" } &&
+                    msg.mediaUri.isNotBlank() -> {
+                    // A multi-picture message failed as a whole, so retrying one
+                    // row of it has to resend every row (#364).
+                    val album = if (msg.sysId > 0) repo.messagesBySysId(msg.sysId) else emptyList()
+                    val rows = album.filter { it.mediaUri.isNotBlank() }.ifEmpty { listOf(msg) }
+                    SmsSender.sendMms(
+                        getApplication(), rows.map { it.id }, recipients,
+                        rows.map { Uri.parse(it.mediaUri) }, simId,
+                        rows.firstOrNull { it.body.isNotBlank() }?.body.orEmpty(),
+                        rows.map { if (it.mediaType == "audio") "audio/mp4" else null }
                     )
                 }
-                results.isNotEmpty() && results.any { it }
+                else -> {
+                    val results = recipients.map { address ->
+                        SmsSender.send(
+                            getApplication(), messageId, address, msg.body,
+                            simId, settings.deliveryReportsEnabled
+                        )
+                    }
+                    results.isNotEmpty() && results.any { it }
+                }
             }
             if (!handedOff) repo.markMessageStatusSuspend(messageId, "failed")
         }
@@ -1292,13 +1339,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val probe = runCatching {
             com.anindra.messages.data.MmsProviderReader(app.contentResolver).newestMultiPart()
         }.getOrNull()
+        val groups = repo.groupFacts()
         return com.anindra.messages.diagnostics.MmsDetails(
             rows = rows,
             multiPart = multi,
             maxParts = max,
             providerId = probe?.id ?: 0L,
             scanned = probe?.scanned ?: 20,
-            parts = probe?.parts.orEmpty().map { "seq=${it.seq} ${it.mime}" }
+            parts = probe?.parts.orEmpty().map { "seq=${it.seq} ${it.mime}" },
+            groups = if (groups.chats == 0) "0 group chat(s)" else
+                "${groups.chats} group chat(s), newest thread #${groups.thread} " +
+                "with ${groups.members} member(s)" +
+                (if (groups.avatar) ", picture set" else "")
         )
     }
 }
