@@ -20,8 +20,10 @@ class VoiceFailureMessageTest {
         val recorder = sourceOf(
             "app/src/main/java/com/anindra/messages/voice/VoiceRecorder.kt"
         )
-        assertTrue(recorder.contains("data object TooShort"))
-        assertTrue(recorder.contains("data object Failed"))
+        // Plain objects, not `data object`: the generated equals carries the
+        // unread temporary CodeQL cannot locate (CodeQlDataObjectTest).
+        assertTrue(recorder.contains("object TooShort"))
+        assertTrue(recorder.contains("object Failed"))
         assertTrue(recorder.contains("durationMs < MIN_RECORD_MS"))
     }
 
