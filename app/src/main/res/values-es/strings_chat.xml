@@ -22,11 +22,23 @@
     <string name="chat_select_text">Seleccionar texto</string>
     <string name="chat_save_image">Guardar imagen</string>
     <string name="chat_save_images">Guardar imágenes</string>
+    <string name="chat_save_voice">Guardar mensaje de voz</string>
     <string name="chat_image_saved">Imagen guardada en Pictures/Messages</string>
     <string name="chat_image_save_failed">No se pudo guardar la imagen</string>
     <string name="chat_save_video">Guardar vídeo</string>
     <string name="chat_video_saved">Vídeo guardado en Movies/Messages</string>
     <string name="chat_video_save_failed">No se pudo guardar el vídeo</string>
+
+    <string name="chat_voice_saved">Mensaje de voz guardado en Music/Messages</string>
+    <string name="chat_voice_save_failed">No se pudo guardar el mensaje de voz</string>
+
+    <string name="chat_voice_slide_cancel">Desliza para cancelar</string>
+    <string name="chat_voice_release_cancel">Suelta para cancelar</string>
+    <string name="chat_voice_permission_denied">Se necesita acceso al micrófono para grabar un mensaje de voz</string>
+    <string name="chat_voice_start_failed">No se pudo iniciar la grabación</string>
+    <string name="chat_voice_too_short">La grabación fue demasiado corta. Mantén pulsado el micrófono para grabar.</string>
+    <string name="chat_voice_max_reached">El mensaje de voz se detuvo en el límite de tamaño de MMS</string>
+    <string name="chat_voice_cancel_recording">Cancelar grabación</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">No se puede enviar el mensaje</string>

@@ -31,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.data.Message
+import com.anindra.messages.data.MmsSupport
 import com.anindra.messages.ui.AlphanumericNotice
 import com.anindra.messages.ui.AlbumGrid
 import com.anindra.messages.ui.ChatSearchBar
@@ -127,7 +128,8 @@ private fun MessageSelectionToolbarPreview() {
             allStarred = false,
             onSelectAll = {},
             onSelectText = {},
-            onSaveImage = {},
+            saveTarget = MmsSupport.SaveTarget.AUDIO,
+            onSaveMedia = {},
             onClose = {},
             onCopy = {},
             onForward = {},
@@ -145,7 +147,8 @@ private fun MessageSelectionToolbarPreview() {
             allStarred = true,
             onSelectAll = {},
             onSelectText = null,
-            onSaveImage = null,
+            saveTarget = null,
+            onSaveMedia = {},
             onClose = {},
             onCopy = {},
             onForward = {},

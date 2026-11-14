@@ -22,11 +22,24 @@
     <string name="chat_select_text">Select text</string>
     <string name="chat_save_image">Save image</string>
     <string name="chat_save_images">Save images</string>
+    <string name="chat_save_voice">Save voice message</string>
     <string name="chat_image_saved">Image saved to Pictures/Messages</string>
     <string name="chat_image_save_failed">Could not save the image</string>
     <string name="chat_save_video">Save video</string>
     <string name="chat_video_saved">Video saved to Movies/Messages</string>
     <string name="chat_video_save_failed">Could not save the video</string>
+
+    <string name="chat_voice_saved">Voice message saved to Music/Messages</string>
+    <string name="chat_voice_save_failed">Could not save the voice message</string>
+
+    <!-- Voice messages -->
+    <string name="chat_voice_slide_cancel">Slide to cancel</string>
+    <string name="chat_voice_release_cancel">Release to cancel</string>
+    <string name="chat_voice_permission_denied">Microphone access is needed to record a voice message</string>
+    <string name="chat_voice_start_failed">Couldn\'t start recording</string>
+    <string name="chat_voice_too_short">Recording was too short. Hold the mic to record.</string>
+    <string name="chat_voice_max_reached">Voice message stopped at the MMS size limit</string>
+    <string name="chat_voice_cancel_recording">Cancel recording</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Can\'t send message</string>

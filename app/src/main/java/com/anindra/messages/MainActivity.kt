@@ -663,15 +663,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Saves a message attachment (an MMS picture or clip) to the gallery
-     *  (#235, #461). Reads the bytes through the resolver so provider-backed
-     *  `content://mms/part/...` URIs and our own cache URIs both work. */
+    /** Saves a message attachment (an MMS picture, clip or voice note) to the
+     *  gallery, Movies or Music (#235, #364, #461). */
     fun saveMessageImage(messageId: Long) = saveMessageImages(listOf(messageId))
 
     /**
-     * Saves every attachment of the selection. A multi-picture MMS is one bubble
-     * backed by a row per picture, so saving only the first row stored one
-     * picture and still reported success (#364).
+     * Saves every attachment of the selection: pictures to the gallery, clips to
+     * Movies and voice notes to Music (#235, #364, #461). A multi-picture MMS is
+     * one bubble backed by a row per picture, so saving only the first row
+     * stored one picture and still reported success.
      */
     fun saveMessageImages(messageIds: List<Long>) {
         scope.launch {
@@ -684,45 +684,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             var saved = 0
-            var clip = false
+            var allAudio = true
+            var allVideo = true
             for (msg in messages) {
+                val target = MmsSupport.saveTargetFor(msg.mediaType)
+                if (target != MmsSupport.SaveTarget.AUDIO) allAudio = false
+                if (target != MmsSupport.SaveTarget.VIDEO) allVideo = false
                 val uri = Uri.parse(msg.mediaUri)
                 val bytes = runCatching {
                     resolver.openInputStream(uri)?.use { it.readBytes() }
                 }.getOrNull()
-                val video = msg.mediaType == "video"
-                // The provider reports no MIME for a part, and a clip has no
-                // extension to fall back on, so a video row names its own type.
-                val mime = if (video) {
-                    MmsSupport.DEFAULT_VIDEO_MIME
-                } else {
-                    MmsSupport.mimeForSavedAttachment(
-                        msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
-                    )
-                }
+                // A clip's part reports no MIME and has no extension to fall
+                // back on, so the target names its type (#461).
+                val mime = MmsSupport.mimeForSavedAttachment(
+                    msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull(), target
+                )
                 val convo = repo.conversationByIdSuspend(msg.conversationId)
                 val name = MmsSupport.savedAttachmentName(
-                    convo?.name ?: convo?.address ?: "message", msg.timestamp, mime
+                    convo?.name ?: convo?.address ?: "message", msg.timestamp, mime, target
                 )
-                val written = bytes != null && bytes.isNotEmpty() &&
-                    if (video) DownloadsStore.writeVideo(app, name, mime, bytes)
-                    else DownloadsStore.writeImage(app, name, mime, bytes)
-                if (written) {
-                    saved++
-                    clip = clip || video
-                }
+                val ok = bytes != null && bytes.isNotEmpty() &&
+                    DownloadsStore.writeMedia(app, name, mime, bytes, target)
+                // The toast is the only evidence a user gets, so the same outcome
+                // names itself for the regression script.
+                android.util.Log.d(
+                    "AttachmentSave",
+                    "target=$target mime=$mime name=$name ok=$ok"
+                )
             }
             withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    app,
-                    when {
-                        saved != messages.size -> if (clip) R.string.chat_video_save_failed
-                            else R.string.chat_image_save_failed
-                        clip -> R.string.chat_video_saved
-                        else -> R.string.chat_image_saved
-                    },
-                    Toast.LENGTH_SHORT
-                ).show()
+                val savedAll = saved == messages.size
+                val message = when {
+                    allAudio && savedAll -> R.string.chat_voice_saved
+                    allAudio -> R.string.chat_voice_save_failed
+                    allVideo && savedAll -> R.string.chat_video_saved
+                    allVideo -> R.string.chat_video_save_failed
+                    savedAll -> R.string.chat_image_saved
+                    else -> R.string.chat_image_save_failed
+                }
             }
         }
     }
@@ -763,6 +762,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deliveryReportsEnabled() = settings.deliveryReportsEnabled
+
+    /**
+     * How long a voice note may run on the current line.
+     *
+     * Read from the same carrier profile the send path enforces, but budgeted
+     * the way the send path budgets it: the PDU header, SMIL and framing come
+     * out before the attachment can use the rest ([VoiceNotePolicy.maxSecondsForCarrier]).
+     * Using the raw carrier cap here advertised a note that the fitter then
+     * rejected as too large.
+     */
+    fun voiceNoteMaxSeconds(): Int {
+        val cap = runCatching {
+            com.anindra.messages.sms.MmsFacade.profiles(getApplication())
+                .of(settings.simSubscriptionId).maxMessageSize()
+        }.getOrDefault(com.anindra.messages.data.MmsConfig.DEFAULT_MAX_MESSAGE_SIZE)
+        return com.anindra.messages.voice.VoiceNotePolicy.maxSecondsForCarrier(cap)
+    }
 
     fun openOrCreate(address: String, name: String?, onReady: (Long) -> Unit) {
         scope.launch {
@@ -1233,11 +1249,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     settings,
                     repo.totalConversationCount(),
                     repo.totalMessageCount(),
+                    voiceNoteDiagnostics(),
                     mmsDiagnostics()
                 )
             }
             onReady(text)
         }
+    }
+
+    /** The voice-note line the Diagnostics sheet prints; see [VoiceNoteDetails]. */
+    private suspend fun voiceNoteDiagnostics(): com.anindra.messages.diagnostics.VoiceNoteDetails {
+        val app = getApplication<Application>()
+        val cap = runCatching {
+            com.anindra.messages.sms.MmsFacade.profiles(app)
+                .of(settings.simSubscriptionId).maxMessageSize()
+        }.getOrDefault(com.anindra.messages.data.MmsConfig.DEFAULT_MAX_MESSAGE_SIZE)
+        val last = repo.latestVoiceNote()
+        val bytes = last?.mediaUri?.takeIf { it.isNotBlank() }?.let { uri ->
+            runCatching {
+                app.contentResolver.openAssetFileDescriptor(Uri.parse(uri), "r")
+                    ?.use { it.length }
+            }.getOrNull() ?: -1L
+        } ?: -1L
+        return com.anindra.messages.diagnostics.VoiceNoteDetails(
+            mime = com.anindra.messages.voice.VoiceNotePolicy.MIME,
+            maxSeconds = com.anindra.messages.voice.VoiceNotePolicy.maxSeconds(cap),
+            carrierCapBytes = cap,
+            lastBytes = bytes,
+            lastUri = last?.mediaUri.orEmpty()
+        )
     }
 
     /**

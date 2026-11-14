@@ -2,6 +2,7 @@ package com.anindra.messages.ui
 
 import com.anindra.messages.R
 import com.anindra.messages.data.Message
+import com.anindra.messages.data.MmsSupport
 
 /**
  * Presentation rules for the contextual message-selection toolbar. Kept out of
@@ -58,12 +59,22 @@ object SelectionToolbar {
     fun selectAllCandidates(groups: List<List<Long>>, lockedIds: Set<Long>): List<Long> =
         groups.filter { group -> group.isNotEmpty() && group.none { it in lockedIds } }.flatten()
 
+    /** Whether Save is offered for this message, and which of the two it is.
+     *  A voice note is never offered as "Save image" (#364). */
+    fun saveTargetFor(mediaType: String): MmsSupport.SaveTarget? = when (mediaType) {
+        "image" -> MmsSupport.SaveTarget.IMAGE
+        "video" -> MmsSupport.SaveTarget.VIDEO
+        "audio" -> MmsSupport.SaveTarget.AUDIO
+        else -> null
+    }
+
     /** Save names the number of files it will write: selecting several pictures
      *  offered "Save image" and read as if only one would be saved (#398). A
-     *  selection holding a clip says so, since it lands in Movies/Messages
-     *  rather than the gallery (#461). */
-    fun saveLabelRes(count: Int, hasVideo: Boolean = false): Int = when {
-        hasVideo -> R.string.chat_save_video
+     *  voice note is always one note and a clip always a clip, so each says so
+     *  whatever the count (#364, #461). */
+    fun saveLabelRes(target: MmsSupport.SaveTarget, count: Int = 1): Int = when {
+        target == MmsSupport.SaveTarget.AUDIO -> R.string.chat_save_voice
+        target == MmsSupport.SaveTarget.VIDEO -> R.string.chat_save_video
         count > 1 -> R.string.chat_save_images
         else -> R.string.chat_save_image
     }

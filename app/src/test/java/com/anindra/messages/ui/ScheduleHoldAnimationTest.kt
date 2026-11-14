@@ -28,9 +28,12 @@ class ScheduleHoldAnimationTest {
             "the send circle must scale down while held",
             chat.contains("targetValue = if (holding) 0.8f else 1f")
         )
+        // The circle is shared by all three states, so the shrink is gated on
+        // Send: the hold-to-record disc must stay put under the finger.
         assertTrue(
-            "and the scale must be applied to the button",
-            chat.contains("scaleX = holdScale") && chat.contains("scaleY = holdScale")
+            "and the scale must be applied to the Send circle",
+            chat.contains("scaleX = if (circleMode == ComposerCircle.Send) holdScale else 1f") &&
+                chat.contains("scaleY = scaleX")
         )
     }
 
