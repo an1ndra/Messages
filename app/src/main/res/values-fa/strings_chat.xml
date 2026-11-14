@@ -21,7 +21,7 @@
     <string name="chat_select_all">انتخاب همه</string>
     <string name="chat_select_text">انتخاب متن</string>
     <string name="chat_save_image">ذخیره تصویر</string>
-    <string name="chat_save_images">ذخیره تصاویر</string>
+    <string name="chat_save_images">ذخیره تصویرها</string>
     <string name="chat_save_voice">ذخیره پیام صوتی</string>
     <string name="chat_image_saved">تصویر در Pictures/Messages ذخیره شد</string>
     <string name="chat_image_save_failed">تصویر ذخیره نشد</string>
@@ -56,8 +56,8 @@
     <string name="chat_switch_sim">تغییر سیم‌کارت</string>
     <string name="chat_scheduled_for">زمان‌بندی‌شده برای %s</string>
     <string name="chat_schedule_gregorian_hint">میلادی: %1$s</string>
-    <string name="chat_schedule_previous_month">ماه قبل</string>
-    <string name="chat_schedule_next_month">ماه بعد</string>
+    <string name="chat_schedule_previous_month">ماه گذشته</string>
+    <string name="chat_schedule_next_month">ماه آینده</string>
     <string name="chat_schedule_choose_year">انتخاب سال</string>
     <string name="chat_schedule_failed">پیام زمان‌بندی نشد</string>
     <string name="chat_search_contacts">جستجوی مخاطبان</string>
@@ -118,12 +118,12 @@
     <string name="chat_search_counter">%1$d از %2$d</string>
     <string name="chat_scroll_to_latest">پیمایش به آخرین پیام</string>
     <string name="access_zoom_reset">بزرگ‌نمایی %1$d%%، برای بازنشانی ضربه بزنید</string>
-    <string name="chat_star">ستاره</string>
+    <string name="chat_star">ستاره‌دار کردن</string>
     <string name="chat_unstar">حذف ستاره</string>
     <string name="chat_starred">پیام ستاره‌دار شد</string>
     <string name="chat_unstarred">ستاره حذف شد</string>
     <string name="chat_message_starred">پیام ستاره‌دار</string>
     <string name="chat_album_photos">%1$d عکس</string>
     <string name="chat_album_more">%1$d عکس دیگر</string>
-    <string name="chat_album_previous">عکس‌های قبلی</string>
+    <string name="chat_album_previous">عکس‌هاای پیشین</string>
 </resources>
