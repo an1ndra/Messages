@@ -123,7 +123,15 @@ object MmsSupport {
         /** The picture of a picture MMS, or null. A picture-only MMS has a blank [body]. */
         val imageUri: String? = null,
         /** The voice note of a voice MMS, or null. */
-        val audioUri: String? = null
+        val audioUri: String? = null,
+        /**
+         * The conversation the import filed this message under (#448).
+         *
+         * A group no longer has one address, so a notifier that looks the chat up
+         * by sender would name — and route its channel and open-thread check to —
+         * the sender's private chat instead of the group.
+         */
+        val conversationId: Long = 0
     ) {
         val isAudio: Boolean get() = audioUri != null
     }

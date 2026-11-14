@@ -64,7 +64,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 31
+private const val DB_VERSION = 32
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -156,6 +156,11 @@ class Db(context: Context) :
         )
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title TEXT NOT NULL DEFAULT ''")
         db.execSQL("ALTER TABLE conversations ADD COLUMN group_title_custom INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE conversations ADD COLUMN provider_thread_id INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_provider_thread " +
+                "ON conversations(provider_thread_id) WHERE provider_thread_id>0"
+        )
         db.execSQL("ALTER TABLE messages ADD COLUMN address TEXT NOT NULL DEFAULT ''")
         // `starred` is already in the CREATE TABLE above; re-adding it here made
         // every fresh install crash with "duplicate column name: starred".
@@ -367,6 +372,17 @@ class Db(context: Context) :
             db.execSQL(
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_sys_id " +
                     "ON messages(transport, sys_id, media_uri) WHERE sys_id>0"
+            )
+        }
+        if (oldVersion < 32) {
+            // The provider's own grouping for a group MMS (#448). The thread is
+            // what tells two groups that share a sender apart, and it is the
+            // only identity both directions agree on: the `:mms` store writes it
+            // from the same participant set for a send and a receive.
+            db.execSQL("ALTER TABLE conversations ADD COLUMN provider_thread_id INTEGER NOT NULL DEFAULT 0")
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_provider_thread " +
+                    "ON conversations(provider_thread_id) WHERE provider_thread_id>0"
             )
         }
     }
@@ -1221,6 +1237,212 @@ class Repository(private val context: Context) {
         conversationIdForAddressBlocking(address) ?: soleGroupBlocking(address)
 
     /**
+     * The conversation a provider MMS thread belongs to, creating it when the
+     * thread is new (#448).
+     *
+     * A group MMS is not addressed to one person, so routing it by its sender —
+     * which is all an SMS can offer — filed it in that sender's private chat and
+     * fused every group they were in. The provider already carries the answer:
+     * `TelephonyMmsStore` groups a send and a receive alike on the participant
+     * set, so the thread is the conversation. Same rule as QKSMS, Fossify and
+     * AOSP; see [ThreadRouting].
+     *
+     * [participants] and [sender] are the provider's own spellings; both are
+     * canonicalised here so a formatting difference cannot create a second
+     * group. Returns the live conversation, never -1.
+     */
+    fun conversationForProviderThreadBlocking(
+        threadId: Long,
+        participants: List<String>,
+        sender: String,
+        subId: Int = -1
+    ): Long {
+        val members = participants.map { canonical(it).ifEmpty { it.trim() } }
+            .filter { it.isNotBlank() }
+            // A thread another app created may list this device among its
+            // members; sending to ourselves would be a message to ourselves.
+            .filterNot { member -> ownNumbersBlocking().any { AddressIdentity.samePerson(it, member) } }
+            .distinct()
+        val primary = canonical(sender).ifEmpty { sender.trim() }
+        // One member is a private MMS; it keeps the existing rules, including
+        // the 1:1-wins tie-break and the trash restore.
+        if (members.size <= 1) {
+            return conversationForInboundBlocking(primary)
+                ?: createConversationBlocking(primary, subId, listOf(primary), 0)
+        }
+        if (threadId > 0) {
+            conversationIdForProviderThreadBlocking(threadId)?.let { existing ->
+                // A new message from a thread the user deleted brings it back,
+                // exactly as an inbound SMS does (InboundIngest).
+                restoreConversationBlocking(existing)
+                adoptThreadBlocking(existing, threadId, missingMembers(members, existing))
+                return existing
+            }
+        }
+        val candidates = threadCandidatesBlocking()
+        return when (val route = ThreadRouting.route(threadId, members, candidates)) {
+            is ThreadRouting.Route.Adopt -> {
+                adoptThreadBlocking(route.conversationId, threadId, route.missing)
+                route.conversationId
+            }
+            is ThreadRouting.Route.Create ->
+                createConversationBlocking(primary, subId, members, threadId)
+        }
+    }
+
+    /** This device's own numbers, so a provider thread that lists us is read as
+     *  the people in it rather than as a group that includes ourselves. */
+    private fun ownNumbersBlocking(): List<String> = runCatching {
+        SimCards.load(context).mapNotNull { it.number?.takeIf(String::isNotBlank) }
+    }.getOrDefault(emptyList())
+
+    /** Every live conversation as something [ThreadRouting] can match against. */
+    private fun threadCandidatesBlocking(): List<ThreadRouting.Candidate> {
+        val recipients = mutableMapOf<Long, MutableList<String>>()
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id, address FROM conversation_recipients", null
+        ).use { c ->
+            val idIdx = c.getColumnIndex("conversation_id")
+            val addrIdx = c.getColumnIndex("address")
+            while (c.moveToNext()) {
+                recipients.getOrPut(c.getLong(idIdx)) { mutableListOf() } += c.getString(addrIdx)
+            }
+        }
+        val out = mutableListOf<ThreadRouting.Candidate>()
+        db.readableDatabase.rawQuery(
+            "SELECT id, provider_thread_id FROM conversations WHERE deleted_at=0", null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val id = c.getLong(0)
+                out += ThreadRouting.Candidate(
+                    conversationId = id,
+                    providerThreadId = c.getLong(1),
+                    recipients = recipients[id].orEmpty()
+                )
+            }
+        }
+        return out
+    }
+
+    /** The conversation stamped with [threadId], deleted ones included: a trashed
+     *  thread is restored rather than duplicated, and the unique index would not
+     *  let a second row hold the id anyway. */
+    private fun conversationIdForProviderThreadBlocking(threadId: Long): Long? {
+        if (threadId <= 0) return null
+        var found: Long? = null
+        db.readableDatabase.rawQuery(
+            "SELECT id FROM conversations WHERE provider_thread_id=? LIMIT 1",
+            arrayOf(threadId.toString())
+        ).use { c -> if (c.moveToFirst()) found = c.getLong(0) }
+        return found
+    }
+
+    private fun restoreConversationBlocking(conversationId: Long) {
+        val restored = db.writableDatabase.update(
+            "conversations",
+            ContentValues().apply {
+                put("deleted_at", 0)
+                put("archived", 0)
+            },
+            "id=? AND deleted_at>0",
+            arrayOf(conversationId.toString())
+        )
+        if (restored > 0) notifyChanged()
+    }
+
+    /** Stamps [threadId] on a conversation that earned it, and adds members the
+     *  thread has and the conversation does not. */
+    private fun adoptThreadBlocking(conversationId: Long, threadId: Long, missing: List<String>) {
+        if (threadId > 0) {
+            db.writableDatabase.execSQL(
+                "UPDATE conversations SET provider_thread_id=? WHERE id=? AND provider_thread_id=0",
+                arrayOf(threadId, conversationId)
+            )
+        }
+        if (missing.isEmpty()) return
+        val added = mutableListOf<String>()
+        for (address in missing) {
+            val clean = address.trim()
+            if (clean.isEmpty()) continue
+            upsertParticipant(db.writableDatabase, clean)
+            db.writableDatabase.execSQL(
+                "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                arrayOf(conversationId, clean)
+            )
+            added += clean
+        }
+        if (added.isNotEmpty()) {
+            ensureGroupTitle(conversationId)
+            notifyChanged()
+        }
+    }
+
+    private fun missingMembers(members: List<String>, conversationId: Long): List<String> {
+        val held = recipientsBlocking(conversationId).map { canonical(it).ifEmpty { it } }.toSet()
+        return members.filter { it !in held }
+    }
+
+    /**
+     * A conversation for a provider thread that has none yet. [members] includes
+     * the primary address, and the primary is written first so the chat's own
+     * address still names the thread it was found by.
+     */
+    private fun createConversationBlocking(
+        primary: String,
+        subId: Int,
+        members: List<String>,
+        threadId: Long
+    ): Long {
+        val cv = ContentValues().apply {
+            put("address", primary)
+            put("name", contactNameFor(primary) ?: primary)
+            if (threadId > 0) put("provider_thread_id", threadId)
+        }
+        val id = db.writableDatabase.insertOrThrow("conversations", null, cv)
+        upsertParticipant(db.writableDatabase, primary, subId)
+        val ordered = listOf(primary) + members.filter { it != primary }
+        for (address in ordered.distinct()) {
+            upsertParticipant(db.writableDatabase, address, subId)
+            db.writableDatabase.execSQL(
+                "INSERT OR IGNORE INTO conversation_recipients(conversation_id, address) VALUES(?,?)",
+                arrayOf(id, address)
+            )
+        }
+        ensureGroupTitle(id)
+        notifyChanged()
+        return id
+    }
+
+    /** How many groups exist, and the newest one's thread — for Diagnostics. */
+    suspend fun groupFacts(): Triple<Int, Long, Int> = runOnIoAsync { groupFactsBlocking() }
+
+    fun groupFactsBlocking(): Triple<Int, Long, Int> {
+        var total = 0
+        var thread = 0L
+        var members = 0
+        db.readableDatabase.rawQuery(
+            """SELECT c.id, c.provider_thread_id,
+                      (SELECT COUNT(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)
+               FROM conversations c
+               WHERE c.deleted_at=0
+                 AND (SELECT COUNT(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)>1
+               ORDER BY c.timestamp DESC LIMIT 1""",
+            null
+        ).use { c ->
+            if (c.moveToFirst()) {
+                thread = c.getLong(1)
+                members = c.getInt(2)
+            }
+        }
+        db.readableDatabase.rawQuery(
+            """SELECT COUNT(*) FROM conversations c WHERE c.deleted_at=0
+               AND (SELECT COUNT(*) FROM conversation_recipients r WHERE r.conversation_id=c.id)>1""",
+            null
+        ).use { c -> if (c.moveToFirst()) total = c.getInt(0) }
+        return Triple(total, thread, members)
+    }
+
+    /**
      * The address a conversation row is keyed on. A published bubble shortcut
      * is identified only by its conversation id, so this is how a contact edit
      * finds the picture it has to redraw (#441).
@@ -1340,6 +1562,34 @@ class Repository(private val context: Context) {
             put("status", "sending")
             put("media_type", "text")
             put("transport", MmsSupport.TRANSPORT_SMS)
+            put("sub_id", subId)
+        }
+        val id = db.writableDatabase.insertOrThrow("messages", null, cv)
+        touchConversation(conversationId, clean, now, isMe = true)
+        return Message(id, conversationId, clean, now, true, "sending", subId = subId)
+    }
+
+    /**
+     * Stores a text message that will leave as an MMS.
+     *
+     * A group text has to be one message to the whole group, or the recipients
+     * never see a group and their replies come back private (#448). The row is
+     * stored as MMS up front so [linkMmsRow], the status receiver and the
+     * provider import all treat it as the one message it will be; [sendText]
+     * stays the SMS path.
+     */
+    fun sendTextAsMms(conversationId: Long, body: String, subId: Int = -1): Message? {
+        val now = System.currentTimeMillis()
+        val clean = MessageBody.normalize(body)
+        val cv = ContentValues().apply {
+            put("conversation_id", conversationId)
+            put("body", clean)
+            put("timestamp", now)
+            put("is_me", 1)
+            put("status", "sending")
+            put("media_type", "text")
+            put("media_uri", "")
+            put("transport", MmsSupport.TRANSPORT_MMS)
             put("sub_id", subId)
         }
         val id = db.writableDatabase.insertOrThrow("messages", null, cv)
@@ -1841,6 +2091,15 @@ class Repository(private val context: Context) {
      *  is safe to call on every exit from a chat. A group is never trash this
      *  way — it is a thread the user built deliberately. */
     fun trashConversationIfEmptySuspend(conversationId: Long) {
+        trashIfEmptyBlocking(conversationId)
+    }
+
+    /**
+     * The blocking form, for callers already on the sync executor — the group
+     * thread repair empties the chats it moves messages out of and must not
+     * leave them behind as nameless rows (#448).
+     */
+    private fun trashIfEmptyBlocking(conversationId: Long) {
         // Return the values from the query lambda instead of capturing mutable
         // locals: the capture hides the assignment from static analysis (CodeQL
         // saw `remaining` as always 0 -> java/constant-comparison).
@@ -4260,6 +4519,10 @@ class Repository(private val context: Context) {
                 }
 
                 if (importProviderMms().isNotEmpty()) changed = true
+                // MMS imported before #448 were filed by sender; re-file a
+                // group's messages into the group once, on the first sync after
+                // the upgrade.
+                if (repairGroupThreadsBlocking()) changed = true
 
                 val stale = db.readableDatabase.rawQuery(
                     """SELECT COUNT(*) FROM conversations
@@ -4428,6 +4691,111 @@ class Repository(private val context: Context) {
 
     private fun importProviderMms(): List<MmsSupport.InboundMms> = importProviderMmsOnce()
 
+    /**
+     * Re-files group MMS that were imported before #448.
+     *
+     * Those messages sit in each sender's private chat, because the import
+     * routed by sender. The provider still knows which thread they belong to, so
+     * one pass over the stored MMS ids moves them into the group. It runs once
+     * per install and is idempotent anyway, so an interrupted pass simply ends
+     * where it stopped.
+     *
+     * @return true when anything actually moved, so the caller refreshes.
+     */
+    private fun repairGroupThreadsBlocking(): Boolean {
+        if (settings.groupThreadRepairDone) return false
+        val threads = runCatching {
+            MmsProviderReader(context.contentResolver).threadsById()
+        }.getOrNull().orEmpty()
+        if (threads.isEmpty()) {
+            settings.groupThreadRepairDone = true
+            MmsTrace.i(TRACE, "group thread repair: no group threads in the provider")
+            return false
+        }
+        data class Stored(val sysId: Long, val conversationId: Long, val sender: String)
+        val rows = mutableListOf<Stored>()
+        db.readableDatabase.rawQuery(
+            """SELECT m.sys_id, m.conversation_id, m.address, c.address
+               FROM messages m JOIN conversations c ON c.id=m.conversation_id
+               WHERE m.transport='mms' AND m.sys_id>0""",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val sysId = c.getLong(0)
+                if (sysId !in threads) continue
+                val sender = c.getString(2).orEmpty().ifBlank { c.getString(3).orEmpty() }
+                rows += Stored(sysId, c.getLong(1), sender)
+            }
+        }
+        if (rows.isEmpty()) {
+            settings.groupThreadRepairDone = true
+            MmsTrace.i(TRACE, "group thread repair: no stored MMS in a group thread")
+            return false
+        }
+        val touched = mutableSetOf<Long>()
+        val sources = mutableSetOf<Long>()
+        for (row in rows) {
+            val thread = threads[row.sysId] ?: continue
+            val cid = conversationForProviderThreadBlocking(
+                thread.threadId, thread.participants, row.sender
+            )
+            if (cid == row.conversationId) continue
+            db.writableDatabase.execSQL(
+                "UPDATE messages SET conversation_id=? WHERE transport='mms' AND sys_id=?",
+                arrayOf(cid, row.sysId)
+            )
+            sources += row.conversationId
+            touched += row.conversationId
+            touched += cid
+        }
+        // A chat the wrong routing created held nothing but this group's
+        // messages; once they are out it is an empty row with a stranger's name
+        // at the top of the list. Same rule the app already applies on leaving a
+        // chat: soft-delete, so Trash can bring it back.
+        sources.forEach { trashIfEmptyBlocking(it) }
+        touched.forEach { refreshConversationSnippetFor(it) }
+        if (touched.isNotEmpty()) notifyChanged()
+        settings.groupThreadRepairDone = true
+        MmsTrace.i(
+            TRACE,
+            "group thread repair: ${rows.size} stored row(s), ${touched.size} conversation(s) touched"
+        )
+        return touched.isNotEmpty()
+    }
+
+    /**
+     * Stamps the provider thread of an outbox row onto the conversation the
+     * message belongs to.
+     *
+     * The `:mms` store creates the thread from the recipients when it writes the
+     * outbox row, so this is the same thread an inbound reply will arrive on. It
+     * is what makes a group send adoptable by id rather than only by member set.
+     */
+    fun adoptProviderThreadFromOutbox(messageId: Long, outboxRowId: Long) {
+        if (messageId <= 0 || outboxRowId <= 0) return
+        val threadId = runCatching {
+            context.contentResolver.query(
+                android.net.Uri.parse("content://mms/$outboxRowId"),
+                arrayOf("thread_id"), null, null, null
+            )?.use { c -> if (c.moveToFirst()) c.getLong(0) else 0L } ?: 0L
+        }.getOrDefault(0L)
+        if (threadId <= 0) return
+        var conversationId = 0L
+        db.readableDatabase.rawQuery(
+            "SELECT conversation_id FROM messages WHERE id=?", arrayOf(messageId.toString())
+        ).use { c -> if (c.moveToFirst()) conversationId = c.getLong(0) }
+        if (conversationId <= 0) return
+        runCatching {
+            db.writableDatabase.execSQL(
+                "UPDATE OR IGNORE conversations SET provider_thread_id=? " +
+                    "WHERE id=? AND provider_thread_id=0",
+                arrayOf(threadId, conversationId)
+            )
+        }.onFailure {
+            MmsTrace.w(TRACE, "could not adopt provider thread $threadId for chat $conversationId", it)
+        }
+    }
+
     private fun importProviderMmsOnce(): List<MmsSupport.InboundMms> {
         val storedParts = mutableMapOf<Long, MutableSet<String>>()
         val noticed = mutableSetOf<Long>()
@@ -4497,16 +4865,12 @@ class Repository(private val context: Context) {
                         val missing = mediaRows.filter { partUri(it.second) !in present }
                         if (missing.isNotEmpty()) {
                             val address = canonical(message.address).ifEmpty { message.address }
-                            // Same routing as an inbound SMS: a 1:1 with the
-                            // sender wins, otherwise the group they are in, and
-                            // only when exactly one is possible.
-                            val cid = conversationForInboundBlocking(address)
-                                ?: database.insertOrThrow(
-                                    "conversations", null, ContentValues().apply {
-                                        put("address", address)
-                                        put("name", contactNameFor(address) ?: address)
-                                    }
-                                )
+                            // The provider's own thread decides where a group MMS
+                            // belongs, not its sender (#448). A 1:1 keeps the
+                            // existing rules, including the trash restore.
+                            val cid = conversationForProviderThreadBlocking(
+                                message.threadId, message.participants, address, message.subId
+                            )
                             mediaRows.forEachIndexed { index, (mediaType, partId) ->
                                 val uri = partUri(partId)
                                 if (uri in present) return@forEachIndexed
@@ -4554,7 +4918,8 @@ class Repository(private val context: Context) {
                                     message.content.body,
                                     message.timestamp,
                                     imageUri = message.content.imageId?.let { "content://mms/part/$it" },
-                                    audioUri = message.content.audioId?.let { "content://mms/part/$it" }
+                                    audioUri = message.content.audioId?.let { "content://mms/part/$it" },
+                                    conversationId = cid
                                 )
                             )
                             MmsTrace.i(

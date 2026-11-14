@@ -83,11 +83,20 @@ data class MmsDetails(
     val maxParts: Int = 0,
     val providerId: Long = 0,
     val scanned: Int = 0,
-    val parts: List<String> = emptyList()
+    val parts: List<String> = emptyList(),
+    /**
+     * Group conversations and the provider thread the newest one is filed under
+     * (#448). Read from the conversation tables and the column the import
+     * writes, so a script can assert that a group MMS was recognised as a group
+     * from a `uiautomator` dump instead of a screenshot.
+     */
+    val groups: String = ""
 ) {
     fun storeLine(): String =
         "$rows row(s), $multiPart from multi-part MMS" +
             if (maxParts > 1) " (max $maxParts row(s))" else ""
+
+    fun groupLine(): String = groups.ifBlank { "none" }
 
     fun providerLines(): List<String> = when {
         providerId > 0 -> listOf("Provider MMS: newest multi-part #$providerId, ${parts.size} part(s)") +
@@ -479,6 +488,7 @@ object DiagnosticsReport {
             appendLine("--- MMS ---")
             appendLine("Imported: ${data.mms.storeLine()}")
             data.mms.providerLines().forEach { appendLine(it) }
+            appendLine("Groups: ${data.mms.groupLine()}")
             appendLine()
             appendLine("--- MMS activity ---")
             if (data.mmsTrace.isEmpty()) {
