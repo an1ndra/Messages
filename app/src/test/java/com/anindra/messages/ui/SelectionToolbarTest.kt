@@ -117,6 +117,20 @@ class SelectionToolbarTest {
     }
 
     @Test
+    fun aSelectedClipReadsAsSaveVideo() {
+        // #461: a clip lands in Movies/Messages, so calling it an image would
+        // name the wrong destination.
+        assertEquals(
+            R.string.chat_save_video,
+            SelectionToolbar.saveLabelRes(count = 1, hasVideo = true)
+        )
+        assertEquals(
+            R.string.chat_save_video,
+            SelectionToolbar.saveLabelRes(count = 3, hasVideo = true)
+        )
+    }
+
+    @Test
     fun saveCoversEverySelectedRowWithAMediaUri() {
         fun message(id: Long, mediaType: String, mediaUri: String) = Message(
             id = id,

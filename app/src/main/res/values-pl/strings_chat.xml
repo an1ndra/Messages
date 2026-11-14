@@ -24,6 +24,9 @@
     <string name="chat_save_images">Zapisz obrazy</string>
     <string name="chat_image_saved">Obraz zapisano w Pictures/Messages</string>
     <string name="chat_image_save_failed">Nie można zapisać obrazu</string>
+    <string name="chat_save_video">Zapisz film</string>
+    <string name="chat_video_saved">Film zapisano w Movies/Messages</string>
+    <string name="chat_video_save_failed">Nie można zapisać filmu</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">Nie można wysłać wiadomości</string>

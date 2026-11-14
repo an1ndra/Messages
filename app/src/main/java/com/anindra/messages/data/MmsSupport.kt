@@ -77,30 +77,38 @@ object MmsSupport {
     /**
      * What one MMS carries, as far as this app can show it.
      *
-     * [imageId] and [extraImageIds] are the part ids the provider will hand the
-     * bytes out under. Each one is imported as a message row of its own, so a
-     * four-picture MMS shows four pictures instead of one and a note about the
-     * rest (#398). [mediaType] is the label the first row is stored under, so the
-     * bubble and the notification agree with what was read.
+     * [imageId], [extraImageIds] and [videoIds] are the part ids the provider
+     * will hand the bytes out under. Each one is imported as a message row of its
+     * own, so a four-picture MMS shows four pictures instead of one and a note
+     * about the rest (#398), and a clip arrives as a clip rather than as that
+     * same note (#461). [mediaType] is the label the first row is stored under, so
+     * the bubble and the notification agree with what was read.
      */
     data class Content(
         val body: String,
         val imageId: Long?,
         val omittedParts: Int,
         /** The second and later pictures of a multi-picture MMS. */
-        val extraImageIds: List<Long> = emptyList()
+        val extraImageIds: List<Long> = emptyList(),
+        /** The clips of this MMS; a clip is never folded into a picture album. */
+        val videoIds: List<Long> = emptyList()
     ) {
         val mediaType: String
-            get() = if (imageId != null) "image" else "text"
+            get() = when {
+                imageId != null -> "image"
+                videoIds.isNotEmpty() -> "video"
+                else -> "text"
+            }
 
         val mediaId: Long?
-            get() = imageId
+            get() = imageId ?: videoIds.firstOrNull()
 
         /** Every attachment this MMS carries, in the order it should be shown, as
          *  (mediaType, partId). Empty for a text-only MMS. */
         fun mediaRows(): List<Pair<String, Long>> = buildList {
             imageId?.let { add("image" to it) }
             extraImageIds.forEach { add("image" to it) }
+            videoIds.forEach { add("video" to it) }
         }
     }
     data class InboundMms(
@@ -252,9 +260,20 @@ object MmsSupport {
         "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/bmp", "image/heic", "image/heif"
     )
 
+    /** The MIME the app labels a clip with when the provider does not say. */
+    const val DEFAULT_VIDEO_MIME = "video/mp4"
+
+    fun isVideo(raw: String): Boolean = mime(raw) in setOf(
+        "video/mp4", "video/3gpp", "video/3gpp2", "video/webm", "video/x-matroska", "video/quicktime"
+    )
+
     /** The app's media type for an outgoing attachment: only pictures get the
-     *  album layout, everything else is a plain file. */
-    fun mediaKind(rawMime: String): String = if (isImage(rawMime)) "image" else "file"
+     *  album layout, and a clip keeps its own bubble, so nothing else is a file. */
+    fun mediaKind(rawMime: String): String = when {
+        isImage(rawMime) -> "image"
+        isVideo(rawMime) -> "video"
+        else -> "file"
+    }
 
     /** The sentence [content] writes when it could not show every attachment.
      *  Only the provider's parts can say whether it is still true. */
@@ -265,12 +284,14 @@ object MmsSupport {
     fun content(parts: List<Part>): Content {
         // Every attachment the provider can hand out gets a message row of its
         // own, so a four-picture MMS arrives as four pictures rather than one
-        // picture and a note about the others (#398). Only media this app cannot
-        // show at all — video, documents, an extra voice note — is omitted.
+        // picture and a note about the others (#398), and a clip arrives as a
+        // clip (#461). Only media this app cannot show at all — a document, a
+        // voice note from another app — is omitted.
         val images = parts.filter { it.id > 0 && isImage(it.mime) }
+        val videos = parts.filter { it.id > 0 && isVideo(it.mime) }
         val text = parts.filter { mime(it.mime) == "text/plain" }.mapNotNull { it.text }
             .filter { it.isNotBlank() }.joinToString("\n")
-        val shownIds = images.map { it.id }.toSet()
+        val shownIds = (images + videos).map { it.id }.toSet()
         val omitted = parts.count {
             mime(it.mime) !in setOf("text/plain", "application/smil") && it.id !in shownIds
         }
@@ -279,7 +300,8 @@ object MmsSupport {
             body = listOf(text, notice).filter { it.isNotEmpty() }.joinToString("\n"),
             imageId = images.firstOrNull()?.id,
             omittedParts = omitted,
-            extraImageIds = images.drop(1).map { it.id }
+            extraImageIds = images.drop(1).map { it.id },
+            videoIds = videos.map { it.id }
         )
     }
 
@@ -321,7 +343,8 @@ object MmsSupport {
     private val EXTENSIONS = mapOf(
         "image/jpeg" to "jpg", "image/jpg" to "jpg", "image/png" to "png",
         "image/gif" to "gif", "image/webp" to "webp", "image/bmp" to "bmp",
-        "image/heic" to "heic", "image/heif" to "heif", "video/mp4" to "mp4"
+        "image/heic" to "heic", "image/heif" to "heif", "video/mp4" to "mp4",
+        "video/3gpp" to "3gp", "video/3gpp2" to "3g2", "video/webm" to "webm"
     )
 
     /** Fallback mime for a saved attachment when the resolver reports none. */

@@ -27,6 +27,7 @@
     <string name="access_start_chat">開始對話</string>
     <string name="access_loading_messages">正在載入訊息</string>
     <string name="access_photo">照片</string>
+    <string name="access_video">影片</string>
     <string name="action_call">撥打電話</string>
     <string name="access_chat_top_bar">對話頂部列</string>
     <string name="access_swipe_background">滑動背景</string>

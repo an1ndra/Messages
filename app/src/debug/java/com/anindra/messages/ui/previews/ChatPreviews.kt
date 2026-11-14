@@ -41,6 +41,8 @@ import com.anindra.messages.ui.LinkWarningDialog
 import com.anindra.messages.ui.MessageSelectionToolbar
 import com.anindra.messages.ui.MessageRow
 import com.anindra.messages.ui.PreviewControl
+import com.anindra.messages.ui.VideoBubble
+import com.anindra.messages.ui.VideoPlayerDialog
 import com.anindra.messages.ui.ScheduledBubble
 import com.anindra.messages.ui.SimPickerDialog
 import com.anindra.messages.ui.SkeletonMessageRow
@@ -283,6 +285,24 @@ private fun ImagePreviewPreview() {
         onDismiss = {},
         onSave = {}
     )
+}
+
+@PreviewLightDark
+@Preview(name = "Video bubble", showBackground = true, widthDp = 320)
+@Composable
+private fun VideoBubblePreview() {
+    // No frame is decoded in a preview, so this is the placeholder a clip the
+    // device cannot decode draws: the badge on the themed block (#461).
+    VideoBubble(uri = "content://mms/part/9", isMe = false, onClick = {})
+}
+
+@PreviewLightDark
+@Preview(name = "Video player", showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun VideoPlayerDialogPreview() {
+    // The player has no state of its own beyond the URI, so the preview is the
+    // real dialog; the URI simply never prepares.
+    VideoPlayerDialog(uri = "content://mms/part/9", onSave = {}, onDismiss = {})
 }
 
 @PreviewLightDark
