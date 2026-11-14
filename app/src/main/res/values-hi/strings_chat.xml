@@ -46,7 +46,6 @@
     <string name="chat_blocked_send">यह नंबर ब्लॉक है। भेजने के लिए अनब्लॉक करें?</string>
     <string name="chat_number_blocked">नंबर ब्लॉक किया गया</string>
     <string name="chat_number_unblocked">नंबर अनब्लॉक किया गया</string>
-    <string name="chat_loading_earlier">पहले के संदेश लोड करें</string>
     <string name="chat_retry">पुनः प्रयास करें</string>
     <string name="chat_retry_sim">SIM के साथ पुनः प्रयास करें</string>
     <string name="chat_sending_via">%s के माध्यम से भेजा जा रहा है</string>

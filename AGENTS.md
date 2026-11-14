@@ -21,7 +21,7 @@ scripts need one of the two default AVDs booted), then wait for
 # LD_PRELOAD is not optional on this host: see "The modem" below.
 LD_PRELOAD=$HOME/.local/lib/no-addrconfig.so \
 ~/android/emulator/emulator -avd Pixel_AOSP12_AOSP31 -port 5558 -no-audio -no-boot-anim \
-    -gpu swiftshader_indirect -no-snapshot &
+    -gpu swangle -no-snapshot &
 ~/android/platform-tools/adb wait-for-device
 until [ "$(~/android/platform-tools/adb -s emulator-5558 shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 5; done
 ```
@@ -29,6 +29,13 @@ until [ "$(~/android/platform-tools/adb -s emulator-5558 shell getprop sys.boot_
 Android 11 is the same recipe with `-avd Pixel_AOSP11_AOSP30 -port 5557` and
 `adb -s emulator-5557`. `Pixel_7_AOSP_35` (`-port 5554`) still exists as the
 historical 1080x2400 target.
+
+**Renderer mode.** `-gpu swiftshader_indirect` wedges this host under memory
+pressure: guest `surfaceflinger` and the graphics allocator pin a core each,
+`system_server` follows, and input stops being delivered (NavigationBar/IME
+ANRs) while the guest otherwise looks idle. `-gpu host` picks the RTX 4050 and
+segfaults right after boot. `-gpu swangle` is the standing mode; if it ever
+wedges too, fall back to `-no-window` with the same GPU mode.
 
 **The modem.** Without the preload the emulator logs
 `qemu-system-x86_64: Unable to connect character device modem: address

@@ -698,6 +698,7 @@ class Repository(private val context: Context) {
     }
 
     fun messages(conversationId: Long, limit: Int = Int.MAX_VALUE, offset: Int = 0): Flow<List<Message>> = observe {
+        val t0 = android.os.SystemClock.uptimeMillis()
         val out = mutableListOf<Message>()
         db.readableDatabase.rawQuery(
             """SELECT id,body,timestamp,is_me,status,media_type,media_uri,reactions,locked,sub_id,
@@ -728,6 +729,10 @@ class Repository(private val context: Context) {
                 )
             }
         }
+        android.util.Log.d(
+            "ChatLoad",
+            "query conv=$conversationId limit=$limit rows=${out.size} took=${android.os.SystemClock.uptimeMillis() - t0}ms"
+        )
         out.reversed()
     }
 
@@ -1214,6 +1219,19 @@ class Repository(private val context: Context) {
 
     fun conversationForInboundBlocking(address: String): Long? =
         conversationIdForAddressBlocking(address) ?: soleGroupBlocking(address)
+
+    /**
+     * The address a conversation row is keyed on. A published bubble shortcut
+     * is identified only by its conversation id, so this is how a contact edit
+     * finds the picture it has to redraw (#441).
+     */
+    fun addressForConversationBlocking(conversationId: Long): String? {
+        var address: String? = null
+        db.readableDatabase.rawQuery(
+            "SELECT address FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) address = c.getString(0) }
+        return address
+    }
 
     /**
      * The conversation [address] names, or null when there is none.
@@ -1881,6 +1899,11 @@ class Repository(private val context: Context) {
             .use { c -> while (c.moveToNext()) trashed.add(c.getLong(0)) }
         purgeProviderMessages(trashed)
         db.writableDatabase.execSQL(
+            "DELETE FROM message_provider_ids WHERE message_id IN " +
+                "(SELECT id FROM messages WHERE conversation_id IN " +
+                "(SELECT id FROM conversations WHERE deleted_at>0))"
+        )
+        db.writableDatabase.execSQL(
             "DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE deleted_at>0)"
         )
         db.writableDatabase.execSQL("DELETE FROM conversations WHERE deleted_at>0")
@@ -1904,6 +1927,14 @@ class Repository(private val context: Context) {
                 """SELECT p.transport, p.sys_id FROM message_provider_ids p
                    JOIN messages m ON m.id = p.message_id
                    WHERE m.conversation_id IN ($ph)""",
+                conversationIds.map { it.toString() }.toTypedArray()
+            ).use { c -> while (c.moveToNext()) ids.add(Purge(c.getString(0), c.getLong(1))) }
+            // Plus the primary row recorded on the message itself: a row this
+            // build stored before the linkage table knew about it would
+            // otherwise survive the purge and be re-imported on the next sync.
+            db.readableDatabase.rawQuery(
+                """SELECT transport, sys_id FROM messages
+                   WHERE conversation_id IN ($ph) AND sys_id>0""",
                 conversationIds.map { it.toString() }.toTypedArray()
             ).use { c -> while (c.moveToNext()) ids.add(Purge(c.getString(0), c.getLong(1))) }
             ids.groupBy { it.transport }.forEach { (transport, messages) ->
@@ -2019,6 +2050,11 @@ class Repository(private val context: Context) {
     /** Permanently deletes a conversation and its messages. */
     fun deleteConversationSuspend(conversationId: Long) {
         purgeProviderMessages(listOf(conversationId))
+        db.writableDatabase.execSQL(
+            "DELETE FROM message_provider_ids WHERE message_id IN " +
+                "(SELECT id FROM messages WHERE conversation_id=?)",
+            arrayOf(conversationId)
+        )
         db.writableDatabase.execSQL(
             "DELETE FROM messages WHERE conversation_id=?", arrayOf(conversationId)
         )
@@ -3686,12 +3722,17 @@ class Repository(private val context: Context) {
     /** Drops every cached contact name, so the next read re-queries Contacts. */
     fun invalidateContactNames() {
         contactCache.invalidate()
+        ContactLookup.invalidateIndex()
     }
 
     private fun lookupContactName(address: String): String? {
         if (address.isBlank()) return null
         queryPhoneLookup(android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI, address, null)
             ?.let { return it }
+        // Region-agnostic fallback (#444): a contact stored as "+46701234567"
+        // must be found for a conversation addressed as "0701234567" even when
+        // the platform's phone_lookup cannot resolve the country code.
+        ContactLookup.scanNameFor(context, address)?.let { return it }
         return try {
             val dirs = context.contentResolver.query(
                 android.provider.ContactsContract.Directory.ENTERPRISE_CONTENT_URI,
@@ -3787,6 +3828,24 @@ class Repository(private val context: Context) {
                 )
             }
         }
+    }
+
+    /**
+     * Records every provider row this app already stores in the linkage table.
+     *
+     * Received SMS, sent SMS and imported MMS used to write only
+     * `messages.sys_id`, leaving `message_provider_ids` empty for them. The next
+     * sync then saw their provider rows as never imported, so it tried to
+     * re-insert them (the unique index rejected that) and asked
+     * [getOrCreateConversationBlocking] for the address -- which un-trashed a
+     * conversation the user had deleted, so deletions came back on restart
+     * (#449). Older databases carry the same gap, hence the backfill.
+     */
+    private fun linkStoredProviderIds() {
+        db.writableDatabase.execSQL(
+            """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+               SELECT id, transport, sys_id FROM messages WHERE sys_id>0"""
+        )
     }
 
     /** Imports system SMS into the local DB, grouped by address, deduped by sys_id. */
@@ -3982,6 +4041,9 @@ class Repository(private val context: Context) {
         // has to be dropped first or an edit within the TTL is invisible.
         invalidateContactNames()
         refreshContactNames()
+        // The pictures the app published outside itself cache too, and #441 is
+        // the bubble that kept the contact's previous photo.
+        NotificationHelper.refreshContactAvatars(context)
     }
 
     /**
@@ -4035,7 +4097,9 @@ class Repository(private val context: Context) {
                 // pending message from the same sender reuses the repaired thread
                 // instead of creating a second one.
                 var changed = repairAlphanumericSenders()
+                changed = changed || repairFabricatedAddresses()
                 android.util.Log.d("RepoSync", "Starting syncFromSystem")
+                linkStoredProviderIds()
                 // Count first so the read phase (which can take a while on a phone
                 // with a large provider) shows a moving bar instead of an apparently
                 // frozen loading screen; the count is cheap and indexed.
@@ -4306,6 +4370,62 @@ class Repository(private val context: Context) {
         return false
     }
 
+    /** One-shot heal for conversations whose address was fabricated as "+10..."
+     *  (or "+CC0...") before the trunk-zero guard in [AddressIdentity.canonical]:
+     *  a national number whose trunk '0' was not consumed got a bogus country
+     *  code prepended. The original national spelling is recovered by dropping
+     *  that country code, and the row is re-addressed in place. */
+    private fun repairFabricatedAddresses(): Boolean {
+        if (settings.fabricatedAddressRepairDone) return false
+        try {
+            val rows = mutableListOf<Pair<Long, String>>()
+            db.readableDatabase.rawQuery(
+                "SELECT id, address FROM conversations", null
+            ).use { c ->
+                while (c.moveToNext()) rows += c.getLong(0) to c.getString(1)
+            }
+            var changed = false
+            db.writableDatabase.beginTransaction()
+            try {
+                for ((id, addr) in rows) {
+                    if (!addr.startsWith("+")) continue
+                    val digits = addr.filter { it.isDigit() }
+                    val cc = PhoneNumberUtils.countryCodePrefix(digits)
+                    if (cc.isEmpty() || cc.length >= digits.length) continue
+                    val rest = digits.drop(cc.length)
+                    if (!rest.startsWith("0") || rest.length < 4) continue
+                    val raw = rest
+                    if (raw == addr) continue
+                    db.writableDatabase.execSQL(
+                        """UPDATE conversations
+                           SET address=?, name=CASE WHEN name=? THEN ? ELSE name END
+                           WHERE id=?""",
+                        arrayOf(raw, addr, raw, id.toString())
+                    )
+                    // Drop the fabricated participant row; the raw address is not
+                    // a parseable E.164 destination.
+                    db.writableDatabase.execSQL(
+                        "DELETE FROM participants WHERE normalized_destination=?",
+                        arrayOf(addr)
+                    )
+                    changed = true
+                }
+                db.writableDatabase.setTransactionSuccessful()
+            } finally {
+                db.writableDatabase.endTransaction()
+            }
+            settings.fabricatedAddressRepairDone = true
+            if (changed) {
+                invalidateContactNames()
+                refreshContactNames()
+            }
+            return changed
+        } catch (e: Exception) {
+            android.util.Log.e("RepoSync", "fabricated-address repair failed: ${e.message}", e)
+        }
+        return false
+    }
+
     private fun importProviderMms(): List<MmsSupport.InboundMms> = importProviderMmsOnce()
 
     private fun importProviderMmsOnce(): List<MmsSupport.InboundMms> {
@@ -4415,6 +4535,16 @@ class Repository(private val context: Context) {
                                 ) && cid != viewedConversationId
                             ) database.execSQL(
                                 "UPDATE conversations SET unread_count=unread_count+1 WHERE id=?", arrayOf(cid)
+                            )
+                            // The provider row this import just consumed must be
+                            // linkable, or a permanent delete cannot purge it and
+                            // the thread returns on the next restart (#449). One
+                            // row per part: every part shares the provider id.
+                            database.execSQL(
+                                """INSERT OR IGNORE INTO message_provider_ids(message_id, transport, sys_id)
+                                   SELECT id, transport, sys_id FROM messages
+                                   WHERE transport=? AND sys_id=?""",
+                                arrayOf(MmsSupport.TRANSPORT_MMS, message.id)
                             )
                             refreshed.add(cid)
                             upsertParticipant(database, address, message.subId)

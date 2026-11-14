@@ -5,8 +5,8 @@
     <string name="lock_title">Authentifiez-vous pour accéder à vos messages</string>
     <string name="lock_unlock_title">Déverrouiller Messages</string>
     <string name="lock_auth_subtitle">Authentifiez-vous pour révéler ces messages</string>
-    <string name="lock_change_app_lock_title">Confirmez pour changer le verrouillage de l\'application</string>
-    <string name="lock_change_app_lock_subtitle">Votre empreinte digitale, visage ou code PIN confirme que c\'est vous</string>
+    <string name="lock_change_app_lock_title">Confirmez pour modifier le verrouillage de l\'application</string>
+    <string name="lock_change_app_lock_subtitle">Votre empreinte, votre visage ou votre code confirme votre identité</string>
     <string name="lock_got_it">Compris</string>
     <string name="lock_not_now">Pas maintenant</string>
     <string name="lock_off">Le verrouillage de l\'application est désactivé</string>
@@ -50,6 +50,8 @@
     <string name="notif_title_private">Nouveau message</string>
     <string name="notif_body_private">Vous avez un nouveau message</string>
     <string name="notif_action_delete">Supprimer</string>
+    <string name="notif_action_reply">Répondre</string>
+    <string name="notif_action_mark_read">Marquer comme lu</string>
     <string name="notif_you">Vous</string>
     <string name="notif_photo">Photo</string>
     <string name="notif_voice">Message vocal</string>
@@ -65,7 +67,7 @@
     <string name="crash_report_delete">Supprimer</string>
     <string name="crash_report_saved">Enregistré dans Downloads/Messages</string>
     <string name="crash_report_clip_label">Rapport d\'incident de Messages</string>
-    <string name="convo_moved_to_trash_count">%1$d conversations ont été déplacées vers la corbeille</string>
+    <string name="convo_moved_to_trash_count">%1$d conversations déplacées dans la corbeille</string>
     <string name="convo_archived_count">%1$d conversations archivées</string>
     <string name="sheet_multi_select">Sélectionner plus</string>
 </resources>

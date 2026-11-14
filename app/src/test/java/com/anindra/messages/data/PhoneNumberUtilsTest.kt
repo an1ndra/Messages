@@ -57,4 +57,12 @@ class PhoneNumberUtilsTest {
         assertFalse(PhoneNumberUtils.isDialableAddress("VM-HDFCBK"))
         assertFalse(PhoneNumberUtils.isDialableAddress("A1 SRB"))
     }
+
+    @Test
+    fun countryCodePrefixFindsRealCodes() {
+        assertEquals("1", PhoneNumberUtils.countryCodePrefix("10701234567"))
+        assertEquals("46", PhoneNumberUtils.countryCodePrefix("46701234567"))
+        assertEquals("44", PhoneNumberUtils.countryCodePrefix("447911123456"))
+        assertEquals("", PhoneNumberUtils.countryCodePrefix("9999999999"))
+    }
 }

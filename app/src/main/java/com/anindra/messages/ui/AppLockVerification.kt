@@ -11,16 +11,16 @@ import java.util.concurrent.Executor
 /** What the caller should do with an App lock toggle. */
 sealed interface AppLockVerdict {
     /** The user proved who they are, so the toggle may go through. */
-    data object Verified : AppLockVerdict
+    object Verified : AppLockVerdict
 
     /** Dismissed, or the wrong credential. Leave the setting as it was. */
-    data object Rejected : AppLockVerdict
+    object Rejected : AppLockVerdict
 
     /**
      * The device has no screen lock to verify against, so there is nothing to
      * check and the toggle cannot be made to mean anything.
      */
-    data object NoScreenLock : AppLockVerdict
+    object NoScreenLock : AppLockVerdict
 }
 
 /**

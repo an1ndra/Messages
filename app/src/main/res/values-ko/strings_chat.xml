@@ -46,7 +46,6 @@
     <string name="chat_blocked_send">이 번호는 차단되었습니다. 보내려면 차단 해제하시겠습니까?</string>
     <string name="chat_number_blocked">번호가 차단되었습니다</string>
     <string name="chat_number_unblocked">번호 차단이 해제되었습니다</string>
-    <string name="chat_loading_earlier">이전 메시지 불러오기</string>
     <string name="chat_retry">다시 시도</string>
     <string name="chat_retry_sim">SIM으로 다시 시도</string>
     <string name="chat_sending_via">%s(으)로 보내는 중</string>

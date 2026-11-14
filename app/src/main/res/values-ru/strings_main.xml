@@ -54,6 +54,8 @@
     <string name="notif_title_private">Новое сообщение</string>
     <string name="notif_body_private">У вас новое сообщение</string>
     <string name="notif_action_delete">Удалить</string>
+    <string name="notif_action_reply">Ответить</string>
+    <string name="notif_action_mark_read">Отметить как прочитанное</string>
     <string name="notif_you">Вы</string>
     <string name="notif_photo">Фото</string>
     <string name="notif_voice">Голосовое сообщение</string>

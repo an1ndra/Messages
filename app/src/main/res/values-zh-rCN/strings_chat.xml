@@ -44,7 +44,6 @@
     <string name="chat_blocked_send">此号码已阻止。取消阻止即可发送？</string>
     <string name="chat_number_blocked">号码已阻止</string>
     <string name="chat_number_unblocked">号码已取消阻止</string>
-    <string name="chat_loading_earlier">加载较早的消息</string>
     <string name="chat_retry">重试</string>
     <string name="chat_retry_sim">重试使用 SIM 卡</string>
     <string name="chat_sending_via">通过 %s 发送</string>

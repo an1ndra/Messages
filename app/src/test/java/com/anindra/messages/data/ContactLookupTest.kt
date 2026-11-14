@@ -63,4 +63,5 @@ class ContactLookupTest {
         val c = ContactLookup.canonical("+1-555-000-000000000")
         assertTrue("expected digits fallback, got $c", c != null && c.all { it.isDigit() })
     }
+
 }

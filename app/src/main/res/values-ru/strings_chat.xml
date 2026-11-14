@@ -46,7 +46,6 @@
     <string name="chat_blocked_send">Этот номер заблокирован. Разблокировать для отправки?</string>
     <string name="chat_number_blocked">Номер заблокирован</string>
     <string name="chat_number_unblocked">Номер разблокирован</string>
-    <string name="chat_loading_earlier">Загрузить более ранние сообщения</string>
     <string name="chat_retry">Повторить</string>
     <string name="chat_retry_sim">Повторить через SIM</string>
     <string name="chat_sending_via">Отправка через %s</string>
