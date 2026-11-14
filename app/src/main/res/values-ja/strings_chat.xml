@@ -24,6 +24,9 @@
     <string name="chat_save_images">画像を保存</string>
     <string name="chat_image_saved">画像を Pictures/Messages に保存しました</string>
     <string name="chat_image_save_failed">画像を保存できませんでした</string>
+    <string name="chat_save_video">動画を保存</string>
+    <string name="chat_video_saved">動画を Movies/Messages に保存しました</string>
+    <string name="chat_video_save_failed">動画を保存できませんでした</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">メッセージを送信できません</string>

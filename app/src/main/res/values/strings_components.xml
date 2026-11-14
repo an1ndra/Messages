@@ -30,6 +30,7 @@
     <string name="access_start_chat">Start chat</string>
     <string name="access_loading_messages">Loading messages</string>
     <string name="access_photo">Photo</string>
+    <string name="access_video">Video</string>
     <string name="action_call">Call</string>
     <string name="access_chat_top_bar">Chat top bar</string>
     <string name="access_swipe_background">Swipe background</string>

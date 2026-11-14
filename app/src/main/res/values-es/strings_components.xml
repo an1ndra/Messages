@@ -27,6 +27,7 @@
     <string name="access_start_chat">Iniciar chat</string>
     <string name="access_loading_messages">Cargando mensajes</string>
     <string name="access_photo">Foto</string>
+    <string name="access_video">Vídeo</string>
     <string name="action_call">Llamar</string>
     <string name="access_chat_top_bar">Barra superior del chat</string>
     <string name="access_swipe_background">Fondo al deslizar</string>

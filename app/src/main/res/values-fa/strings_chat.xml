@@ -24,6 +24,9 @@
     <string name="chat_save_images">ذخیره تصاویر</string>
     <string name="chat_image_saved">تصویر در Pictures/Messages ذخیره شد</string>
     <string name="chat_image_save_failed">تصویر ذخیره نشد</string>
+    <string name="chat_save_video">ذخیره ویدیو</string>
+    <string name="chat_video_saved">ویدیو در Movies/Messages ذخیره شد</string>
+    <string name="chat_video_save_failed">ویدیو ذخیره نشد</string>
 
     <!-- Status messages -->
     <string name="chat_cant_send">نمی‌توان پیام فرستاد</string>
