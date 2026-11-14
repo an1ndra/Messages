@@ -54,6 +54,8 @@
     <string name="notif_title_private">새 메시지</string>
     <string name="notif_body_private">새 메시지가 도착했습니다</string>
     <string name="notif_action_delete">삭제</string>
+    <string name="notif_action_reply">답장</string>
+    <string name="notif_action_mark_read">읽음으로 표시</string>
     <string name="notif_you">나</string>
     <string name="notif_photo">사진</string>
     <string name="notif_voice">음성 메시지</string>

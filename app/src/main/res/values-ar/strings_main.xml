@@ -54,6 +54,8 @@
     <string name="notif_title_private">رسالة جديدة</string>
     <string name="notif_body_private">لديك رسالة جديدة</string>
     <string name="notif_action_delete">حذف</string>
+    <string name="notif_action_reply">رد</string>
+    <string name="notif_action_mark_read">وضع علامة كمقروء</string>
     <string name="notif_you">أنت</string>
     <string name="notif_photo">صورة</string>
     <string name="notif_voice">رسالة صوتية</string>

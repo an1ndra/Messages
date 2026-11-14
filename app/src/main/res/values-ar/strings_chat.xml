@@ -46,7 +46,6 @@
     <string name="chat_blocked_send">هذا الرقم محظور. هل تريد إلغاء الحظر للإرسال؟</string>
     <string name="chat_number_blocked">تم حظر الرقم</string>
     <string name="chat_number_unblocked">تم إلغاء حظر الرقم</string>
-    <string name="chat_loading_earlier">تحميل الرسائل السابقة</string>
     <string name="chat_retry">إعادة المحاولة</string>
     <string name="chat_retry_sim">إعادة المحاولة باستخدام شريحة SIM</string>
     <string name="chat_sending_via">جارٍ الإرسال عبر %s</string>

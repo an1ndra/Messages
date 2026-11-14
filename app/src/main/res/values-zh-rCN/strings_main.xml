@@ -51,6 +51,8 @@
     <string name="notif_title_private">新消息</string>
     <string name="notif_body_private">您有一条新消息</string>
     <string name="notif_action_delete">删除</string>
+    <string name="notif_action_reply">回复</string>
+    <string name="notif_action_mark_read">标记为已读</string>
     <string name="notif_you">你</string>
     <string name="notif_photo">照片</string>
     <string name="notif_voice">语音消息</string>

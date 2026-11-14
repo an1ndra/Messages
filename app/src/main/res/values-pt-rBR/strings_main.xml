@@ -54,6 +54,8 @@
     <string name="notif_title_private">Nova mensagem</string>
     <string name="notif_body_private">Você tem uma nova mensagem</string>
     <string name="notif_action_delete">Excluir</string>
+    <string name="notif_action_reply">Responder</string>
+    <string name="notif_action_mark_read">Marcar como lida</string>
     <string name="notif_you">Você</string>
     <string name="notif_photo">Foto</string>
     <string name="notif_voice">Mensagem de voz</string>
