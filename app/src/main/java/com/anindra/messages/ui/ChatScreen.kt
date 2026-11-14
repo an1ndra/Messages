@@ -2490,7 +2490,7 @@ internal fun ChatTopBar(
             ) {
                 PersonAvatar(convo?.groupTitle?.ifBlank { convo.address } ?: "?", size = 36.dp)
                 Spacer(Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             convo?.let {
@@ -2499,7 +2499,12 @@ internal fun ChatTopBar(
                                 else BidiText.ltr(it.display)
                             } ?: "",
                             style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1
+                            maxLines = 1,
+                            // A group title lists every member, so it is almost
+                            // always longer than the bar. Clipped at the comma it
+                            // read as a broken name; ellipsized it reads as more.
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         if (workProfile) {
                             Spacer(Modifier.width(6.dp))
