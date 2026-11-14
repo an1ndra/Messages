@@ -111,6 +111,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+/** How long a Contacts change waits before the picker's list is re-read. */
+private const val CONTACT_RELOAD_DEBOUNCE_MS = 500L
+
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val repo: Repository = (app as MessagesApplication).repository
     val settings = repo.settings
@@ -137,6 +140,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     )
 
     override fun onCleared() {
+        ui.removeCallbacks(contactsReload)
+        contactsObserver?.let {
+            runCatching { getApplication<Application>().contentResolver.unregisterContentObserver(it) }
+        }
+        contactsObserver = null
         super.onCleared()
         scope.cancel()
     }
@@ -146,64 +154,105 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val pendingCrashReports =
         androidx.compose.runtime.mutableStateOf<List<java.io.File>>(emptyList())
 
+    private val ui = android.os.Handler(android.os.Looper.getMainLooper())
+    private var contactsObserver: android.database.ContentObserver? = null
+    private val contactsReload = Runnable { loadContacts() }
+
     init {
-        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val ctx = app.applicationContext
-            val out = mutableListOf<com.anindra.messages.ui.Contact>()
-            val enterpriseBase = android.provider.ContactsContract.Directory.ENTERPRISE_DEFAULT
-            // Shared across both sources: the same number can be saved in the
-            // personal and the work profile and must be listed once.
-            val seen = mutableSetOf<String>()
-
-            fun load(uri: android.net.Uri, withContactId: Boolean) {
-                val projection = if (withContactId) arrayOf(
-                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER,
-                    "contact_id"
-                ) else arrayOf(
-                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
-                )
-                ctx.contentResolver.query(
-                    uri,
-                    projection,
-                    null, null,
-                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
-                )?.use { c ->
-                    while (c.moveToNext()) {
-                        val name = c.getString(0) ?: continue
-                        val num = c.getString(1) ?: continue
-                        val work = withContactId && c.getLong(2) >= enterpriseBase
-                        if (seen.add(num.filter { it.isDigit() })) {
-                            out.add(com.anindra.messages.ui.Contact(name, num, work))
-                        }
-                    }
-                }
-            }
-
-            try {
-                load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
-            } catch (_: Throwable) {
-            }
-
-            try {
-                // The enterprise URI returns only work-profile contacts, so it is
-                // loaded *in addition to* the personal profile. Loading it alone
-                // — as this did — dropped every personal contact on API 34+,
-                // leaving the picker showing work contacts, or nothing at all.
-                // Referencing it below API 34 throws NoSuchFieldError (an Error,
-                // not an Exception), hence the SDK guard. (#209)
-                if (com.anindra.messages.data.EnterpriseContacts.isSupported(Build.VERSION.SDK_INT)) {
-                    load(com.anindra.messages.data.EnterpriseContacts.phoneUri(), true)
-                }
-            } catch (_: Throwable) {
-            }
-            contacts.value = out
-        }
+        loadContacts()
+        observeContacts()
         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             pendingCrashReports.value =
                 com.anindra.messages.crash.CrashReporter.pending(app.applicationContext)
         }
+    }
+
+    /**
+     * Re-reads Contacts when the provider says it changed.
+     *
+     * The list is otherwise the snapshot taken at launch, and this ViewModel
+     * outlives every screen because the chat is a route inside this activity.
+     * A contact deleted during the session therefore stayed in New chat and in
+     * the Forward picker — reported as "cannot be deleted" — until the process
+     * died, while an added one never appeared at all. (#405)
+     */
+    private fun observeContacts() {
+        val resolver = getApplication<Application>().contentResolver
+        val observer = object : android.database.ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                // One edit reaches this as several changes (the raw contact, then
+                // each data row), and each read is a full provider query.
+                ui.removeCallbacks(contactsReload)
+                ui.postDelayed(contactsReload, CONTACT_RELOAD_DEBOUNCE_MS)
+            }
+        }
+        runCatching {
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Contacts.CONTENT_URI, true, observer
+            )
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Data.CONTENT_URI, true, observer
+            )
+        }.onFailure {
+            return
+        }
+        contactsObserver = observer
+    }
+
+    private fun loadContacts() {
+        val ctx = getApplication<Application>()
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val roster = readContacts(ctx)
+            // Every screen collecting this flow recomposes on a new instance, so
+            // an unchanged roster is not re-published.
+            if (roster != contacts.value) contacts.value = roster
+        }
+    }
+
+    private fun readContacts(ctx: android.content.Context): List<com.anindra.messages.ui.Contact> {
+        val rows = mutableListOf<com.anindra.messages.ui.ContactRow>()
+        val enterpriseBase = android.provider.ContactsContract.Directory.ENTERPRISE_DEFAULT
+
+        fun load(uri: android.net.Uri, withContactId: Boolean) {
+            val projection = if (withContactId) arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER,
+                "contact_id"
+            ) else arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+            ctx.contentResolver.query(
+                uri,
+                projection,
+                null, null,
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val work = withContactId && c.getLong(2) >= enterpriseBase
+                    rows += com.anindra.messages.ui.ContactRow(c.getString(0), c.getString(1), work)
+                }
+            }
+        }
+
+        try {
+            load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
+        } catch (_: Throwable) {
+        }
+
+        try {
+            // The enterprise URI returns only work-profile contacts, so it is
+            // loaded *in addition to* the personal profile. Loading it alone
+            // — as this did — dropped every personal contact on API 34+,
+            // leaving the picker showing work contacts, or nothing at all.
+            // Referencing it below API 34 throws NoSuchFieldError (an Error,
+            // not an Exception), hence the SDK guard. (#209)
+            if (com.anindra.messages.data.EnterpriseContacts.isSupported(Build.VERSION.SDK_INT)) {
+                load(com.anindra.messages.data.EnterpriseContacts.phoneUri(), true)
+            }
+        } catch (_: Throwable) {
+        }
+        return com.anindra.messages.ui.ContactRoster.merge(rows)
     }
 
     val conversations: Flow<List<Conversation>> = repo.conversations()
