@@ -27,6 +27,10 @@
     <string name="access_start_chat">Rozpocznij czat</string>
     <string name="access_loading_messages">Ładowanie wiadomości</string>
     <string name="access_photo">Zdjęcie</string>
+    <string name="access_voice">Wiadomość głosowa</string>
+    <string name="access_voice_play">Odtwórz wiadomość głosową</string>
+    <string name="access_voice_pause">Wstrzymaj wiadomość głosową</string>
+    <string name="access_video">Film</string>
     <string name="action_call">Zadzwoń</string>
     <string name="access_chat_top_bar">Górny pasek czatu</string>
     <string name="access_swipe_background">Tło przesunięcia</string>
@@ -41,6 +45,7 @@
     <string name="icon_attach">Dołącz</string>
     <string name="icon_emoji">Emoji</string>
     <string name="icon_send">Wyślij</string>
+    <string name="icon_voice">Nagraj wiadomość głosową</string>
     <string name="icon_close_search">Zamknij wyszukiwanie</string>
     <string name="icon_back_to_inbox">Wróć do skrzynki odbiorczej</string>
     <string name="icon_search">Szukaj</string>

@@ -93,6 +93,18 @@ Gotchas that cost real time on these AVDs:
 - **`content insert` into `content://sms` silently no-ops on the AOSP-30
   image.** The only inbound-SMS seed channel that works everywhere is
   `adb emu sms send`.
+- **`-no-audio` breaks voice messages.** The standing launch line above passes
+  it, which disables the emulator's audio devices; `MediaRecorder` then fails to
+  open the microphone and recording never produces a file. Drop `-no-audio` for
+  the run, and `scripts/test-voice-message.sh` refuses to start when the running
+  qemu process has it.
+- **The AVD's modem is down** (`Unable to connect character device modem`,
+  `gsm.sim.state=NOT_READY`), so Google Messages shows "Please insert a SIM card
+  to continue" and its composer cannot be exercised live. Its voice-message UI
+  was taken from its own `resources.arsc` instead:
+  `aapt2 dump resources base.apk | grep -i "voice message"` — that is where
+  "Slide to cancel", "Touch and hold to record audio" and the waveform slider
+  labels come from.
 
 ## Where docs live
 

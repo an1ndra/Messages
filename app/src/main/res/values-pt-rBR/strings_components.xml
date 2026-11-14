@@ -27,6 +27,10 @@
     <string name="access_start_chat">Iniciar conversa</string>
     <string name="access_loading_messages">Carregando mensagens</string>
     <string name="access_photo">Foto</string>
+    <string name="access_voice">Mensagem de voz</string>
+    <string name="access_voice_play">Reproduzir mensagem de voz</string>
+    <string name="access_voice_pause">Pausar mensagem de voz</string>
+    <string name="access_video">Vídeo</string>
     <string name="action_call">Ligar</string>
     <string name="access_chat_top_bar">Barra superior da conversa</string>
     <string name="access_swipe_background">Fundo ao deslizar</string>
@@ -41,6 +45,7 @@
     <string name="icon_attach">Anexar</string>
     <string name="icon_emoji">Emoji</string>
     <string name="icon_send">Enviar</string>
+    <string name="icon_voice">Gravar mensagem de voz</string>
     <string name="icon_close_search">Fechar pesquisa</string>
     <string name="icon_back_to_inbox">Voltar à caixa de entrada</string>
     <string name="icon_search">Pesquisar</string>

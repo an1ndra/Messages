@@ -27,6 +27,10 @@
     <string name="access_start_chat">채팅 시작</string>
     <string name="access_loading_messages">메시지 로딩 중</string>
     <string name="access_photo">사진</string>
+    <string name="access_voice">음성 메시지</string>
+    <string name="access_voice_play">음성 메시지 재생</string>
+    <string name="access_voice_pause">음성 메시지 일시중지</string>
+    <string name="access_video">동영상</string>
     <string name="action_call">전화</string>
     <string name="access_chat_top_bar">채팅 상단 바</string>
     <string name="access_swipe_background">스와이프 배경</string>
@@ -41,6 +45,7 @@
     <string name="icon_attach">첨부</string>
     <string name="icon_emoji">이모지</string>
     <string name="icon_send">보내기</string>
+    <string name="icon_voice">음성 메시지 녹음</string>
     <string name="icon_close_search">검색 닫기</string>
     <string name="icon_back_to_inbox">받은 편지함으로 돌아가기</string>
     <string name="icon_search">검색</string>

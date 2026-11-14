@@ -111,6 +111,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+/** How long a Contacts change waits before the picker's list is re-read. */
+private const val CONTACT_RELOAD_DEBOUNCE_MS = 500L
+
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val repo: Repository = (app as MessagesApplication).repository
     val settings = repo.settings
@@ -137,6 +140,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     )
 
     override fun onCleared() {
+        ui.removeCallbacks(contactsReload)
+        contactsObserver?.let {
+            runCatching { getApplication<Application>().contentResolver.unregisterContentObserver(it) }
+        }
+        contactsObserver = null
         super.onCleared()
         scope.cancel()
     }
@@ -146,64 +154,105 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val pendingCrashReports =
         androidx.compose.runtime.mutableStateOf<List<java.io.File>>(emptyList())
 
+    private val ui = android.os.Handler(android.os.Looper.getMainLooper())
+    private var contactsObserver: android.database.ContentObserver? = null
+    private val contactsReload = Runnable { loadContacts() }
+
     init {
-        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val ctx = app.applicationContext
-            val out = mutableListOf<com.anindra.messages.ui.Contact>()
-            val enterpriseBase = android.provider.ContactsContract.Directory.ENTERPRISE_DEFAULT
-            // Shared across both sources: the same number can be saved in the
-            // personal and the work profile and must be listed once.
-            val seen = mutableSetOf<String>()
-
-            fun load(uri: android.net.Uri, withContactId: Boolean) {
-                val projection = if (withContactId) arrayOf(
-                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER,
-                    "contact_id"
-                ) else arrayOf(
-                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
-                )
-                ctx.contentResolver.query(
-                    uri,
-                    projection,
-                    null, null,
-                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
-                )?.use { c ->
-                    while (c.moveToNext()) {
-                        val name = c.getString(0) ?: continue
-                        val num = c.getString(1) ?: continue
-                        val work = withContactId && c.getLong(2) >= enterpriseBase
-                        if (seen.add(num.filter { it.isDigit() })) {
-                            out.add(com.anindra.messages.ui.Contact(name, num, work))
-                        }
-                    }
-                }
-            }
-
-            try {
-                load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
-            } catch (_: Throwable) {
-            }
-
-            try {
-                // The enterprise URI returns only work-profile contacts, so it is
-                // loaded *in addition to* the personal profile. Loading it alone
-                // — as this did — dropped every personal contact on API 34+,
-                // leaving the picker showing work contacts, or nothing at all.
-                // Referencing it below API 34 throws NoSuchFieldError (an Error,
-                // not an Exception), hence the SDK guard. (#209)
-                if (com.anindra.messages.data.EnterpriseContacts.isSupported(Build.VERSION.SDK_INT)) {
-                    load(com.anindra.messages.data.EnterpriseContacts.phoneUri(), true)
-                }
-            } catch (_: Throwable) {
-            }
-            contacts.value = out
-        }
+        loadContacts()
+        observeContacts()
         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             pendingCrashReports.value =
                 com.anindra.messages.crash.CrashReporter.pending(app.applicationContext)
         }
+    }
+
+    /**
+     * Re-reads Contacts when the provider says it changed.
+     *
+     * The list is otherwise the snapshot taken at launch, and this ViewModel
+     * outlives every screen because the chat is a route inside this activity.
+     * A contact deleted during the session therefore stayed in New chat and in
+     * the Forward picker — reported as "cannot be deleted" — until the process
+     * died, while an added one never appeared at all. (#405)
+     */
+    private fun observeContacts() {
+        val resolver = getApplication<Application>().contentResolver
+        val observer = object : android.database.ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                // One edit reaches this as several changes (the raw contact, then
+                // each data row), and each read is a full provider query.
+                ui.removeCallbacks(contactsReload)
+                ui.postDelayed(contactsReload, CONTACT_RELOAD_DEBOUNCE_MS)
+            }
+        }
+        runCatching {
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Contacts.CONTENT_URI, true, observer
+            )
+            resolver.registerContentObserver(
+                android.provider.ContactsContract.Data.CONTENT_URI, true, observer
+            )
+        }.onFailure {
+            return
+        }
+        contactsObserver = observer
+    }
+
+    private fun loadContacts() {
+        val ctx = getApplication<Application>()
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val roster = readContacts(ctx)
+            // Every screen collecting this flow recomposes on a new instance, so
+            // an unchanged roster is not re-published.
+            if (roster != contacts.value) contacts.value = roster
+        }
+    }
+
+    private fun readContacts(ctx: android.content.Context): List<com.anindra.messages.ui.Contact> {
+        val rows = mutableListOf<com.anindra.messages.ui.ContactRow>()
+        val enterpriseBase = android.provider.ContactsContract.Directory.ENTERPRISE_DEFAULT
+
+        fun load(uri: android.net.Uri, withContactId: Boolean) {
+            val projection = if (withContactId) arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER,
+                "contact_id"
+            ) else arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+            ctx.contentResolver.query(
+                uri,
+                projection,
+                null, null,
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val work = withContactId && c.getLong(2) >= enterpriseBase
+                    rows += com.anindra.messages.ui.ContactRow(c.getString(0), c.getString(1), work)
+                }
+            }
+        }
+
+        try {
+            load(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, false)
+        } catch (_: Throwable) {
+        }
+
+        try {
+            // The enterprise URI returns only work-profile contacts, so it is
+            // loaded *in addition to* the personal profile. Loading it alone
+            // — as this did — dropped every personal contact on API 34+,
+            // leaving the picker showing work contacts, or nothing at all.
+            // Referencing it below API 34 throws NoSuchFieldError (an Error,
+            // not an Exception), hence the SDK guard. (#209)
+            if (com.anindra.messages.data.EnterpriseContacts.isSupported(Build.VERSION.SDK_INT)) {
+                load(com.anindra.messages.data.EnterpriseContacts.phoneUri(), true)
+            }
+        } catch (_: Throwable) {
+        }
+        return com.anindra.messages.ui.ContactRoster.merge(rows)
     }
 
     val conversations: Flow<List<Conversation>> = repo.conversations()
@@ -614,15 +663,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Saves a message attachment (e.g. an MMS picture) to the gallery (#235).
-     *  Reads the bytes through the resolver so provider-backed
-     *  `content://mms/part/...` URIs and our own cache URIs both work. */
+    /** Saves a message attachment (an MMS picture, clip or voice note) to the
+     *  gallery, Movies or Music (#235, #364, #461). */
     fun saveMessageImage(messageId: Long) = saveMessageImages(listOf(messageId))
 
     /**
-     * Saves every picture of the selection. A multi-picture MMS is one bubble
-     * backed by a row per picture, so saving only the first row stored one
-     * picture and still reported success (#364).
+     * Saves every attachment of the selection: pictures to the gallery, clips to
+     * Movies and voice notes to Music (#235, #364, #461). A multi-picture MMS is
+     * one bubble backed by a row per picture, so saving only the first row
+     * stored one picture and still reported success.
      */
     fun saveMessageImages(messageIds: List<Long>) {
         scope.launch {
@@ -635,29 +684,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             var saved = 0
+            var allAudio = true
+            var allVideo = true
             for (msg in messages) {
+                val target = MmsSupport.saveTargetFor(msg.mediaType)
+                if (target != MmsSupport.SaveTarget.AUDIO) allAudio = false
+                if (target != MmsSupport.SaveTarget.VIDEO) allVideo = false
                 val uri = Uri.parse(msg.mediaUri)
                 val bytes = runCatching {
                     resolver.openInputStream(uri)?.use { it.readBytes() }
                 }.getOrNull()
+                // A clip's part reports no MIME and has no extension to fall
+                // back on, so the target names its type (#461).
                 val mime = MmsSupport.mimeForSavedAttachment(
-                    msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull()
+                    msg.mediaUri, runCatching { resolver.getType(uri) }.getOrNull(), target
                 )
                 val convo = repo.conversationByIdSuspend(msg.conversationId)
                 val name = MmsSupport.savedAttachmentName(
-                    convo?.name ?: convo?.address ?: "message", msg.timestamp, mime
+                    convo?.name ?: convo?.address ?: "message", msg.timestamp, mime, target
                 )
-                if (bytes != null && bytes.isNotEmpty() &&
-                    DownloadsStore.writeImage(app, name, mime, bytes)
-                ) saved++
+                val ok = bytes != null && bytes.isNotEmpty() &&
+                    DownloadsStore.writeMedia(app, name, mime, bytes, target)
+                // The toast is the only evidence a user gets, so the same outcome
+                // names itself for the regression script.
+                android.util.Log.d(
+                    "AttachmentSave",
+                    "target=$target mime=$mime name=$name ok=$ok"
+                )
             }
             withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    app,
-                    if (saved == messages.size) R.string.chat_image_saved
-                    else R.string.chat_image_save_failed,
-                    Toast.LENGTH_SHORT
-                ).show()
+                val savedAll = saved == messages.size
+                val message = when {
+                    allAudio && savedAll -> R.string.chat_voice_saved
+                    allAudio -> R.string.chat_voice_save_failed
+                    allVideo && savedAll -> R.string.chat_video_saved
+                    allVideo -> R.string.chat_video_save_failed
+                    savedAll -> R.string.chat_image_saved
+                    else -> R.string.chat_image_save_failed
+                }
             }
         }
     }
@@ -698,6 +762,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deliveryReportsEnabled() = settings.deliveryReportsEnabled
+
+    /**
+     * How long a voice note may run on the current line.
+     *
+     * Read from the same carrier profile the send path enforces, but budgeted
+     * the way the send path budgets it: the PDU header, SMIL and framing come
+     * out before the attachment can use the rest ([VoiceNotePolicy.maxSecondsForCarrier]).
+     * Using the raw carrier cap here advertised a note that the fitter then
+     * rejected as too large.
+     */
+    fun voiceNoteMaxSeconds(): Int {
+        val cap = runCatching {
+            com.anindra.messages.sms.MmsFacade.profiles(getApplication())
+                .of(settings.simSubscriptionId).maxMessageSize()
+        }.getOrDefault(com.anindra.messages.data.MmsConfig.DEFAULT_MAX_MESSAGE_SIZE)
+        return com.anindra.messages.voice.VoiceNotePolicy.maxSecondsForCarrier(cap)
+    }
 
     fun openOrCreate(address: String, name: String?, onReady: (Long) -> Unit) {
         scope.launch {
@@ -1168,11 +1249,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     settings,
                     repo.totalConversationCount(),
                     repo.totalMessageCount(),
+                    voiceNoteDiagnostics(),
                     mmsDiagnostics()
                 )
             }
             onReady(text)
         }
+    }
+
+    /** The voice-note line the Diagnostics sheet prints; see [VoiceNoteDetails]. */
+    private suspend fun voiceNoteDiagnostics(): com.anindra.messages.diagnostics.VoiceNoteDetails {
+        val app = getApplication<Application>()
+        val cap = runCatching {
+            com.anindra.messages.sms.MmsFacade.profiles(app)
+                .of(settings.simSubscriptionId).maxMessageSize()
+        }.getOrDefault(com.anindra.messages.data.MmsConfig.DEFAULT_MAX_MESSAGE_SIZE)
+        val last = repo.latestVoiceNote()
+        val bytes = last?.mediaUri?.takeIf { it.isNotBlank() }?.let { uri ->
+            runCatching {
+                app.contentResolver.openAssetFileDescriptor(Uri.parse(uri), "r")
+                    ?.use { it.length }
+            }.getOrNull() ?: -1L
+        } ?: -1L
+        return com.anindra.messages.diagnostics.VoiceNoteDetails(
+            mime = com.anindra.messages.voice.VoiceNotePolicy.MIME,
+            maxSeconds = com.anindra.messages.voice.VoiceNotePolicy.maxSeconds(cap),
+            carrierCapBytes = cap,
+            lastBytes = bytes,
+            lastUri = last?.mediaUri.orEmpty()
+        )
     }
 
     /**

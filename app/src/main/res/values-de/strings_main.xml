@@ -54,6 +54,7 @@
     <string name="notif_action_mark_read">Als gelesen markieren</string>
     <string name="notif_you">Sie</string>
     <string name="notif_photo">Foto</string>
+    <string name="notif_voice">Sprachnachricht</string>
     <string name="notif_send_fail_private">Nachricht konnte nicht gesendet werden. Tippen zum wiederholen.</string>
     <string name="notif_send_fail">Nachricht an %s konnte nicht gesendet werden. Tippen zum wiederholen.</string>
     <string name="notif_not_delivered">Nachricht nicht zugestellt</string>

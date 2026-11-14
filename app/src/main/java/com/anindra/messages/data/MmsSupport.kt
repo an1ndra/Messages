@@ -77,30 +77,43 @@ object MmsSupport {
     /**
      * What one MMS carries, as far as this app can show it.
      *
-     * [imageId] and [extraImageIds] are the part ids the provider will hand the
-     * bytes out under. Each one is imported as a message row of its own, so a
-     * four-picture MMS shows four pictures instead of one and a note about the
-     * rest (#398). [mediaType] is the label the first row is stored under, so the
-     * bubble and the notification agree with what was read.
+     * [imageId], [extraImageIds] and [videoIds] are the attachment part ids the
+     * provider will hand the bytes out under; each one is imported as a message
+     * row of its own, so a four-picture MMS shows four pictures instead of one
+     * and a note about the rest (#398), and a clip arrives as a clip rather than
+     * as that same note (#461). [audioId] is a voice note, shown only when the
+     * MMS carries no picture and no clip. [mediaType] is the label the first row
+     * is stored under, so the bubble and the notification agree with what was
+     * read.
      */
     data class Content(
         val body: String,
         val imageId: Long?,
         val omittedParts: Int,
         /** The second and later pictures of a multi-picture MMS. */
-        val extraImageIds: List<Long> = emptyList()
+        val extraImageIds: List<Long> = emptyList(),
+        /** The clips of this MMS; a clip is never folded into a picture album. */
+        val videoIds: List<Long> = emptyList(),
+        val audioId: Long? = null,
+        val audioMime: String = ""
     ) {
         val mediaType: String
-            get() = if (imageId != null) "image" else "text"
+            get() = when {
+                imageId != null -> "image"
+                videoIds.isNotEmpty() -> "video"
+                audioId != null -> "audio"
+                else -> "text"
+            }
 
         val mediaId: Long?
-            get() = imageId
+            get() = imageId ?: videoIds.firstOrNull() ?: audioId
 
         /** Every attachment this MMS carries, in the order it should be shown, as
          *  (mediaType, partId). Empty for a text-only MMS. */
         fun mediaRows(): List<Pair<String, Long>> = buildList {
             imageId?.let { add("image" to it) }
             extraImageIds.forEach { add("image" to it) }
+            videoIds.forEach { add("video" to it) }
         }
     }
     data class InboundMms(
@@ -108,8 +121,12 @@ object MmsSupport {
         val body: String,
         val timestamp: Long,
         /** The picture of a picture MMS, or null. A picture-only MMS has a blank [body]. */
-        val imageUri: String? = null
-    )
+        val imageUri: String? = null,
+        /** The voice note of a voice MMS, or null. */
+        val audioUri: String? = null
+    ) {
+        val isAudio: Boolean get() = audioUri != null
+    }
     /** [subscriptionId] is the line the announcement was filed under, or -1 when the
      *  provider does not record one. The downloaded message keeps it. */
     data class PendingDownload(val id: Long, val contentLocation: String?, val subscriptionId: Int = -1)
@@ -152,7 +169,8 @@ object MmsSupport {
     /** ContentResolver often reports no type for FileProvider URIs; MMS still
      *  needs a concrete content type on the wire. */
     fun defaultAttachmentMime(contentType: String?, uri: String): String {
-        if (!contentType.isNullOrBlank()) return contentType.substringBefore(';').trim()
+        val declared = contentType?.substringBefore(';')?.trim()
+        if (!declared.isNullOrBlank()) return canonicalMime(declared)
         val lower = uri.lowercase()
         return when {
             lower.contains("video") || VIDEO_EXTENSIONS.any { lower.endsWith(it) } -> "video/mp4"
@@ -161,14 +179,34 @@ object MmsSupport {
         }
     }
 
+    /**
+     * One declared type for the audio the app can record.
+     *
+     * The recorder writes an MPEG-4 container with AAC in it, and Android's own
+     * MIME table reports that as `audio/mp4a-latm` from some builds and
+     * `audio/m4a` from others. A carrier is handed a content type it asks a
+     * handset to decode, so the app sends the RFC name rather than whichever
+     * alias the local platform happens to prefer.
+     */
+    fun canonicalMime(raw: String): String {
+        val type = mime(raw)
+        return if (type in AUDIO_MP4_ALIASES) "audio/mp4" else type
+    }
+
+    private val AUDIO_MP4_ALIASES = listOf(
+        "audio/mp4a-latm", "audio/m4a", "audio/x-m4a", "audio/aac", "audio/mp4a"
+    )
+
     private val VIDEO_EXTENSIONS = listOf(".mp4", ".3gp", ".mkv", ".webm")
     private val AUDIO_EXTENSIONS = listOf(".m4a", ".mp3", ".amr", ".ogg", ".aac")
 
     data class OutgoingPart(val name: String, val mimeType: String, val isText: Boolean)
     /** Attachment first, then an optional text part. A SMIL part is prepended
-     *  separately because several carriers reject an MMS without one. */
+     *  separately because several carriers reject an MMS without one. The
+     *  attachment's name is what the SMIL `src` points at, so it follows the
+     *  kind of media rather than always reading "image". */
     fun outgoingParts(attachmentMime: String, caption: String): List<OutgoingPart> = buildList {
-        add(OutgoingPart("image", attachmentMime, false))
+        add(OutgoingPart(if (isAudio(attachmentMime)) "audio" else "image", attachmentMime, false))
         if (caption.isNotBlank()) add(OutgoingPart("text", "text/plain", true))
     }
 
@@ -252,9 +290,26 @@ object MmsSupport {
         "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/bmp", "image/heic", "image/heif"
     )
 
-    /** The app's media type for an outgoing attachment: only pictures get the
-     *  album layout, everything else is a plain file. */
-    fun mediaKind(rawMime: String): String = if (isImage(rawMime)) "image" else "file"
+    /** Anything a handset will play: the app records `audio/mp4`, but a
+     *  received voice note can arrive as AMR, MP3 or OGG. */
+    fun isAudio(raw: String): Boolean = mime(raw).startsWith("audio/")
+
+    /** The MIME the app labels a clip with when the provider does not say. */
+    const val DEFAULT_VIDEO_MIME = "video/mp4"
+
+    fun isVideo(raw: String): Boolean = mime(raw) in setOf(
+        "video/mp4", "video/3gpp", "video/3gpp2", "video/webm", "video/x-matroska", "video/quicktime"
+    )
+
+    /** The message `media_type` for an attachment of this type: pictures get the
+     *  album layout, a clip its own bubble, a voice note its waveform, and
+     *  everything else is a plain file. */
+    fun mediaKind(rawMime: String): String = when {
+        isImage(rawMime) -> "image"
+        isVideo(rawMime) -> "video"
+        isAudio(rawMime) -> "audio"
+        else -> "file"
+    }
 
     /** The sentence [content] writes when it could not show every attachment.
      *  Only the provider's parts can say whether it is still true. */
@@ -265,21 +320,30 @@ object MmsSupport {
     fun content(parts: List<Part>): Content {
         // Every attachment the provider can hand out gets a message row of its
         // own, so a four-picture MMS arrives as four pictures rather than one
-        // picture and a note about the others (#398). Only media this app cannot
-        // show at all — video, documents, an extra voice note — is omitted.
+        // picture and a note about the others (#398), and a clip arrives as a
+        // clip (#461). A voice note is shown when there is neither; anything the
+        // app cannot show at all — a document — is reported rather than dropped
+        // silently.
         val images = parts.filter { it.id > 0 && isImage(it.mime) }
+        val audio = parts.firstOrNull { it.id > 0 && isAudio(it.mime) }
+            ?.takeIf { images.isEmpty() }
+        val videos = parts.filter { it.id > 0 && isVideo(it.mime) }
         val text = parts.filter { mime(it.mime) == "text/plain" }.mapNotNull { it.text }
             .filter { it.isNotBlank() }.joinToString("\n")
-        val shownIds = images.map { it.id }.toSet()
+        val shownIds = (images + videos).map { it.id }.toSet()
         val omitted = parts.count {
-            mime(it.mime) !in setOf("text/plain", "application/smil") && it.id !in shownIds
+            mime(it.mime) !in setOf("text/plain", "application/smil") &&
+                it.id !in shownIds && it !== audio
         }
         val notice = if (omitted > 0) "[MMS: $omitted $NOTICE_MARKER]" else ""
         return Content(
             body = listOf(text, notice).filter { it.isNotEmpty() }.joinToString("\n"),
             imageId = images.firstOrNull()?.id,
             omittedParts = omitted,
-            extraImageIds = images.drop(1).map { it.id }
+            extraImageIds = images.drop(1).map { it.id },
+            videoIds = videos.map { it.id },
+            audioId = audio?.id,
+            audioMime = audio?.let { mime(it.mime) } ?: ""
         )
     }
 
@@ -318,28 +382,66 @@ object MmsSupport {
         else -> null
     }
 
+    /** Where a saved attachment belongs. One decision, read by the menu that
+     *  offers the save and by the store that performs it, so a voice note can
+     *  never be labelled "Save image" and written into the gallery. */
+    enum class SaveTarget { IMAGE, VIDEO, AUDIO, FILE }
+
+    fun saveTargetFor(mediaType: String): SaveTarget = when (mediaType) {
+        "image" -> SaveTarget.IMAGE
+        "video" -> SaveTarget.VIDEO
+        "audio" -> SaveTarget.AUDIO
+        else -> SaveTarget.FILE
+    }
+
     private val EXTENSIONS = mapOf(
         "image/jpeg" to "jpg", "image/jpg" to "jpg", "image/png" to "png",
         "image/gif" to "gif", "image/webp" to "webp", "image/bmp" to "bmp",
-        "image/heic" to "heic", "image/heif" to "heif", "video/mp4" to "mp4"
+        "image/heic" to "heic", "image/heif" to "heif", "video/mp4" to "mp4",
+        "video/3gpp" to "3gp", "video/3gpp2" to "3g2", "video/webm" to "webm",
+        "audio/mp4" to "m4a", "audio/m4a" to "m4a", "audio/x-m4a" to "m4a",
+        "audio/mp4a-latm" to "m4a", "audio/aac" to "aac", "audio/3gpp" to "3gp",
+        "audio/amr" to "amr", "audio/mpeg" to "mp3", "audio/ogg" to "ogg",
+        "audio/wav" to "wav", "audio/x-wav" to "wav"
     )
 
+    /** The fallback a saved attachment gets when neither the resolver nor the
+     *  URI names a usable type: pictures when saving a picture, audio when
+     *  saving a voice note. */
+    private fun fallbackMime(target: SaveTarget): String = when (target) {
+        SaveTarget.IMAGE -> "image/jpeg"
+        SaveTarget.VIDEO -> DEFAULT_VIDEO_MIME
+        SaveTarget.AUDIO -> "audio/mp4"
+        SaveTarget.FILE -> "application/octet-stream"
+    }
+
     /** Fallback mime for a saved attachment when the resolver reports none. */
-    fun mimeForSavedAttachment(uri: String, resolved: String?): String {
+    fun mimeForSavedAttachment(
+        uri: String,
+        resolved: String?,
+        target: SaveTarget = SaveTarget.IMAGE
+    ): String {
         if (!resolved.isNullOrBlank()) return resolved.substringBefore(';').trim()
         val lower = uri.lowercase()
-        return EXTENSIONS.entries.firstOrNull { lower.endsWith(".${it.value}") }?.key ?: "image/jpeg"
+        return EXTENSIONS.entries.firstOrNull { lower.endsWith(".${it.value}") }?.key
+            ?: fallbackMime(target)
     }
 
     /** Filename for a saved attachment: "<contact>_<timestamp>.<ext>". Spaces are
      *  kept (the gallery shows them); only path-unsafe characters are dropped. */
-    fun savedAttachmentName(contactName: String, timestamp: Long, mime: String): String {
+    fun savedAttachmentName(
+        contactName: String,
+        timestamp: Long,
+        mime: String,
+        target: SaveTarget = SaveTarget.IMAGE
+    ): String {
         val safe = contactName.trim()
             .replace(Regex("[/\\\\:*?\"<>|\\x00-\\x1F]"), "_")
             .trim('_', ' ')
             .take(32)
             .ifBlank { "message" }
-        val ext = EXTENSIONS[mime.substringBefore(';').trim()] ?: "jpg"
+        val ext = EXTENSIONS[mime.substringBefore(';').trim()]
+            ?: EXTENSIONS[fallbackMime(target)] ?: "bin"
         return "${safe}_$timestamp.$ext"
     }
 }

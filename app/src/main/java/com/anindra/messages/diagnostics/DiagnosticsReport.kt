@@ -48,6 +48,27 @@ data class PermissionState(
 )
 
 /**
+ * The voice-note facts a text dump can assert: what the recorder produces, how
+ * long the carrier lets it run, and how large the newest note actually was.
+ */
+data class VoiceNoteDetails(
+    val mime: String = "",
+    val maxSeconds: Int = 0,
+    val carrierCapBytes: Int = 0,
+    val lastBytes: Long = 0,
+    val lastUri: String = ""
+) {
+    fun summary(): String =
+        if (mime.isBlank()) "unavailable"
+        else "$mime, up to ${maxSeconds}s (carrier cap ${carrierCapBytes}B)"
+
+    fun lastLine(): String = when {
+        lastBytes > 0 -> "$lastBytes B ${lastUri.takeIf { it.isNotBlank() }?.let { "($it)" } ?: ""}".trim()
+        else -> "none"
+    }
+}
+
+/**
  * Imported versus provider MMS shape, for reports like "only one picture of
  * four showed" (#398).
  *
@@ -110,6 +131,15 @@ data class AppDetails(
     /** The silhouette ink an avatar resolves to under the current scheme. */
     val resolvedAvatarInk: String = "",
     val notificationsEnabled: Boolean,
+    /**
+     * What the voice-note recorder writes and how long it may run.
+     *
+     * Read from the same policy the recorder enforces and the same carrier cap
+     * the send path checks, so the report cannot claim a limit that is not the
+     * one in force. The size of the newest note is included because a recording
+     * has no text a UI dump could show.
+     */
+    val voiceNote: VoiceNoteDetails = VoiceNoteDetails(),
     val fontFamily: String = "",
     val sendSound: Boolean = false,
     val receiveSound: Boolean = false,
@@ -315,6 +345,8 @@ object DiagnosticsReport {
             }
             appendLine("Notifications enabled: ${data.appDetails.notificationsEnabled}")
             appendLine("Full-screen intent: ${if (data.appDetails.fullScreenIntentGranted) "granted" else "denied"}")
+            appendLine("Voice note: ${data.appDetails.voiceNote.summary()}")
+            appendLine("Last voice note: ${data.appDetails.voiceNote.lastLine()}")
             appendLine("Channel importance: ${data.appDetails.channelImportanceLabel}")
             if (data.appDetails.channels.isEmpty()) {
                 appendLine("Channels: none created yet")
@@ -491,6 +523,7 @@ object DiagnosticsReport {
         settings: SettingsStore,
         conversationCount: Int,
         messageCount: Int,
+        voiceNote: VoiceNoteDetails = VoiceNoteDetails(),
         mms: MmsDetails = MmsDetails()
     ): String {
         val phoneStateGranted = context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) ==
@@ -547,7 +580,7 @@ object DiagnosticsReport {
             DiagnosticsData(
                 device = CrashReporter.deviceInfo(),
                 app = CrashReporter.appInfo(context),
-                appDetails = appDetails(context, settings),
+                appDetails = appDetails(context, settings, voiceNote),
                 deviceExtra = DeviceExtra(
                     release = Build.VERSION.RELEASE ?: "",
                     codename = Build.VERSION.CODENAME ?: "",
@@ -641,7 +674,11 @@ object DiagnosticsReport {
         context.checkSelfPermission(Manifest.permission.USE_FULL_SCREEN_INTENT) ==
             PackageManager.PERMISSION_GRANTED
 
-    private fun appDetails(context: Context, settings: SettingsStore): AppDetails {
+    private fun appDetails(
+        context: Context,
+        settings: SettingsStore,
+        voiceNote: VoiceNoteDetails
+    ): AppDetails {
         val defaultSms = try {
             val rm = context.getSystemService(RoleManager::class.java)
             (rm?.isRoleHeld(RoleManager.ROLE_SMS) ?: false) ||
@@ -704,6 +741,7 @@ object DiagnosticsReport {
                 )
             ),
             notificationsEnabled = settings.notificationsEnabled,
+            voiceNote = voiceNote,
             fontFamily = settings.fontFamily,
             sendSound = settings.sendSoundEnabled,
             receiveSound = settings.receiveSoundEnabled,

@@ -77,6 +77,38 @@ class MmsSupportTest {
     }
 
     @Test
+    fun aVoiceNoteKeepsItsOwnNameAndType() {
+        // #364: a saved voice note was named ".jpg" because the extension table
+        // only knew pictures.
+        assertEquals(
+            "Sara_1700000000000.m4a",
+            MmsSupport.savedAttachmentName(
+                "Sara", 1_700_000_000_000L, "audio/mp4", MmsSupport.SaveTarget.AUDIO
+            )
+        )
+        assertEquals(
+            "audio/mp4",
+            MmsSupport.mimeForSavedAttachment(
+                "content://x/voice-1700.m4a", null, MmsSupport.SaveTarget.AUDIO
+            )
+        )
+        assertEquals(
+            "an audio save with no name still must not claim to be a picture",
+            "audio/mp4",
+            MmsSupport.mimeForSavedAttachment(
+                "content://x/voice-1700", null, MmsSupport.SaveTarget.AUDIO
+            )
+        )
+    }
+
+    @Test
+    fun theSaveTargetFollowsTheMessageNotTheMenu() {
+        assertEquals(MmsSupport.SaveTarget.AUDIO, MmsSupport.saveTargetFor("audio"))
+        assertEquals(MmsSupport.SaveTarget.IMAGE, MmsSupport.saveTargetFor("image"))
+        assertEquals(MmsSupport.SaveTarget.FILE, MmsSupport.saveTargetFor("text"))
+    }
+
+    @Test
     fun convertsSecondsWithoutOverflow() {
         assertEquals(1_700_000_000_000L, MmsSupport.milliseconds(1_700_000_000L))
         assertNull(MmsSupport.milliseconds(-1))
@@ -132,7 +164,7 @@ class MmsSupportTest {
     }
 
     @Test
-    fun combinesTextAndReportsAttachmentsNotDisplayed() {
+    fun combinesTextAndKeepsEveryAttachmentItCanShow() {
         val content = MmsSupport.content(listOf(
             MmsSupport.Part(1, "application/smil"),
             MmsSupport.Part(2, "text/plain", "Caption"),
@@ -141,12 +173,74 @@ class MmsSupportTest {
             MmsSupport.Part(5, "video/mp4")
         ))
         assertEquals(3L, content.imageId)
-        // The second picture is imported as its own row now, so only the video
-        // is left over (#398).
+        // Each picture and the clip get a row of their own (#398, #461), so
+        // nothing here is left to apologise for.
         assertEquals(listOf(4L), content.extraImageIds)
+        assertEquals(listOf(5L), content.videoIds)
+        assertEquals(0, content.omittedParts)
+        assertEquals("Caption", content.body)
+        assertEquals(
+            listOf("image" to 3L, "image" to 4L, "video" to 5L),
+            content.mediaRows()
+        )
+    }
+
+    @Test
+    fun aVideoMmsIsAVideoRatherThanANotice() {
+        // #461: a clip-only MMS used to arrive as one grey line saying the
+        // attachment could not be displayed.
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(1, "application/smil"),
+            MmsSupport.Part(7, "video/mp4")
+        ))
+        assertEquals("video", content.mediaType)
+        assertEquals(7L, content.mediaId)
+        assertEquals(listOf(7L), content.videoIds)
+        assertEquals("", content.body)
+        assertEquals(listOf("video" to 7L), content.mediaRows())
+    }
+
+    @Test
+    fun aClipIsNotFoldedIntoThePictureAlbum() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(2, "image/jpeg"),
+            MmsSupport.Part(3, "video/3gpp")
+        ))
+        assertEquals("image", content.mediaType)
+        assertEquals(listOf(3L), content.videoIds)
+        // The one picture is the message's own, so the album list stays empty;
+        // the clip is still a row of its own.
+        assertEquals(emptyList<Long>(), content.extraImageIds)
+        assertEquals(listOf("image" to 2L, "video" to 3L), content.mediaRows())
+    }
+
+    @Test
+    fun onlyWhatTheAppCannotShowIsCountedAsUnsupported() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(1, "image/png"),
+            MmsSupport.Part(2, "application/pdf"),
+            MmsSupport.Part(3, "video/3gpp")
+        ))
         assertEquals(1, content.omittedParts)
-        assertTrue(content.body.startsWith("Caption\n"))
         assertTrue(content.body.contains("1 additional/unsupported"))
+    }
+
+    @Test
+    fun aMimeDecidesWhichBubbleTheAttachmentGets() {
+        assertEquals("image", MmsSupport.mediaKind("image/jpeg"))
+        assertEquals("video", MmsSupport.mediaKind("video/mp4"))
+        assertEquals("video", MmsSupport.mediaKind("VIDEO/3GPP"))
+        assertEquals("file", MmsSupport.mediaKind("application/pdf"))
+        assertTrue(MmsSupport.isVideo("video/quicktime"))
+        assertFalse(MmsSupport.isVideo("image/jpeg"))
+    }
+
+    @Test
+    fun aSavedClipKeepsAVideoExtension() {
+        assertEquals("Alex_1700000000000.mp4",
+            MmsSupport.savedAttachmentName("Alex", 1700000000000, "video/mp4"))
+        assertEquals("Alex_1700000000000.3gp",
+            MmsSupport.savedAttachmentName("Alex", 1700000000000, "video/3gpp"))
     }
 
     @Test
@@ -195,6 +289,85 @@ class MmsSupportTest {
         val content = MmsSupport.content(listOf(MmsSupport.Part(7, "text/plain", "hi")))
         assertTrue(content.mediaRows().isEmpty())
         assertEquals("hi", content.body)
+    }
+
+    @Test
+    fun readsAVoiceNotePartInsteadOfCallingItUnsupported() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(1, "application/smil"),
+            MmsSupport.Part(2, "text/plain", "Listen"),
+            MmsSupport.Part(3, "audio/mp4")
+        ))
+        assertEquals(3L, content.audioId)
+        assertEquals("audio/mp4", content.audioMime)
+        // Nothing is left over: a voice note is supported, so it must not also
+        // be reported as an attachment this app cannot show.
+        assertEquals(0, content.omittedParts)
+        assertEquals("Listen", content.body)
+        assertEquals("audio", content.mediaType)
+        assertEquals(3L, content.mediaId)
+        assertEquals(null, content.imageId)
+    }
+
+    @Test
+    fun anAmrVoiceNoteCountsAsAudioToo() {
+        val content = MmsSupport.content(listOf(MmsSupport.Part(9, "audio/amr")))
+        assertEquals("audio", content.mediaType)
+        assertEquals(9L, content.audioId)
+        assertTrue(MmsSupport.isAudio("AUDIO/3GPP; name=note.3gp"))
+        assertFalse(MmsSupport.isAudio("image/jpeg"))
+    }
+
+    @Test
+    fun aPictureStillWinsOverAVoiceNote() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(3, "audio/mp4"),
+            MmsSupport.Part(4, "image/jpeg")
+        ))
+        assertEquals("image", content.mediaType)
+        assertEquals(4L, content.mediaId)
+        // The audio part is still present, but only one attachment is shown, so
+        // it is reported rather than silently dropped.
+        assertEquals(1, content.omittedParts)
+    }
+
+    @Test
+    fun attachmentKindFollowsTheMimeType() {
+        assertEquals("image", MmsSupport.mediaKind("image/png"))
+        assertEquals("audio", MmsSupport.mediaKind("audio/mp4"))
+        assertEquals("video", MmsSupport.mediaKind("video/mp4"))
+        assertEquals("file", MmsSupport.mediaKind("application/pdf"))
+    }
+
+    @Test
+    fun platformAliasesForTheRecordedContainerAreNormalised() {
+        // Android reports an .m4a as audio/mp4a-latm on some builds and
+        // audio/m4a on others; the carrier is told the RFC name either way.
+        assertEquals("audio/mp4", MmsSupport.canonicalMime("audio/mp4a-latm"))
+        assertEquals("audio/mp4", MmsSupport.canonicalMime("audio/m4a"))
+        assertEquals("audio/mp4", MmsSupport.canonicalMime("audio/x-m4a; charset=binary"))
+        assertEquals("image/jpeg", MmsSupport.canonicalMime("image/jpeg"))
+        assertEquals(
+            "audio/mp4",
+            MmsSupport.defaultAttachmentMime("audio/mp4a-latm", "content://voice/1.m4a")
+        )
+    }
+
+    @Test
+    fun aVoiceAttachmentIsNamedAsAudioInTheSmilLayout() {
+        val parts = MmsSupport.outgoingParts("audio/mp4", "")
+        assertEquals("audio", parts[0].name)
+        assertEquals("audio/mp4", parts[0].mimeType)
+        assertEquals("image", MmsSupport.outgoingParts("image/png", "")[0].name)
+    }
+
+    @Test
+    fun anInboundVoiceNoteIsMarkedAsSuch() {
+        val note = MmsSupport.InboundMms("+15551234567", "", 1L, audioUri = "content://mms/part/3")
+        assertTrue(note.isAudio)
+        assertFalse(
+            MmsSupport.InboundMms("+15551234567", "hi", 1L).isAudio
+        )
     }
 
     @Test
@@ -288,9 +461,11 @@ class MmsSupportTest {
 
     @Test
     fun theBodyNoticeIsRecognisable() {
+        // A document is the case the notice still exists for; a clip is shown
+        // in its own bubble since #461.
         val notice = MmsSupport.content(listOf(
             MmsSupport.Part(1, "image/png"),
-            MmsSupport.Part(2, "video/mp4")
+            MmsSupport.Part(2, "application/pdf")
         )).body
         assertEquals("[MMS: 1 additional/unsupported attachment(s) not displayed]", notice)
         assertTrue(MmsSupport.carriesNotice(notice))
