@@ -192,7 +192,12 @@ object SendReqBuilder {
         if (recipients.size > 1 && !request.profile.groupMmsEnabled()) {
             return SendReqOutcome.GroupMmsUnsupported
         }
-        if (request.attachments.isEmpty()) return SendReqOutcome.NoPresentation
+        // A text-only MMS is how a group text leaves as one message (#448); the
+        // caption becomes the slide's text part. Nothing to lay out at all is
+        // still refused, because an empty PDU renders as an empty message.
+        if (request.attachments.isEmpty() && request.caption.isBlank()) {
+            return SendReqOutcome.NoPresentation
+        }
 
         val body = PduBody()
         request.attachments.forEachIndexed { index, attachment ->
@@ -201,6 +206,7 @@ object SendReqBuilder {
             // picture, so a handset shows it with the picture it describes.
             if (index == 0 && request.caption.isNotBlank()) body.add(textPart(request.caption))
         }
+        if (request.attachments.isEmpty()) body.add(textPart(request.caption))
         val smil = SmilBuilder.build(body) ?: return SendReqOutcome.NoPresentation
         body.addAt(SMIL_PART_INDEX, smilPart(SmilSerializer.serialize(smil)))
 
@@ -657,7 +663,9 @@ class Mms(
      * different message than the one the user staged.
      */
     private fun fitAll(message: OutgoingMessage, profile: CarrierProfile): FitAllOutcome {
-        if (message.attachments.isEmpty()) return FitAllOutcome.Unreadable
+        // A text-only message has nothing to fit; the caption is still built
+        // into the presentation by SendReqBuilder (#448).
+        if (message.attachments.isEmpty()) return FitAllOutcome.Fitted(emptyList())
         val budget = BudgetPolicy.perAttachmentBudget(
             carrierMaxMessageSize = profile.maxMessageSize(),
             captionBytes = message.caption.toByteArray(Charsets.UTF_8).size,

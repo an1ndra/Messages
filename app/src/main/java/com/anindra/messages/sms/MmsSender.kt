@@ -61,7 +61,10 @@ internal object MmsSender {
         caption: String,
         subscriptionId: Int
     ): Boolean {
-        if (messageIds.isEmpty() || media.isEmpty()) return false
+        if (messageIds.isEmpty()) return false
+        // No attachments is a text-only MMS, which is how a group text leaves as
+        // one message (#448). A blank caption with no attachment is refused by
+        // the builder, so that case cannot reach the wire.
         val app = context.applicationContext
         val maxSize = MmsFacade.profiles(app).of(subscriptionId).maxMessageSize()
         MmsTrace.i(
@@ -211,6 +214,9 @@ internal object MmsSender {
                     runCatching { repository.linkMmsRow(messageId, rowId) }
                         .onFailure { Log.w(TAG, "could not link message $messageId: ${it.message}") }
                 }
+                // The outbox row is on the same thread a reply will arrive on, so
+                // the conversation can adopt it by id instead of by member set.
+                messageIds.firstOrNull()?.let { repository.adoptProviderThreadFromOutbox(it, rowId) }
             }
             val transactionId = MmsPendingSends.transactionIdOf(context, row)
             if (transactionId == null) {

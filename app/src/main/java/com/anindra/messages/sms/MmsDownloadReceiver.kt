@@ -33,7 +33,8 @@ class MmsDownloadReceiver : BroadcastReceiver() {
                 val repo = (context.applicationContext as com.anindra.messages.MessagesApplication).repository
                 for (mms in repo.importDownloadedMms()) {
                     NotificationHelper.show(
-                        context, mms.address, mms.body, mms.imageUri, audio = mms.isAudio
+                        context, mms.address, mms.body, mms.imageUri, audio = mms.isAudio,
+                        conversationId = mms.conversationId
                     )
                 }
             } catch (t: Throwable) {

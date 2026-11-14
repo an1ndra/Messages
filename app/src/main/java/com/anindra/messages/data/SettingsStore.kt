@@ -77,6 +77,7 @@ class SettingsStore(context: Context) {
         const val KEY_PARTICIPANTS_MIGRATED = "participants_migrated"
         const val KEY_ALPHANUMERIC_REPAIR_DONE = "alphanumeric_repair_done"
         const val KEY_FABRICATED_ADDRESS_REPAIR_DONE = "fabricated_address_repair_done"
+        const val KEY_GROUP_THREAD_REPAIR_DONE = "group_thread_repair_done"
         const val KEY_PHONE_REGION = "phone_region"
         const val KEY_SEND_SOUND = "send_sound_enabled"
         const val KEY_RECEIVE_SOUND = "receive_sound_enabled"
@@ -201,6 +202,14 @@ class SettingsStore(context: Context) {
     var fabricatedAddressRepairDone: Boolean
         get() = prefs.getBoolean(KEY_FABRICATED_ADDRESS_REPAIR_DONE, false)
         set(v) { prefs.edit().putBoolean(KEY_FABRICATED_ADDRESS_REPAIR_DONE, v).apply() }
+
+    /**
+     * One-shot: MMS imported before #448 are filed by sender, so a group's
+     * messages sit in each member's private chat until they are re-filed.
+     */
+    var groupThreadRepairDone: Boolean
+        get() = prefs.getBoolean(KEY_GROUP_THREAD_REPAIR_DONE, false)
+        set(v) { prefs.edit().putBoolean(KEY_GROUP_THREAD_REPAIR_DONE, v).apply() }
 
     var phoneRegion: String
         get() = prefs.getString(KEY_PHONE_REGION, "") ?: ""

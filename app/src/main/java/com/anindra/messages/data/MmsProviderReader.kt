@@ -12,20 +12,21 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
         val isMe: Boolean,
         val read: Boolean,
         val subId: Int,
-        val content: MmsSupport.Content
+        val content: MmsSupport.Content,
+        /**
+         * The provider thread this MMS belongs to, or 0 when the provider does
+         * not say. The platform groups a group MMS on it — the `:mms` store
+         * writes the same participants for a send and a receive — so it is the
+         * conversation's identity (#448).
+         */
+        val threadId: Long = 0,
+        /** Everyone in [threadId], the sender included. Empty when the provider's
+         *  address table cannot be read, which keeps the old sender-only routing. */
+        val participants: List<String> = emptyList()
     )
 
     fun read(skip: Set<Long>, consume: (Message) -> Unit) {
-        val recipients = mutableMapOf<Long, Int>()
-        resolver.query(
-            Uri.parse("content://mms-sms/conversations?simple=true"),
-            arrayOf("_id", "recipient_ids"), null, null, null
-        )?.use { cursor ->
-            while (cursor.moveToNext()) {
-                recipients[cursor.getLong(0)] = cursor.getString(1).orEmpty().trim()
-                    .split(Regex("\\s+")).filter { it.isNotBlank() }.distinct().size
-            }
-        }
+        val threads = threadParticipants()
         resolver.query(
             Telephony.Mms.CONTENT_URI,
             arrayOf("_id", "thread_id", "date", "msg_box", "m_type", "read", "sub_id"),
@@ -38,15 +39,20 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
                     val box = cursor.getInt(3)
                     if (!MmsSupport.isImportable(box, cursor.getInt(4))) continue
                     val timestamp = MmsSupport.milliseconds(cursor.getLong(2)) ?: continue
-                    val address = MmsSupport.peer(box, addresses(id), recipients[cursor.getLong(1)])
+                    val threadId = cursor.getLong(1)
+                    val participants = threads[threadId].orEmpty()
+                    val address = MmsSupport.peer(box, addresses(id), participants.size)
                     if (address == null) {
                         android.util.Log.i("RepoSync", "MMS skipped: group or unverified phone participants")
                         continue
                     }
                     val content = MmsSupport.content(parts(id))
                     if (content.mediaRows().isEmpty() && content.body.isBlank()) continue
-                    Message(id, address, timestamp, box == 2, cursor.getInt(5) != 0,
-                        if (cursor.isNull(6)) -1 else cursor.getInt(6), content)
+                    Message(
+                        id, address, timestamp, box == 2, cursor.getInt(5) != 0,
+                        if (cursor.isNull(6)) -1 else cursor.getInt(6), content,
+                        threadId, participants
+                    )
                 } catch (e: SecurityException) {
                     // A revoked READ_SMS must abort the pass, not look like one
                     // unreadable row: the next sync retries the import in full.
@@ -58,6 +64,93 @@ internal class MmsProviderReader(private val resolver: ContentResolver) {
                 consume(message)
             }
         }
+    }
+
+    /**
+     * Every thread and the people in it.
+     *
+     * The provider splits a thread's members into `recipient_ids`, canonical
+     * address ids; the addresses themselves live in one table. Reading both in
+     * two cursors is what Fossify's `getThreadParticipants` does, and it is the
+     * only way to know a group MMS's members without opening each message's
+     * address rows.
+     *
+     * A provider that will not hand either table over yields an empty map: the
+     * import then routes by sender exactly as before, instead of failing the
+     * whole pass.
+     */
+    private fun threadParticipants(): Map<Long, List<String>> {
+        val addresses = runCatching { canonicalAddresses() }.getOrNull().orEmpty()
+        if (addresses.isEmpty()) return emptyMap()
+        val out = mutableMapOf<Long, List<String>>()
+        runCatching {
+            resolver.query(
+                Uri.parse("content://mms-sms/conversations?simple=true"),
+                arrayOf("_id", "recipient_ids"), null, null, null
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val threadId = cursor.getLong(0)
+                    val members = cursor.getString(1).orEmpty()
+                        .split(Regex("\\s+"))
+                        .mapNotNull { it.trim().toLongOrNull() }
+                        .mapNotNull { addresses[it] }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                    if (members.isNotEmpty()) out[threadId] = members
+                }
+            }
+        }.onFailure {
+            android.util.Log.w("RepoSync", "MMS thread recipients unavailable: ${it.message}")
+        }
+        return out
+    }
+
+    private fun canonicalAddresses(): Map<Long, String> {
+        val out = mutableMapOf<Long, String>()
+        resolver.query(
+            Uri.parse("content://mms-sms/canonical-addresses"),
+            arrayOf("_id", "address"), null, null, null
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(0)
+                val address = cursor.getString(1).orEmpty().trim()
+                if (id > 0 && address.isNotEmpty()) out[id] = address
+            }
+        }
+        return out
+    }
+
+    /** A provider thread and everyone in it. */
+    data class ProviderThread(val threadId: Long, val participants: List<String>)
+
+    /**
+     * Every provider MMS that belongs to a group thread, keyed by MMS id.
+     *
+     * The one-shot repair uses this to re-file messages imported before #448;
+     * only multi-participant threads are returned, because a 1:1 needs no move.
+     */
+    fun threadsById(): Map<Long, ProviderThread> {
+        val threads = threadParticipants()
+        if (threads.isEmpty()) return emptyMap()
+        val out = mutableMapOf<Long, ProviderThread>()
+        runCatching {
+            resolver.query(
+                Telephony.Mms.CONTENT_URI,
+                arrayOf(Telephony.Mms._ID, "thread_id"), null, null, null
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(0)
+                    val threadId = cursor.getLong(1)
+                    val people = threads[threadId].orEmpty()
+                    if (id > 0 && people.size > 1) {
+                        out[id] = ProviderThread(threadId, people)
+                    }
+                }
+            }
+        }.onFailure {
+            android.util.Log.w("RepoSync", "MMS thread map unavailable: ${it.message}")
+        }
+        return out
     }
 
     data class PartLine(val mime: String, val seq: Int)
