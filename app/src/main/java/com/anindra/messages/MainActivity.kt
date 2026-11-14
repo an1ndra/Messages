@@ -543,6 +543,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun conversationGroupTitle(conversationId: Long): String =
         repo.groupTitleBlocking(conversationId)
 
+    /** The picture this group chose, or blank for the generated avatar. */
+    fun conversationGroupAvatar(conversationId: Long): String =
+        repo.groupAvatarBlocking(conversationId)
+
+    /**
+     * Sets (or replaces) a group's picture. The picked URI is copied into the
+     * app's files first: a picker grant does not outlive the process, so a URI
+     * stored as-is would render once and then go blank.
+     */
+    fun setGroupAvatar(conversationId: Long, source: android.net.Uri) = scope.launch {
+        val previous = repo.groupAvatarBlocking(conversationId)
+        val saved = com.anindra.messages.data.GroupAvatarStore.save(
+            getApplication(), conversationId, source
+        ) ?: return@launch
+        repo.setGroupAvatar(conversationId, saved)
+        if (previous.isNotBlank() && previous != saved) {
+            com.anindra.messages.data.GroupAvatarStore.delete(previous)
+        }
+        membershipRevision.value++
+    }
+
     /** Renames a group. Blank restores the default name. */
     fun setGroupTitle(conversationId: Long, title: String) =
         scope.launch {
@@ -1318,7 +1339,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val probe = runCatching {
             com.anindra.messages.data.MmsProviderReader(app.contentResolver).newestMultiPart()
         }.getOrNull()
-        val (groupCount, threadId, members) = repo.groupFacts()
+        val groups = repo.groupFacts()
         return com.anindra.messages.diagnostics.MmsDetails(
             rows = rows,
             multiPart = multi,
@@ -1326,8 +1347,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             providerId = probe?.id ?: 0L,
             scanned = probe?.scanned ?: 20,
             parts = probe?.parts.orEmpty().map { "seq=${it.seq} ${it.mime}" },
-            groups = if (groupCount == 0) "0 group chat(s)" else
-                "$groupCount group chat(s), newest thread #$threadId with $members member(s)"
+            groups = if (groups.chats == 0) "0 group chat(s)" else
+                "${groups.chats} group chat(s), newest thread #${groups.thread} " +
+                "with ${groups.members} member(s)" +
+                (if (groups.avatar) ", picture set" else "")
         )
     }
 }

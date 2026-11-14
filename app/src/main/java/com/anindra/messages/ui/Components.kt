@@ -106,12 +106,21 @@ fun PersonAvatar(
     size: Dp = 48.dp,
     modifier: Modifier = Modifier,
     backgroundColor: Color? = null,
-    tint: Color? = null
+    tint: Color? = null,
+    /**
+     * A picture to draw instead of the contact photo — a group's own image.
+     * Coil takes the path; the contact lookup is skipped when it is set.
+     */
+    photoModel: Any? = null
 ) {
     val fill = backgroundColor ?: avatarColor(key)
     val glyphTint = tint ?: avatarGlyphInk(MaterialTheme.colorScheme)
     val context = LocalContext.current
     val photoUri by produceState<String?>(initialValue = photoUriCache.get(key), key) {
+        if (photoModel != null) {
+            value = null
+            return@produceState
+        }
         val hit = photoUriCache.get(key)
         if (hit != null) { value = hit.ifBlank { null }; return@produceState }
         value = withContext(Dispatchers.IO) {
@@ -124,10 +133,10 @@ fun PersonAvatar(
             .background(fill, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        val uri = photoUri
-        if (uri != null) {
+        val model = photoModel ?: photoUri
+        if (model != null) {
             coil3.compose.AsyncImage(
-                model = uri,
+                model = model,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(size).clip(CircleShape)
