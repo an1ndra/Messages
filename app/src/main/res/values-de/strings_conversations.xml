@@ -43,4 +43,16 @@
     <string name="search_scope_contacts">Kontakte</string>
     <string name="search_scope_messages">Nachrichten</string>
     <string name="search_scope_no_results">Keine Treffer</string>
+    <string name="inbox_category_all">Alle</string>
+    <string name="inbox_category_personal">Persönlich</string>
+    <string name="inbox_category_transactions">Transaktionen</string>
+    <string name="inbox_category_otp">OTP</string>
+    <string name="inbox_category_spam">Spam</string>
+    <string name="settings_inbox_rules_title">Kategorien &amp; Regeln</string>
+    <string name="settings_inbox_rules_subtitle">Ein Wort oder einen Absender einem Tab zuordnen</string>
+    <string name="inbox_rules_add">Regel hinzufügen</string>
+    <string name="inbox_rules_kind_keyword">Stichwort</string>
+    <string name="inbox_rules_kind_sender">Absender</string>
+    <string name="inbox_rules_empty">Noch keine Regeln</string>
+    <string name="inbox_rules_pattern_hint">Wort oder Absender</string>
 </resources>
