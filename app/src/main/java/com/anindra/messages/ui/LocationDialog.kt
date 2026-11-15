@@ -20,7 +20,7 @@ import androidx.compose.ui.res.stringResource
 import com.anindra.messages.R
 
 /**
- * The "share a location" dialog (#479).
+ * The "share a location" dialog.
  *
  * It is a text field first and a button second on purpose: the link is what
  * gets sent, and the person holding the phone can see and correct it. "Use my

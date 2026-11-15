@@ -1182,7 +1182,7 @@ fun ChatScreen(
     }
 
     // Audio files are picked through the document picker: the photo picker only
-    // offers images and video, and this has to reach music and recordings (#481).
+    // offers images and video, and this has to reach music and recordings.
     val audioLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -1190,7 +1190,7 @@ fun ChatScreen(
     }
 
     // A contact is sent as a vCard body, so the picker only has to hand back an
-    // id (#480).
+    // id.
     val contactLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickContact()
     ) { uri ->

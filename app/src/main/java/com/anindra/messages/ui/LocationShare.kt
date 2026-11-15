@@ -9,7 +9,7 @@ import android.location.LocationManager
 import java.util.Locale
 
 /**
- * A location shared in a text (#479).
+ * A location shared in a text.
  *
  * The link is a `geo:` URI rather than a picture of a map: it survives being
  * forwarded, it opens in whatever maps app the recipient has, and it costs one
