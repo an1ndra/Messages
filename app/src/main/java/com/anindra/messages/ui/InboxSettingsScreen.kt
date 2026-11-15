@@ -51,7 +51,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,8 +63,6 @@ import com.anindra.messages.data.RuleKind
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
@@ -451,10 +448,7 @@ internal fun AddCategoryRuleForm(
     var pattern by remember { mutableStateOf("") }
     var kind by remember { mutableStateOf(RuleKind.KEYWORD) }
     var category by remember { mutableStateOf(InboxCategory.SPAM) }
-    val focus = remember { FocusRequester() }
     val formScroll = rememberScrollState()
-
-    LaunchedEffect(Unit) { focus.requestFocus() }
 
     Column(
         Modifier
@@ -500,9 +494,7 @@ internal fun AddCategoryRuleForm(
             onValueChange = { pattern = it },
             label = { Text(stringResource(R.string.inbox_rules_pattern_hint)) },
             singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focus)
+            modifier = Modifier.fillMaxWidth()
         )
         SettingsGroup {
             InboxCategory.entries.forEachIndexed { index, candidate ->
