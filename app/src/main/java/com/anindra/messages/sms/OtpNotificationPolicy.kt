@@ -3,7 +3,7 @@ package com.anindra.messages.sms
 import com.anindra.messages.ui.OtpDetector
 
 /**
- * Whether a message notification has to be treated as carrying a one-time code (#476).
+ * Whether a message notification has to be treated as carrying a one-time code.
  *
  * Android 16 stops other apps reading codes out of notifications, but only for
  * notifications the app marks. A code that arrives in a text is exactly the

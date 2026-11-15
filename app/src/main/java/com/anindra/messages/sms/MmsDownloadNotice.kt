@@ -11,7 +11,7 @@ import com.anindra.messages.MainActivity
 import com.anindra.messages.R
 
 /**
- * The "fetching this message" notice (#477).
+ * The "fetching this message" notice.
  *
  * The platform owns the transfer — `downloadMultimediaMessage` hands the job to
  * the carrier and reports back through [MmsDownloadReceiver] — so there are no

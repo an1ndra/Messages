@@ -6,7 +6,7 @@ import android.provider.ContactsContract
 import java.util.Locale
 
 /**
- * A contact sent as a vCard (#480).
+ * A contact sent as a vCard.
  *
  * The card travels as the message body rather than as an MMS part: the SMS path
  * is what works on every carrier, and a `text/vcard` part that the recipient's
