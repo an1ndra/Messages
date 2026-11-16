@@ -27,6 +27,8 @@
     <string name="chat_location_unavailable">Impossible d\'obtenir votre position. Réessayez dans un instant.</string>
     <string name="chat_location_permission">L\'autorisation de localisation est nécessaire pour partager votre position.</string>
     <string name="chat_contact_unavailable">Ce contact n\'a aucun numéro à envoyer.</string>
+    <string name="chat_camera_unavailable">Aucune application d\'appareil photo sur cet appareil pour prendre une photo.</string>
+    <string name="chat_gallery_unavailable">Aucune application sur cet appareil ne peut choisir une photo.</string>
     <string name="chat_select_all">Tout sélectionner</string>
     <string name="chat_select_text">Sélectionner le texte</string>
     <string name="chat_save_image">Enregistrer l\'image</string>

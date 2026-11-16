@@ -27,6 +27,8 @@
     <string name="chat_location_unavailable">مکان شما به دست نیامد. کمی بعد دوباره تلاش کنید.</string>
     <string name="chat_location_permission">برای به اشتراک گذاشتن مکان، اجازهٔ دسترسی به مکان لازم است.</string>
     <string name="chat_contact_unavailable">این مخاطب شماره‌ای برای ارسال ندارد.</string>
+    <string name="chat_camera_unavailable">برنامه‌ای برای دوربین روی این دستگاه نیست تا عکس بگیرد.</string>
+    <string name="chat_gallery_unavailable">برنامه‌ای روی این دستگاه نیست که عکس انتخاب کند.</string>
     <string name="chat_select_all">انتخاب همه</string>
     <string name="chat_select_text">انتخاب متن</string>
     <string name="chat_save_image">ذخیره تصویر</string>

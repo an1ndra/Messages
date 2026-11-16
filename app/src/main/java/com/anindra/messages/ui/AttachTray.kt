@@ -17,6 +17,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import com.anindra.messages.ui.theme.LocalReduceMotion
 import com.anindra.messages.ui.theme.Motion
@@ -90,7 +91,7 @@ internal object AttachTrayMetrics {
 
     /** Icon size and corner radius, as fractions of the tile they sit in. */
     const val ICON_FRACTION = 0.24f
-    const val RADIUS_FRACTION = 0.214f
+    const val RADIUS_FRACTION = 0.107f
 
     private const val UNITS = REFERENCE_CAMERA_DP + REFERENCE_TILE_DP * COLUMNS
 
@@ -126,12 +127,15 @@ internal fun AttachTray(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    // One accent per tile, cycled from the scheme's three so a dynamic palette
+    // keeps them related instead of turning the tray into a paint chart.
+    val accents = listOf(colors.primary, colors.tertiary, colors.secondary)
     Column(
         modifier
             .fillMaxWidth()
             // The same strip the composer sits in, so the tray reads as the
             // keyboard's slot rather than a card floating over the chat.
-            .background(colors.surfaceContainer)
+            .background(colors.chatBar)
     ) {
         BoxWithConstraints(
             Modifier
@@ -150,22 +154,26 @@ internal fun AttachTray(
                     icon = cameraIcon,
                     width = sizes.cameraWidth,
                     height = sizes.cameraHeight,
-                    onClick = onCamera
+                    onClick = onCamera,
+                    iconTint = accents[0]
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(sizes.gap)) {
-                    actions.chunked(AttachTrayMetrics.COLUMNS).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(sizes.gap)) {
-                            row.forEach { action ->
-                                AttachTile(
-                                    label = action.label,
-                                    icon = action.icon,
-                                    width = sizes.tile,
-                                    height = sizes.tileHeight,
-                                    onClick = action.onClick
-                                )
+                    actions.chunked(AttachTrayMetrics.COLUMNS)
+                        .forEachIndexed { rowIndex, row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(sizes.gap)) {
+                                row.forEachIndexed { column, action ->
+                                    val index = rowIndex * AttachTrayMetrics.COLUMNS + column
+                                    AttachTile(
+                                        label = action.label,
+                                        icon = action.icon,
+                                        width = sizes.tile,
+                                        height = sizes.tileHeight,
+                                        onClick = action.onClick,
+                                        iconTint = accents[(index + 1) % accents.size]
+                                    )
+                                }
                             }
                         }
-                    }
                 }
             }
         }
@@ -180,7 +188,8 @@ internal fun AttachTile(
     width: Dp,
     height: Dp,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    iconTint: Color = Color.Unspecified
 ) {
     val colors = MaterialTheme.colorScheme
     val reduceMotion = LocalReduceMotion.current
@@ -211,7 +220,7 @@ internal fun AttachTile(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = colors.onSurface,
+                tint = if (iconTint == Color.Unspecified) colors.onSurface else iconTint,
                 modifier = Modifier
                     .size(minOf(width, height) * AttachTrayMetrics.ICON_FRACTION)
                     .offset(y = -(height * AttachTrayMetrics.ICON_LIFT))
