@@ -18,6 +18,15 @@
     <string name="chat_select_time">Sélectionner l\'heure</string>
     <string name="chat_media_camera">Appareil photo</string>
     <string name="chat_media_gallery">Galerie</string>
+    <string name="chat_media_audio">Audio</string>
+    <string name="chat_media_location">Position</string>
+    <string name="chat_media_contact">Contact</string>
+    <string name="chat_location_title">Partager votre position</string>
+    <string name="chat_location_body">Un lien Google Maps vers l\'endroit où vous êtes sera envoyé dans cette conversation.</string>
+    <string name="chat_location_send">Envoyer</string>
+    <string name="chat_location_unavailable">Impossible d\'obtenir votre position. Réessayez dans un instant.</string>
+    <string name="chat_location_permission">L\'autorisation de localisation est nécessaire pour partager votre position.</string>
+    <string name="chat_contact_unavailable">Ce contact n\'a aucun numéro à envoyer.</string>
     <string name="chat_select_all">Tout sélectionner</string>
     <string name="chat_select_text">Sélectionner le texte</string>
     <string name="chat_save_image">Enregistrer l\'image</string>

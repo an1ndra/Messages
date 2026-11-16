@@ -18,6 +18,15 @@
     <string name="chat_select_time">Выбрать время</string>
     <string name="chat_media_camera">Камера</string>
     <string name="chat_media_gallery">Галерея</string>
+    <string name="chat_media_audio">Аудио</string>
+    <string name="chat_media_location">Местоположение</string>
+    <string name="chat_media_contact">Контакт</string>
+    <string name="chat_location_title">Поделиться местоположением</string>
+    <string name="chat_location_body">В этот чат будет отправлена ссылка Google Карт с вашим текущим местоположением.</string>
+    <string name="chat_location_send">Отправить</string>
+    <string name="chat_location_unavailable">Не удалось определить местоположение. Повторите попытку чуть позже.</string>
+    <string name="chat_location_permission">Чтобы поделиться местоположением, нужно разрешение на геоданные.</string>
+    <string name="chat_contact_unavailable">У этого контакта нет номера для отправки.</string>
     <string name="chat_select_all">Выбрать все</string>
     <string name="chat_select_text">Выделить текст</string>
     <string name="chat_save_image">Сохранить изображение</string>

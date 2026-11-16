@@ -18,6 +18,15 @@
     <string name="chat_select_time">समय चुनें</string>
     <string name="chat_media_camera">कैमरा</string>
     <string name="chat_media_gallery">गैलरी</string>
+    <string name="chat_media_audio">ऑडियो</string>
+    <string name="chat_media_location">स्थान</string>
+    <string name="chat_media_contact">संपर्क</string>
+    <string name="chat_location_title">अपना स्थान साझा करें</string>
+    <string name="chat_location_body">आपकी मौजूदा जगह का Google Maps लिंक इस चैट में भेजा जाएगा।</string>
+    <string name="chat_location_send">भेजें</string>
+    <string name="chat_location_unavailable">आपका स्थान नहीं मिल सका। थोड़ी देर बाद फिर कोशिश करें।</string>
+    <string name="chat_location_permission">अपना स्थान साझा करने के लिए स्थान की अनुमति चाहिए।</string>
+    <string name="chat_contact_unavailable">उस संपर्क में भेजने के लिए कोई नंबर नहीं है।</string>
     <string name="chat_select_all">सभी चुनें</string>
     <string name="chat_select_text">टेक्स्ट चुनें</string>
     <string name="chat_save_image">छवि सहेजें</string>
