@@ -1015,6 +1015,29 @@ fun ChatScreen(
     // bar's own column pads that separately: without taking one out, the
     // composer floats a navigation bar above the keyboard.
     val keyboardInset = (imeBottom - navBottom).coerceAtLeast(0.dp)
+    // Remember how tall this device's keyboard is. The tray replaces that slot,
+    // so it is built to the same height and follows a resized keyboard (a taller
+    // one in landscape, a different IME, the user's own height setting).
+    var keyboardSlot by rememberSaveable { mutableFloatStateOf(0f) }
+    // The IME's inset arrives in animation frames — the first ones describe a
+    // half-open keyboard — so the height is read again once it has settled.
+    // Every open re-reads it, which is what makes the tray follow a resized
+    // keyboard instead of remembering the first one it ever saw.
+    var imeSeen by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(imeBottom) { imeSeen = imeBottom.value }
+    LaunchedEffect(imeBottom > 0.dp) {
+        if (imeBottom <= 0.dp) return@LaunchedEffect
+        delay(450)
+        val settled = imeSeen - navBottom.value
+        if (settled > 120f) keyboardSlot = settled
+    }
+    LaunchedEffect(imeBottom, navBottom, keyboardSlot, attachOpen) {
+        android.util.Log.d(
+            "AttachTrayHeight",
+            "ime=${imeBottom.value} nav=${navBottom.value} inset=${keyboardInset.value} " +
+                "slot=$keyboardSlot open=$attachOpen"
+        )
+    }
     // Picked media waits here until the user sends it, so a picture can be
     // explained or dropped before it leaves — it is no longer sent on pick.
     val pendingMedia = remember { mutableStateListOf<Uri>() }
@@ -2018,6 +2041,7 @@ fun ChatScreen(
                                 cameraLauncher.launch(cameraFileUri!!)
                             }
                         },
+                        keyboardHeight = keyboardSlot.takeIf { it > 0f }?.dp,
                         actions = listOf(
                             AttachAction(
                                 label = stringResource(R.string.chat_media_gallery),

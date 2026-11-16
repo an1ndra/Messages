@@ -59,6 +59,47 @@ class AttachTrayMetricsTest {
     }
 
     @Test
+    fun theTrayTakesTheKeyboardsSlot() {
+        // 261 dp is what this AVD's keyboard measures after the navigation bar
+        // is taken out: the tray must fill exactly that so nothing moves.
+        val sizes = AttachTrayMetrics.sizes(396f, targetHeightDp = 261f)
+
+        assertEquals(261f, sizes.height.value, 0.3f)
+        // Two rows, two gaps' worth of padding and one gap between them.
+        assertEquals(261f, sizes.cameraHeight.value + sizes.verticalPad.value * 2, 0.3f)
+    }
+
+    @Test
+    fun aTallerKeyboardGrowsTheTiles() {
+        val taller = AttachTrayMetrics.sizes(396f, targetHeightDp = 300f)
+
+        assertTrue("tiles grow with the slot", taller.tileHeight > taller.tile * 0.9f)
+        assertTrue("and the tray fills it", taller.height.value > 290f)
+    }
+
+    @Test
+    fun aTallScreenKeyboardDoesNotMakeTheTilesAbsurd() {
+        // A tablet keyboard is far taller than a phone's; the tiles stop growing
+        // rather than turning into columns.
+        val sizes = AttachTrayMetrics.sizes(396f, targetHeightDp = 520f)
+
+        assertEquals(
+            AttachTrayMetrics.MAX_TILE_ASPECT,
+            sizes.tileHeight.value / sizes.tile.value,
+            epsilon
+        )
+    }
+
+    @Test
+    fun aShorterSlotLeavesTheTilesAlone() {
+        val natural = AttachTrayMetrics.sizes(396f)
+        val short = AttachTrayMetrics.sizes(396f, targetHeightDp = 180f)
+
+        assertEquals(natural.tileHeight.value, short.tileHeight.value, epsilon)
+        assertEquals(natural.height.value, short.height.value, epsilon)
+    }
+
+    @Test
     fun aNarrowScreenStillGetsUsableTiles() {
         // 360 dp phone: the grid shrinks rather than pushing a column off screen.
         val sizes = AttachTrayMetrics.sizes(344f)
