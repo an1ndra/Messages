@@ -28,6 +28,9 @@
     <string name="chat_location_permission">برای به اشتراک گذاشتن مکان، اجازهٔ دسترسی به مکان لازم است.</string>
     <string name="chat_contact_unavailable">این مخاطب شماره‌ای برای ارسال ندارد.</string>
     <string name="chat_camera_unavailable">برنامه‌ای برای دوربین روی این دستگاه نیست تا عکس بگیرد.</string>
+    <string name="db_newer_title">این نسخه از پیام‌های شما قدیمی‌تر است</string>
+    <string name="db_newer_body">پیام‌های شما آخرین بار با نسخهٔ جدیدتری از Messages باز شده‌اند (داده v%2$d، این نسخه v%1$d). این نسخه نمی‌تواند آن‌ها را بخواند، بنابراین با نام %3$s کنار گذاشته شدند و Messages خالی شروع می‌شود. برای بازگرداندنشان نسخهٔ جدیدتر را نصب کنید.</string>
+    <string name="db_newer_ok">متوجه شدم</string>
     <string name="chat_gallery_unavailable">برنامه‌ای روی این دستگاه نیست که عکس انتخاب کند.</string>
     <string name="chat_select_all">انتخاب همه</string>
     <string name="chat_select_text">انتخاب متن</string>

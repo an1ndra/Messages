@@ -28,6 +28,9 @@
     <string name="chat_location_permission">위치를 공유하려면 위치 권한이 필요합니다.</string>
     <string name="chat_contact_unavailable">이 연락처에는 보낼 번호가 없습니다.</string>
     <string name="chat_camera_unavailable">이 기기에는 사진을 찍을 카메라 앱이 없습니다.</string>
+    <string name="db_newer_title">이 빌드는 메시지보다 오래되었습니다</string>
+    <string name="db_newer_body">메시지는 더 새로운 버전의 Messages에서 마지막으로 열렸습니다(데이터 v%2$d, 이 빌드 v%1$d). 이 빌드에서는 읽을 수 없어 %3$s(으)로 옮겨 두었으며 Messages는 빈 상태로 시작합니다. 되돌리려면 새로운 빌드를 설치하세요.</string>
+    <string name="db_newer_ok">확인</string>
     <string name="chat_gallery_unavailable">이 기기에는 사진을 선택할 앱이 없습니다.</string>
     <string name="chat_select_all">모두 선택</string>
     <string name="chat_select_text">텍스트 선택</string>

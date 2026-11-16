@@ -28,6 +28,9 @@
     <string name="chat_location_permission">अपना स्थान साझा करने के लिए स्थान की अनुमति चाहिए।</string>
     <string name="chat_contact_unavailable">उस संपर्क में भेजने के लिए कोई नंबर नहीं है।</string>
     <string name="chat_camera_unavailable">इस डिवाइस पर फ़ोटो लेने के लिए कोई कैमरा ऐप नहीं है।</string>
+    <string name="db_newer_title">यह बिल्ड आपके संदेशों से पुराना है</string>
+    <string name="db_newer_body">आपके संदेश आखिरी बार Messages के नए संस्करण से खुले थे (डेटा v%2$d, यह बिल्ड v%1$d)। यह बिल्ड उन्हें पढ़ नहीं सकता, इसलिए उन्हें %3$s के रूप में अलग रखा गया और Messages खाली शुरू होता है। उन्हें वापस पाने के लिए नया बिल्ड इंस्टॉल करें।</string>
+    <string name="db_newer_ok">समझ गया</string>
     <string name="chat_gallery_unavailable">इस डिवाइस पर फ़ोटो चुनने वाला कोई ऐप नहीं है।</string>
     <string name="chat_select_all">सभी चुनें</string>
     <string name="chat_select_text">टेक्स्ट चुनें</string>

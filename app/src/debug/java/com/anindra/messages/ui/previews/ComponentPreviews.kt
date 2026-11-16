@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SwipeAction
+import com.anindra.messages.data.DatabaseCompatibility
 import com.anindra.messages.ui.AttachAction
 import com.anindra.messages.ui.AttachTile
 import com.anindra.messages.ui.AttachTray
@@ -35,6 +36,7 @@ import com.anindra.messages.ui.ChatBubble
 import com.anindra.messages.ui.DialogText
 import com.anindra.messages.ui.ReactionBar
 import com.anindra.messages.ui.ReactionChips
+import com.anindra.messages.ui.NewerDataDialog
 import com.anindra.messages.ui.InputBar
 import com.anindra.messages.ui.LocationDialog
 import com.anindra.messages.ui.MessageDetailsDialog
@@ -652,6 +654,22 @@ private fun AttachTrayPreview() {
                 )
             )
         }
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Newer data than this build", showBackground = true, widthDp = 380, heightDp = 420)
+@Composable
+private fun NewerDataPreview() {
+    MessagesTheme(mode = "system") {
+        NewerDataDialog(
+            notice = DatabaseCompatibility.Notice(
+                fileVersion = 35,
+                appVersion = 33,
+                fileName = "messages.newer-v35.db"
+            ),
+            onDismiss = {}
+        )
     }
 }
 
