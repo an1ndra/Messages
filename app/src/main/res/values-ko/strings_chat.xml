@@ -27,6 +27,8 @@
     <string name="chat_location_unavailable">위치를 가져오지 못했습니다. 잠시 후 다시 시도하세요.</string>
     <string name="chat_location_permission">위치를 공유하려면 위치 권한이 필요합니다.</string>
     <string name="chat_contact_unavailable">이 연락처에는 보낼 번호가 없습니다.</string>
+    <string name="chat_camera_unavailable">이 기기에는 사진을 찍을 카메라 앱이 없습니다.</string>
+    <string name="chat_gallery_unavailable">이 기기에는 사진을 선택할 앱이 없습니다.</string>
     <string name="chat_select_all">모두 선택</string>
     <string name="chat_select_text">텍스트 선택</string>
     <string name="chat_save_image">이미지 저장</string>

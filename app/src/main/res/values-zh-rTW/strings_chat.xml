@@ -26,6 +26,8 @@
     <string name="chat_location_unavailable">無法取得你的位置。請稍後再試一次。</string>
     <string name="chat_location_permission">分享你的位置需要位置權限。</string>
     <string name="chat_contact_unavailable">該聯絡人沒有可傳送的號碼。</string>
+    <string name="chat_camera_unavailable">此裝置上沒有可拍照的相機應用程式。</string>
+    <string name="chat_gallery_unavailable">此裝置上沒有可選擇相片的应用程式。</string>
     <string name="chat_select_all">全選</string>
     <string name="chat_select_text">選取文字</string>
     <string name="chat_save_image">儲存圖片</string>

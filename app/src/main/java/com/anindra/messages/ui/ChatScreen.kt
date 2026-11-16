@@ -1231,6 +1231,17 @@ fun ChatScreen(
         }
     }
 
+    // A device with no camera app, or no document picker, throws instead of
+    // opening anything: an unhandled ActivityNotFoundException crashed the chat
+    // the moment the Camera tile was tapped.
+    fun launchOrExplain(messageRes: Int, launch: () -> Unit) {
+        try {
+            launch()
+        } catch (_: android.content.ActivityNotFoundException) {
+            Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { granted ->
@@ -2003,7 +2014,9 @@ fun ChatScreen(
                             cameraFileUri = FileProvider.getUriForFile(
                                 context, "${context.packageName}.fileprovider", file
                             )
-                            cameraLauncher.launch(cameraFileUri!!)
+                            launchOrExplain(R.string.chat_camera_unavailable) {
+                                cameraLauncher.launch(cameraFileUri!!)
+                            }
                         },
                         actions = listOf(
                             AttachAction(
@@ -2011,16 +2024,20 @@ fun ChatScreen(
                                 icon = Icons.Rounded.Image
                             ) {
                                 attachOpen = false
-                                galleryLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                )
+                                launchOrExplain(R.string.chat_gallery_unavailable) {
+                                    galleryLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                }
                             },
                             AttachAction(
                                 label = stringResource(R.string.chat_media_audio),
                                 icon = Icons.Rounded.Audiotrack
                             ) {
                                 attachOpen = false
-                                audioLauncher.launch(arrayOf("audio/*"))
+                                launchOrExplain(R.string.chat_gallery_unavailable) {
+                                    audioLauncher.launch(arrayOf("audio/*"))
+                                }
                             },
                             AttachAction(
                                 label = stringResource(R.string.chat_media_location),
@@ -2043,7 +2060,9 @@ fun ChatScreen(
                                 icon = Icons.Rounded.Person
                             ) {
                                 attachOpen = false
-                                contactLauncher.launch(null)
+                                launchOrExplain(R.string.chat_contact_unavailable) {
+                                    contactLauncher.launch(null)
+                                }
                             }
                         )
                     )

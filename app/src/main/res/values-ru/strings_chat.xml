@@ -27,6 +27,8 @@
     <string name="chat_location_unavailable">Не удалось определить местоположение. Повторите попытку чуть позже.</string>
     <string name="chat_location_permission">Чтобы поделиться местоположением, нужно разрешение на геоданные.</string>
     <string name="chat_contact_unavailable">У этого контакта нет номера для отправки.</string>
+    <string name="chat_camera_unavailable">На этом устройстве нет приложения камеры, чтобы сделать фото.</string>
+    <string name="chat_gallery_unavailable">Ни одно приложение на этом устройстве не может выбрать фото.</string>
     <string name="chat_select_all">Выбрать все</string>
     <string name="chat_select_text">Выделить текст</string>
     <string name="chat_save_image">Сохранить изображение</string>

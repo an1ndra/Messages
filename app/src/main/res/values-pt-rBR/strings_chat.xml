@@ -27,6 +27,8 @@
     <string name="chat_location_unavailable">Não foi possível obter sua localização. Tente novamente em instantes.</string>
     <string name="chat_location_permission">É preciso permissão de localização para compartilhar onde você está.</string>
     <string name="chat_contact_unavailable">Esse contato não tem um número para enviar.</string>
+    <string name="chat_camera_unavailable">Não há app de câmera neste aparelho para tirar uma foto.</string>
+    <string name="chat_gallery_unavailable">Nenhum app deste aparelho consegue escolher uma foto.</string>
     <string name="chat_select_all">Selecionar tudo</string>
     <string name="chat_select_text">Selecionar texto</string>
     <string name="chat_save_image">Salvar imagem</string>
