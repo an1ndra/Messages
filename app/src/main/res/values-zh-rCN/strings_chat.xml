@@ -27,6 +27,9 @@
     <string name="chat_location_permission">分享您的位置需要位置权限。</string>
     <string name="chat_contact_unavailable">该联系人没有可发送的号码。</string>
     <string name="chat_camera_unavailable">此设备上没有可拍照的相机应用。</string>
+    <string name="db_newer_title">此版本比你的消息旧</string>
+    <string name="db_newer_body">你的消息上次由更新版本的 Messages 打开（数据 v%2$d，此版本 v%1$d）。此版本无法读取，因此已另存为 %3$s，Messages 将以空白开始。安装更新版本即可找回它们。</string>
+    <string name="db_newer_ok">知道了</string>
     <string name="chat_gallery_unavailable">此设备上没有可选择照片的应用。</string>
     <string name="chat_select_all">全选</string>
     <string name="chat_select_text">选择文本</string>

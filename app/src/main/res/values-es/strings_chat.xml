@@ -28,6 +28,9 @@
     <string name="chat_location_permission">Se necesita permiso de ubicación para compartir dónde estás.</string>
     <string name="chat_contact_unavailable">Ese contacto no tiene ningún número para enviar.</string>
     <string name="chat_camera_unavailable">No hay ninguna app de cámara en este dispositivo para hacer una foto.</string>
+    <string name="db_newer_title">Esta versión es anterior a tus mensajes</string>
+    <string name="db_newer_body">Una versión más reciente de Messages abrió tus mensajes por última vez (datos v%2$d, esta versión v%1$d). Esta versión no puede leerlos, así que se apartaron como %3$s y Messages empieza vacío. Instala la versión más reciente para recuperarlos.</string>
+    <string name="db_newer_ok">Entendido</string>
     <string name="chat_gallery_unavailable">Ninguna app de este dispositivo puede elegir una foto.</string>
     <string name="chat_select_all">Seleccionar todo</string>
     <string name="chat_select_text">Seleccionar texto</string>
