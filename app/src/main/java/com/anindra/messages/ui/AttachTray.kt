@@ -36,7 +36,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.anindra.messages.ui.theme.chatBar
 import com.anindra.messages.ui.theme.inputPill
 
 /** One action the tray offers, beside the camera tile. */
@@ -133,9 +132,10 @@ internal fun AttachTray(
     Column(
         modifier
             .fillMaxWidth()
-            // The same strip the composer sits in, so the tray reads as the
-            // keyboard's slot rather than a card floating over the chat.
-            .background(colors.chatBar)
+            // The page's own colour, which is what the composer already sits
+            // on: painting a container role here made the tray a visible band
+            // under the chat in the dark scheme.
+            .background(colors.background)
     ) {
         BoxWithConstraints(
             Modifier
