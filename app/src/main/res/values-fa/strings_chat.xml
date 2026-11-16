@@ -18,6 +18,15 @@
     <string name="chat_select_time">انتخاب زمان</string>
     <string name="chat_media_camera">دوربین</string>
     <string name="chat_media_gallery">گالری</string>
+    <string name="chat_media_audio">صدا</string>
+    <string name="chat_media_location">مکان</string>
+    <string name="chat_media_contact">مخاطب</string>
+    <string name="chat_location_title">اشتراک‌گذاری مکان شما</string>
+    <string name="chat_location_body">پیوند Google Maps از مکان فعلی شما به این گفتگو فرستاده می‌شود.</string>
+    <string name="chat_location_send">ارسال</string>
+    <string name="chat_location_unavailable">مکان شما به دست نیامد. کمی بعد دوباره تلاش کنید.</string>
+    <string name="chat_location_permission">برای به اشتراک گذاشتن مکان، اجازهٔ دسترسی به مکان لازم است.</string>
+    <string name="chat_contact_unavailable">این مخاطب شماره‌ای برای ارسال ندارد.</string>
     <string name="chat_select_all">انتخاب همه</string>
     <string name="chat_select_text">انتخاب متن</string>
     <string name="chat_save_image">ذخیره تصویر</string>

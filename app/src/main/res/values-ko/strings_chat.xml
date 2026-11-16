@@ -18,6 +18,15 @@
     <string name="chat_select_time">시간 선택</string>
     <string name="chat_media_camera">카메라</string>
     <string name="chat_media_gallery">갤러리</string>
+    <string name="chat_media_audio">오디오</string>
+    <string name="chat_media_location">위치</string>
+    <string name="chat_media_contact">연락처</string>
+    <string name="chat_location_title">위치 공유</string>
+    <string name="chat_location_body">현재 위치의 Google 지도 링크가 이 채팅으로 전송됩니다.</string>
+    <string name="chat_location_send">보내기</string>
+    <string name="chat_location_unavailable">위치를 가져오지 못했습니다. 잠시 후 다시 시도하세요.</string>
+    <string name="chat_location_permission">위치를 공유하려면 위치 권한이 필요합니다.</string>
+    <string name="chat_contact_unavailable">이 연락처에는 보낼 번호가 없습니다.</string>
     <string name="chat_select_all">모두 선택</string>
     <string name="chat_select_text">텍스트 선택</string>
     <string name="chat_save_image">이미지 저장</string>

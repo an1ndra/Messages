@@ -18,6 +18,15 @@
     <string name="chat_select_time">Seleccionar hora</string>
     <string name="chat_media_camera">Cámara</string>
     <string name="chat_media_gallery">Galería</string>
+    <string name="chat_media_audio">Audio</string>
+    <string name="chat_media_location">Ubicación</string>
+    <string name="chat_media_contact">Contacto</string>
+    <string name="chat_location_title">Comparte tu ubicación</string>
+    <string name="chat_location_body">Se enviará a este chat un enlace de Google Maps con tu ubicación actual.</string>
+    <string name="chat_location_send">Enviar</string>
+    <string name="chat_location_unavailable">No se pudo obtener tu ubicación. Inténtalo de nuevo en un momento.</string>
+    <string name="chat_location_permission">Se necesita permiso de ubicación para compartir dónde estás.</string>
+    <string name="chat_contact_unavailable">Ese contacto no tiene ningún número para enviar.</string>
     <string name="chat_select_all">Seleccionar todo</string>
     <string name="chat_select_text">Seleccionar texto</string>
     <string name="chat_save_image">Guardar imagen</string>

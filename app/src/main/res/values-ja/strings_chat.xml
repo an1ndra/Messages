@@ -18,6 +18,15 @@
     <string name="chat_select_time">時間を選択</string>
     <string name="chat_media_camera">カメラ</string>
     <string name="chat_media_gallery">ギャラリー</string>
+    <string name="chat_media_audio">音声</string>
+    <string name="chat_media_location">位置情報</string>
+    <string name="chat_media_contact">連絡先</string>
+    <string name="chat_location_title">位置情報を共有</string>
+    <string name="chat_location_body">現在地への Google マップのリンクがこのチャットに送信されます。</string>
+    <string name="chat_location_send">送信</string>
+    <string name="chat_location_unavailable">位置情報を取得できませんでした。しばらくしてからもう一度お試しください。</string>
+    <string name="chat_location_permission">位置情報を共有するには位置情報の許可が必要です。</string>
+    <string name="chat_contact_unavailable">この連絡先には送信できる電話番号がありません。</string>
     <string name="chat_select_all">すべて選択</string>
     <string name="chat_select_text">テキストを選択</string>
     <string name="chat_save_image">画像を保存</string>
