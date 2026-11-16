@@ -94,12 +94,18 @@ internal object AttachTrayMetrics {
 
     private const val UNITS = REFERENCE_CAMERA_DP + REFERENCE_TILE_DP * COLUMNS
 
+    /**
+     * Tiles stop growing past this, measured as height over width. Without a
+     * cap a tablet's keyboard would turn the tray into a wall of portraits.
+     */
+    const val MAX_TILE_ASPECT = 1.35f
+
     /** Content width is the tray's width after [PAGE_PAD_DP] on each side. */
-    fun sizes(contentWidthDp: Float): AttachTraySizes {
+    fun sizes(contentWidthDp: Float, targetHeightDp: Float? = null): AttachTraySizes {
         val scalable = (contentWidthDp - GAP_DP * 2).coerceAtLeast(1f)
         val scale = scalable / UNITS
         val tileWidth = REFERENCE_TILE_DP * scale
-        return AttachTraySizes(
+        val base = AttachTraySizes(
             cameraWidth = (REFERENCE_CAMERA_DP * scale).dp,
             tile = tileWidth.dp,
             tileHeight = (tileWidth * TILE_ASPECT).dp,
@@ -107,6 +113,15 @@ internal object AttachTrayMetrics {
             pagePad = PAGE_PAD_DP.dp,
             verticalPad = VERTICAL_PAD_DP.dp
         )
+        // The keyboard's slot is what the tray replaces, so it is sized to it:
+        // the two rows grow to fill it and the composer never moves. A slot
+        // shorter than the grid's natural height leaves the tiles alone rather
+        // than squashing them.
+        val target = targetHeightDp ?: return base
+        if (target <= base.height.value) return base
+        val roomForRow = (target - base.verticalPad.value * 2 - base.gap.value) / 2f
+        val tileHeight = roomForRow.coerceAtMost(base.tile.value * MAX_TILE_ASPECT)
+        return base.copy(tileHeight = tileHeight.dp)
     }
 }
 
@@ -123,7 +138,9 @@ internal fun AttachTray(
     cameraLabel: String,
     cameraIcon: ImageVector,
     actions: List<AttachAction>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The height the keyboard last had, so the tray takes exactly its slot. */
+    keyboardHeight: Dp? = null
 ) {
     val colors = MaterialTheme.colorScheme
     // One accent per tile, cycled from the scheme's three so a dynamic palette
@@ -142,7 +159,12 @@ internal fun AttachTray(
                 .fillMaxWidth()
                 .padding(horizontal = AttachTrayMetrics.PAGE_PAD_DP.dp)
         ) {
-            val sizes = AttachTrayMetrics.sizes(maxWidth.value)
+            val sizes = AttachTrayMetrics.sizes(maxWidth.value, keyboardHeight?.value)
+            android.util.Log.d(
+                "AttachTrayHeight",
+                "content=${maxWidth.value} target=${keyboardHeight?.value} " +
+                    "tray=${sizes.height.value} tile=${sizes.tileHeight.value}"
+            )
             Row(
                 Modifier
                     .fillMaxWidth()
