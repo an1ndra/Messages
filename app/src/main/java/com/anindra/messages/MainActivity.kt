@@ -1406,6 +1406,13 @@ open class MainActivity : FragmentActivity() {
             }
         }
 
+    private val defaultSmsLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            // The role dialog has just resolved, either way: whatever it did
+            // not hand over silently is asked for now, and only that.
+            requestMissingSmsPermissions()
+        }
+
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
     private var pendingOpenConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
@@ -1456,7 +1463,11 @@ open class MainActivity : FragmentActivity() {
         applyMmsRecheckProbe(intent)
         applyTransferLogProbe(intent)
         enableEdgeToEdge()
-        requestSmsPermissions()
+        // The role is asked for first; it hands over the whole SMS set on its
+        // own, so anything still missing is only asked for once it has had
+        // its say. An install that already holds the role has no dialog
+        // coming, so its one-time ask (notifications) happens here.
+        if (smsRoleHeld()) requestMissingSmsPermissions()
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             val display = window.context.display
@@ -1499,10 +1510,6 @@ open class MainActivity : FragmentActivity() {
         applyConversationRoute(intent)
         if (isBubbleLaunch(intent)) navRoute = "opening"
         applyShareIntent(intent)
-
-        val defaultSmsLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { }
 
         setContent {
             val vm: AppViewModel = viewModel()
@@ -1690,6 +1697,19 @@ open class MainActivity : FragmentActivity() {
                     lastRoute = navRoute
                 }
 
+                // Contacts are asked for at the first screen that needs them,
+                // not at launch: a new chat, a contact's details, or adding
+                // people to a group. The list renders raw numbers until then,
+                // so nothing else has to wait on the answer.
+                androidx.compose.runtime.LaunchedEffect(navRoute) {
+                    if (navRoute in CONTACTS_ROUTES &&
+                        checkSelfPermission(Manifest.permission.READ_CONTACTS) !=
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        permissionLauncher.launch(arrayOf(Manifest.permission.READ_CONTACTS))
+                    }
+                }
+
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     if (navRoute != "settings") {
                         kotlinx.coroutines.delay(1500)
@@ -1781,7 +1801,13 @@ open class MainActivity : FragmentActivity() {
                             }) { androidx.compose.material3.Text(stringResource(R.string.default_sms_set)) }
                         },
                         dismissButton = {
-                            androidx.compose.material3.TextButton(onClick = { showDefaultSmsDialog = false }) {
+                            androidx.compose.material3.TextButton(onClick = {
+                                showDefaultSmsDialog = false
+                                // Declining the role leaves the SMS set
+                                // ungranted, so it is asked for now rather
+                                // than the app staying unusable in silence.
+                                requestMissingSmsPermissions()
+                            }) {
                                 androidx.compose.material3.Text(stringResource(R.string.lock_not_now))
                             }
                         }
@@ -2155,17 +2181,23 @@ onOpenAccessibility = { navRoute = "accessibility" },
         return q.takeUnless { it.isBlank() || AddressIdentity.isNumberQuery(it) }
     }
 
-    private fun requestSmsPermissions() {
-        val perms = mutableListOf(
-            Manifest.permission.SEND_SMS,
-            Manifest.permission.RECEIVE_SMS,
-            Manifest.permission.READ_SMS,
-            Manifest.permission.READ_CONTACTS
-        )
-        if (Build.VERSION.SDK_INT >= 33) perms += Manifest.permission.POST_NOTIFICATIONS
-        val needed = perms.filter {
-            checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
-        }
+    /** True when this app is the default SMS handler: the role itself, or the
+     *  legacy setting on builds whose role manager is unavailable. */
+    private fun smsRoleHeld(): Boolean =
+        getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_SMS) == true ||
+            Telephony.Sms.getDefaultSmsPackage(this) == packageName
+
+    /** Routes that cannot do their job without the address book. */
+    private val CONTACTS_ROUTES = setOf("new", "details", "add-people")
+
+    /** Asks for what the default-SMS role did not already hand over: the SMS
+     *  set only when the role was declined, notifications where the OS makes
+     *  them runtime, and never contacts — those wait for the first screen
+     *  that actually needs them. */
+    private fun requestMissingSmsPermissions() {
+        val needed = com.anindra.messages.data.LaunchPermissions.stillNeeded(
+            smsRoleHeld(), Build.VERSION.SDK_INT
+        ) { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
         if (needed.isNotEmpty()) permissionLauncher.launch(needed.toTypedArray())
     }
 
