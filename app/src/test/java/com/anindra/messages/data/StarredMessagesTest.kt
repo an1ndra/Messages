@@ -54,7 +54,8 @@ class StarredMessagesTest {
         )
         assertTrue(
             "the browse query reads only starred, visible rows",
-            repo.contains("WHERE m.starred=1 AND m.deleted_at=0")
+            Regex("""starredMessages\([\s\S]*?"m\.starred=1"[\s\S]*?"m\.deleted_at=0"[\s\S]*?"c\.deleted_at=0"""")
+                .containsMatchIn(repo)
         )
         assertTrue(
             "toggling must write the column, not a copy",

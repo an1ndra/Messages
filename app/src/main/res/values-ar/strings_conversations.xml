@@ -45,4 +45,8 @@
     <string name="search_scope_contacts">جهات الاتصال</string>
     <string name="search_scope_messages">الرسائل</string>
     <string name="search_scope_no_results">لا توجد نتائج</string>
+    <string name="search_filter_from">من %s</string>
+    <string name="search_filter_attachments">يحتوي على مرفق</string>
+    <string name="search_filter_before">قبل %s</string>
+    <string name="search_filter_after">بعد %s</string>
 </resources>

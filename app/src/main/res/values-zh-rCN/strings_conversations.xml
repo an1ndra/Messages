@@ -44,4 +44,8 @@
     <string name="search_scope_contacts">联系人</string>
     <string name="search_scope_messages">消息</string>
     <string name="search_scope_no_results">没有匹配项</string>
+    <string name="search_filter_from">来自 %s</string>
+    <string name="search_filter_attachments">含附件</string>
+    <string name="search_filter_before">%s 之前</string>
+    <string name="search_filter_after">%s 之后</string>
 </resources>

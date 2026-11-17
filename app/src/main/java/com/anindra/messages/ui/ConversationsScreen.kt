@@ -373,30 +373,34 @@ fun ConversationsScreen(
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
-    val starredHits by remember(query, rowSettings.hideLinks) {
-        vm.starredMessages(query, rowSettings.hideLinks)
+    val resolved = rememberSearchQueryFilters(query, vm.settings.calendarSystem)
+
+    val starredHits by remember(resolved, rowSettings.hideLinks) {
+        vm.starredMessages(resolved.text, rowSettings.hideLinks, resolved.messageFilters)
     }.collectAsState(initial = emptyList())
 
-    val messageMatchIds = rememberMessageMatchIds(vm, query)
+    val messageMatchIds = rememberMessageMatchIds(vm, resolved)
 
     val displayed = rememberSearchResults(
-        conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks, messageMatchIds
+        conversations, showArchived, resolved, unreadAtTop, rowSettings.hideLinks, messageMatchIds
     )
 
     // The conversation-list scopes narrow `displayed`; Starred swaps the list
     // for message rows entirely (see the list branch below). Contacts looks at
-    // who the chat is with, Messages at what was said.
+    // who the chat is with, Messages at what was said. A `from:` filter has
+    // already narrowed `displayed` itself, so the scopes only add their own
+    // rule on top of it.
     val scoped = when {
         !searching -> displayed
         searchScope == SearchScope.Unread -> displayed.filter { it.unreadCount > 0 }
         searchScope == SearchScope.Contacts -> displayed.filter {
-            it.name.contains(query, ignoreCase = true) ||
-                it.address.contains(query, ignoreCase = true) ||
-                it.display.contains(query, ignoreCase = true)
+            it.name.contains(resolved.text, ignoreCase = true) ||
+                it.address.contains(resolved.text, ignoreCase = true) ||
+                it.display.contains(resolved.text, ignoreCase = true)
         }
         searchScope == SearchScope.Messages -> displayed.filter {
             val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
-            snippet.contains(query, ignoreCase = true) || it.id in messageMatchIds
+            snippet.contains(resolved.text, ignoreCase = true) || it.id in messageMatchIds
         }
         else -> displayed
     }
@@ -548,6 +552,11 @@ fun ConversationsScreen(
                     selected = searchScope,
                     onSelect = { searchScope = it }
                 )
+                // What the query was understood to filter by, removable with a
+                // tap; a plain query draws nothing here.
+                SearchFilterChips(resolved) { kind ->
+                    query = resolved.parsed.without(kind)
+                }
             }
 
             syncProgress?.let { progress ->
