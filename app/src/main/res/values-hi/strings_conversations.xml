@@ -45,4 +45,8 @@
     <string name="search_scope_contacts">संपर्क</string>
     <string name="search_scope_messages">संदेश</string>
     <string name="search_scope_no_results">कोई मेल नहीं</string>
+    <string name="search_filter_from">%s से</string>
+    <string name="search_filter_attachments">अनुलग्नक है</string>
+    <string name="search_filter_before">%s से पहले</string>
+    <string name="search_filter_after">%s के बाद</string>
 </resources>

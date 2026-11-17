@@ -43,4 +43,8 @@
     <string name="search_scope_contacts">Contacts</string>
     <string name="search_scope_messages">Messages</string>
     <string name="search_scope_no_results">Aucun résultat</string>
+    <string name="search_filter_from">De %s</string>
+    <string name="search_filter_attachments">Avec pièce jointe</string>
+    <string name="search_filter_before">Avant le %s</string>
+    <string name="search_filter_after">Après le %s</string>
 </resources>

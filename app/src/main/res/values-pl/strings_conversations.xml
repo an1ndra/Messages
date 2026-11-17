@@ -45,4 +45,8 @@
     <string name="search_scope_contacts">Kontakty</string>
     <string name="search_scope_messages">Wiadomości</string>
     <string name="search_scope_no_results">Brak wyników</string>
+    <string name="search_filter_from">Od %s</string>
+    <string name="search_filter_attachments">Z załącznikiem</string>
+    <string name="search_filter_before">Przed %s</string>
+    <string name="search_filter_after">Po %s</string>
 </resources>
