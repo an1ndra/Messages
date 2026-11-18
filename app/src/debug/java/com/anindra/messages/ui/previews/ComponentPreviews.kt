@@ -18,6 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.data.Message
+import com.anindra.messages.data.ReplySuggestion
 import com.anindra.messages.ui.LocationDialog
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SwipeAction
@@ -26,6 +27,7 @@ import com.anindra.messages.ui.BubblePosition
 import com.anindra.messages.ui.ChatBubble
 import com.anindra.messages.ui.DialogText
 import com.anindra.messages.ui.ReactionBar
+import com.anindra.messages.ui.SuggestionChips
 import com.anindra.messages.ui.ReactionChips
 import com.anindra.messages.ui.InputBar
 import com.anindra.messages.ui.MessageDetailsDialog
@@ -614,6 +616,51 @@ private fun InputBarEmptyPreview() {
                 onEmojiToggle = {},
                 onAttach = {},
                 showEmojiButton = true
+            )
+        }
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Compose input bar, suggested replies", showBackground = true, widthDp = 380)
+@Composable
+private fun InputBarSuggestionsPreview() {
+    MessagesTheme(mode = "system") {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            InputBar(
+                draft = "",
+                placeholder = "Text message",
+                onDraftChange = {},
+                onSend = {},
+                onEmojiToggle = {},
+                onAttach = {},
+                showEmojiButton = true,
+                suggestions = listOf(ReplySuggestion.YES, ReplySuggestion.NO)
+            )
+        }
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Reply suggestion chips", showBackground = true, widthDp = 380)
+@Composable
+private fun SuggestionChipsPreview() {
+    MessagesTheme(mode = "system") {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(12.dp)
+        ) {
+            SuggestionChips(
+                suggestions = listOf(
+                    ReplySuggestion.YES, ReplySuggestion.NO, ReplySuggestion.LET_ME_CHECK
+                ),
+                onPick = {}
             )
         }
     }

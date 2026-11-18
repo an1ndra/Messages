@@ -50,6 +50,14 @@
     <string name="settings_notif_action_mark_read_subtitle">Mostrar un botón de marcar como leído en la notificación</string>
     <string name="settings_notif_action_delete_title">Acción de eliminar</string>
     <string name="settings_notif_action_delete_subtitle">Mostrar un botón de eliminar en la notificación</string>
+    <string name="settings_suggested_replies_title">Respuestas sugeridas</string>
+    <string name="settings_suggested_replies_subtitle">Ofrecer respuestas de un toque sobre el cuadro de mensaje y en la notificación</string>
+    <string name="settings_reply_nudge_title">Recordatorio de mensajes sin responder</string>
+    <string name="settings_reply_nudge_subtitle">Recuérdame responder a un mensaje que dejé sin respuesta</string>
+    <string name="settings_reply_nudge_after_title">Recordar después de</string>
+    <string name="settings_reply_nudge_one_day">1 día</string>
+    <string name="settings_reply_nudge_two_days">2 días</string>
+    <string name="settings_reply_nudge_three_days">3 días</string>
     <string name="settings_bubble_back_closes_title">Cerrar la burbuja con Atrás</string>
     <string name="settings_bubble_back_closes_subtitle">Desactivado: Atrás deja la burbuja abierta</string>
     <string name="settings_delivery_reports_title">Informes de entrega</string>
