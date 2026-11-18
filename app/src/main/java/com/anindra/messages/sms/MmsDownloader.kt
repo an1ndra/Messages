@@ -232,6 +232,9 @@ internal object MmsDownloader {
             SmsSender.manager(context, row.subscriptionId).downloadMultimediaMessage(
                 context, location, destination, null, completion
             )
+            // The transfer is the carrier's, so all this can say is that one is
+            // running; it is cancelled by the receiver when the result lands.
+            MmsDownloadNotice.show(context, row.id)
             // The destination is named on this line because a provider row here is the
             // difference between a download that works and one that fails with
             // MMS_ERROR_IO_ERROR on every attempt, with nothing else to tell.
