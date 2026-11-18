@@ -25,10 +25,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.data.Message
+import com.anindra.messages.ui.LocationDialog
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SwipeAction
 import com.anindra.messages.data.DatabaseCompatibility
 import com.anindra.messages.ui.AttachAction
+import com.anindra.messages.ui.AttachSheet
 import com.anindra.messages.ui.AttachTile
 import com.anindra.messages.ui.AttachTray
 import com.anindra.messages.ui.BubblePosition
@@ -673,33 +675,18 @@ private fun NewerDataPreview() {
     }
 }
 
-@Preview(name = "Location dialog", showBackground = true, widthDp = 380, heightDp = 320)
-@Composable
-private fun LocationDialogPreview() {
-    MessagesTheme(mode = "system") {
-        LocationDialog(onSend = {}, onDismiss = {})
-    }
-}
 
 @PreviewLightDark
-@Preview(name = "Attach tile", showBackground = true, widthDp = 160, heightDp = 160)
+@Preview(name = "Attach sheet", showBackground = true, widthDp = 380, heightDp = 640)
 @Composable
-private fun AttachTilePreview() {
+private fun AttachSheetPreview() {
     MessagesTheme(mode = "system") {
         Box(
             Modifier
                 .fillMaxWidth()
-                .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            AttachTile(
-                label = "Gallery",
-                icon = Icons.Rounded.Image,
-                width = 112.dp,
-                height = 112.dp,
-                onClick = {}
-            )
+            AttachSheet(onGallery = {}, onCamera = {}, onAudio = {}, onLocation = {}, onContact = {}, onDismiss = {})
         }
     }
 }
@@ -750,5 +737,15 @@ private fun ScheduleDialogPreview() {
             "Select date",
             modifier = androidx.compose.ui.Modifier.padding(24.dp)
         )
+    }
+}
+
+
+@PreviewLightDark
+@Preview(name = "Share a location", showBackground = true, widthDp = 380)
+@Composable
+private fun LocationDialogPreview() {
+    MessagesTheme(mode = "system") {
+        LocationDialog(onDismiss = {}, onSend = {})
     }
 }
