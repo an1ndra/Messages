@@ -45,6 +45,10 @@
     <string name="search_scope_contacts">Контакты</string>
     <string name="search_scope_messages">Сообщения</string>
     <string name="search_scope_no_results">Совпадений нет</string>
+    <string name="search_filter_from">От %s</string>
+    <string name="search_filter_attachments">С вложением</string>
+    <string name="search_filter_before">До %s</string>
+    <string name="search_filter_after">После %s</string>
     <string name="inbox_category_all">Все</string>
     <string name="inbox_category_personal">Личные</string>
     <string name="inbox_category_transactions">Транзакции</string>

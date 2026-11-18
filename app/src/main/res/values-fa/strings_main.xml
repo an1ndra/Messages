@@ -63,6 +63,14 @@
     <string name="notif_nudge_private">گفتگویی منتظر پاسخ شماست</string>
     <string name="notif_nudge_channel_title">یادآوری‌های پاسخ</string>
     <string name="notif_nudge_channel_desc">یادآوری پیامی که بی‌پاسخ گذاشتید</string>
+    <string name="notif_scheduled_title">پیام زمان‌بندی‌شده</string>
+    <string name="notif_scheduled_to">به %1$s</string>
+    <string name="notif_scheduled_private">در انتظار ارسال</string>
+    <string name="notif_scheduled_send_now">ارسال اکنون</string>
+    <string name="notif_scheduled_cancel">لغو</string>
+    <string name="notif_scheduled_channel_title">پیام‌های زمان‌بندی‌شده</string>
+    <string name="notif_scheduled_channel_desc">شمارش معکوس برای پیام‌های در انتظار ارسال</string>
+    <string name="notif_scheduled_minutes">%1$d دقیقه</string>
     <!-- Crash reports -->
     <string name="crash_report_title">گزارش خرابی</string>
     <string name="crash_report_message">دفعه قبل برنامه از کار افتاد. گزارش در Downloads/Messages ذخیره شده است؛ آن را به یک issue در GitHub پیوست کنید تا به رفع آن کمک کنید.</string>
