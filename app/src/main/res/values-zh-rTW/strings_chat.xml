@@ -24,6 +24,17 @@
     <string name="chat_media_audio">音訊</string>
     <string name="chat_media_camera">相機</string>
     <string name="chat_media_gallery">相簿</string>
+    <string name="chat_location_title">分享你的位置</string>
+    <string name="chat_location_body">指向你目前位置的 Google 地圖連結將傳送到這個對話。</string>
+    <string name="chat_location_send">傳送</string>
+    <string name="chat_location_unavailable">無法取得你的位置。請稍後再試一次。</string>
+    <string name="chat_location_permission">分享你的位置需要位置權限。</string>
+    <string name="chat_contact_unavailable">該聯絡人沒有可傳送的號碼。</string>
+    <string name="chat_camera_unavailable">此裝置上沒有可拍照的相機應用程式。</string>
+    <string name="db_newer_title">此版本比你的訊息舊</string>
+    <string name="db_newer_body">你的訊息上次由較新版本的 Messages 開啟（資料 v%2$d，此版本 v%1$d）。此版本無法讀取，因此已另存為 %3$s，Messages 將以空白開始。安裝較新版本即可取回。</string>
+    <string name="db_newer_ok">知道了</string>
+    <string name="chat_gallery_unavailable">此裝置上沒有可選擇相片的应用程式。</string>
     <string name="chat_select_all">全選</string>
     <string name="chat_select_text">選取文字</string>
     <string name="chat_save_image">儲存圖片</string>

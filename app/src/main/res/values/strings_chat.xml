@@ -25,6 +25,16 @@
     <string name="chat_media_audio">Audio</string>
     <string name="chat_media_camera">Camera</string>
     <string name="chat_media_gallery">Gallery</string>
+    <string name="chat_location_title">Share your location</string>
+    <string name="chat_location_body">A Google Maps link to where you are now will be sent to this chat.</string>
+    <string name="chat_location_send">Send</string>
+    <string name="chat_location_unavailable">Could not get your location. Try again in a moment.</string>
+    <string name="chat_location_permission">Location permission is needed to share where you are.</string>
+    <string name="chat_contact_unavailable">That contact has no number to send.</string>
+    <string name="chat_camera_unavailable">No camera app on this device to take a photo.</string>
+    <string name="db_newer_title">This build is older than your messages</string>
+    <string name="db_newer_body">Your messages were last opened by a newer version of Messages (data v%2$d, this build v%1$d). This build cannot read them, so they were moved aside as %3$s and Messages starts empty. Install the newer build to get them back.</string>
+    <string name="db_newer_ok">Got it</string>    <string name="chat_gallery_unavailable">No app on this device can pick a photo.</string>
     <string name="chat_select_all">Select all</string>
     <string name="chat_select_text">Select text</string>
     <string name="chat_save_image">Save image</string>

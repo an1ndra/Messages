@@ -25,6 +25,17 @@
     <string name="chat_media_audio">Audio</string>
     <string name="chat_media_camera">Kamera</string>
     <string name="chat_media_gallery">Galerie</string>
+    <string name="chat_location_title">Standort teilen</string>
+    <string name="chat_location_body">Ein Google-Maps-Link zu deinem aktuellen Standort wird an diesen Chat gesendet.</string>
+    <string name="chat_location_send">Senden</string>
+    <string name="chat_location_unavailable">Standort konnte nicht ermittelt werden. Versuche es gleich noch einmal.</string>
+    <string name="chat_location_permission">Zum Teilen des Standorts ist die Standortberechtigung nötig.</string>
+    <string name="chat_contact_unavailable">Dieser Kontakt hat keine Nummer zum Senden.</string>
+    <string name="chat_camera_unavailable">Keine Kamera-App auf diesem Gerät, um ein Foto aufzunehmen.</string>
+    <string name="db_newer_title">Dieser Build ist älter als deine Nachrichten</string>
+    <string name="db_newer_body">Deine Nachrichten wurden zuletzt von einer neueren Version von Messages geöffnet (Daten v%2$d, dieser Build v%1$d). Dieser Build kann sie nicht lesen, deshalb wurden sie als %3$s beiseitegelegt und Messages startet leer. Installiere den neueren Build, um sie zurückzubekommen.</string>
+    <string name="db_newer_ok">Verstanden</string>
+    <string name="chat_gallery_unavailable">Keine App auf diesem Gerät kann ein Foto auswählen.</string>
     <string name="chat_select_all">Alle auswählen</string>
     <string name="chat_select_text">Text auswählen</string>
     <string name="chat_save_image">Bild speichern</string>

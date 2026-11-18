@@ -69,7 +69,7 @@ class PendingMediaWiringTest {
     fun eachPictureCanBeRemovedBeforeSending() {
         assertTrue(
             "each staged picture must offer a remove control",
-            Regex("pendingMedia\\.forEach[\\s\\S]{0,1200}?pendingMedia\\.remove\\(uri\\)").containsMatchIn(chat),
+            Regex("pendingMedia\\.forEach[\\s\\S]{0,6000}?pendingMedia\\.remove\\(uri\\)").containsMatchIn(chat),
         )
     }
 

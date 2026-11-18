@@ -1565,6 +1565,11 @@ open class MainActivity : FragmentActivity() {
         // coming, so its one-time ask (notifications) happens here.
         if (smsRoleHeld()) requestMissingSmsPermissions()
 
+        // The application parks a database written by a newer build (see
+        // DatabaseCompatibility.setAside) and starts this one on a fresh file;
+        // the notice about what happened is shown over the first screen.
+        val newerData = com.anindra.messages.data.DatabaseCompatibility.pendingNotice(this)
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             val display = window.context.display
             val current = display.mode.let {
@@ -1609,6 +1614,16 @@ open class MainActivity : FragmentActivity() {
 
         setContent {
             val vm: AppViewModel = viewModel()
+            var newerDataNotice by remember { mutableStateOf(newerData) }
+            newerDataNotice?.let { notice ->
+                com.anindra.messages.ui.NewerDataDialog(
+                    notice = notice,
+                    onDismiss = {
+                        com.anindra.messages.data.DatabaseCompatibility.clearNotice(this@MainActivity)
+                        newerDataNotice = null
+                    }
+                )
+            }
             // One prompt per unlocked session, not one per activity (#354
             // follow-up): opening a bubble, sharing a text or rotating the
             // screen used to ask for a fingerprint again.
