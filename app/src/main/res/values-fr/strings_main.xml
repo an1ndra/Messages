@@ -72,6 +72,19 @@
     <string name="suggestion_cant_make_it">Je ne peux pas venir</string>
     <string name="suggestion_hello">Salut</string>
     <string name="suggestion_got_it">Compris</string>
+    <string name="notif_nudge_title">En attente de votre réponse</string>
+    <string name="notif_nudge_title_to">Répondre à %1$s ?</string>
+    <string name="notif_nudge_private">Une conversation attend votre réponse</string>
+    <string name="notif_nudge_channel_title">Rappels de réponse</string>
+    <string name="notif_nudge_channel_desc">Rappels pour un message laissé sans réponse</string>
+    <string name="notif_scheduled_title">Message planifié</string>
+    <string name="notif_scheduled_to">À %1$s</string>
+    <string name="notif_scheduled_private">En attente d’envoi</string>
+    <string name="notif_scheduled_send_now">Envoyer maintenant</string>
+    <string name="notif_scheduled_cancel">Annuler</string>
+    <string name="notif_scheduled_channel_title">Messages planifiés</string>
+    <string name="notif_scheduled_channel_desc">Compte à rebours des messages en attente d’envoi</string>
+    <string name="notif_scheduled_minutes">%1$d min</string>
     <!-- Crash reports -->
     <string name="crash_report_title">Rapport d\'incident</string>
     <string name="crash_report_message">L\'application a planté la dernière fois. Le journal est enregistré dans Downloads/Messages — joignez-le à un ticket GitHub pour aider à résoudre le problème.</string>

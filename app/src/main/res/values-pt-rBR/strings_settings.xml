@@ -52,6 +52,12 @@
     <string name="settings_notif_action_delete_subtitle">Mostrar um botão Excluir na notificação</string>
     <string name="settings_suggested_replies_title">Respostas sugeridas</string>
     <string name="settings_suggested_replies_subtitle">Oferecer respostas com um toque acima da caixa de mensagem e na notificação</string>
+    <string name="settings_reply_nudge_title">Lembrete de mensagens sem resposta</string>
+    <string name="settings_reply_nudge_subtitle">Lembrar de responder a uma mensagem que deixei sem resposta</string>
+    <string name="settings_reply_nudge_after_title">Lembrar após</string>
+    <string name="settings_reply_nudge_one_day">1 dia</string>
+    <string name="settings_reply_nudge_two_days">2 dias</string>
+    <string name="settings_reply_nudge_three_days">3 dias</string>
     <string name="settings_bubble_back_closes_title">Fechar a bolha com Voltar</string>
     <string name="settings_bubble_back_closes_subtitle">Desativado: Voltar mantém a bolha aberta</string>
     <string name="settings_delivery_reports_title">Relatórios de entrega</string>

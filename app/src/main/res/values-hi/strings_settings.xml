@@ -52,6 +52,12 @@
     <string name="settings_notif_action_delete_subtitle">सूचना पर हटाएँ बटन दिखाएँ</string>
     <string name="settings_suggested_replies_title">सुझाए गए जवाब</string>
     <string name="settings_suggested_replies_subtitle">संदेश बॉक्स के ऊपर और सूचना पर एक टैप वाले जवाब सुझाएँ</string>
+    <string name="settings_reply_nudge_title">बिना जवाब वाले संदेशों के लिए याद दिलाएँ</string>
+    <string name="settings_reply_nudge_subtitle">उस संदेश का जवाब देने की याद दिलाएँ जिसे मैंने बिना जवाब छोड़ा</string>
+    <string name="settings_reply_nudge_after_title">इतने समय बाद याद दिलाएँ</string>
+    <string name="settings_reply_nudge_one_day">1 दिन</string>
+    <string name="settings_reply_nudge_two_days">2 दिन</string>
+    <string name="settings_reply_nudge_three_days">3 दिन</string>
     <string name="settings_bubble_back_closes_title">बैक से बबल बंद करें</string>
     <string name="settings_bubble_back_closes_subtitle">बंद: बैक बबल को खुला रखता है</string>
     <string name="settings_delivery_reports_title">डिलीवरी रिपोर्ट</string>
