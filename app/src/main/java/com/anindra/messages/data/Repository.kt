@@ -1855,6 +1855,9 @@ class Repository(private val context: Context) {
             "UPDATE conversations SET snippet=?,timestamp=?,unread_count=0,last_is_me=?,deleted_at=0 WHERE id=?",
             arrayOf<Any?>(snippet, ts, if (isMe) 1 else 0, conversationId)
         )
+        // A message of ours is the answer a nudge was waiting for (#484), and
+        // every send path ends here, so the card cannot outlive the reply.
+        if (isMe) com.anindra.messages.sms.ReplyNudge.cancel(context, conversationId)
         notifyChanged()
     }
 
@@ -2831,6 +2834,41 @@ class Repository(private val context: Context) {
                         timestamp = c.getLong(3),
                         conversationId = c.getLong(4),
                         subId = c.getInt(5)
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    /**
+     * Threads a nudge could apply to (#484): read, unanswered, and not archived,
+     * blocked or trashed. The age test and the once-a-day cap are
+     * [ReplyNudgePolicy]'s, so the rule is one function and not a SQL string.
+     * Read outside a flow — the nudge runs in a background worker.
+     */
+    fun replyNudgeRowsBlocking(): List<ReplyNudgeRow> {
+        val out = mutableListOf<ReplyNudgeRow>()
+        db.readableDatabase.rawQuery(
+            """SELECT id,address,snippet,timestamp,last_is_me,unread_count,archived,blocked,deleted_at
+                 FROM conversations
+                WHERE deleted_at=0 AND archived=0 AND blocked=0
+                  AND unread_count=0 AND last_is_me=0
+                ORDER BY timestamp DESC""",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    ReplyNudgeRow(
+                        conversationId = c.getLong(0),
+                        address = c.getString(1),
+                        snippet = c.getString(2) ?: "",
+                        newest = c.getLong(3),
+                        lastIsMine = c.getInt(4) == 1,
+                        unread = c.getInt(5),
+                        archived = c.getInt(6) == 1,
+                        blocked = c.getInt(7) == 1,
+                        deleted = c.getLong(8) != 0L
                     )
                 )
             }

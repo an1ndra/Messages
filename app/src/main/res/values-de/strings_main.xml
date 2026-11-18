@@ -58,6 +58,11 @@
     <string name="notif_send_fail_private">Nachricht konnte nicht gesendet werden. Tippen zum wiederholen.</string>
     <string name="notif_send_fail">Nachricht an %s konnte nicht gesendet werden. Tippen zum wiederholen.</string>
     <string name="notif_not_delivered">Nachricht nicht zugestellt</string>
+    <string name="notif_nudge_title">Wartet auf deine Antwort</string>
+    <string name="notif_nudge_title_to">Auf %1$s antworten?</string>
+    <string name="notif_nudge_private">Eine Unterhaltung wartet auf deine Antwort</string>
+    <string name="notif_nudge_channel_title">Antwort-Erinnerungen</string>
+    <string name="notif_nudge_channel_desc">Erinnerungen an eine Nachricht, die du unbeantwortet ließest</string>
     <string name="notif_scheduled_title">Geplante Nachricht</string>
     <string name="notif_scheduled_to">An %1$s</string>
     <string name="notif_scheduled_private">Wartet auf Senden</string>

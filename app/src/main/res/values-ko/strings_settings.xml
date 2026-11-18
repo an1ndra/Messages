@@ -50,6 +50,12 @@
     <string name="settings_notif_action_mark_read_subtitle">알림에 읽음으로 표시 버튼 표시</string>
     <string name="settings_notif_action_delete_title">삭제 작업</string>
     <string name="settings_notif_action_delete_subtitle">알림에 삭제 버튼 표시</string>
+    <string name="settings_reply_nudge_title">답장하지 않은 메시지 알림</string>
+    <string name="settings_reply_nudge_subtitle">답장하지 않은 메시지를 다시 알려줍니다</string>
+    <string name="settings_reply_nudge_after_title">알림 시점</string>
+    <string name="settings_reply_nudge_one_day">1일</string>
+    <string name="settings_reply_nudge_two_days">2일</string>
+    <string name="settings_reply_nudge_three_days">3일</string>
     <string name="settings_bubble_back_closes_title">뒤로 가기로 버블 닫기</string>
     <string name="settings_bubble_back_closes_subtitle">꺼짐: 뒤로 가기를 눌러도 버블은 열린 상태로 유지됩니다</string>
     <string name="settings_delivery_reports_title">전달 보고서</string>

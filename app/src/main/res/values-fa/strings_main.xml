@@ -58,6 +58,11 @@
     <string name="notif_send_fail_private">پیام فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_send_fail">پیام به %s فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_not_delivered">پیام تحویل نشد</string>
+    <string name="notif_nudge_title">منتظر پاسخ شماست</string>
+    <string name="notif_nudge_title_to">پاسخ به %1$s؟</string>
+    <string name="notif_nudge_private">گفتگویی منتظر پاسخ شماست</string>
+    <string name="notif_nudge_channel_title">یادآوری‌های پاسخ</string>
+    <string name="notif_nudge_channel_desc">یادآوری پیامی که بی‌پاسخ گذاشتید</string>
     <string name="notif_scheduled_title">پیام زمان‌بندی‌شده</string>
     <string name="notif_scheduled_to">به %1$s</string>
     <string name="notif_scheduled_private">در انتظار ارسال</string>

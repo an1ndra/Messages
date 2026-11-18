@@ -50,6 +50,12 @@
     <string name="settings_notif_action_mark_read_subtitle">在通知上顯示標示為已讀按鈕</string>
     <string name="settings_notif_action_delete_title">刪除操作</string>
     <string name="settings_notif_action_delete_subtitle">在通知上顯示刪除按鈕</string>
+    <string name="settings_reply_nudge_title">未回覆訊息提醒</string>
+    <string name="settings_reply_nudge_subtitle">提醒我回覆尚未回覆的訊息</string>
+    <string name="settings_reply_nudge_after_title">提醒時間</string>
+    <string name="settings_reply_nudge_one_day">1 天</string>
+    <string name="settings_reply_nudge_two_days">2 天</string>
+    <string name="settings_reply_nudge_three_days">3 天</string>
     <string name="settings_bubble_back_closes_title">按返回鍵關閉氣泡</string>
     <string name="settings_bubble_back_closes_subtitle">關閉：返回鍵維持氣泡開啟</string>
     <string name="settings_delivery_reports_title">送達報告</string>
