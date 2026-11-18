@@ -44,4 +44,16 @@
     <string name="search_scope_contacts">联系人</string>
     <string name="search_scope_messages">消息</string>
     <string name="search_scope_no_results">没有匹配项</string>
+    <string name="inbox_category_all">全部</string>
+    <string name="inbox_category_personal">个人</string>
+    <string name="inbox_category_transactions">交易</string>
+    <string name="inbox_category_otp">验证码</string>
+    <string name="inbox_category_spam">垃圾信息</string>
+    <string name="settings_inbox_rules_title">分类与规则</string>
+    <string name="settings_inbox_rules_subtitle">将关键词或发件人归入标签页</string>
+    <string name="inbox_rules_add">添加规则</string>
+    <string name="inbox_rules_kind_keyword">关键词</string>
+    <string name="inbox_rules_kind_sender">发件人</string>
+    <string name="inbox_rules_empty">暂无规则</string>
+    <string name="inbox_rules_pattern_hint">关键词或发件人</string>
 </resources>
