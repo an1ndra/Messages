@@ -49,4 +49,16 @@
     <string name="search_filter_attachments">Has attachment</string>
     <string name="search_filter_before">Before %s</string>
     <string name="search_filter_after">After %s</string>
+    <string name="inbox_category_all">All</string>
+    <string name="inbox_category_personal">Personal</string>
+    <string name="inbox_category_transactions">Transactions</string>
+    <string name="inbox_category_otp">OTP</string>
+    <string name="inbox_category_spam">Spam</string>
+    <string name="settings_inbox_rules_title">Categories &amp; rules</string>
+    <string name="settings_inbox_rules_subtitle">Send a word or a sender to a tab</string>
+    <string name="inbox_rules_add">Add rule</string>
+    <string name="inbox_rules_kind_keyword">Keyword</string>
+    <string name="inbox_rules_kind_sender">Sender</string>
+    <string name="inbox_rules_empty">No rules yet</string>
+    <string name="inbox_rules_pattern_hint">Word or sender</string>
 </resources>
