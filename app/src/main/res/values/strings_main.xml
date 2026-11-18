@@ -62,6 +62,7 @@
     <string name="notif_send_fail_private">Couldn\'t send message. Tap to retry.</string>
     <string name="notif_send_fail">Couldn\'t send message to %s. Tap to retry.</string>
     <string name="notif_not_delivered">Message not delivered</string>
+    <string name="two_pane_empty">Choose a conversation to open it here</string>
     <string name="suggestion_yes">Yes</string>
     <string name="suggestion_no">No</string>
     <string name="suggestion_sure">Sure</string>

@@ -58,6 +58,7 @@
     <string name="notif_send_fail_private">Échec de l\'envoi du message. Appuyez pour réessayer.</string>
     <string name="notif_send_fail">Échec de l\'envoi du message à %s. Appuyez pour réessayer.</string>
     <string name="notif_not_delivered">Message non remis</string>
+    <string name="two_pane_empty">Choisissez une conversation pour l\'ouvrir ici</string>
     <string name="suggestion_yes">Oui</string>
     <string name="suggestion_no">Non</string>
     <string name="suggestion_sure">D\'accord</string>

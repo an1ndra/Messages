@@ -62,6 +62,7 @@
     <string name="notif_send_fail_private">Не удалось отправить сообщение. Нажмите для повтора.</string>
     <string name="notif_send_fail">Не удалось отправить сообщение адресату %s. Нажмите для повтора.</string>
     <string name="notif_not_delivered">Сообщение не доставлено</string>
+    <string name="two_pane_empty">Выберите разговор, чтобы открыть его здесь</string>
     <string name="suggestion_yes">Да</string>
     <string name="suggestion_no">Нет</string>
     <string name="suggestion_sure">Конечно</string>
