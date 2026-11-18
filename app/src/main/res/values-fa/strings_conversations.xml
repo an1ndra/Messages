@@ -45,6 +45,10 @@
     <string name="search_scope_contacts">مخاطبان</string>
     <string name="search_scope_messages">پیام‌ها</string>
     <string name="search_scope_no_results">نتیجه‌ای پیدا نشد</string>
+    <string name="search_filter_from">از %s</string>
+    <string name="search_filter_attachments">دارای پیوست</string>
+    <string name="search_filter_before">قبل از %s</string>
+    <string name="search_filter_after">بعد از %s</string>
     <string name="inbox_category_all">همه</string>
     <string name="inbox_category_personal">شخصی</string>
     <string name="inbox_category_transactions">تراکنش‌ها</string>

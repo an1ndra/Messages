@@ -84,6 +84,9 @@ class SettingsStore(context: Context) {
         const val KEY_NOTIF_ACTION_REPLY = "notif_action_reply"
         const val KEY_NOTIF_ACTION_MARK_READ = "notif_action_mark_read"
         const val KEY_NOTIF_ACTION_DELETE = "notif_action_delete"
+        const val KEY_REPLY_NUDGE = "reply_nudge_enabled"
+        const val KEY_REPLY_NUDGE_HOURS = "reply_nudge_hours"
+        const val KEY_REPLY_NUDGE_AT_PREFIX = "reply_nudge_at_"
         const val KEY_BUBBLE_BACK_CLOSES = "bubble_back_closes"
         const val KEY_SUGGESTED_REPLIES = "suggested_replies_enabled"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
@@ -401,6 +404,27 @@ class SettingsStore(context: Context) {
     var notifActionDelete: Boolean
         get() = prefs.getBoolean(KEY_NOTIF_ACTION_DELETE, true)
         set(v) { prefs.edit().putBoolean(KEY_NOTIF_ACTION_DELETE, v).apply(); _revision.value++ }
+
+    /**
+     * Whether an unanswered thread is nudged after a while (#484). Off by
+     * default: a reminder the user did not ask for is just another notification.
+     */
+    var replyNudgeEnabled: Boolean
+        get() = prefs.getBoolean(KEY_REPLY_NUDGE, false)
+        set(v) { prefs.edit().putBoolean(KEY_REPLY_NUDGE, v).apply(); _revision.value++ }
+
+    /** How long the message sits unanswered before the nudge. */
+    var replyNudgeHours: Int
+        get() = prefs.getInt(KEY_REPLY_NUDGE_HOURS, ReplyNudgePolicy.DEFAULT_INTERVAL_HOURS)
+        set(v) { prefs.edit().putInt(KEY_REPLY_NUDGE_HOURS, v).apply(); _revision.value++ }
+
+    /** When this conversation was last nudged, so one thread is not re-nudged all day. */
+    fun replyNudgedAt(conversationId: Long): Long =
+        prefs.getLong(KEY_REPLY_NUDGE_AT_PREFIX + conversationId, 0L)
+
+    fun markReplyNudged(conversationId: Long, at: Long) {
+        prefs.edit().putLong(KEY_REPLY_NUDGE_AT_PREFIX + conversationId, at).apply()
+    }
 
     /**
      * Whether Back closes a conversation bubble (#354 follow-up). Off by

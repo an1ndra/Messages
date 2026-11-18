@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.data.MmsVerdict
+import com.anindra.messages.data.ReplyNudgePolicy
+import com.anindra.messages.data.ReplyNudgeScheduler
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimMmsCheck
 import com.anindra.messages.sms.NotificationHelper
@@ -70,6 +72,9 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     var actionMarkRead by remember(revision) { mutableStateOf(vm.settings.notifActionMarkRead) }
     var actionDelete by remember(revision) { mutableStateOf(vm.settings.notifActionDelete) }
     var bubbleBackCloses by remember(revision) { mutableStateOf(vm.settings.bubbleBackCloses) }
+    var replyNudge by remember(revision) { mutableStateOf(vm.settings.replyNudgeEnabled) }
+    var nudgeHours by remember(revision) { mutableStateOf(vm.settings.replyNudgeHours) }
+    var nudgeDialog by remember { mutableStateOf(false) }
     var suggestedReplies by remember(revision) { mutableStateOf(vm.settings.suggestedRepliesEnabled) }
 
     SettingsScaffold(
@@ -123,6 +128,26 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
             )
             SettingsRow(
                 position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_reply_nudge_title),
+                subtitle = stringResource(R.string.settings_reply_nudge_subtitle),
+                checked = replyNudge,
+                onChecked = {
+                    replyNudge = it
+                    vm.settings.replyNudgeEnabled = it
+                    ReplyNudgeScheduler.apply(context, it)
+                    if (it) ReplyNudgeScheduler.checkNow(context)
+                }
+            )
+            if (replyNudge) {
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_reply_nudge_after_title),
+                    subtitle = nudgeIntervalLabel(nudgeHours),
+                    onClick = { nudgeDialog = true }
+                )
+            }
+            SettingsRow(
+                position = RowPosition.MIDDLE,
                 title = stringResource(R.string.settings_suggested_replies_title),
                 subtitle = stringResource(R.string.settings_suggested_replies_subtitle),
                 checked = suggestedReplies,
@@ -139,6 +164,48 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
 
         SettingsFooter(stringResource(R.string.settings_notif_footer))
     }
+
+    if (nudgeDialog) {
+        AlertDialog(
+            onDismissRequest = { nudgeDialog = false },
+            title = { Text(stringResource(R.string.settings_reply_nudge_after_title)) },
+            text = {
+                Column {
+                    ReplyNudgePolicy.INTERVAL_CHOICES.forEach { hours ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                        ) {
+                            RadioButton(
+                                selected = nudgeHours == hours,
+                                onClick = {
+                                    nudgeHours = hours
+                                    vm.settings.replyNudgeHours = hours
+                                    ReplyNudgeScheduler.checkNow(context)
+                                    nudgeDialog = false
+                                }
+                            )
+                            Spacer(Modifier.padding(start = 8.dp))
+                            Text(nudgeIntervalLabel(hours))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { nudgeDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+}
+
+/** "1 day" / "2 days" / "3 days", for the nudge interval. */
+@Composable
+private fun nudgeIntervalLabel(hours: Int): String = when (hours) {
+    48 -> stringResource(R.string.settings_reply_nudge_two_days)
+    72 -> stringResource(R.string.settings_reply_nudge_three_days)
+    else -> stringResource(R.string.settings_reply_nudge_one_day)
 }
 
 /** Auto-delete master switch, what it purges, and how long each bucket is kept. */

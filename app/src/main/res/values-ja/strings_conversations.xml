@@ -45,6 +45,10 @@
     <string name="search_scope_contacts">連絡先</string>
     <string name="search_scope_messages">メッセージ</string>
     <string name="search_scope_no_results">一致する項目はありません</string>
+    <string name="search_filter_from">差出人: %s</string>
+    <string name="search_filter_attachments">添付ファイルあり</string>
+    <string name="search_filter_before">%s より前</string>
+    <string name="search_filter_after">%s より後</string>
     <string name="inbox_category_all">すべて</string>
     <string name="inbox_category_personal">個人</string>
     <string name="inbox_category_transactions">取引</string>
