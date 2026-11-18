@@ -2810,7 +2810,13 @@ class Repository(private val context: Context) {
         return out.distinct()
     }
 
-    fun scheduledMessages(): Flow<List<ScheduledMessage>> = observe {
+    fun scheduledMessages(): Flow<List<ScheduledMessage>> = observe { readScheduledMessages() }
+
+    /** The same rows outside a flow: the shade reconciles at boot and at app
+     *  start, where nothing is collecting. */
+    fun scheduledMessagesBlocking(): List<ScheduledMessage> = readScheduledMessages()
+
+    private fun readScheduledMessages(): List<ScheduledMessage> {
         val out = mutableListOf<ScheduledMessage>()
         db.readableDatabase.rawQuery(
             "SELECT id,address,body,timestamp,conversation_id,sub_id FROM scheduled_messages ORDER BY timestamp ASC",
@@ -2829,7 +2835,7 @@ class Repository(private val context: Context) {
                 )
             }
         }
-        out
+        return out
     }
 
     fun addScheduledMessage(address: String, body: String, timestamp: Long, conversationId: Long, subId: Int): Long {

@@ -356,7 +356,7 @@ object NotificationHelper {
             ?.sortedBy { it.first }
             .orEmpty()
 
-    private fun canPost(context: Context): Boolean {
+    internal fun canPost(context: Context): Boolean {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         if (!app.repository.settings.notificationsEnabled) return false
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
