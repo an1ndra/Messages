@@ -29,6 +29,13 @@ import com.anindra.messages.ui.ExpressiveTab
 import com.anindra.messages.ui.ExpressiveTabs
 import com.anindra.messages.data.StarredMessage
 import com.anindra.messages.ui.SearchScope
+import com.anindra.messages.data.CategoryRule
+import com.anindra.messages.data.InboxCategory
+import com.anindra.messages.data.RuleKind
+import com.anindra.messages.ui.AddCategoryRuleForm
+import com.anindra.messages.ui.RuleSection
+import com.anindra.messages.ui.InboxCategoryChip
+import com.anindra.messages.ui.InboxCategoryChips
 import com.anindra.messages.ui.SearchScopeChips
 import com.anindra.messages.ui.SheetActionRow
 import com.anindra.messages.ui.StarredHitRow
@@ -228,6 +235,44 @@ private fun SearchScopeChipsPreview() {
     Stage {
         SearchScopeChips(selected = SearchScope.Starred, onSelect = {})
         SearchScopeChips(selected = SearchScope.All, onSelect = {})
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Add category rule", showBackground = true, widthDp = 380)
+@Composable
+private fun AddCategoryRuleFormPreview() {
+    Stage {
+        AddCategoryRuleForm(onCancel = {}, onAdd = { _, _, _ -> })
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Rule sections", showBackground = true, widthDp = 380)
+@Composable
+private fun RuleSectionPreview() {
+    Stage {
+        RuleSection(
+            category = InboxCategory.SPAM,
+            rules = listOf(
+                CategoryRule(1, RuleKind.KEYWORD, "gift card", InboxCategory.SPAM),
+                CategoryRule(2, RuleKind.SENDER, "HDFCBK", InboxCategory.SPAM)
+            ),
+            onDelete = {}
+        )
+        RuleSection(category = InboxCategory.OTP, rules = emptyList(), onDelete = {})
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Inbox categories", showBackground = true, widthDp = 380)
+@Composable
+private fun InboxCategoryChipsPreview() {
+    Stage {
+        InboxCategoryChips(selected = null, onSelect = {})
+        InboxCategoryChips(selected = InboxCategory.TRANSACTIONS, onSelect = {})
+        InboxCategoryChips(selected = InboxCategory.OTP, onSelect = {})
+        InboxCategoryChip(label = "Personal", selected = true, onClick = {})
     }
 }
 

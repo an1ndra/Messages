@@ -16,6 +16,13 @@
     <string name="chat_schedule">예약</string>
     <string name="chat_select_date">날짜 선택</string>
     <string name="chat_select_time">시간 선택</string>
+    <string name="chat_media_location">위치</string>
+    <string name="location_use_mine">내 위치 사용</string>
+    <string name="location_hint">위치 링크를 붙여넣거나 장소를 입력하세요</string>
+    <string name="mms_download_title">메시지 다운로드 중</string>
+    <string name="mms_download_text">통신사에서 가져오는 중입니다</string>
+    <string name="chat_media_contact">연락처</string>
+    <string name="chat_media_audio">오디오</string>
     <string name="chat_media_camera">카메라</string>
     <string name="chat_media_gallery">갤러리</string>
     <string name="chat_select_all">모두 선택</string>
