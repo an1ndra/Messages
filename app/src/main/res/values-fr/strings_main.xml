@@ -58,6 +58,11 @@
     <string name="notif_send_fail_private">Échec de l\'envoi du message. Appuyez pour réessayer.</string>
     <string name="notif_send_fail">Échec de l\'envoi du message à %s. Appuyez pour réessayer.</string>
     <string name="notif_not_delivered">Message non remis</string>
+    <string name="notif_nudge_title">En attente de votre réponse</string>
+    <string name="notif_nudge_title_to">Répondre à %1$s ?</string>
+    <string name="notif_nudge_private">Une conversation attend votre réponse</string>
+    <string name="notif_nudge_channel_title">Rappels de réponse</string>
+    <string name="notif_nudge_channel_desc">Rappels pour un message laissé sans réponse</string>
     <string name="notif_scheduled_title">Message planifié</string>
     <string name="notif_scheduled_to">À %1$s</string>
     <string name="notif_scheduled_private">En attente d’envoi</string>

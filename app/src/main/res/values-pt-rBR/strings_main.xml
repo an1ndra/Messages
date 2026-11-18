@@ -62,6 +62,11 @@
     <string name="notif_send_fail_private">Não foi possível enviar a mensagem. Toque para tentar novamente.</string>
     <string name="notif_send_fail">Não foi possível enviar a mensagem para %s. Toque para tentar novamente.</string>
     <string name="notif_not_delivered">Mensagem não entregue</string>
+    <string name="notif_nudge_title">Aguardando sua resposta</string>
+    <string name="notif_nudge_title_to">Responder para %1$s?</string>
+    <string name="notif_nudge_private">Uma conversa aguarda sua resposta</string>
+    <string name="notif_nudge_channel_title">Lembretes de resposta</string>
+    <string name="notif_nudge_channel_desc">Lembretes sobre uma mensagem sem resposta</string>
     <string name="notif_scheduled_title">Mensagem agendada</string>
     <string name="notif_scheduled_to">Para %1$s</string>
     <string name="notif_scheduled_private">Aguardando envio</string>

@@ -40,6 +40,34 @@ object NotificationHelper {
         context.getSystemService(NotificationManager::class.java)
             ?.getNotificationChannel(NotificationChannels.forConversation(conversationId)) != null
 
+    /**
+     * The channel a message from [from] posts to: the conversation's own channel
+     * once the user has enabled one, otherwise its category's. One place for the
+     * decision, because "turn the chat's channel off in Android" is how a chat
+     * is muted, and anything that needs to know whether a chat is muted has to
+     * ask the same question the poster asked.
+     */
+    internal fun messageChannelFor(
+        app: com.anindra.messages.MessagesApplication,
+        context: Context,
+        convoId: Long?,
+        from: String
+    ): String {
+        val target = convoId?.let { app.repository.conversationChannelTargetBlocking(it) }
+        val category = target?.let { categoryFor(it) }
+            ?: NotificationCategory.resolve(
+                isGroup = false,
+                knownContact = app.repository.contactNameFor(from) != null,
+                replyable = com.anindra.messages.data.AddressIdentity.isReplyable(from)
+            )
+        return channelIdFor(
+            category,
+            app.repository.settings.receiveSoundEnabled,
+            convoId,
+            convoId != null && conversationChannelExists(context, convoId)
+        )
+    }
+
     private fun defaultSoundUri(): Uri? =
         android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
 
@@ -399,20 +427,7 @@ object NotificationHelper {
         val replyable = com.anindra.messages.data.AddressIdentity.isReplyable(from)
         val contactName = app.repository.contactNameFor(from)
         val settings = app.repository.settings
-        // A chat posts on its own channel once the user has enabled one for it;
-        // every other case — including a channel the user removed — posts on the
-        // category channel, so a message is never dropped for want of a channel.
-        val target = convoId?.let { app.repository.conversationChannelTargetBlocking(it) }
-        val category = target?.let { categoryFor(it) }
-            ?: NotificationCategory.resolve(
-                isGroup = false, knownContact = contactName != null, replyable = replyable
-            )
-        val channelId = channelIdFor(
-            category,
-            settings.receiveSoundEnabled,
-            convoId,
-            convoId != null && conversationChannelExists(context, convoId)
-        )
+        val channelId = messageChannelFor(app, context, convoId, from)
         // Turning a chat's channel off in Android is that chat's mute. The
         // platform drops the post itself, but the wake is ours to decide, so a
         // muted chat must not light the screen up either.

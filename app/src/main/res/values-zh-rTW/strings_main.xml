@@ -59,6 +59,11 @@
     <string name="notif_send_fail_private">無法傳送訊息。輕觸以重試。</string>
     <string name="notif_send_fail">無法傳送至 %s。輕觸以重試。</string>
     <string name="notif_not_delivered">訊息未送達</string>
+    <string name="notif_nudge_title">等待你的回覆</string>
+    <string name="notif_nudge_title_to">回覆 %1$s？</string>
+    <string name="notif_nudge_private">有一個會話在等待你的回覆</string>
+    <string name="notif_nudge_channel_title">回覆提醒</string>
+    <string name="notif_nudge_channel_desc">關於尚未回覆訊息的提醒</string>
     <string name="notif_scheduled_title">排定訊息</string>
     <string name="notif_scheduled_to">傳送給 %1$s</string>
     <string name="notif_scheduled_private">等待傳送</string>
