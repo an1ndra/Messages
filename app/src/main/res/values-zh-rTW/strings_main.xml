@@ -59,6 +59,7 @@
     <string name="notif_send_fail_private">無法傳送訊息。輕觸以重試。</string>
     <string name="notif_send_fail">無法傳送至 %s。輕觸以重試。</string>
     <string name="notif_not_delivered">訊息未送達</string>
+    <string name="two_pane_empty">選擇一個會話在此處開啟</string>
     <string name="suggestion_yes">好的</string>
     <string name="suggestion_no">不行</string>
     <string name="suggestion_sure">當然</string>

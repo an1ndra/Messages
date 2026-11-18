@@ -62,6 +62,7 @@
     <string name="notif_send_fail_private">メッセージを送信できませんでした。タップして再試行。</string>
     <string name="notif_send_fail">%s にメッセージを送信できませんでした。タップして再試行。</string>
     <string name="notif_not_delivered">メッセージが配信されませんでした</string>
+    <string name="two_pane_empty">会話を選ぶとここに表示されます</string>
     <string name="suggestion_yes">はい</string>
     <string name="suggestion_no">いいえ</string>
     <string name="suggestion_sure">了解</string>

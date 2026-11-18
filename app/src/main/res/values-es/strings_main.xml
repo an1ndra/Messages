@@ -62,6 +62,7 @@
     <string name="notif_send_fail_private">No se pudo enviar el mensaje. Toca para reintentar.</string>
     <string name="notif_send_fail">No se pudo enviar el mensaje a %s. Toca para reintentar.</string>
     <string name="notif_not_delivered">Mensaje no entregado</string>
+    <string name="two_pane_empty">Elige una conversación para abrirla aquí</string>
     <string name="suggestion_yes">Sí</string>
     <string name="suggestion_no">No</string>
     <string name="suggestion_sure">Claro</string>

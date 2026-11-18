@@ -34,6 +34,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,6 +57,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -1544,6 +1548,7 @@ open class MainActivity : FragmentActivity() {
 
     private var lastResumeTime = 0L
 
+    @androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyFakeDualSim(intent)
@@ -1984,7 +1989,16 @@ open class MainActivity : FragmentActivity() {
                 val navSlide = motionTween<IntOffset>(reduceMotion, Motion.DURATION_MEDIUM2)
                 val navFade = motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)
 
-                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                // #478: a phone keeps the list behind and the route stack over
+                // it, the way it always has. At an expanded width the two become
+                // peers: the list keeps its own column and the route stack gets
+                // the rest, so opening a chat no longer throws the list away.
+                val windowSizeClass = calculateWindowSizeClass(this@MainActivity)
+                val twoPaneLayout =
+                    windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
+                val listWeight = 0.4f
+
+                val conversationList: @Composable () -> Unit = {
                     if (useNewUi) ConversationsScreen(
                         vm = vm,
                         onOpenConversation = { id, query ->
@@ -2012,7 +2026,9 @@ open class MainActivity : FragmentActivity() {
                         onOpenSettings = { navRoute = "settings" },
                         backHandled = bubbleBackHandled,
                     )
+                }
 
+                val routePane: @Composable (Modifier) -> Unit = { paneModifier ->
                     AnimatedContent(
                         targetState = navRoute,
                         transitionSpec = {
@@ -2058,11 +2074,26 @@ open class MainActivity : FragmentActivity() {
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = paneModifier,
                         label = stringResource(R.string.access_nav)
                     ) { target ->
                         if (target == "list") {
-                            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())
+                            // In a two-pane window the list is its own column,
+                            // so this pane is empty until a chat is opened — and
+                            // says so, rather than showing a blank half screen.
+                            androidx.compose.foundation.layout.Box(
+                                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (twoPaneLayout) {
+                                    androidx.compose.material3.Text(
+                                        text = stringResource(R.string.two_pane_empty),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 24.dp)
+                                    )
+                                }
+                            }
                         } else {
                             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                                 when (target) {
@@ -2258,6 +2289,23 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                 }
                             }
                         }
+                    }
+                }
+
+                if (twoPaneLayout) {
+                    androidx.compose.foundation.layout.Row(Modifier.fillMaxSize()) {
+                        androidx.compose.foundation.layout.Box(
+                            Modifier.weight(listWeight).fillMaxSize()
+                        ) { conversationList() }
+                        androidx.compose.material3.VerticalDivider()
+                        androidx.compose.foundation.layout.Box(
+                            Modifier.weight(1f - listWeight).fillMaxSize()
+                        ) { routePane(Modifier.fillMaxSize()) }
+                    }
+                } else {
+                    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                        conversationList()
+                        routePane(Modifier.fillMaxSize())
                     }
                 }
             }
