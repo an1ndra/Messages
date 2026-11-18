@@ -44,6 +44,10 @@
     <string name="search_scope_contacts">聯絡人</string>
     <string name="search_scope_messages">訊息</string>
     <string name="search_scope_no_results">沒有相符項目</string>
+    <string name="search_filter_from">來自 %s</string>
+    <string name="search_filter_attachments">含附件</string>
+    <string name="search_filter_before">%s 之前</string>
+    <string name="search_filter_after">%s 之後</string>
     <string name="inbox_category_all">全部</string>
     <string name="inbox_category_personal">個人</string>
     <string name="inbox_category_transactions">交易</string>

@@ -45,6 +45,10 @@
     <string name="search_scope_contacts">연락처</string>
     <string name="search_scope_messages">메시지</string>
     <string name="search_scope_no_results">일치하는 항목이 없습니다</string>
+    <string name="search_filter_from">발신인: %s</string>
+    <string name="search_filter_attachments">첨부파일 있음</string>
+    <string name="search_filter_before">%s 이전</string>
+    <string name="search_filter_after">%s 이후</string>
     <string name="inbox_category_all">전체</string>
     <string name="inbox_category_personal">개인</string>
     <string name="inbox_category_transactions">거래</string>
