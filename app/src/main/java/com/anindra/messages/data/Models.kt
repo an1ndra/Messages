@@ -23,7 +23,13 @@ data class Conversation(
      * app's files directory (#448 follow-up). Blank means the generated
      * initial-based avatar.
      */
-    val groupAvatar: String = ""
+    val groupAvatar: String = "",
+    /**
+     * Inbox tab this thread belongs to, as an [com.anindra.messages.data.InboxCategory]
+     * key. Blank until the inbox first classifies it; it is written once and a
+     * later message never moves it.
+     */
+    val category: String = ""
 )
 
 data class Message(

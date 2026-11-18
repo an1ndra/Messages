@@ -16,6 +16,13 @@
     <string name="chat_schedule">Schedule</string>
     <string name="chat_select_date">Select date</string>
     <string name="chat_select_time">Select time</string>
+    <string name="chat_media_location">Location</string>
+    <string name="location_use_mine">Use my location</string>
+    <string name="location_hint">Paste a location link or type a place</string>
+    <string name="mms_download_title">Downloading message</string>
+    <string name="mms_download_text">Your carrier is fetching it</string>
+    <string name="chat_media_contact">Contact</string>
+    <string name="chat_media_audio">Audio</string>
     <string name="chat_media_camera">Camera</string>
     <string name="chat_media_gallery">Gallery</string>
     <string name="chat_select_all">Select all</string>
