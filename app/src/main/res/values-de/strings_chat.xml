@@ -28,18 +28,16 @@
     <string name="chat_save_video">Video speichern</string>
     <string name="chat_video_saved">Video in Movies/Messages gespeichert</string>
     <string name="chat_video_save_failed">Video konnte nicht gespeichert werden</string>
-
     <string name="chat_voice_saved">Sprachnachricht in Music/Messages gespeichert</string>
     <string name="chat_voice_save_failed">Sprachnachricht konnte nicht gespeichert werden</string>
-
-    <string name="chat_voice_slide_cancel">Zum Abbrechen ziehen</string>
-    <string name="chat_voice_release_cancel">Zum Abbrechen loslassen</string>
-    <string name="chat_voice_permission_denied">Für eine Sprachnachricht wird Zugriff auf das Mikrofon benötigt</string>
+    <!-- Voice messages -->
+    <string name="chat_voice_slide_cancel">Wischen zum Abbrechen</string>
+    <string name="chat_voice_release_cancel">Loslassen zum Abbrechen</string>
+    <string name="chat_voice_permission_denied">Mikrofon-Zugriff wird benötigt, um eine Sprachnachricht aufzunehmen</string>
     <string name="chat_voice_start_failed">Aufnahme konnte nicht gestartet werden</string>
-    <string name="chat_voice_too_short">Die Aufnahme war zu kurz. Halte das Mikrofon gedrückt, um aufzunehmen.</string>
-    <string name="chat_voice_max_reached">Sprachnachricht beim MMS-Größenlimit gestoppt</string>
-    <string name="chat_voice_cancel_recording">Aufnahme verwerfen</string>
-
+    <string name="chat_voice_too_short">Die Aufnahme war zu kurz. Halten Sie das Mikrofon zum Aufnehmen.</string>
+    <string name="chat_voice_max_reached">Sprachnachricht wurde bei der MMS Größenbegrenzung beendet</string>
+    <string name="chat_voice_cancel_recording">Aufnahme abbrechen</string>
     <!-- Status messages -->
     <string name="chat_cant_send">Nachricht kann nicht gesendet werden</string>
     <string name="chat_archived">Unterhaltung archiviert</string>
