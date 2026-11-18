@@ -5,42 +5,54 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import com.anindra.messages.MessagesApplication
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
+/**
+ * Sends a queued message when its alarm fires, and answers the two actions the
+ * schedule's ongoing card offers (#475): send it now, or drop it.
+ */
 class ScheduledMessageSender : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getLongExtra(EXTRA_ID, -1)
-        val address = intent.getStringExtra(EXTRA_ADDRESS) ?: return
-        val body = intent.getStringExtra(EXTRA_BODY) ?: return
-        val subId = intent.getIntExtra(EXTRA_SUB_ID, -1)
-
         val pendingResult = goAsync()
         val wakeLock = ReceiverWakeLock.acquire(context, "scheduled-send")
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 val app = context.applicationContext as MessagesApplication
                 val repo = app.repository
-                val stored = repo.sendText(
-                    repo.getOrCreateConversationBlocking(address),
-                    body
-                )
-                if (stored != null) {
-                    try {
-                        SmsSender.send(
-                            context, stored.id, address, body, subId,
-                            repo.settings.deliveryReportsEnabled
-                        )
-                    } catch (_: Exception) {
-                        repo.markMessageStatusSuspend(stored.id, "failed")
+                when (intent.action) {
+                    ACTION_CANCEL -> {
+                        cancel(context, id)
+                        repo.deleteScheduledMessage(id)
+                        ScheduledNotifications.cancel(context, id)
+                    }
+                    ACTION_SEND_NOW -> {
+                        // Read the row back: the card can outlive a reschedule,
+                        // and the alarm's own extras would then be stale.
+                        val row = repo.scheduledMessageById(id)
+                        if (row != null) {
+                            send(context, row.id, row.address, row.body, row.subId)
+                            repo.deleteScheduledMessage(row.id)
+                        } else {
+                            ScheduledNotifications.cancel(context, id)
+                        }
+                    }
+                    else -> {
+                        val address = intent.getStringExtra(EXTRA_ADDRESS) ?: return@launch
+                        val body = intent.getStringExtra(EXTRA_BODY) ?: return@launch
+                        val subId = intent.getIntExtra(EXTRA_SUB_ID, -1)
+                        send(context, id, address, body, subId)
+                        repo.deleteScheduledMessage(id)
                     }
                 }
-                repo.deleteScheduledMessage(id)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w(TAG, "scheduled send failed", e)
             } finally {
                 wakeLock.safeRelease()
                 pendingResult.finish()
@@ -48,12 +60,37 @@ class ScheduledMessageSender : BroadcastReceiver() {
         }
     }
 
+    private fun send(context: Context, id: Long, address: String, body: String, subId: Int) {
+        try {
+            val repo = (context.applicationContext as MessagesApplication).repository
+            val stored = repo.sendText(repo.getOrCreateConversationBlocking(address), body)
+            if (stored != null) {
+                try {
+                    SmsSender.send(
+                        context, stored.id, address, body, subId,
+                        repo.settings.deliveryReportsEnabled
+                    )
+                } catch (_: Exception) {
+                    repo.markMessageStatusSuspend(stored.id, "failed")
+                }
+            }
+        } finally {
+            ScheduledNotifications.cancel(context, id)
+        }
+    }
+
     companion object {
+        private const val TAG = "ScheduledSend"
         const val EXTRA_ID = "scheduled_id"
         const val EXTRA_ADDRESS = "scheduled_address"
         const val EXTRA_BODY = "scheduled_body"
         const val EXTRA_SUB_ID = "scheduled_sub_id"
         private const val ACTION_SEND = "com.anindra.messages.SCHEDULED_SEND"
+
+        /** The card's two actions. Distinct actions keep their PendingIntents
+         *  distinct from the alarm's, which shares the request code. */
+        const val ACTION_SEND_NOW = "com.anindra.messages.SCHEDULED_SEND_NOW"
+        const val ACTION_CANCEL = "com.anindra.messages.SCHEDULED_CANCEL"
 
         fun schedule(context: Context, id: Long, address: String, body: String, subId: Int, triggerAtMillis: Long) {
             val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return

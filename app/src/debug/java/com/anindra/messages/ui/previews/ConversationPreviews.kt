@@ -239,6 +239,19 @@ private fun SearchScopeChipsPreview() {
 }
 
 @PreviewLightDark
+@Preview(name = "Search filter chips", showBackground = true, widthDp = 380)
+@Composable
+private fun SearchFilterChipsPreview() {
+    val resolved = com.anindra.messages.ui.rememberSearchQueryFilters(
+        "from:\"Kami 0910\" has:attachment before:2026/11/1 invoices",
+        com.anindra.messages.data.CalendarSystem.GREGORIAN
+    )
+    Stage {
+        com.anindra.messages.ui.SearchFilterChips(resolved, onRemove = {})
+    }
+}
+
+@PreviewLightDark
 @Preview(name = "Add category rule", showBackground = true, widthDp = 380)
 @Composable
 private fun AddCategoryRuleFormPreview() {

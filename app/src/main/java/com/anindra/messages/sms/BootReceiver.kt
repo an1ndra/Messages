@@ -25,6 +25,9 @@ class BootReceiver : BroadcastReceiver() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 NotificationHelper.repostUnread(context)
+                // A reboot or an update also wipes the schedule countdown cards,
+                // and the alarms they mirror survive (#475).
+                ScheduledNotifications.sync(context)
             } catch (_: Exception) {
             } finally {
                 wakeLock.safeRelease()

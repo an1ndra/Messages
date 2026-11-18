@@ -67,6 +67,14 @@
     <string name="notif_nudge_private">एक बातचीत आपके जवाब का इंतज़ार कर रही है</string>
     <string name="notif_nudge_channel_title">जवाब की याद</string>
     <string name="notif_nudge_channel_desc">उस संदेश की याद जिसे आपने बिना जवाब छोड़ा</string>
+    <string name="notif_scheduled_title">शीड्यूल किया गया संदेश</string>
+    <string name="notif_scheduled_to">%1$s को</string>
+    <string name="notif_scheduled_private">भेजने के लिए प्रतीक्षारत</string>
+    <string name="notif_scheduled_send_now">अभी भेजें</string>
+    <string name="notif_scheduled_cancel">रद्द करें</string>
+    <string name="notif_scheduled_channel_title">शीड्यूल किए गए संदेश</string>
+    <string name="notif_scheduled_channel_desc">भेजने के लिए प्रतीक्षारत संदेशों के लिए उलटी गिनती</string>
+    <string name="notif_scheduled_minutes">%1$d मिनट</string>
 
     <!-- Crash reports -->
     <string name="crash_report_title">क्रैश रिपोर्ट</string>
