@@ -1230,6 +1230,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 com.anindra.messages.sms.ScheduledMessageSender.schedule(
                     getApplication(), id, address, body, subId, timestamp
                 )
+                com.anindra.messages.sms.ScheduledNotifications.post(
+                    getApplication(),
+                    com.anindra.messages.data.ScheduledMessage(
+                        id = id,
+                        address = address,
+                        body = body,
+                        timestamp = timestamp,
+                        conversationId = conversationId,
+                        subId = subId
+                    )
+                )
             }.isSuccess
             withContext(Dispatchers.Main) { onResult(ok) }
         }
@@ -1238,6 +1249,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun cancelScheduledMessage(id: Long) {
         scope.launch(Dispatchers.IO) {
             com.anindra.messages.sms.ScheduledMessageSender.cancel(getApplication(), id)
+            com.anindra.messages.sms.ScheduledNotifications.cancel(getApplication(), id)
             repo.deleteScheduledMessage(id)
         }
     }
@@ -1251,6 +1263,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 com.anindra.messages.sms.ScheduledMessageSender.cancel(getApplication(), id)
                 com.anindra.messages.sms.ScheduledMessageSender.schedule(
                     getApplication(), id, row.address, row.body, row.subId, timestamp
+                )
+                com.anindra.messages.sms.ScheduledNotifications.post(
+                    getApplication(), row.copy(timestamp = timestamp)
                 )
             }.isSuccess
             withContext(Dispatchers.Main) { onResult(ok) }

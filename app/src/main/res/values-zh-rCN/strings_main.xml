@@ -59,6 +59,14 @@
     <string name="notif_send_fail_private">无法发送消息。轻触重试。</string>
     <string name="notif_send_fail">无法发送至 %s。轻触重试。</string>
     <string name="notif_not_delivered">消息未送达</string>
+    <string name="notif_scheduled_title">计划消息</string>
+    <string name="notif_scheduled_to">发送给 %1$s</string>
+    <string name="notif_scheduled_private">等待发送</string>
+    <string name="notif_scheduled_send_now">立即发送</string>
+    <string name="notif_scheduled_cancel">取消</string>
+    <string name="notif_scheduled_channel_title">计划消息</string>
+    <string name="notif_scheduled_channel_desc">等待发送消息的倒计时</string>
+    <string name="notif_scheduled_minutes">%1$d 分钟</string>
 
     <string name="crash_report_title">崩溃报告</string>
     <string name="crash_report_message">上次应用崩溃了。日志保存在 Downloads/Messages 中 — 请将其附到 GitHub issue 上以帮助修复。</string>
