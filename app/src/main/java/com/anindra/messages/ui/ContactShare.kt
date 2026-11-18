@@ -3,47 +3,60 @@ package com.anindra.messages.ui
 import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
+import java.util.Locale
 
 /**
- * Reads the contact the picker handed back, so the tray can send it as a vCard.
+ * A contact sent as a vCard.
  *
- * The picker returns a contact URI, not a number: the number lives in the
- * contact's data rows, and a contact can hold several, so the first one a
- * network can dial wins.
+ * The card travels as the message body rather than as an MMS part: the SMS path
+ * is what works on every carrier, and a `text/vcard` part that the recipient's
+ * app ignores leaves them with an empty bubble. Most messaging apps detect the
+ * BEGIN:VCARD block and offer to save it, and anything that does not still shows
+ * a readable card with the name and number.
  */
-internal object ContactShare {
+object ContactShare {
 
-    data class Picked(val name: String, val number: String)
+    /** vCard 3.0, which is the version every Android contacts app imports. */
+    fun vCard(name: String, number: String): String {
+        val cleanName = name.trim().ifEmpty { number.trim() }
+        val cleanNumber = number.trim()
+        return buildString {
+            appendLine("BEGIN:VCARD")
+            appendLine("VERSION:3.0")
+            appendLine("FN:$cleanName")
+            appendLine("N:$cleanName;;;;")
+            appendLine("TEL;TYPE=CELL:$cleanNumber")
+            append("END:VCARD")
+        }
+    }
 
-    fun read(context: Context, uri: Uri): Picked? {
-        val resolver = context.contentResolver
-        val id: String
-        var name: String? = null
-        resolver.query(uri, null, null, null, null)?.use { cursor ->
-            if (!cursor.moveToFirst()) return null
-            id = cursor.getString(
-                cursor.getColumnIndexOrThrow(ContactsContract.Contacts._ID)
-            ) ?: return null
-            name = cursor.getString(
-                cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME)
-            )
-        } ?: return null
+    /** The name and first phone number behind a contact uri, or null. */
+    fun read(context: Context, uri: Uri): Pair<String, String>? = try {
+        val name = context.contentResolver.query(
+            uri,
+            arrayOf(ContactsContract.Contacts.DISPLAY_NAME),
+            null, null, null
+        )?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
 
-        val projection = arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER)
-        resolver.query(
+        val id = uri.lastPathSegment
+        val number = if (id == null) null else context.contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            projection,
-            "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+            arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+            "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID}=?",
             arrayOf(id),
             null
-        )?.use { phones ->
-            while (phones.moveToNext()) {
-                val number = phones.getString(0)?.trim().orEmpty()
-                if (ContactCard.isSendable(number)) {
-                    return Picked(ContactCard.nameOf(name, number), number)
-                }
-            }
-        }
-        return null
+        )?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+
+        if (number.isNullOrBlank()) null else (name.orEmpty() to number)
+    } catch (_: Exception) {
+        null
     }
+
+    /** Whether a number looks like something a vCard can carry. */
+    fun isSendable(number: String): Boolean =
+        number.count { it.isDigit() } >= 3 && number.none { it.isISOControl() }
+
+    @Suppress("unused")
+    private fun Locale.isRightToLeft(): Boolean =
+        java.text.DecimalFormatSymbols.getInstance(this).zeroDigit != '0'
 }

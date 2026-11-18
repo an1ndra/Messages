@@ -107,6 +107,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -256,6 +259,69 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     val conversations: Flow<List<Conversation>> = repo.conversations()
+
+    /**
+     * The inbox tabs are a gesture, not furniture: the chip row is hidden until
+     * the user pulls the list down, and the state lives here rather than in the
+     * settings file, so it survives moving between chats and settings and is
+     * gone after a restart.
+     */
+    var inboxCategoriesRevealed by mutableStateOf(false)
+
+    /** Which tab the inbox is showing; null is "All". Session state, like the
+     *  reveal above. */
+    var inboxCategory: com.anindra.messages.data.InboxCategory? by mutableStateOf(null)
+
+    /**
+     * Gives every thread without a tab one, and stores it. Called as the list
+     * arrives, so a conversation is classified once — on arrival — and a reply
+     * to it later cannot move it to a different tab.
+     */
+    fun classifyInboxCategories(list: List<Conversation>) {
+        val pending = list.filter { it.category.isBlank() && it.address.isNotBlank() }
+        if (pending.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            val rules = repo.categoryRulesBlocking()
+            val assignments = pending.associate { convo ->
+                convo.id to com.anindra.messages.data.InboxCategoryRules.classify(
+                    address = convo.address,
+                    body = convo.snippet,
+                    hasOtpCode = com.anindra.messages.ui.OtpDetector
+                        .findRanges(convo.snippet).isNotEmpty(),
+                    // The name fallback is the address itself, so a name that
+                    // differs is a saved contact or a group title.
+                    savedContact = convo.name.isNotBlank() && convo.name != convo.address,
+                    rules = rules
+                ).key
+            }
+            repo.setConversationCategories(assignments)
+        }
+    }
+
+    /**
+     * The user's filing rules, for the settings screen.
+     *
+     * Null until the table has been read once: the page used to seed itself with
+     * an empty list, so every tab claimed "no rules yet" for as long as the
+     * query took, and a rule the user had just written looked lost. Kept eager
+     * so coming back to the page shows the last answer at once.
+     */
+    val categoryRules: StateFlow<List<com.anindra.messages.data.CategoryRule>?> =
+        repo.categoryRules()
+            .map<List<com.anindra.messages.data.CategoryRule>, List<com.anindra.messages.data.CategoryRule>?> { it }
+            .stateIn(scope, SharingStarted.Eagerly, null)
+
+    fun addCategoryRule(
+        kind: com.anindra.messages.data.RuleKind,
+        pattern: String,
+        category: com.anindra.messages.data.InboxCategory
+    ) {
+        scope.launch(Dispatchers.IO) { repo.addCategoryRule(kind, pattern, category) }
+    }
+
+    fun deleteCategoryRule(id: Long) {
+        scope.launch(Dispatchers.IO) { repo.deleteCategoryRule(id) }
+    }
 
     /** Emits true after the first system-SMS import of this process completes. */
     val initialSyncDone = repo.initialSyncDone

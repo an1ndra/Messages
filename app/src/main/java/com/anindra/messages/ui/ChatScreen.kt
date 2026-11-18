@@ -69,10 +69,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -96,21 +93,21 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.EmojiEmotions
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Schedule
 
@@ -124,6 +121,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -143,6 +141,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -166,10 +165,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
@@ -186,9 +183,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
@@ -999,45 +994,7 @@ fun ChatScreen(
     var draftLoaded by remember { mutableStateOf(false) }
     var showEmoji by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
-    // The attachment tray takes the keyboard's place rather than covering the
-    // chat, so opening it dismisses the IME and closing it gives the field back.
-    var attachOpen by remember { mutableStateOf(false) }
-    var showLocationDialog by remember { mutableStateOf(false) }
-    val fieldFocus = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
-    // The keyboard's height while it is up. The tray takes this slot over, so
-    // the composer keeps its place across the swap instead of being pushed by
-    // both for a frame.
-    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    // The keyboard's inset already covers the navigation bar's strip, and the
-    // bar's own column pads that separately: without taking one out, the
-    // composer floats a navigation bar above the keyboard.
-    val keyboardInset = (imeBottom - navBottom).coerceAtLeast(0.dp)
-    // Remember how tall this device's keyboard is. The tray replaces that slot,
-    // so it is built to the same height and follows a resized keyboard (a taller
-    // one in landscape, a different IME, the user's own height setting).
-    var keyboardSlot by rememberSaveable { mutableFloatStateOf(0f) }
-    // The IME's inset arrives in animation frames — the first ones describe a
-    // half-open keyboard — so the height is read again once it has settled.
-    // Every open re-reads it, which is what makes the tray follow a resized
-    // keyboard instead of remembering the first one it ever saw.
-    var imeSeen by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(imeBottom) { imeSeen = imeBottom.value }
-    LaunchedEffect(imeBottom > 0.dp) {
-        if (imeBottom <= 0.dp) return@LaunchedEffect
-        delay(450)
-        val settled = imeSeen - navBottom.value
-        if (settled > 120f) keyboardSlot = settled
-    }
-    LaunchedEffect(imeBottom, navBottom, keyboardSlot, attachOpen) {
-        android.util.Log.d(
-            "AttachTrayHeight",
-            "ime=${imeBottom.value} nav=${navBottom.value} inset=${keyboardInset.value} " +
-                "slot=$keyboardSlot open=$attachOpen"
-        )
-    }
+    var attachSheet by remember { mutableStateOf(false) }
     // Picked media waits here until the user sends it, so a picture can be
     // explained or dropped before it leaves — it is no longer sent on pick.
     val pendingMedia = remember { mutableStateListOf<Uri>() }
@@ -1224,58 +1181,25 @@ fun ChatScreen(
         uris.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
     }
 
-    // Music and recordings are not pictures: the photo picker only offers images
-    // and video, so audio has to come through the document picker.
+    // Audio files are picked through the document picker: the photo picker only
+    // offers images and video, and this has to reach music and recordings.
     val audioLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null && uri !in pendingMedia) pendingMedia.add(uri)
     }
 
-    // A contact leaves as a vCard body, so the picker only has to hand back an id.
+    // A contact is sent as a vCard body, so the picker only has to hand back an
+    // id.
     val contactLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickContact()
     ) { uri ->
         if (uri != null) {
-            val picked = ContactShare.read(context, uri)
-            if (picked != null) {
-                vm.send(
-                    conversationId,
-                    ContactCard.vCard(picked.name, picked.number),
-                    currentSimId
-                )
-            } else {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.chat_contact_unavailable),
-                    Toast.LENGTH_SHORT
-                ).show()
+            ContactShare.read(context, uri)?.let { (name, number) ->
+                if (ContactShare.isSendable(number)) {
+                    vm.send(conversationId, ContactShare.vCard(name, number), currentSimId)
+                }
             }
-        }
-    }
-
-    // A device with no camera app, or no document picker, throws instead of
-    // opening anything: an unhandled ActivityNotFoundException crashed the chat
-    // the moment the Camera tile was tapped.
-    fun launchOrExplain(messageRes: Int, launch: () -> Unit) {
-        try {
-            launch()
-        } catch (_: android.content.ActivityNotFoundException) {
-            Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { granted ->
-        if (granted.values.any { it }) {
-            showLocationDialog = true
-        } else {
-            Toast.makeText(
-                context,
-                context.getString(R.string.chat_location_permission),
-                Toast.LENGTH_SHORT
-            ).show()
         }
     }
 
@@ -1516,9 +1440,6 @@ fun ChatScreen(
     // back closes it instead of leaving the chat.
     BackHandler(enabled = previewImage != null) { previewImage = null }
     BackHandler(enabled = backHandled, onBack = ::leaveChat)
-    // Registered after leave-chat so it wins: the last enabled handler is the
-    // one Compose calls, and the tray is a keyboard replacement, not a screen.
-    BackHandler(enabled = attachOpen) { attachOpen = false }
     BackHandler(enabled = selectionActive) { clearSelection() }
     BackHandler(enabled = searchOpen) {
         searchOpen = false
@@ -1855,37 +1776,14 @@ fun ChatScreen(
                     ) {
                         pendingMedia.forEach { uri ->
                             Box(Modifier.size(72.dp)) {
-                                // An audio file has no picture to show, so it gets the
-                                // same note the tray's Audio tile carries instead of an
-                                // empty frame where a thumbnail would be.
-                                val mime = remember(uri) {
-                                    context.contentResolver.getType(uri).orEmpty()
-                                }
-                                if (mime.startsWith("audio")) {
-                                    Box(
-                                        Modifier
-                                            .matchParentSize()
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Rounded.Audiotrack,
-                                            stringResource(R.string.chat_media_audio),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-                                } else {
-                                    coil3.compose.AsyncImage(
-                                        model = uri,
-                                        contentDescription = stringResource(R.string.access_photo),
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .clip(RoundedCornerShape(12.dp))
-                                    )
-                                }
+                                coil3.compose.AsyncImage(
+                                    model = uri,
+                                    contentDescription = stringResource(R.string.access_photo),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clip(RoundedCornerShape(12.dp))
+                                )
                                 Box(
                                     Modifier
                                         .align(Alignment.TopEnd)
@@ -1956,28 +1854,8 @@ fun ChatScreen(
                                 showSchedulePicker = true
                             }
                         },
-                        onEmojiToggle = {
-                            attachOpen = false
-                            showEmoji = !showEmoji
-                        },
-                        onAttach = {
-                            if (attachOpen) {
-                                attachOpen = false
-                                fieldFocus.requestFocus()
-                            } else {
-                                attachOpen = true
-                                showEmoji = false
-                                // Clearing the whole focus owner, not just this
-                                // requester: that is what drops the IME, and the
-                                // tray then grows into the space it left.
-                                focusManager.clearFocus()
-                                keyboard?.hide()
-                            }
-                        },
-                        attachOpen = attachOpen,
-                        fieldFocusRequester = fieldFocus,
-                        onFieldFocus = { attachOpen = false },
-                        composerBottomInset = if (attachOpen) 0.dp else keyboardInset,
+                        onEmojiToggle = { showEmoji = !showEmoji },
+                        onAttach = { attachSheet = true },
                         showEmojiButton = vm.settings.emojiButtonEnabled,
                         voiceEnabled = hasMicrophone,
                         voiceMaxSeconds = voiceMaxSeconds,
@@ -2016,80 +1894,6 @@ fun ChatScreen(
                     )
                 } else {
                     AlphanumericNotice(address = chatAddress)
-                }
-                AnimatedVisibility(
-                    visible = attachOpen && !selectionActive,
-                    // No growth animation: the tray takes the keyboard's height
-                    // in the same frame the keyboard's inset is released, so the
-                    // composer does not ride up and back down while they swap.
-                    enter = if (reduceMotion) fadeIn(tween(0))
-                    else fadeIn(motionTween(false, Motion.DURATION_SHORT4)),
-                    exit = if (reduceMotion) fadeOut(tween(0))
-                    else fadeOut(motionTween(false, Motion.DURATION_SHORT4))
-                ) {
-                    AttachTray(
-                        cameraLabel = stringResource(R.string.chat_media_camera),
-                        cameraIcon = Icons.Rounded.CameraAlt,
-                        onCamera = {
-                            attachOpen = false
-                            val dir = File(context.cacheDir, "camera").apply { mkdirs() }
-                            val file = File(dir, "photo_${System.currentTimeMillis()}.jpg")
-                            cameraFileUri = FileProvider.getUriForFile(
-                                context, "${context.packageName}.fileprovider", file
-                            )
-                            launchOrExplain(R.string.chat_camera_unavailable) {
-                                cameraLauncher.launch(cameraFileUri!!)
-                            }
-                        },
-                        keyboardHeight = keyboardSlot.takeIf { it > 0f }?.dp,
-                        actions = listOf(
-                            AttachAction(
-                                label = stringResource(R.string.chat_media_gallery),
-                                icon = Icons.Rounded.Image
-                            ) {
-                                attachOpen = false
-                                launchOrExplain(R.string.chat_gallery_unavailable) {
-                                    galleryLauncher.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
-                                }
-                            },
-                            AttachAction(
-                                label = stringResource(R.string.chat_media_audio),
-                                icon = Icons.Rounded.Audiotrack
-                            ) {
-                                attachOpen = false
-                                launchOrExplain(R.string.chat_gallery_unavailable) {
-                                    audioLauncher.launch(arrayOf("audio/*"))
-                                }
-                            },
-                            AttachAction(
-                                label = stringResource(R.string.chat_media_location),
-                                icon = Icons.Rounded.LocationOn
-                            ) {
-                                attachOpen = false
-                                if (LocationShare.hasPermission(context)) {
-                                    showLocationDialog = true
-                                } else {
-                                    locationPermissionLauncher.launch(
-                                        arrayOf(
-                                            Manifest.permission.ACCESS_COARSE_LOCATION,
-                                            Manifest.permission.ACCESS_FINE_LOCATION
-                                        )
-                                    )
-                                }
-                            },
-                            AttachAction(
-                                label = stringResource(R.string.chat_media_contact),
-                                icon = Icons.Rounded.Person
-                            ) {
-                                attachOpen = false
-                                launchOrExplain(R.string.chat_contact_unavailable) {
-                                    contactLauncher.launch(null)
-                                }
-                            }
-                        )
-                    )
                 }
             }
         }
@@ -2313,26 +2117,63 @@ fun ChatScreen(
         }
     }
 
+    var showLocationDialog by remember { mutableStateOf(false) }
+
     if (showLocationDialog) {
         LocationDialog(
-            onSend = {
-                showLocationDialog = false
-                val fix = LocationShare.lastKnown(context)
-                if (fix == null) {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.chat_location_unavailable),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    vm.send(
-                        conversationId,
-                        ContactCard.geoLink(fix.first, fix.second),
-                        currentSimId
+            onDismiss = { showLocationDialog = false },
+            onSend = { link -> vm.send(conversationId, link, currentSimId) }
+        )
+    }
+
+    // A device without a camera app, a photo picker, a document picker or a
+    // contact picker throws instead of opening anything: an unhandled
+    // ActivityNotFoundException crashed the chat the moment that tile was
+    // tapped, which is how an AVD with the camera package removed behaved.
+    fun launchOrExplain(messageRes: Int, launch: () -> Unit) {
+        try {
+            launch()
+        } catch (_: android.content.ActivityNotFoundException) {
+            Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    if (attachSheet) {
+        AttachSheet(
+            onGallery = {
+                attachSheet = false
+                launchOrExplain(R.string.chat_gallery_unavailable) {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
                 }
             },
-            onDismiss = { showLocationDialog = false }
+            onAudio = {
+                attachSheet = false
+                launchOrExplain(R.string.chat_gallery_unavailable) {
+                    audioLauncher.launch(arrayOf("audio/*"))
+                }
+            },
+            onLocation = {
+                attachSheet = false
+                showLocationDialog = true
+            },
+            onContact = {
+                attachSheet = false
+                launchOrExplain(R.string.chat_contact_unavailable) {
+                    contactLauncher.launch(null)
+                }
+            },
+            onCamera = {
+                attachSheet = false
+                val dir = File(context.cacheDir, "camera").apply { mkdirs() }
+                val file = File(dir, "photo_${System.currentTimeMillis()}.jpg")
+                cameraFileUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                launchOrExplain(R.string.chat_camera_unavailable) {
+                    cameraLauncher.launch(cameraFileUri!!)
+                }
+            },
+            onDismiss = { attachSheet = false }
         )
     }
 
@@ -3824,14 +3665,6 @@ internal fun InputBar(
     schedulingEnabled: Boolean = true,
     onEmojiToggle: () -> Unit,
     onAttach: () -> Unit,
-    /** The tray is open under the bar, so the attach button offers to close it. */
-    attachOpen: Boolean = false,
-    /** Lets the caller hand focus back when the tray closes. */
-    fieldFocusRequester: FocusRequester? = null,
-    /** Tapped into the field while the tray was open. */
-    onFieldFocus: () -> Unit = {},
-    /** Height the bar clears: the keyboard's, or zero while the tray is open. */
-    composerBottomInset: Dp? = null,
     showEmojiButton: Boolean = false,
     hasAttachments: Boolean = false,
     sims: List<SimCard> = emptyList(),
@@ -3907,17 +3740,7 @@ internal fun InputBar(
         }
     }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            // The caller hands in the height the bar sits above (the keyboard,
-            // or nothing while the tray holds that slot). Owning it here is what
-            // keeps the bar still when the two swap, instead of the tray and the
-            // IME's inset both moving it for a frame.
-            .then(
-                if (composerBottomInset != null) Modifier.padding(bottom = composerBottomInset)
-                else Modifier.imePadding()
-            )
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Typing a Persian/Arabic word should flip the field, so the caret and
@@ -3954,23 +3777,14 @@ internal fun InputBar(
                     ) {
                         Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                             IconButton(onClick = onAttach) {
-                                // One ring, one animation: the plus turns 45° into the
-                                // cross that closes the tray, so closing it is the same
-                                // control it was opened with.
-                                val turn by animateFloatAsState(
-                                    targetValue = if (attachOpen) 45f else 0f,
-                                    animationSpec = motionSpring(LocalReduceMotion.current),
-                                    label = "attachTurn"
-                                )
+                                // GM badges the attach button with a dot that overlaps the
+                                // ring's top-right; the ring shows through as broken
+                                // because the dot carries a ring of field colour around it.
                                 Box {
                                     Icon(
                                         Icons.Rounded.AddCircleOutline,
-                                        stringResource(
-                                            if (attachOpen) R.string.common_close
-                                            else R.string.icon_attach
-                                        ),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.rotate(turn)
+                                        stringResource(R.string.icon_attach),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     val dot = MaterialTheme.colorScheme.composerAttachDot
                                     // A dot colour has no text equivalent, so it names
@@ -3981,10 +3795,6 @@ internal fun InputBar(
                                             "color=#%06X".format(dot.toArgb() and 0xFFFFFF)
                                         )
                                     }
-                                    // The badge belongs to "there is something to
-                                    // attach"; on the way out it fades with the turn, and
-                                    // GM badges the ring's top-right so the ring reads as
-                                    // broken behind the dot's cut-out ring of field colour.
                                     Box(
                                         Modifier
                                             .align(Alignment.TopEnd)
@@ -3994,7 +3804,6 @@ internal fun InputBar(
                                             // GM's dot measures ~5dp across; the 8dp box
                                             // is the cut-out ring plus that dot.
                                             .size(8.dp)
-                                            .alpha(if (attachOpen) 0f else 1f)
                                             .background(MaterialTheme.colorScheme.inputPill, CircleShape)
                                             .padding(1.5.dp)
                                             .background(dot, CircleShape)
@@ -4022,18 +3831,7 @@ internal fun InputBar(
                                     capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
                                 ),
                                 maxLines = 4,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp)
-                                    .then(
-                                        if (fieldFocusRequester != null)
-                                            Modifier.focusRequester(fieldFocusRequester)
-                                        else Modifier
-                                    )
-                                    // Tapping the field is the other way out of the
-                                    // tray: the IME is already coming up, so the tray
-                                    // would otherwise sit between it and the chat.
-                                    .onFocusChanged { if (it.isFocused) onFieldFocus() }
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
                             )
                         }
                         if (SimSwitcher.shouldShowSwitch(sims.size)) {
@@ -4462,6 +4260,71 @@ private const val HALO_MIN_ALPHA = 0.22f
 private const val HALO_ALPHA = 0.35f
 private const val HALO_BREATHE_GROWTH = 0.22f
 private const val HALO_BREATHE_ALPHA = 0.20f
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun AttachSheet(
+    onGallery: () -> Unit,
+    onCamera: () -> Unit,
+    onAudio: () -> Unit,
+    onLocation: () -> Unit,
+    onContact: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState()
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(
+                stringResource(R.string.chat_share),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            Row(
+                Modifier.fillMaxWidth().clickable { onGallery() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Image, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_gallery), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onContact() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Person, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_contact), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onLocation() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.LocationOn, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_location), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onAudio() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Audiotrack, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_audio), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onCamera() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.CameraAlt, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_camera), style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+    }
+}
 
 @Composable
 internal fun SimPickerDialog(
