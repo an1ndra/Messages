@@ -59,6 +59,11 @@
     <string name="notif_send_fail_private">无法发送消息。轻触重试。</string>
     <string name="notif_send_fail">无法发送至 %s。轻触重试。</string>
     <string name="notif_not_delivered">消息未送达</string>
+    <string name="notif_nudge_title">等待你的回复</string>
+    <string name="notif_nudge_title_to">回复 %1$s？</string>
+    <string name="notif_nudge_private">有一个会话在等待你的回复</string>
+    <string name="notif_nudge_channel_title">回复提醒</string>
+    <string name="notif_nudge_channel_desc">关于尚未回复消息的提醒</string>
 
     <string name="crash_report_title">崩溃报告</string>
     <string name="crash_report_message">上次应用崩溃了。日志保存在 Downloads/Messages 中 — 请将其附到 GitHub issue 上以帮助修复。</string>

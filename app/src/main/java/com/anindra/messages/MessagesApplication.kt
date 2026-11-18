@@ -92,6 +92,15 @@ class MessagesApplication : Application() {
             // import the names may have changed — and drops those of chats that
             // are gone.
             com.anindra.messages.sms.NotificationHelper.syncNotificationChannels(this@MessagesApplication)
+            // The nudge's schedule has to follow its switch, and an app start is
+            // also the moment a nudge that became due while the app was closed
+            // gets posted (#484).
+            com.anindra.messages.data.ReplyNudgeScheduler.apply(
+                this@MessagesApplication, s.replyNudgeEnabled
+            )
+            if (s.replyNudgeEnabled) {
+                com.anindra.messages.data.ReplyNudgeScheduler.checkNow(this@MessagesApplication)
+            }
         }
     }
 }

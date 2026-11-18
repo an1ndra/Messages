@@ -58,6 +58,11 @@
     <string name="notif_send_fail_private">Échec de l\'envoi du message. Appuyez pour réessayer.</string>
     <string name="notif_send_fail">Échec de l\'envoi du message à %s. Appuyez pour réessayer.</string>
     <string name="notif_not_delivered">Message non remis</string>
+    <string name="notif_nudge_title">En attente de votre réponse</string>
+    <string name="notif_nudge_title_to">Répondre à %1$s ?</string>
+    <string name="notif_nudge_private">Une conversation attend votre réponse</string>
+    <string name="notif_nudge_channel_title">Rappels de réponse</string>
+    <string name="notif_nudge_channel_desc">Rappels pour un message laissé sans réponse</string>
     <!-- Crash reports -->
     <string name="crash_report_title">Rapport d\'incident</string>
     <string name="crash_report_message">L\'application a planté la dernière fois. Le journal est enregistré dans Downloads/Messages — joignez-le à un ticket GitHub pour aider à résoudre le problème.</string>
