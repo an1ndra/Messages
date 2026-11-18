@@ -50,6 +50,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Pokaż przycisk Oznacz jako przeczytane w powiadomieniu</string>
     <string name="settings_notif_action_delete_title">Akcja Usuń</string>
     <string name="settings_notif_action_delete_subtitle">Pokaż przycisk Usuń w powiadomieniu</string>
+    <string name="settings_suggested_replies_title">Sugerowane odpowiedzi</string>
+    <string name="settings_suggested_replies_subtitle">Proponuj odpowiedzi jednym dotknięciem nad polem wiadomości i w powiadomieniu</string>
     <string name="settings_reply_nudge_title">Przypomnienie o nieodpowiedzianych wiadomościach</string>
     <string name="settings_reply_nudge_subtitle">Przypominaj mi o odpowiedzi na wiadomość, którą zostawiłem bez odpowiedzi</string>
     <string name="settings_reply_nudge_after_title">Przypomnij po</string>

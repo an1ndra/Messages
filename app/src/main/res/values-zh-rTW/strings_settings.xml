@@ -50,6 +50,8 @@
     <string name="settings_notif_action_mark_read_subtitle">在通知上顯示標示為已讀按鈕</string>
     <string name="settings_notif_action_delete_title">刪除操作</string>
     <string name="settings_notif_action_delete_subtitle">在通知上顯示刪除按鈕</string>
+    <string name="settings_suggested_replies_title">建議回覆</string>
+    <string name="settings_suggested_replies_subtitle">在訊息框上方和通知中提供一鍵回覆</string>
     <string name="settings_reply_nudge_title">未回覆訊息提醒</string>
     <string name="settings_reply_nudge_subtitle">提醒我回覆尚未回覆的訊息</string>
     <string name="settings_reply_nudge_after_title">提醒時間</string>

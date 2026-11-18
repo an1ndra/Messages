@@ -75,6 +75,7 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     var replyNudge by remember(revision) { mutableStateOf(vm.settings.replyNudgeEnabled) }
     var nudgeHours by remember(revision) { mutableStateOf(vm.settings.replyNudgeHours) }
     var nudgeDialog by remember { mutableStateOf(false) }
+    var suggestedReplies by remember(revision) { mutableStateOf(vm.settings.suggestedRepliesEnabled) }
 
     SettingsScaffold(
         title = stringResource(R.string.settings_notif_title),
@@ -145,6 +146,13 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                     onClick = { nudgeDialog = true }
                 )
             }
+            SettingsRow(
+                position = RowPosition.MIDDLE,
+                title = stringResource(R.string.settings_suggested_replies_title),
+                subtitle = stringResource(R.string.settings_suggested_replies_subtitle),
+                checked = suggestedReplies,
+                onChecked = { suggestedReplies = it; vm.settings.suggestedRepliesEnabled = it }
+            )
             SettingsRow(
                 position = RowPosition.LAST,
                 title = stringResource(R.string.settings_bubble_back_closes_title),

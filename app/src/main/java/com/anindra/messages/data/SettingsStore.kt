@@ -88,6 +88,7 @@ class SettingsStore(context: Context) {
         const val KEY_REPLY_NUDGE_HOURS = "reply_nudge_hours"
         const val KEY_REPLY_NUDGE_AT_PREFIX = "reply_nudge_at_"
         const val KEY_BUBBLE_BACK_CLOSES = "bubble_back_closes"
+        const val KEY_SUGGESTED_REPLIES = "suggested_replies_enabled"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
         const val KEY_EMOJI_BUTTON = "emoji_button_enabled"
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
@@ -434,6 +435,15 @@ class SettingsStore(context: Context) {
     var bubbleBackCloses: Boolean
         get() = prefs.getBoolean(KEY_BUBBLE_BACK_CLOSES, false)
         set(v) { prefs.edit().putBoolean(KEY_BUBBLE_BACK_CLOSES, v).apply(); _revision.value++ }
+
+    /**
+     * One-tap replies above the composer and on the notification (#483). On by
+     * default, and off removes both: a wrong suggestion is worse than none, so
+     * the switch has to be able to take the whole thing away.
+     */
+    var suggestedRepliesEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SUGGESTED_REPLIES, true)
+        set(v) { prefs.edit().putBoolean(KEY_SUGGESTED_REPLIES, v).apply(); _revision.value++ }
 
     var showSimIndicator: Boolean
         get() = prefs.getBoolean(KEY_SHOW_SIM_INDICATOR, true)
