@@ -25,6 +25,17 @@
     <string name="chat_media_audio">Dźwięk</string>
     <string name="chat_media_camera">Aparat</string>
     <string name="chat_media_gallery">Galeria</string>
+    <string name="chat_location_title">Udostępnij swoją lokalizację</string>
+    <string name="chat_location_body">Link do Map Google z Twoją obecną lokalizacją zostanie wysłany na ten czat.</string>
+    <string name="chat_location_send">Wyślij</string>
+    <string name="chat_location_unavailable">Nie udało się ustalić lokalizacji. Spróbuj ponownie za chwilę.</string>
+    <string name="chat_location_permission">Aby udostępnić lokalizację, potrzebne jest pozwolenie na dostęp do niej.</string>
+    <string name="chat_contact_unavailable">Ten kontakt nie ma numeru, na który można wysłać.</string>
+    <string name="chat_camera_unavailable">Na tym urządzeniu nie ma aplikacji aparatu do zrobienia zdjęcia.</string>
+    <string name="db_newer_title">Ta wersja jest starsza niż Twoje wiadomości</string>
+    <string name="db_newer_body">Wiadomości zostały ostatnio otwarte przez nowszą wersję Messages (dane v%2$d, ta wersja v%1$d). Ta wersja nie potrafi ich odczytać, więc odłożono je jako %3$s, a Messages startuje puste. Zainstaluj nowszą wersję, aby je odzyskać.</string>
+    <string name="db_newer_ok">Rozumiem</string>
+    <string name="chat_gallery_unavailable">Żadna aplikacja na tym urządzeniu nie potrafi wybrać zdjęcia.</string>
     <string name="chat_select_all">Zaznacz wszystko</string>
     <string name="chat_select_text">Zaznacz tekst</string>
     <string name="chat_save_image">Zapisz obraz</string>

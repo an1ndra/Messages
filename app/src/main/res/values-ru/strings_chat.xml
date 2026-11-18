@@ -25,6 +25,17 @@
     <string name="chat_media_audio">Аудио</string>
     <string name="chat_media_camera">Камера</string>
     <string name="chat_media_gallery">Галерея</string>
+    <string name="chat_location_title">Поделиться местоположением</string>
+    <string name="chat_location_body">В этот чат будет отправлена ссылка Google Карт с вашим текущим местоположением.</string>
+    <string name="chat_location_send">Отправить</string>
+    <string name="chat_location_unavailable">Не удалось определить местоположение. Повторите попытку чуть позже.</string>
+    <string name="chat_location_permission">Чтобы поделиться местоположением, нужно разрешение на геоданные.</string>
+    <string name="chat_contact_unavailable">У этого контакта нет номера для отправки.</string>
+    <string name="chat_camera_unavailable">На этом устройстве нет приложения камеры, чтобы сделать фото.</string>
+    <string name="db_newer_title">Эта сборка старее ваших сообщений</string>
+    <string name="db_newer_body">Сообщения последний раз открывались более новой версией Messages (данные v%2$d, эта сборка v%1$d). Эта сборка их не читает, поэтому они отложены как %3$s, а Messages запускается пустым. Установите более новую сборку, чтобы вернуть их.</string>
+    <string name="db_newer_ok">Понятно</string>
+    <string name="chat_gallery_unavailable">Ни одно приложение на этом устройстве не может выбрать фото.</string>
     <string name="chat_select_all">Выбрать все</string>
     <string name="chat_select_text">Выделить текст</string>
     <string name="chat_save_image">Сохранить изображение</string>

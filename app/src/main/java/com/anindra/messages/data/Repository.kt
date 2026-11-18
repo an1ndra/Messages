@@ -25,7 +25,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-private const val DB_NAME = "messages.db"
+internal const val DB_NAME = "messages.db"
 private const val PRE_IMPORT_BACKUP_NAME = "pre_import_backup.db"
 private const val IMPORT_TEMP_NAME = "import_temp.db"
 
@@ -64,7 +64,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 35
+internal const val DB_VERSION = 35
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 

@@ -2136,15 +2136,33 @@ fun ChatScreen(
         )
     }
 
+    // A device without a camera app, a photo picker, a document picker or a
+    // contact picker throws instead of opening anything: an unhandled
+    // ActivityNotFoundException crashed the chat the moment that tile was
+    // tapped, which is how an AVD with the camera package removed behaved.
+    fun launchOrExplain(messageRes: Int, launch: () -> Unit) {
+        try {
+            launch()
+        } catch (_: android.content.ActivityNotFoundException) {
+            Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     if (attachSheet) {
         AttachSheet(
             onGallery = {
                 attachSheet = false
-                galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                launchOrExplain(R.string.chat_gallery_unavailable) {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
             },
             onAudio = {
                 attachSheet = false
-                audioLauncher.launch(arrayOf("audio/*"))
+                launchOrExplain(R.string.chat_gallery_unavailable) {
+                    audioLauncher.launch(arrayOf("audio/*"))
+                }
             },
             onLocation = {
                 attachSheet = false
@@ -2152,14 +2170,18 @@ fun ChatScreen(
             },
             onContact = {
                 attachSheet = false
-                contactLauncher.launch(null)
+                launchOrExplain(R.string.chat_contact_unavailable) {
+                    contactLauncher.launch(null)
+                }
             },
             onCamera = {
                 attachSheet = false
                 val dir = File(context.cacheDir, "camera").apply { mkdirs() }
                 val file = File(dir, "photo_${System.currentTimeMillis()}.jpg")
                 cameraFileUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                cameraLauncher.launch(cameraFileUri!!)
+                launchOrExplain(R.string.chat_camera_unavailable) {
+                    cameraLauncher.launch(cameraFileUri!!)
+                }
             },
             onDismiss = { attachSheet = false }
         )

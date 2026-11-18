@@ -25,6 +25,17 @@
     <string name="chat_media_audio">Audio</string>
     <string name="chat_media_camera">Appareil photo</string>
     <string name="chat_media_gallery">Galerie</string>
+    <string name="chat_location_title">Partager votre position</string>
+    <string name="chat_location_body">Un lien Google Maps vers l\'endroit où vous êtes sera envoyé dans cette conversation.</string>
+    <string name="chat_location_send">Envoyer</string>
+    <string name="chat_location_unavailable">Impossible d\'obtenir votre position. Réessayez dans un instant.</string>
+    <string name="chat_location_permission">L\'autorisation de localisation est nécessaire pour partager votre position.</string>
+    <string name="chat_contact_unavailable">Ce contact n\'a aucun numéro à envoyer.</string>
+    <string name="chat_camera_unavailable">Aucune application d\'appareil photo sur cet appareil pour prendre une photo.</string>
+    <string name="db_newer_title">Cette version est plus ancienne que vos messages</string>
+    <string name="db_newer_body">Vos messages ont été ouverts pour la dernière fois par une version plus récente de Messages (données v%2$d, cette version v%1$d). Cette version ne peut pas les lire : ils ont été mis de côté sous %3$s et Messages démarre vide. Installez la version plus récente pour les récupérer.</string>
+    <string name="db_newer_ok">Compris</string>
+    <string name="chat_gallery_unavailable">Aucune application sur cet appareil ne peut choisir une photo.</string>
     <string name="chat_select_all">Tout sélectionner</string>
     <string name="chat_select_text">Sélectionner le texte</string>
     <string name="chat_save_image">Enregistrer l\'image</string>

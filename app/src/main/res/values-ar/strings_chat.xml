@@ -25,6 +25,17 @@
     <string name="chat_media_audio">صوت</string>
     <string name="chat_media_camera">الكاميرا</string>
     <string name="chat_media_gallery">المعرض</string>
+    <string name="chat_location_title">مشاركة موقعك</string>
+    <string name="chat_location_body">سيتم إرسال رابط خرائط Google لموقعك الحالي إلى هذه المحادثة.</string>
+    <string name="chat_location_send">إرسال</string>
+    <string name="chat_location_unavailable">تعذّر الحصول على موقعك. حاول مرة أخرى بعد قليل.</string>
+    <string name="chat_location_permission">يلزم إذن الموقع لمشاركة مكانك.</string>
+    <string name="chat_contact_unavailable">لا يوجد رقم في جهة الاتصال هذه لإرساله.</string>
+    <string name="chat_camera_unavailable">لا يوجد تطبيق كاميرا على هذا الجهاز لالتقاط صورة.</string>
+    <string name="db_newer_title">هذا الإصدار أقدم من رسائلك</string>
+    <string name="db_newer_body">آخر من فتح رسائلك إصدار أحدث من Messages (بيانات v%2$d، وهذا الإصدار v%1$d). لا يستطيع هذا الإصدار قراءتها، لذا نُقلت جانباً باسم %3$s ويبدأ Messages فارغاً. ثبّت الإصدار الأحدث لاستعادتها.</string>
+    <string name="db_newer_ok">حسناً</string>
+    <string name="chat_gallery_unavailable">لا يوجد تطبيق على هذا الجهاز لاختيار صورة.</string>
     <string name="chat_select_all">تحديد الكل</string>
     <string name="chat_select_text">تحديد النص</string>
     <string name="chat_save_image">حفظ الصورة</string>

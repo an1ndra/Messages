@@ -6,10 +6,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.CameraAlt
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,14 +29,20 @@ import com.anindra.messages.data.ReplySuggestion
 import com.anindra.messages.ui.LocationDialog
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SwipeAction
+import com.anindra.messages.data.DatabaseCompatibility
+import com.anindra.messages.ui.AttachAction
 import com.anindra.messages.ui.AttachSheet
+import com.anindra.messages.ui.AttachTile
+import com.anindra.messages.ui.AttachTray
 import com.anindra.messages.ui.BubblePosition
 import com.anindra.messages.ui.ChatBubble
 import com.anindra.messages.ui.DialogText
 import com.anindra.messages.ui.ReactionBar
 import com.anindra.messages.ui.SuggestionChips
 import com.anindra.messages.ui.ReactionChips
+import com.anindra.messages.ui.NewerDataDialog
 import com.anindra.messages.ui.InputBar
+import com.anindra.messages.ui.LocationDialog
 import com.anindra.messages.ui.MessageDetailsDialog
 import com.anindra.messages.ui.OwnerAvatar
 import com.anindra.messages.ui.ScheduleDialog
@@ -620,6 +633,50 @@ private fun InputBarEmptyPreview() {
         }
     }
 }
+
+@PreviewLightDark
+@Preview(name = "Attach tray", showBackground = true, widthDp = 412, heightDp = 380)
+@Composable
+private fun AttachTrayPreview() {
+    MessagesTheme(mode = "system") {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.background),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            AttachTray(
+                onCamera = {},
+                cameraLabel = "Camera",
+                cameraIcon = Icons.Rounded.CameraAlt,
+                actions = listOf(
+                    AttachAction("Gallery", Icons.Rounded.Image) {},
+                    AttachAction("Audio", Icons.Rounded.Audiotrack) {},
+                    AttachAction("Location", Icons.Rounded.LocationOn) {},
+                    AttachAction("Contact", Icons.Rounded.Person) {}
+                )
+            )
+        }
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Newer data than this build", showBackground = true, widthDp = 380, heightDp = 420)
+@Composable
+private fun NewerDataPreview() {
+    MessagesTheme(mode = "system") {
+        NewerDataDialog(
+            notice = DatabaseCompatibility.Notice(
+                fileVersion = 35,
+                appVersion = 33,
+                fileName = "messages.newer-v35.db"
+            ),
+            onDismiss = {}
+        )
+    }
+}
+
 
 @PreviewLightDark
 @Preview(name = "Compose input bar, suggested replies", showBackground = true, widthDp = 380)
