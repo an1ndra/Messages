@@ -16,6 +16,13 @@
     <string name="chat_schedule">Планировщик</string>
     <string name="chat_select_date">Выбрать дату</string>
     <string name="chat_select_time">Выбрать время</string>
+    <string name="chat_media_location">Геопозиция</string>
+    <string name="location_use_mine">Использовать мою геопозицию</string>
+    <string name="location_hint">Вставьте ссылку или введите место</string>
+    <string name="mms_download_title">Загрузка сообщения</string>
+    <string name="mms_download_text">Оператор получает его</string>
+    <string name="chat_media_contact">Контакт</string>
+    <string name="chat_media_audio">Аудио</string>
     <string name="chat_media_camera">Камера</string>
     <string name="chat_media_gallery">Галерея</string>
     <string name="chat_select_all">Выбрать все</string>
