@@ -140,6 +140,22 @@ object BidiText {
         return Direction.LTR
     }
 
+    /** True when a code point in [range] — outside a link, which never votes —
+     *  is a letter. Digits, punctuation, emoji and a bare URL do not count, so
+     *  a line composed only of them has no direction of its own and is laid out
+     *  in whatever the platform's fallback is. */
+    private fun hasStrongCharacter(text: String, range: IntRange, links: List<IntRange>): Boolean {
+        var l = 0
+        var i = range.first
+        while (i <= range.last) {
+            val cp = text.codePointAt(i)
+            while (l < links.size && links[l].last < i) l++
+            if (!(l < links.size && links[l].first <= i) && strongDirection(cp) != null) return true
+            i += Character.charCount(cp)
+        }
+        return false
+    }
+
     /** [value] as a single LTR run; idempotent. */
     fun ltr(value: String): String {
         if (value.isEmpty() || (value.first() == LRI && value.last() == PDI)) return value
@@ -208,11 +224,20 @@ object BidiText {
 
     /** Isolates every number-like run on a line that is laid out RTL, so
      *  "0999 862 0453" or a masked card number keeps its order instead of
-     *  being split by the spaces around it, and pins every LTR line as one run
-     *  so a card mask or a bank timestamp cannot be reordered by the line next
-     *  to it. Runs intersecting [excluded] (e.g. digits inside a link) are left
-     *  alone, and a number on an LTR line needs no isolate — the line already
-     *  reads left to right.
+     *  being split by the spaces around it, and pins every all-LTR line as one
+     *  run so a card mask or a bank timestamp cannot be reordered by the line
+     *  next to it. Runs intersecting [excluded] (e.g. digits inside a link) are
+     *  left alone, and a number on an LTR line needs no run isolate — the line
+     *  is pinned instead.
+     *
+     *  A line is pinned whenever [lines] calls it LTR and either the message
+     *  also has an RTL line, or the line holds no strong character at all. The
+     *  second case is not cosmetic: the platform lays such a line out in the
+     *  *layout* direction (`TextDirection.Content` resolves to FIRSTSTRONG_RTL
+     *  under an RTL locale), so a message whose whole body is
+     *  "+21 0123 456 7899" painted "7899 456 0123 21+", while the composer,
+     *  which pins explicitly, showed it correctly. Pinning matches the
+     *  composer and adds nothing a reader can see.
      *
      *  An isolate fixes order only: the spaces inside it are still ordinary
      *  break opportunities, so a card number could wrap across two lines (#405).
@@ -221,10 +246,13 @@ object BidiText {
      *  built on it keep their offsets. The copy paths read the raw body, so
      *  nothing persisted gains these characters.
      *
-     *  The line directions here are the rule the platform itself applies to the
-     *  painted text (`TextDirection.Content`), so the transform can never
-     *  isolate as if a line were RTL while it is painted LTR. */
+     *  The line directions here are the rule the platform applies to the
+     *  painted text for every line that *has* a strong character, where it is
+     *  unambiguous. A line without one is the fallback case, and the platform
+     *  answers it from the layout direction — which is why such a line is
+     *  pinned rather than trusted. */
     fun isolateNumberRuns(text: String, excluded: List<IntRange> = emptyList()): Isolated {
+        val links = linkRanges(text)
         val lines = lines(text)
         val identity = Isolated(text, IntArray(text.length + 1) { it }, lines.map { it.direction })
         val numberRuns = NUMBER_RUN.findAll(text)
@@ -234,11 +262,18 @@ object BidiText {
             .toList()
         val runs = numberRuns
             .filter { r -> lines.firstOrNull { r.first in it.range }?.direction == Direction.RTL }
-        // An all-LTR message needs nothing: every line already reads left to
-        // right. The pins exist so that in a bubble that mixes both, an LTR
-        // line cannot be dragged around by an RTL neighbour.
         val mixed = lines.any { it.direction == Direction.RTL }
-        val pinned = if (mixed) lines.filter { it.direction == Direction.LTR }.map { it.range } else emptyList()
+        // In a bubble that mixes both, every LTR line is pinned so an RTL
+        // neighbour cannot drag it around. In a message with no RTL line at all
+        // the pins are for the lines the platform would not lay out LTR on its
+        // own — see the note above; a line with a strong character in it is
+        // already LTR by the text itself and needs nothing.
+        val pinned = lines
+            .filter {
+                it.direction == Direction.LTR &&
+                    (mixed || !hasStrongCharacter(text, it.range, links))
+            }
+            .map { it.range }
         if (runs.isEmpty() && pinned.isEmpty()) return identity
 
         val nonBreaking = HashMap<Int, Char>()
