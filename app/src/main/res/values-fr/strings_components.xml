@@ -28,8 +28,8 @@
     <string name="access_loading_messages">Chargement des messages</string>
     <string name="access_photo">Photo</string>
     <string name="access_voice">Message vocal</string>
-    <string name="access_voice_play">Lire le message vocal</string>
-    <string name="access_voice_pause">Mettre le message vocal en pause</string>
+    <string name="access_voice_play">Écouter le message vocal</string>
+    <string name="access_voice_pause">Mettre en pause le message vocal</string>
     <string name="access_video">Vidéo</string>
     <string name="action_call">Appeler</string>
     <string name="access_chat_top_bar">Barre supérieure du chat</string>
