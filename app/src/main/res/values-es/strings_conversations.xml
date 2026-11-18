@@ -45,6 +45,10 @@
     <string name="search_scope_contacts">Contactos</string>
     <string name="search_scope_messages">Mensajes</string>
     <string name="search_scope_no_results">Sin resultados</string>
+    <string name="search_filter_from">De %s</string>
+    <string name="search_filter_attachments">Con adjunto</string>
+    <string name="search_filter_before">Antes de %s</string>
+    <string name="search_filter_after">Después de %s</string>
     <string name="inbox_category_all">Todos</string>
     <string name="inbox_category_personal">Personal</string>
     <string name="inbox_category_transactions">Transacciones</string>

@@ -320,10 +320,14 @@ fun ConversationsScreen(
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
-    val messageMatchIds = com.anindra.messages.ui.rememberMessageMatchIds(vm, query)
+    val resolved = com.anindra.messages.ui.rememberSearchQueryFilters(
+        query, vm.settings.calendarSystem
+    )
+
+    val messageMatchIds = com.anindra.messages.ui.rememberMessageMatchIds(vm, resolved)
 
     val displayed = com.anindra.messages.ui.rememberSearchResults(
-        conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks, messageMatchIds
+        conversations, showArchived, resolved, unreadAtTop, rowSettings.hideLinks, messageMatchIds
     )
 
     // Reveal a new unread only while the user is still at the top.
@@ -476,6 +480,12 @@ fun ConversationsScreen(
                     }
                 }
             }
+            }
+
+            if (searching) {
+                com.anindra.messages.ui.SearchFilterChips(resolved) { kind ->
+                    query = resolved.parsed.without(kind)
+                }
             }
 
             syncProgress?.let { progress ->

@@ -71,6 +71,7 @@ import com.anindra.messages.data.DownloadsStore
 import com.anindra.messages.data.MmsSupport
 import com.anindra.messages.data.TrashedMessage
 import com.anindra.messages.data.Message
+import com.anindra.messages.data.MessageSearchFilters
 import com.anindra.messages.data.Repository
 import com.anindra.messages.sms.NotificationHelper
 import com.anindra.messages.data.ForwardPlan
@@ -407,8 +408,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun messageCountFlow(conversationId: Long): Flow<Int> = repo.messageCountFlow(conversationId)
 
     /** Conversations with a hit anywhere in their history, for the home search. */
-    fun conversationIdsMatchingMessage(query: String, hideLinks: Boolean): Flow<Set<Long>> =
-        repo.conversationIdsMatchingMessage(query, hideLinks)
+    fun conversationIdsMatchingMessage(
+        query: String,
+        hideLinks: Boolean,
+        filters: MessageSearchFilters? = null
+    ): Flow<Set<Long>> =
+        repo.conversationIdsMatchingMessage(query, hideLinks, filters)
 
     /** Ids of this conversation's messages a chat search can reach, oldest first. */
     fun messageIdsMatching(conversationId: Long, query: String, hideLinks: Boolean): Flow<List<Long>> =
@@ -505,7 +510,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch { repo.setStarred(messageIds, starred) }
 
     /** The Starred scope of the home search (#394). */
-    fun starredMessages(query: String, hideLinks: Boolean) = repo.starredMessages(query, hideLinks)
+    fun starredMessages(
+        query: String,
+        hideLinks: Boolean,
+        filters: MessageSearchFilters? = null
+    ) = repo.starredMessages(query, hideLinks, filters)
 
     fun deleteMessage(messageId: Long) =
         scope.launch { repo.deleteMessageSuspend(messageId) }

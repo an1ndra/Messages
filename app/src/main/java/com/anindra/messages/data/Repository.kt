@@ -809,15 +809,31 @@ class Repository(private val context: Context) {
      * list uses, so a locked body never surfaces and Hide links cannot be
      * bypassed here (#394).
      */
-    fun starredMessages(query: String, hideLinks: Boolean): Flow<List<StarredMessage>> = observe {
+    fun starredMessages(
+        query: String,
+        hideLinks: Boolean,
+        filters: MessageSearchFilters? = null
+    ): Flow<List<StarredMessage>> = observe {
         val out = mutableListOf<StarredMessage>()
+        val like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        val clauses = mutableListOf("m.starred=1", "m.deleted_at=0", "c.deleted_at=0")
+        val args = mutableListOf<String>()
+        if (query.isNotBlank()) {
+            clauses += "m.body LIKE ? ESCAPE '\\'"
+            args += like
+        }
+        filters?.let {
+            if (it.hasAttachment) clauses += "m.media_uri != ''"
+            it.beforeEndMillis?.let { end -> clauses += "m.timestamp <= ?"; args += end.toString() }
+            it.afterStartMillis?.let { start -> clauses += "m.timestamp >= ?"; args += start.toString() }
+        }
         db.readableDatabase.rawQuery(
             """SELECT m.id,m.conversation_id,m.body,m.timestamp,m.is_me,
                COALESCE(c.name,c.address),c.address,m.locked
                FROM messages m JOIN conversations c ON c.id=m.conversation_id
-               WHERE m.starred=1 AND m.deleted_at=0 AND c.deleted_at=0
+               WHERE ${clauses.joinToString(" AND ")}
                ORDER BY m.timestamp DESC""",
-            null
+            args.toTypedArray()
         ).use { c ->
             while (c.moveToNext()) {
                 val locked = c.getInt(7) == 1
@@ -847,22 +863,41 @@ class Repository(private val context: Context) {
      * Conversations with at least one non-deleted message whose body contains
      * [query], case-insensitively — the home list's global message search, so a
      * word buried in an old message still surfaces its thread. Returns an empty
-     * set for a blank query.
+     * set for a blank query with no message filters.
      */
-    fun conversationIdsMatchingMessage(query: String, hideLinks: Boolean): Flow<Set<Long>> = observe {
+    fun conversationIdsMatchingMessage(
+        query: String,
+        hideLinks: Boolean,
+        filters: MessageSearchFilters? = null
+    ): Flow<Set<Long>> = observe {
         val out = mutableSetOf<Long>()
-        if (query.isNotBlank()) {
-            val like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
-            // The LIKE is only a cheap prefilter: the visibility rule (a locked
-            // body never surfaces, hidden links match only redacted text)
-            // lives in MessageSearch, so SQL cannot quietly disagree with it.
+        val filtersPresent = filters?.isPresent == true
+        if (query.isNotBlank() || filtersPresent) {
+            val clauses = mutableListOf("deleted_at=0")
+            val args = mutableListOf<String>()
+            if (query.isNotBlank()) {
+                // The LIKE is only a cheap prefilter: the visibility rule (a
+                // locked body never surfaces, hidden links match only
+                // redacted text) lives in MessageSearch, so SQL cannot
+                // quietly disagree with it.
+                clauses += "body LIKE ? ESCAPE '\\'"
+                args += "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            }
+            filters?.let {
+                if (it.hasAttachment) clauses += "media_uri != ''"
+                it.beforeEndMillis?.let { end -> clauses += "timestamp <= ?"; args += end.toString() }
+                it.afterStartMillis?.let { start -> clauses += "timestamp >= ?"; args += start.toString() }
+            }
             db.readableDatabase.rawQuery(
-                "SELECT DISTINCT conversation_id, body, locked FROM messages WHERE deleted_at=0 " +
-                    "AND body LIKE ? ESCAPE '\\'",
-                arrayOf(like)
+                "SELECT DISTINCT conversation_id, body, locked FROM messages WHERE " +
+                    clauses.joinToString(" AND "),
+                args.toTypedArray()
             ).use { c ->
                 while (c.moveToNext()) {
-                    if (MessageSearch.matchesVisible(
+                    // With no text to match the row stands as SQL narrowed it;
+                    // a locked body only matters when the text is what matched.
+                    if (query.isBlank() ||
+                        MessageSearch.matchesVisible(
                             c.getString(1).orEmpty(), query, c.getInt(2) == 1, hideLinks
                         )
                     ) out += c.getLong(0)
