@@ -50,6 +50,8 @@
     <string name="settings_notif_action_mark_read_subtitle">نمایش دکمه خوانده‌شدن روی اعلان</string>
     <string name="settings_notif_action_delete_title">کنش حذف</string>
     <string name="settings_notif_action_delete_subtitle">نمایش دکمه حذف روی اعلان</string>
+    <string name="settings_suggested_replies_title">پاسخ‌های پیشنهادی</string>
+    <string name="settings_suggested_replies_subtitle">پاسخ‌های یک‌لمسی بالای کادر پیام و روی اعلان پیشنهاد شود</string>
     <string name="settings_reply_nudge_title">یادآوری پیام‌های بی‌پاسخ</string>
     <string name="settings_reply_nudge_subtitle">یادآوری کن به پیامی که بی‌پاسخ گذاشتم پاسخ دهم</string>
     <string name="settings_reply_nudge_after_title">یادآوری پس از</string>

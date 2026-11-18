@@ -50,6 +50,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Afficher un bouton \"Marquer comme lu\" sur la notification</string>
     <string name="settings_notif_action_delete_title">Action \"Supprimer\"</string>
     <string name="settings_notif_action_delete_subtitle">Afficher un bouton \"Supprimer\" sur la notification</string>
+    <string name="settings_suggested_replies_title">Réponses suggérées</string>
+    <string name="settings_suggested_replies_subtitle">Proposer des réponses en un geste au-dessus du champ de message et sur la notification</string>
     <string name="settings_reply_nudge_title">Rappel des messages sans réponse</string>
     <string name="settings_reply_nudge_subtitle">Me rappeler de répondre à un message laissé sans réponse</string>
     <string name="settings_reply_nudge_after_title">Rappeler après</string>

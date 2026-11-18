@@ -50,6 +50,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Show a mark-as-read button on the notification</string>
     <string name="settings_notif_action_delete_title">Delete action</string>
     <string name="settings_notif_action_delete_subtitle">Show a delete button on the notification</string>
+    <string name="settings_suggested_replies_title">Suggested replies</string>
+    <string name="settings_suggested_replies_subtitle">Offer one-tap replies above the message box and on the notification</string>
     <string name="settings_reply_nudge_title">Nudge for unanswered messages</string>
     <string name="settings_reply_nudge_subtitle">Remind me to reply to a message I left unanswered</string>
     <string name="settings_reply_nudge_after_title">Nudge after</string>

@@ -50,6 +50,8 @@
     <string name="settings_notif_action_mark_read_subtitle">सूचना पर पढ़ा हुआ के रूप में चिह्नित करें बटन दिखाएँ</string>
     <string name="settings_notif_action_delete_title">हटाएँ क्रिया</string>
     <string name="settings_notif_action_delete_subtitle">सूचना पर हटाएँ बटन दिखाएँ</string>
+    <string name="settings_suggested_replies_title">सुझाए गए जवाब</string>
+    <string name="settings_suggested_replies_subtitle">संदेश बॉक्स के ऊपर और सूचना पर एक टैप वाले जवाब सुझाएँ</string>
     <string name="settings_reply_nudge_title">बिना जवाब वाले संदेशों के लिए याद दिलाएँ</string>
     <string name="settings_reply_nudge_subtitle">उस संदेश का जवाब देने की याद दिलाएँ जिसे मैंने बिना जवाब छोड़ा</string>
     <string name="settings_reply_nudge_after_title">इतने समय बाद याद दिलाएँ</string>
