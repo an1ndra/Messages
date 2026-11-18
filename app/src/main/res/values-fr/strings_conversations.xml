@@ -47,4 +47,16 @@
     <string name="search_filter_attachments">Avec pièce jointe</string>
     <string name="search_filter_before">Avant le %s</string>
     <string name="search_filter_after">Après le %s</string>
+    <string name="inbox_category_all">Tous</string>
+    <string name="inbox_category_personal">Personnel</string>
+    <string name="inbox_category_transactions">Transactions</string>
+    <string name="inbox_category_otp">OTP</string>
+    <string name="inbox_category_spam">Spam</string>
+    <string name="settings_inbox_rules_title">Catégories et règles</string>
+    <string name="settings_inbox_rules_subtitle">Envoyez un mot ou un expéditeur vers un onglet</string>
+    <string name="inbox_rules_add">Ajouter une règle</string>
+    <string name="inbox_rules_kind_keyword">Mot-clé</string>
+    <string name="inbox_rules_kind_sender">Expéditeur</string>
+    <string name="inbox_rules_empty">Aucune règle</string>
+    <string name="inbox_rules_pattern_hint">Mot ou expéditeur</string>
 </resources>

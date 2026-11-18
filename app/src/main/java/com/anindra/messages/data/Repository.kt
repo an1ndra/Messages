@@ -64,7 +64,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 33
+private const val DB_VERSION = 35
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -90,7 +90,8 @@ class Db(context: Context) :
                 draft TEXT NOT NULL DEFAULT '',
                 draft_date INTEGER NOT NULL DEFAULT 0,
                 deleted_at INTEGER NOT NULL DEFAULT 0,
-                deleted_reason TEXT NOT NULL DEFAULT 'manual')"""
+                deleted_reason TEXT NOT NULL DEFAULT 'manual',
+                category TEXT NOT NULL DEFAULT '')"""
         )
         db.execSQL(
             """CREATE TABLE messages(
@@ -122,6 +123,13 @@ class Db(context: Context) :
         )
         db.execSQL("CREATE INDEX idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
         db.execSQL("CREATE INDEX idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS category_rules(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind TEXT NOT NULL,
+                pattern TEXT NOT NULL,
+                category TEXT NOT NULL)"""
+        )
         db.execSQL(
             """CREATE TABLE blocked_numbers(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -392,6 +400,23 @@ class Db(context: Context) :
             // generated avatar.
             db.execSQL("ALTER TABLE conversations ADD COLUMN group_avatar TEXT NOT NULL DEFAULT ''")
         }
+        if (oldVersion < 35) {
+            // The user's own filing rules: a word, or a sender, routed to a tab.
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS category_rules(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    kind TEXT NOT NULL,
+                    pattern TEXT NOT NULL,
+                    category TEXT NOT NULL)"""
+            )
+        }
+        if (oldVersion < 34 && !hasColumn(db, "conversations", "category")) {
+            // Which tab of the inbox this thread belongs to. Blank means "not
+            // classified yet": the inbox classifies it on the next read and
+            // writes the result, so every thread that predates this column
+            // lands in a tab instead of falling out of all of them.
+            db.execSQL("ALTER TABLE conversations ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+        }
     }
 
     /**
@@ -621,7 +646,8 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.blocked,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address), c.group_title, c.group_avatar
+               COALESCE(p.display_destination, c.address), c.group_title, c.group_avatar,
+               c.category
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.deleted_at=0 ORDER BY c.pinned DESC, c.timestamp DESC""",
@@ -645,7 +671,8 @@ class Repository(private val context: Context) {
                         deletedAt = c.getLong(12),
                         display = c.getString(13),
                         groupTitle = c.getString(14).orEmpty(),
-                        groupAvatar = c.getString(15).orEmpty()
+                        groupAvatar = c.getString(15).orEmpty(),
+                        category = c.getString(16).orEmpty()
                     )
                 )
             }
@@ -2507,6 +2534,69 @@ class Repository(private val context: Context) {
             "UPDATE conversations SET pinned=? WHERE id=?",
             arrayOf(if (pinned) 1 else 0, id)
         )
+        notifyChanged()
+    }
+
+    /** The user's filing rules, oldest first — the order they are applied in. */
+    fun categoryRulesBlocking(): List<CategoryRule> {
+        val out = mutableListOf<CategoryRule>()
+        db.readableDatabase.rawQuery(
+            "SELECT id,kind,pattern,category FROM category_rules ORDER BY id ASC", null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val kind = RuleKind.fromKey(c.getString(1)) ?: continue
+                val category = InboxCategory.fromKey(c.getString(3)) ?: continue
+                out.add(CategoryRule(c.getLong(0), kind, c.getString(2), category))
+            }
+        }
+        return out
+    }
+
+    fun categoryRules(): Flow<List<CategoryRule>> = observe { categoryRulesBlocking() }
+
+    fun addCategoryRule(kind: RuleKind, pattern: String, category: InboxCategory) {
+        val clean = pattern.trim()
+        if (clean.isEmpty()) return
+        db.writableDatabase.execSQL(
+            "INSERT INTO category_rules(kind,pattern,category) VALUES(?,?,?)",
+            arrayOf(kind.key, clean, category.key)
+        )
+        refileEveryConversation()
+    }
+
+    fun deleteCategoryRule(id: Long) {
+        db.writableDatabase.execSQL("DELETE FROM category_rules WHERE id=?", arrayOf(id))
+        refileEveryConversation()
+    }
+
+    /**
+     * Clears every stored tab so the inbox classifies the threads again with the
+     * rules as they are now. A rule the user just added would otherwise look
+     * broken on every thread they already have.
+     */
+    private fun refileEveryConversation() {
+        db.writableDatabase.execSQL("UPDATE conversations SET category=''")
+        notifyChanged()
+    }
+
+    /** Writes the inbox tab of each threaded, in one transaction and one
+     *  notification. Only rows that have no category yet are touched, so a reply
+     *  cannot move a conversation between tabs. */
+    fun setConversationCategories(assignments: Map<Long, String>) {
+        if (assignments.isEmpty()) return
+        val dbw = db.writableDatabase
+        dbw.beginTransaction()
+        try {
+            assignments.forEach { (id, category) ->
+                dbw.execSQL(
+                    "UPDATE conversations SET category=? WHERE id=? AND category=''",
+                    arrayOf(category, id)
+                )
+            }
+            dbw.setTransactionSuccessful()
+        } finally {
+            dbw.endTransaction()
+        }
         notifyChanged()
     }
 

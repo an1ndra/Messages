@@ -49,4 +49,16 @@
     <string name="search_filter_attachments">دارای پیوست</string>
     <string name="search_filter_before">قبل از %s</string>
     <string name="search_filter_after">بعد از %s</string>
+    <string name="inbox_category_all">همه</string>
+    <string name="inbox_category_personal">شخصی</string>
+    <string name="inbox_category_transactions">تراکنش‌ها</string>
+    <string name="inbox_category_otp">کد ورود</string>
+    <string name="inbox_category_spam">هرزنامه</string>
+    <string name="settings_inbox_rules_title">دسته‌بندی‌ها و قواعد</string>
+    <string name="settings_inbox_rules_subtitle">یک واژه یا فرستنده را به یک تب بفرست</string>
+    <string name="inbox_rules_add">افزودن قاعده</string>
+    <string name="inbox_rules_kind_keyword">واژه</string>
+    <string name="inbox_rules_kind_sender">فرستنده</string>
+    <string name="inbox_rules_empty">هنوز قاعده‌ای نیست</string>
+    <string name="inbox_rules_pattern_hint">واژه یا فرستنده</string>
 </resources>
