@@ -62,6 +62,33 @@
     <string name="notif_send_fail_private">Não foi possível enviar a mensagem. Toque para tentar novamente.</string>
     <string name="notif_send_fail">Não foi possível enviar a mensagem para %s. Toque para tentar novamente.</string>
     <string name="notif_not_delivered">Mensagem não entregue</string>
+    <string name="suggestion_yes">Sim</string>
+    <string name="suggestion_no">Não</string>
+    <string name="suggestion_sure">Claro</string>
+    <string name="suggestion_let_me_check">Vou ver</string>
+    <string name="suggestion_youre_welcome">De nada</string>
+    <string name="suggestion_no_problem">Sem problema</string>
+    <string name="suggestion_on_my_way">Estou a caminho</string>
+    <string name="suggestion_almost_there">Quase chegando</string>
+    <string name="suggestion_calling_now">Ligo agora</string>
+    <string name="suggestion_cant_talk">Não posso falar agora</string>
+    <string name="suggestion_sounds_good">Parece bom</string>
+    <string name="suggestion_cant_make_it">Não vou conseguir</string>
+    <string name="suggestion_hello">Oi</string>
+    <string name="suggestion_got_it">Entendi</string>
+    <string name="notif_nudge_title">Aguardando sua resposta</string>
+    <string name="notif_nudge_title_to">Responder para %1$s?</string>
+    <string name="notif_nudge_private">Uma conversa aguarda sua resposta</string>
+    <string name="notif_nudge_channel_title">Lembretes de resposta</string>
+    <string name="notif_nudge_channel_desc">Lembretes sobre uma mensagem sem resposta</string>
+    <string name="notif_scheduled_title">Mensagem agendada</string>
+    <string name="notif_scheduled_to">Para %1$s</string>
+    <string name="notif_scheduled_private">Aguardando envio</string>
+    <string name="notif_scheduled_send_now">Enviar agora</string>
+    <string name="notif_scheduled_cancel">Cancelar</string>
+    <string name="notif_scheduled_channel_title">Mensagens agendadas</string>
+    <string name="notif_scheduled_channel_desc">Contagem regressiva para mensagens aguardando envio</string>
+    <string name="notif_scheduled_minutes">%1$d min</string>
 
     <!-- Crash reports -->
     <string name="crash_report_title">Relatório de falha</string>

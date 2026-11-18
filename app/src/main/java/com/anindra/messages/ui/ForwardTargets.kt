@@ -1,6 +1,8 @@
 package com.anindra.messages.ui
 
+import com.anindra.messages.data.AddressIdentity
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.data.PhoneNumberUtils
 
 /** One row in the forward picker: a person, or a bare number the user typed. */
 data class ForwardTarget(val name: String?, val number: String)
@@ -21,24 +23,39 @@ object ForwardTargets {
 
     fun digits(value: String): String = value.filter { it.isDigit() }
 
+    /** The identity two spellings of one number share: E.164 where the region
+     *  can parse it, the digits otherwise. The address book holds "0912 123
+     *  4567" while the thread is addressed "+989121234567", so keying the rows
+     *  on the raw digits listed the same person twice. */
+    private fun keyOf(number: String, region: String): String {
+        val canonical = AddressIdentity.canonical(number, region)
+        return if (canonical.startsWith("+")) canonical else digits(canonical)
+    }
+
     fun build(
         contacts: List<Contact>,
         conversations: List<Conversation>,
-        query: String
+        query: String,
+        region: String = PhoneNumberUtils.region()
     ): List<ForwardTarget> {
         val queryDigits = digits(query)
         val rows = LinkedHashMap<String, ForwardTarget>()
 
         contacts.forEach { contact ->
-            val key = digits(contact.number)
+            val key = keyOf(contact.number, region)
             if (key.isNotEmpty() && key !in rows) {
                 rows[key] = ForwardTarget(contact.name.ifBlank { null }, contact.number)
             }
         }
         conversations.sortedByDescending { it.timestamp }.forEach { conversation ->
-            val key = digits(conversation.address)
+            val key = keyOf(conversation.address, region)
             val name = conversation.name.ifBlank { null }
-            if (key.isNotEmpty() && key !in rows && (name != null || key != digits(query))) {
+            // A sender ID has no number to dial, so an SMS to it never leaves
+            // the phone; offering it looked like a target and failed on send.
+            val replyable = AddressIdentity.isReplyable(conversation.address)
+            if (key.isNotEmpty() && replyable && key !in rows &&
+                (name != null || key != keyOf(query, region))
+            ) {
                 rows[key] = ForwardTarget(name, conversation.address)
             }
         }

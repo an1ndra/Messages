@@ -50,6 +50,14 @@
     <string name="settings_notif_action_mark_read_subtitle">Показывать кнопку «Отметить как прочитанное» в уведомлении</string>
     <string name="settings_notif_action_delete_title">Действие «Удалить»</string>
     <string name="settings_notif_action_delete_subtitle">Показывать кнопку «Удалить» в уведомлении</string>
+    <string name="settings_suggested_replies_title">Предлагаемые ответы</string>
+    <string name="settings_suggested_replies_subtitle">Предлагать ответы в одно касание над полем сообщения и в уведомлении</string>
+    <string name="settings_reply_nudge_title">Напоминание о неотвеченных сообщениях</string>
+    <string name="settings_reply_nudge_subtitle">Напоминать мне ответить на сообщение, оставленное без ответа</string>
+    <string name="settings_reply_nudge_after_title">Напомнить через</string>
+    <string name="settings_reply_nudge_one_day">1 день</string>
+    <string name="settings_reply_nudge_two_days">2 дня</string>
+    <string name="settings_reply_nudge_three_days">3 дня</string>
     <string name="settings_bubble_back_closes_title">Закрывать пузырь кнопкой «Назад»</string>
     <string name="settings_bubble_back_closes_subtitle">Выкл.: «Назад» оставляет пузырь открытым</string>
     <string name="settings_delivery_reports_title">Отчёты о доставке</string>
