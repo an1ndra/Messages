@@ -458,7 +458,17 @@ object NotificationHelper {
         // The action labels are resolved from the app's own resources so they
         // follow the language picked in the app, not the system one (#452).
         val replyLabel = context.getString(R.string.notif_action_reply)
-        val remoteInput = RemoteInput.Builder("quick_reply").setLabel(replyLabel).build()
+        // One-tap choices on the inline reply (#483): the same heuristic the
+        // composer uses, reading the message this card is about.
+        val replyChoices =
+            if (!app.repository.settings.suggestedRepliesEnabled) emptyArray()
+            else com.anindra.messages.data.SuggestedReplies.forMessage(body)
+                .map { context.getString(it.label) }
+                .toTypedArray()
+        val remoteInput = RemoteInput.Builder("quick_reply")
+            .setLabel(replyLabel)
+            .setChoices(replyChoices)
+            .build()
 
         // Alphanumeric sender IDs cannot receive replies, so no reply action.
         val replyAction = if (replyable) {

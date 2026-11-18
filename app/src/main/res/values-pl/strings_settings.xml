@@ -50,6 +50,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Pokaż przycisk Oznacz jako przeczytane w powiadomieniu</string>
     <string name="settings_notif_action_delete_title">Akcja Usuń</string>
     <string name="settings_notif_action_delete_subtitle">Pokaż przycisk Usuń w powiadomieniu</string>
+    <string name="settings_suggested_replies_title">Sugerowane odpowiedzi</string>
+    <string name="settings_suggested_replies_subtitle">Proponuj odpowiedzi jednym dotknięciem nad polem wiadomości i w powiadomieniu</string>
     <string name="settings_bubble_back_closes_title">Zamykaj dymek przyciskiem Wstecz</string>
     <string name="settings_bubble_back_closes_subtitle">Wyłączone: Wstecz pozostawia dymek otwarty</string>
     <string name="settings_delivery_reports_title">Raporty dostarczenia</string>

@@ -62,6 +62,20 @@
     <string name="notif_send_fail_private">Не удалось отправить сообщение. Нажмите для повтора.</string>
     <string name="notif_send_fail">Не удалось отправить сообщение адресату %s. Нажмите для повтора.</string>
     <string name="notif_not_delivered">Сообщение не доставлено</string>
+    <string name="suggestion_yes">Да</string>
+    <string name="suggestion_no">Нет</string>
+    <string name="suggestion_sure">Конечно</string>
+    <string name="suggestion_let_me_check">Сейчас посмотрю</string>
+    <string name="suggestion_youre_welcome">Пожалуйста</string>
+    <string name="suggestion_no_problem">Без проблем</string>
+    <string name="suggestion_on_my_way">Я в пути</string>
+    <string name="suggestion_almost_there">Почти на месте</string>
+    <string name="suggestion_calling_now">Сейчас позвоню</string>
+    <string name="suggestion_cant_talk">Не могу сейчас говорить</string>
+    <string name="suggestion_sounds_good">Звучит хорошо</string>
+    <string name="suggestion_cant_make_it">Не смогу прийти</string>
+    <string name="suggestion_hello">Привет</string>
+    <string name="suggestion_got_it">Понял</string>
 
     <!-- Crash reports -->
     <string name="crash_report_title">Отчёт о сбое</string>

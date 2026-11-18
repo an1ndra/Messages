@@ -62,6 +62,20 @@
     <string name="notif_send_fail_private">No se pudo enviar el mensaje. Toca para reintentar.</string>
     <string name="notif_send_fail">No se pudo enviar el mensaje a %s. Toca para reintentar.</string>
     <string name="notif_not_delivered">Mensaje no entregado</string>
+    <string name="suggestion_yes">Sí</string>
+    <string name="suggestion_no">No</string>
+    <string name="suggestion_sure">Claro</string>
+    <string name="suggestion_let_me_check">Déjame ver</string>
+    <string name="suggestion_youre_welcome">De nada</string>
+    <string name="suggestion_no_problem">No hay problema</string>
+    <string name="suggestion_on_my_way">Voy en camino</string>
+    <string name="suggestion_almost_there">Casi llego</string>
+    <string name="suggestion_calling_now">Llamo ahora</string>
+    <string name="suggestion_cant_talk">No puedo hablar ahora</string>
+    <string name="suggestion_sounds_good">Suena bien</string>
+    <string name="suggestion_cant_make_it">No puedo ir</string>
+    <string name="suggestion_hello">Hola</string>
+    <string name="suggestion_got_it">Entendido</string>
 
     <!-- Crash reports -->
     <string name="crash_report_title">Informe de error</string>
