@@ -58,6 +58,7 @@
     <string name="notif_send_fail_private">پیام فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_send_fail">پیام به %s فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_not_delivered">پیام تحویل نشد</string>
+    <string name="two_pane_empty">برای باز کردن اینجا، یک گفتگو انتخاب کنید</string>
     <!-- Crash reports -->
     <string name="crash_report_title">گزارش خرابی</string>
     <string name="crash_report_message">دفعه قبل برنامه از کار افتاد. گزارش در Downloads/Messages ذخیره شده است؛ آن را به یک issue در GitHub پیوست کنید تا به رفع آن کمک کنید.</string>
