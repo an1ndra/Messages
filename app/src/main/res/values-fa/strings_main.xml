@@ -58,6 +58,20 @@
     <string name="notif_send_fail_private">پیام فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_send_fail">پیام به %s فرستاده نشد. برای تلاش مجدد ضربه بزنید.</string>
     <string name="notif_not_delivered">پیام تحویل نشد</string>
+    <string name="suggestion_yes">بله</string>
+    <string name="suggestion_no">نه</string>
+    <string name="suggestion_sure">حتماً</string>
+    <string name="suggestion_let_me_check">بگذارید بررسی کنم</string>
+    <string name="suggestion_youre_welcome">خواهش می‌کنم</string>
+    <string name="suggestion_no_problem">مشکلی نیست</string>
+    <string name="suggestion_on_my_way">در راهم</string>
+    <string name="suggestion_almost_there">تقریباً رسیدم</string>
+    <string name="suggestion_calling_now">الان تماس می‌گیرم</string>
+    <string name="suggestion_cant_talk">الان نمی‌توانم صحبت کنم</string>
+    <string name="suggestion_sounds_good">خوب به نظر می‌رسد</string>
+    <string name="suggestion_cant_make_it">نمی‌توانم بیایم</string>
+    <string name="suggestion_hello">سلام</string>
+    <string name="suggestion_got_it">متوجه شدم</string>
     <!-- Crash reports -->
     <string name="crash_report_title">گزارش خرابی</string>
     <string name="crash_report_message">دفعه قبل برنامه از کار افتاد. گزارش در Downloads/Messages ذخیره شده است؛ آن را به یک issue در GitHub پیوست کنید تا به رفع آن کمک کنید.</string>

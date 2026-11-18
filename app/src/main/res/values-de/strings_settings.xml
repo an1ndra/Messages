@@ -50,6 +50,8 @@
     <string name="settings_notif_action_mark_read_subtitle">Als-gelesen-markieren-Schaltfläche in der Benachrichtigung anzeigen</string>
     <string name="settings_notif_action_delete_title">Löschen-Aktion</string>
     <string name="settings_notif_action_delete_subtitle">Löschen-Schaltfläche in der Benachrichtigung anzeigen</string>
+    <string name="settings_suggested_replies_title">Antwortvorschläge</string>
+    <string name="settings_suggested_replies_subtitle">Ein-Tipp-Antworten über dem Nachrichtenfeld und in der Benachrichtigung anbieten</string>
     <string name="settings_bubble_back_closes_title">Blase mit Zurück schließen</string>
     <string name="settings_bubble_back_closes_subtitle">Aus: Zurück lässt die Blase geöffnet</string>
     <string name="settings_delivery_reports_title">Zustellungsberichte</string>

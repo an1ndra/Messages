@@ -50,6 +50,8 @@
     <string name="settings_notif_action_mark_read_subtitle">在通知上显示标记为已读按钮</string>
     <string name="settings_notif_action_delete_title">删除操作</string>
     <string name="settings_notif_action_delete_subtitle">在通知上显示删除按钮</string>
+    <string name="settings_suggested_replies_title">建议回复</string>
+    <string name="settings_suggested_replies_subtitle">在消息框上方和通知中提供一键回复</string>
     <string name="settings_bubble_back_closes_title">按返回键关闭气泡</string>
     <string name="settings_bubble_back_closes_subtitle">关闭：返回键保持气泡打开</string>
     <string name="settings_delivery_reports_title">送达报告</string>
