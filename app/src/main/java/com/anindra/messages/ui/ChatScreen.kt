@@ -68,7 +68,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -3613,7 +3612,7 @@ internal fun AlphanumericNotice(address: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .imePadding()
+            .imeGuardedPadding()
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -3718,7 +3717,7 @@ internal fun InputBar(
         }
     }
     Row(
-        modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().imeGuardedPadding().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Typing a Persian/Arabic word should flip the field, so the caret and
