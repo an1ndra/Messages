@@ -62,6 +62,7 @@
     <string name="notif_send_fail_private">Não foi possível enviar a mensagem. Toque para tentar novamente.</string>
     <string name="notif_send_fail">Não foi possível enviar a mensagem para %s. Toque para tentar novamente.</string>
     <string name="notif_not_delivered">Mensagem não entregue</string>
+    <string name="two_pane_empty">Escolha uma conversa para abri-la aqui</string>
 
     <!-- Crash reports -->
     <string name="crash_report_title">Relatório de falha</string>
