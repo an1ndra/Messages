@@ -68,7 +68,9 @@ class NotificationIconTest {
     @Test
     fun notificationsUseTheEnlargedIcon() {
         val source = File(main, "java/com/anindra/messages/sms/SmsSupport.kt").readText()
-        assertEquals(2, Regex("setSmallIcon\\(R\\.drawable\\.ic_stat_message\\)").findAll(source).count())
+        // Three now: the message itself, the redacted public version a
+        // code-bearing message carries (#476), and the re-post path.
+        assertEquals(3, Regex("setSmallIcon\\(R\\.drawable\\.ic_stat_message\\)").findAll(source).count())
         assertFalse(source.contains("setSmallIcon(R.drawable.ic_launcher_foreground)"))
     }
 }
