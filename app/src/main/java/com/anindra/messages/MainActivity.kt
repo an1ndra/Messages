@@ -1526,6 +1526,7 @@ open class MainActivity : FragmentActivity() {
         applyBackupExportProbe(intent)
         applyMmsRecheckProbe(intent)
         applyTransferLogProbe(intent)
+        applyImeProbe(intent)
         enableEdgeToEdge()
         requestSmsPermissions()
 
@@ -2482,6 +2483,20 @@ onOpenAccessibility = { navRoute = "accessibility" },
                 is com.anindra.messages.data.Repository.ImportResult.Error ->
                     android.util.Log.e("SmsIeImport", "probe failed: ${result.message}")
             }
+        }
+    }
+
+    /** Debug builds only: `--ei ime_probe_reported_bottom <px>` makes the
+     *  composer's inset guard read that number as the platform's reported
+     *  IME inset, the way some OEM builds report one far larger than the real
+     *  keyboard — the standing way to reproduce that on an emulator whose own
+     *  report is honest. */
+    private fun applyImeProbe(intent: Intent) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        intent.getIntExtra("ime_probe_reported_bottom", 0).takeIf { it > 0 }?.let {
+            com.anindra.messages.ui.ImeGuard.debugReportedBottomPx = it
         }
     }
 
