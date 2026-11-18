@@ -62,6 +62,11 @@
     <string name="notif_send_fail_private">메시지를 보낼 수 없습니다. 다시 시도하려면 탭하세요.</string>
     <string name="notif_send_fail">%s(으)로 메시지를 보낼 수 없습니다. 다시 시도하려면 탭하세요.</string>
     <string name="notif_not_delivered">메시지가 전달되지 않았습니다</string>
+    <string name="notif_nudge_title">답장을 기다리는 중</string>
+    <string name="notif_nudge_title_to">%1$s에게 답장할까요?</string>
+    <string name="notif_nudge_private">답장을 기다리는 대화가 있습니다</string>
+    <string name="notif_nudge_channel_title">답장 알림</string>
+    <string name="notif_nudge_channel_desc">답장하지 않은 메시지에 대한 알림</string>
 
     <!-- Crash reports -->
     <string name="crash_report_title">크래시 보고서</string>

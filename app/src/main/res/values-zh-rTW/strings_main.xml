@@ -59,6 +59,11 @@
     <string name="notif_send_fail_private">無法傳送訊息。輕觸以重試。</string>
     <string name="notif_send_fail">無法傳送至 %s。輕觸以重試。</string>
     <string name="notif_not_delivered">訊息未送達</string>
+    <string name="notif_nudge_title">等待你的回覆</string>
+    <string name="notif_nudge_title_to">回覆 %1$s？</string>
+    <string name="notif_nudge_private">有一個會話在等待你的回覆</string>
+    <string name="notif_nudge_channel_title">回覆提醒</string>
+    <string name="notif_nudge_channel_desc">關於尚未回覆訊息的提醒</string>
 
     <string name="crash_report_title">當機報告</string>
     <string name="crash_report_message">上次應用程式發生當機。記錄檔已儲存在 Downloads/Messages — 請附到 GitHub issue 以協助修正。</string>
