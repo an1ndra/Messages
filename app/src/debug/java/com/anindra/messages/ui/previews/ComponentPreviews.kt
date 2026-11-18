@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.ReplySuggestion
+import com.anindra.messages.ui.LocationDialog
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SwipeAction
 import com.anindra.messages.ui.AttachSheet
@@ -675,7 +676,7 @@ private fun AttachSheetPreview() {
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            AttachSheet(onGallery = {}, onCamera = {}, onDismiss = {})
+            AttachSheet(onGallery = {}, onCamera = {}, onAudio = {}, onLocation = {}, onContact = {}, onDismiss = {})
         }
     }
 }
@@ -726,5 +727,15 @@ private fun ScheduleDialogPreview() {
             "Select date",
             modifier = androidx.compose.ui.Modifier.padding(24.dp)
         )
+    }
+}
+
+
+@PreviewLightDark
+@Preview(name = "Share a location", showBackground = true, widthDp = 380)
+@Composable
+private fun LocationDialogPreview() {
+    MessagesTheme(mode = "system") {
+        LocationDialog(onDismiss = {}, onSend = {})
     }
 }

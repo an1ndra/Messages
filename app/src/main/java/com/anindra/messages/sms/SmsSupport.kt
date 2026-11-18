@@ -602,6 +602,26 @@ object NotificationHelper {
             builder.setFullScreenIntent(fullScreenIntent(context, reqCode), true)
         }
 
+        // A one-time code in the text is marked the way Android 16's SMS OTP
+        // protection expects: sensitive, so notification listeners cannot read
+        // it, with a public version whose digits are redacted rather than the
+        // whole notification hidden. The app still shows the code.
+        if (OtpNotificationPolicy.carriesCode(text)) {
+            // NotificationCompat has no setSensitive(); VISIBILITY_PRIVATE plus a
+            // redacted public version is the equivalent: the lock screen and any
+            // listener get the public one, the app and its bubbles get the code.
+            builder.setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            builder.setPublicVersion(
+                NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(R.drawable.ic_stat_message)
+                    .setContentTitle(title)
+                    .setContentText(OtpNotificationPolicy.redact(text))
+                    .setAutoCancel(true)
+                    .build()
+            )
+            android.util.Log.d("OtpNotification", "sensitive=true conversation=$convoId")
+        }
+
         val actionSettings = app.repository.settings
         if (actionSettings.notifActionReply && replyAction != null) builder.addAction(replyAction)
         if (actionSettings.notifActionMarkRead) builder.addAction(markReadAction)

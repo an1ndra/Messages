@@ -22,6 +22,7 @@ class MmsDownloadReceiver : BroadcastReceiver() {
         // The announcement row carries the line, and the message it turns into
         // has to keep it.
         val subscriptionId = intent.getIntExtra(EXTRA_MMS_SUBSCRIPTION, -1)
+        MmsDownloadNotice.rowIdFrom(uri).takeIf { it > 0 }?.let { MmsDownloadNotice.finish(context, it) }
         val pendingResult = goAsync()
         val wakeLock = ReceiverWakeLock.acquire(context, "mms-download")
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
