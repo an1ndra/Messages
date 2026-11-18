@@ -92,6 +92,9 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.Archive
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CameraAlt
@@ -1180,6 +1183,28 @@ fun ChatScreen(
         uris.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
     }
 
+    // Audio files are picked through the document picker: the photo picker only
+    // offers images and video, and this has to reach music and recordings.
+    val audioLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null && uri !in pendingMedia) pendingMedia.add(uri)
+    }
+
+    // A contact is sent as a vCard body, so the picker only has to hand back an
+    // id.
+    val contactLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickContact()
+    ) { uri ->
+        if (uri != null) {
+            ContactShare.read(context, uri)?.let { (name, number) ->
+                if (ContactShare.isSendable(number)) {
+                    vm.send(conversationId, ContactShare.vCard(name, number), currentSimId)
+                }
+            }
+        }
+    }
+
     fun leaveChat() {
         vm.saveDraftAndMaybeTrash(conversationId, draft.trim())
         onBack()
@@ -2103,11 +2128,32 @@ fun ChatScreen(
         }
     }
 
+    var showLocationDialog by remember { mutableStateOf(false) }
+
+    if (showLocationDialog) {
+        LocationDialog(
+            onDismiss = { showLocationDialog = false },
+            onSend = { link -> vm.send(conversationId, link, currentSimId) }
+        )
+    }
+
     if (attachSheet) {
         AttachSheet(
             onGallery = {
                 attachSheet = false
                 galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            onAudio = {
+                attachSheet = false
+                audioLauncher.launch(arrayOf("audio/*"))
+            },
+            onLocation = {
+                attachSheet = false
+                showLocationDialog = true
+            },
+            onContact = {
+                attachSheet = false
+                contactLauncher.launch(null)
             },
             onCamera = {
                 attachSheet = false
@@ -4258,6 +4304,9 @@ private const val HALO_BREATHE_ALPHA = 0.20f
 internal fun AttachSheet(
     onGallery: () -> Unit,
     onCamera: () -> Unit,
+    onAudio: () -> Unit,
+    onLocation: () -> Unit,
+    onContact: () -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -4278,6 +4327,30 @@ internal fun AttachSheet(
                 Icon(Icons.Rounded.Image, null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(16.dp))
                 Text(stringResource(R.string.chat_media_gallery), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onContact() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Person, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_contact), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onLocation() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.LocationOn, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_location), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onAudio() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Audiotrack, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_audio), style = MaterialTheme.typography.bodyLarge)
             }
             Row(
                 Modifier.fillMaxWidth().clickable { onCamera() }.padding(vertical = 14.dp),
