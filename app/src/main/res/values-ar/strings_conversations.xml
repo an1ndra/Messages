@@ -14,6 +14,7 @@
     <string name="text_placeholder">رسالة نصية</string>
     <string name="conversations_archived">المؤرشفة</string>
     <string name="conversations_spam_blocked">الرسائل غير المرغوبة والمحظورة</string>
+    <string name="conversations_back_to_top">العودة إلى الأعلى</string>
     <string name="conversations_spam_blocked_empty">لا توجد محادثات غير مرغوبة أو محظورة</string>
     <string name="spam_tab_conversations">المحادثات</string>
     <string name="spam_tab_messages">الرسائل</string>

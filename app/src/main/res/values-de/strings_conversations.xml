@@ -13,6 +13,7 @@
     <string name="text_placeholder">Textnachricht</string>
     <string name="conversations_archived">Archiviert</string>
     <string name="conversations_spam_blocked">Spam und blockiert</string>
+    <string name="conversations_back_to_top">Nach oben</string>
     <string name="conversations_spam_blocked_empty">Keine Spam- oder blockierten Unterhaltungen</string>
     <string name="spam_tab_conversations">Unterhaltungen</string>
     <string name="spam_tab_messages">Nachrichten</string>
