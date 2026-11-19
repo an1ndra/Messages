@@ -959,19 +959,37 @@ class Repository(private val context: Context) {
         if (!PhoneNumberUtils.isLikelyPhoneNumber(address)) return
         val region = PhoneNumberUtils.region()
         val e164 = PhoneNumberUtils.toE164(address, region) ?: return
-        database.execSQL(
-            """INSERT INTO participants(
-                  normalized_destination,send_destination,display_destination,
-                  comparable_destination,country_code,sub_id)
-               VALUES(?,?,?,?,?,?)
-               ON CONFLICT(normalized_destination) DO UPDATE SET
-                  send_destination=excluded.send_destination,
-                  display_destination=excluded.display_destination,
-                  country_code=excluded.country_code,
-                  sub_id=excluded.sub_id""",
-            arrayOf<Any>(e164, e164, PhoneNumberUtils.displayFor(e164, region),
-                e164.lowercase(), PhoneNumberUtils.regionFor(e164), subId)
-        )
+        val display = PhoneNumberUtils.displayFor(e164, region)
+        val country = PhoneNumberUtils.regionFor(e164)
+        // UPDATE, then INSERT when nothing matched — not `INSERT … ON CONFLICT
+        // DO UPDATE`. Upsert needs SQLite 3.24 and Android 10 ships 3.22, where
+        // that statement is a syntax error: the migration runs on a background
+        // thread at startup, so the mistake took the whole process down on the
+        // first launch of any installation that had message history.
+        val refreshed = ContentValues().apply {
+            put("send_destination", e164)
+            put("display_destination", display)
+            put("country_code", country)
+            put("sub_id", subId)
+        }
+        if (database.update("participants", refreshed, "normalized_destination=?", arrayOf(e164)) > 0) {
+            return
+        }
+        val inserted = ContentValues().apply {
+            put("normalized_destination", e164)
+            put("send_destination", e164)
+            put("display_destination", display)
+            put("comparable_destination", e164.lowercase())
+            put("country_code", country)
+            put("sub_id", subId)
+        }
+        try {
+            database.insertOrThrow("participants", null, inserted)
+        } catch (_: android.database.sqlite.SQLiteConstraintException) {
+            // Another writer inserted the row between the two statements; the
+            // row that exists now is the one to refresh.
+            database.update("participants", refreshed, "normalized_destination=?", arrayOf(e164))
+        }
     }
 
     /**
