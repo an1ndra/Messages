@@ -57,6 +57,25 @@ class ContactCardWiringTest {
     }
 
     @Test
+    fun tappingACardOffersToKeepIt() {
+        assertTrue(
+            "a card is only worth sending if the receiver can keep it",
+            chat.contains("ContactCardDialog(")
+        )
+        val dialog = source("ui/ContactCardDialog.kt")
+        assertTrue("add to contacts", dialog.contains("R.string.chat_add_to_contacts"))
+        assertTrue("save the file", dialog.contains("R.string.chat_save_contact"))
+        assertTrue(
+            "and the save writes the card through the attachment saver",
+            chat.contains("vm.saveMessageImage(card.id)")
+        )
+        assertTrue(
+            "the add action is built from the card, guarded for a missing app",
+            chat.contains("ContactActions.addIntent(name, number)")
+        )
+    }
+
+    @Test
     fun theCardBubbleShowsTheNameAndNumber() {
         val bubble = source("ui/ContactBubble.kt")
         assertTrue("the name", bubble.contains("name"))

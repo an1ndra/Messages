@@ -354,6 +354,7 @@ internal fun ChatBubble(
     onTap: () -> Unit,
     onImageTap: (Message) -> Unit = {},
     onVideoTap: (Message) -> Unit = {},
+    onContactTap: (Message) -> Unit = {},
     deliveryReports: Boolean,
     highlightLinks: Boolean,
     linkWarningEnabled: Boolean,
@@ -544,7 +545,8 @@ internal fun ChatBubble(
                         uri = msg.mediaUri,
                         isMe = msg.isMe,
                         isSelected = isSelected,
-                        onLongPress = onLongPress
+                        onLongPress = onLongPress,
+                        onClick = { onContactTap(msg) }
                     )
                 } else if (msg.mediaType == "audio" && msg.mediaUri.isNotBlank()) {
                     VoiceBubble(
@@ -1012,6 +1014,8 @@ fun ChatScreen(
     // chat, so opening it dismisses the IME and closing it gives the field back.
     var attachOpen by remember { mutableStateOf(false) }
     var showLocationDialog by remember { mutableStateOf(false) }
+    // The contact card the user tapped, if any: it offers "add to contacts".
+    var contactCard by remember { mutableStateOf<Message?>(null) }
     val fieldFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -2214,6 +2218,10 @@ fun ChatScreen(
                                 if (selectionActive) toggleRowSelection(rowIds)
                                 else playingVideo = clip
                             },
+                            onContactTap = { card ->
+                                if (selectionActive) toggleRowSelection(rowIds)
+                                else contactCard = card
+                            },
                             deliveryReports = deliveryReports,
                             highlightLinks = vm.settings.highlightLinks,
                             linkWarningEnabled = vm.settings.linkOpenWarningEnabled,
@@ -2336,6 +2344,32 @@ fun ChatScreen(
         LocationDialog(
             onDismiss = { showLocationDialog = false },
             onSend = { link -> vm.send(conversationId, link, currentSimId) }
+        )
+    }
+
+    contactCard?.let { card ->
+        ContactCardDialog(
+            uri = card.mediaUri,
+            onAddToContacts = { name, number ->
+                contactCard = null
+                val intent = ContactActions.addIntent(name, number)
+                if (intent != null) {
+                    launchOrExplain(R.string.chat_contact_save_failed) {
+                        context.startActivity(intent)
+                    }
+                } else {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.chat_contact_unavailable),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            },
+            onSaveFile = {
+                contactCard = null
+                vm.saveMessageImage(card.id)
+            },
+            onDismiss = { contactCard = null }
         )
     }
 

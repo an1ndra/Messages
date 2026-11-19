@@ -35,6 +35,7 @@ class MmsDownloadReceiver : BroadcastReceiver() {
                 for (mms in repo.importDownloadedMms()) {
                     NotificationHelper.show(
                         context, mms.address, mms.body, mms.imageUri, audio = mms.isAudio,
+                        contact = mms.isContact,
                         conversationId = mms.conversationId
                     )
                 }

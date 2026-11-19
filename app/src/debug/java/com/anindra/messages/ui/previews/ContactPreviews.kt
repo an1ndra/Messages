@@ -40,3 +40,16 @@ private fun ContactBubblePreview() {
         }
     }
 }
+
+@PreviewLightDark
+@Composable
+private fun ContactCardDialogPreview() {
+    MessagesTheme(mode = "system") {
+        com.anindra.messages.ui.ContactCardDialog(
+            uri = "content://preview/contact",
+            onAddToContacts = { _, _ -> },
+            onSaveFile = {},
+            onDismiss = {}
+        )
+    }
+}

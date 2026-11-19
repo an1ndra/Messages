@@ -45,7 +45,8 @@ internal fun ContactBubble(
     uri: String,
     isMe: Boolean,
     isSelected: Boolean = false,
-    onLongPress: () -> Unit = {}
+    onLongPress: () -> Unit = {},
+    onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val card = remember(uri) { ContactShare.readCard(context, Uri.parse(uri)) }
@@ -54,7 +55,8 @@ internal fun ContactBubble(
         number = card?.second,
         isMe = isMe,
         isSelected = isSelected,
-        onLongPress = onLongPress
+        onLongPress = onLongPress,
+        onClick = onClick
     )
 }
 
@@ -66,7 +68,8 @@ internal fun ContactCardBubble(
     number: String?,
     isMe: Boolean,
     isSelected: Boolean = false,
-    onLongPress: () -> Unit = {}
+    onLongPress: () -> Unit = {},
+    onClick: () -> Unit = {}
 ) {
     val cs = MaterialTheme.colorScheme
     val label = stringResource(R.string.chat_media_contact)
@@ -76,7 +79,7 @@ internal fun ContactCardBubble(
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .widthIn(max = 260.dp)
-            .combinedClickable(onClick = {}, onLongClick = onLongPress)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
     ) {
         Row(
             Modifier.padding(horizontal = 12.dp, vertical = 10.dp),

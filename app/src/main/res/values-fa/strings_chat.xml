@@ -49,6 +49,10 @@
 
     <string name="chat_voice_saved">پیام صوتی در Music/Messages ذخیره شد</string>
     <string name="chat_voice_save_failed">ذخیره پیام صوتی ممکن نشد</string>
+    <string name="chat_save_contact">ذخیره مخاطب</string>
+    <string name="chat_add_to_contacts">افزودن به مخاطبین</string>
+    <string name="chat_contact_saved">مخاطب در Downloads/Messages ذخیره شد</string>
+    <string name="chat_contact_save_failed">ذخیره مخاطب ممکن نشد</string>
 
     <!-- Voice messages -->
     <string name="chat_voice_slide_cancel">برای لغو بکشید</string>

@@ -12,7 +12,9 @@ data class NotificationLine(
     val imageUri: String? = null,
     /** True when the message carries a voice note. Like a picture, a voice MMS
      *  has a blank body and is dropped unless it says what it is. */
-    val isAudio: Boolean = false
+    val isAudio: Boolean = false,
+    /** True when the message carries a contact card, which is also blank-bodied. */
+    val isContact: Boolean = false
 )
 
 /**
