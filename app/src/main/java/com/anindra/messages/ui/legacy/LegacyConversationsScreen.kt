@@ -221,7 +221,11 @@ fun ConversationsScreen(
         mutableStateOf(vm.hasLoadedOnce || vm.settings.firstImportDone)
     }
     // skeleton stays while importing; denied SMS access ends it (panel takes over)
-    val loaded = minSkeletonShown && (syncDone || !readSmsAllowed)
+    // "First import done" is persisted, so an update that re-imports (or a
+    // migration that rewrites threads) still starts with it true: trusting the
+    // flag alone skipped the skeleton and left a blank list on screen while the
+    // work ran. A sync in flight keeps the skeleton and its progress bar.
+    val loaded = minSkeletonShown && syncProgress == null && (syncDone || !readSmsAllowed)
     var sheetConvoId by remember { mutableLongStateOf(-1L) }
     // #340: long-press starts a multi-conversation selection so several threads
     // can be deleted in one go. The redesigned list carries the same bar.
