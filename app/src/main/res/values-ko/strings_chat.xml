@@ -49,6 +49,10 @@
 
     <string name="chat_voice_saved">음성 메시지를 Music/Messages에 저장했습니다</string>
     <string name="chat_voice_save_failed">음성 메시지를 저장할 수 없습니다</string>
+    <string name="chat_save_contact">연락처 저장</string>
+    <string name="chat_add_to_contacts">연락처에 추가</string>
+    <string name="chat_contact_saved">연락처를 Downloads/Messages에 저장했습니다</string>
+    <string name="chat_contact_save_failed">연락처를 저장하지 못했습니다</string>
 
     <string name="chat_voice_slide_cancel">밀어서 취소</string>
     <string name="chat_voice_release_cancel">놓아서 취소</string>

@@ -106,7 +106,8 @@ object NotificationHelper {
         imageUri: String? = null,
         privacyMode: Boolean = false,
         senderIcon: IconCompat? = null,
-        audio: Boolean = false
+        audio: Boolean = false,
+        contact: Boolean = false
     ): NotificationCompat.Style {
         val hideLinks = app.repository.settings.hideLinks
         val person = Person.Builder().setName(senderName)
@@ -125,12 +126,14 @@ object NotificationHelper {
         // empty row, and the picture itself rides along as message data.
         val photoLabel = context.getString(R.string.notif_photo)
         val voiceLabel = context.getString(R.string.notif_voice)
+        val contactLabel = context.getString(R.string.notif_contact)
         val lines = NotificationHistory.window(
             if (history.isEmpty()) {
                 listOf(
                     NotificationLine(
                         fallbackText, System.currentTimeMillis(), false,
-                        isImage = imageUri != null, imageUri = imageUri, isAudio = audio
+                        isImage = imageUri != null, imageUri = imageUri, isAudio = audio,
+                        isContact = contact
                     )
                 )
             } else history.map {
@@ -140,7 +143,8 @@ object NotificationHelper {
                     fromMe = false,
                     isImage = it.isImage,
                     imageUri = it.imageUri,
-                    isAudio = it.isAudio
+                    isAudio = it.isAudio,
+                    isContact = it.isContact
                 )
             }
         )
@@ -152,6 +156,7 @@ object NotificationHelper {
                 it.text.isNotBlank() -> it.text
                 it.isImage -> photoLabel
                 it.isAudio -> voiceLabel
+                it.isContact -> contactLabel
                 else -> it.text
             }
             val message = NotificationCompat.MessagingStyle.Message(
@@ -401,6 +406,7 @@ object NotificationHelper {
         imageUri: String? = null,
         silentRepost: Boolean = false,
         audio: Boolean = false,
+        contact: Boolean = false,
         /**
          * The chat the import filed this message under (#448). A group has no
          * single address, so looking it up by [from] would post the group on the
@@ -573,7 +579,7 @@ object NotificationHelper {
             .setStyle(
                 groupedStyle(
                     context, app, convoId, senderName, text, imageUri, privacyMode,
-                    senderIcon = avatar?.icon, audio = audio
+                    senderIcon = avatar?.icon, audio = audio, contact = contact
                 )
             )
         avatar?.let { builder.setLargeIcon(it.bitmap) }

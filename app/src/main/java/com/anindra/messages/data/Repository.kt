@@ -5164,6 +5164,8 @@ class Repository(private val context: Context) {
                                     message.timestamp,
                                     imageUri = message.content.imageId?.let { "content://mms/part/$it" },
                                     audioUri = message.content.audioId?.let { "content://mms/part/$it" },
+                                    contactUri = message.content.contactIds.firstOrNull()
+                                        ?.let { "content://mms/part/$it" },
                                     conversationId = cid
                                 )
                             )
