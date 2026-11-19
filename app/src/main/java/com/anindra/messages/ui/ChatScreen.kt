@@ -3779,7 +3779,6 @@ internal fun VideoPlayerDialog(
     onDismiss: () -> Unit,
     onSave: () -> Unit
 ) {
-    val cs = MaterialTheme.colorScheme
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)

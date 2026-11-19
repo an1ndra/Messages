@@ -847,6 +847,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     savedAll -> R.string.chat_image_saved
                     else -> R.string.chat_image_save_failed
                 }
+                Toast.makeText(app, message, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -1687,7 +1688,7 @@ open class MainActivity : FragmentActivity() {
                             object : BiometricPrompt.AuthenticationCallback() {
                                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                                     result.cryptoObject
-                                    com.anindra.messages.data.LockSession.unlock()
+                                    com.anindra.messages.data.LockSession.grant()
                                     android.util.Log.d("LockSession", "unlocked=true")
                                     runOnUiThread { appUnlocked = true }
                                 }
@@ -2607,11 +2608,11 @@ onOpenAccessibility = { navRoute = "accessibility" },
         if (!debuggable) return
         when (intent.getStringExtra("lock_session_probe")) {
             "unlock" -> {
-                com.anindra.messages.data.LockSession.unlock()
+                com.anindra.messages.data.LockSession.grant()
                 android.util.Log.d("LockSessionProbe", "unlocked=true")
             }
             "lock" -> {
-                com.anindra.messages.data.LockSession.lock()
+                com.anindra.messages.data.LockSession.clear()
                 android.util.Log.d("LockSessionProbe", "unlocked=false")
             }
             "query" -> android.util.Log.d(
@@ -2795,12 +2796,16 @@ onOpenAccessibility = { navRoute = "accessibility" },
      */
     private fun sharedMediaFromIntent(intent: Intent): List<Uri>? {
         val shared = when (intent.action) {
+            // IntentCompat is the version-safe read: the plain getters are
+            // deprecated from API 33 and the replacement only exists there.
             Intent.ACTION_SEND ->
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(::listOf)
+                androidx.core.content.IntentCompat
+                    .getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                    ?.let(::listOf)
                     ?: intent.clipDataUris()
             Intent.ACTION_SEND_MULTIPLE ->
-                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                androidx.core.content.IntentCompat
+                    .getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
                     ?: intent.clipDataUris()
             else -> null
         }?.filter { it.scheme == "content" || it.scheme == "file" }
