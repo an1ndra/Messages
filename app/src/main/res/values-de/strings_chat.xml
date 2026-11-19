@@ -52,6 +52,7 @@
     <string name="chat_add_to_contacts">Zu Kontakten hinzufügen</string>
     <string name="chat_contact_saved">Kontakt unter Downloads/Messages gespeichert</string>
     <string name="chat_contact_save_failed">Kontakt konnte nicht gespeichert werden</string>
+    <string name="chat_mms_disabled">MMS ist aus — Bilder und Sprachnachrichten können nicht gesendet werden</string>
     <!-- Voice messages -->
     <string name="chat_voice_slide_cancel">Wischen zum Abbrechen</string>
     <string name="chat_voice_release_cancel">Loslassen zum Abbrechen</string>

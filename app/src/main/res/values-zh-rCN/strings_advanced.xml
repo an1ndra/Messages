@@ -14,6 +14,8 @@
     <string name="settings_font_title">字体</string>
     <string name="settings_advanced_emoji_button">表情符号按钮</string>
     <string name="settings_advanced_emoji_button_desc">在消息输入框中显示表情符号按钮</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">照片、语音消息和联系人通过 MMS 发送</string>
     <string name="settings_choose_font">选择字体</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

@@ -53,6 +53,7 @@
     <string name="chat_add_to_contacts">Añadir a contactos</string>
     <string name="chat_contact_saved">Contacto guardado en Downloads/Messages</string>
     <string name="chat_contact_save_failed">No se pudo guardar el contacto</string>
+    <string name="chat_mms_disabled">MMS está desactivado: no se pueden enviar fotos ni notas de voz</string>
 
     <string name="chat_voice_slide_cancel">Desliza para cancelar</string>
     <string name="chat_voice_release_cancel">Suelta para cancelar</string>

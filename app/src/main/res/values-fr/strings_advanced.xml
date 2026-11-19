@@ -14,6 +14,8 @@
     <string name="settings_font_title">Police</string>
     <string name="settings_advanced_emoji_button">Bouton emoji</string>
     <string name="settings_advanced_emoji_button_desc">Afficher le bouton emoji dans le champ de message</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">Les photos, messages vocaux et contacts sont envoyés par MMS</string>
     <string name="settings_choose_font">Choisir la police</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

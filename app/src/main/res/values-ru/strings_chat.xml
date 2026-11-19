@@ -53,6 +53,7 @@
     <string name="chat_add_to_contacts">Добавить в контакты</string>
     <string name="chat_contact_saved">Контакт сохранён в Downloads/Messages</string>
     <string name="chat_contact_save_failed">Не удалось сохранить контакт</string>
+    <string name="chat_mms_disabled">MMS отключено — фото и голосовые сообщения отправить нельзя</string>
 
     <string name="chat_voice_slide_cancel">Сдвиньте, чтобы отменить</string>
     <string name="chat_voice_release_cancel">Отпустите, чтобы отменить</string>

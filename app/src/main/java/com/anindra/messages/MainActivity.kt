@@ -669,7 +669,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // recipients never see a group and their replies come back private
         // (#448); this is the same rule AOSP, QKSMS and Fossify follow. Where the
         // carrier forbids a group MMS, the per-person SMS below is the fallback.
-        if (recipients.size > 1 && SmsSender.groupMmsEnabled(getApplication(), subId)) {
+        if (recipients.size > 1 && settings.mmsEnabled &&
+            SmsSender.groupMmsEnabled(getApplication(), subId)
+        ) {
             val stored = repo.sendTextAsMms(conversationId, body, subId) ?: return
             if (settings.soundsEnabled) NotificationHelper.playSentSound(getApplication())
             val handedOff = SmsSender.sendMms(
@@ -732,6 +734,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         onStored: (Int) -> Unit = {}
     ) {
         if (uris.isEmpty()) {
+            onStored(0)
+            return
+        }
+        // Every attachment — picture, clip, voice note, contact card — travels as
+        // an MMS part, so the setting stops the path rather than the picker: the
+        // share sheet and a retry reach this function directly.
+        if (!settings.mmsEnabled) {
+            Toast.makeText(
+                getApplication(), R.string.chat_mms_disabled, Toast.LENGTH_SHORT
+            ).show()
             onStored(0)
             return
         }
@@ -857,6 +869,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val msg = repo.messageByIdSuspend(messageId) ?: return@launch
             val convo = repo.conversationByIdSuspend(msg.conversationId) ?: return@launch
             if (!isPhoneNumber(convo.address)) return@launch
+            if (!settings.mmsEnabled && msg.mediaUri.isNotBlank()) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        getApplication(), R.string.chat_mms_disabled, Toast.LENGTH_SHORT
+                    ).show()
+                }
+                return@launch
+            }
             repo.markMessageStatusSuspend(messageId, "sending")
             val recipients = repo.conversationRecipients(msg.conversationId)
                 .filter { isPhoneNumber(it) }
@@ -1603,6 +1623,7 @@ open class MainActivity : FragmentActivity() {
         }
 
         applyAppLockProbe(intent, bootVm)
+        applyMmsProbe(intent, bootVm)
         appLockEnabled = bootVm.settings.appLockEnabled
 
         // Script hooks: --es set_theme dark|light|system|amoled|dynamic, --ez open_settings true, --ez privacy_mode true|false
@@ -2209,7 +2230,16 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         }
                                     )
                                     "mms-check" -> MmsSupportScreen(
-                                        onBack = { navRoute = "advanced" }
+                                        onBack = { navRoute = "advanced" },
+                                        mmsEnabled = vm.settings.mmsEnabled,
+                                        onMmsEnabledChange = { on ->
+                                            vm.settings.mmsEnabled = on
+                                            // The plus took the emoji button's
+                                            // place while MMS was on; turning
+                                            // MMS off hands that slot back, so
+                                            // the setting has to say so.
+                                            if (!on) vm.settings.emojiButtonEnabled = true
+                                        }
                                     )
                                     "notif-settings" -> NotificationSettingsScreen(
                                         vm = vm,
@@ -2602,6 +2632,22 @@ onOpenAccessibility = { navRoute = "accessibility" },
      * app-lock session, so a script can assert its lifetime without a real
      * biometric prompt (an emulator has no enrolled fingerprint).
      */
+    /**
+     * Debug builds only: `--es mms_probe off|on` flips the MMS switch, so a
+     * regression script can drive the composer without walking the settings
+     * tree. It writes the same setting the switch writes.
+     */
+    private fun applyMmsProbe(intent: Intent, vm: AppViewModel) {
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        // if/else rather than a `when`: the navigation test reads string-keyed
+        // branches as screens, and a probe is not one.
+        val probe = intent.getStringExtra("mms_probe")
+        if (probe == "off") vm.settings.mmsEnabled = false
+        if (probe == "on") vm.settings.mmsEnabled = true
+    }
+
     private fun applyLockSessionProbe(intent: Intent) {
         val debuggable =
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
