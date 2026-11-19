@@ -50,6 +50,14 @@
     <string name="settings_notif_action_mark_read_subtitle">إظهار زر وضع علامة كمقروء في الإشعار</string>
     <string name="settings_notif_action_delete_title">إجراء الحذف</string>
     <string name="settings_notif_action_delete_subtitle">إظهار زر الحذف في الإشعار</string>
+    <string name="settings_suggested_replies_title">الردود المقترحة</string>
+    <string name="settings_suggested_replies_subtitle">اقترح ردودًا بلمسة واحدة فوق مربع الرسالة وعلى الإشعار</string>
+    <string name="settings_reply_nudge_title">تنبيه للرسائل التي لم تُجَب</string>
+    <string name="settings_reply_nudge_subtitle">ذكّرني بالرد على رسالة تركتها بلا رد</string>
+    <string name="settings_reply_nudge_after_title">التنبيه بعد</string>
+    <string name="settings_reply_nudge_one_day">يوم واحد</string>
+    <string name="settings_reply_nudge_two_days">يومان</string>
+    <string name="settings_reply_nudge_three_days">3 أيام</string>
     <string name="settings_bubble_back_closes_title">إغلاق الفقاعة بزر الرجوع</string>
     <string name="settings_bubble_back_closes_subtitle">عند الإيقاف: يُبقي زر الرجوع الفقاعة مفتوحة</string>
     <string name="settings_delivery_reports_title">تقارير التسليم</string>

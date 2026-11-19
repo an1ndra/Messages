@@ -19,10 +19,31 @@ class MessagesApplication : Application() {
     lateinit var repository: Repository
         private set
 
+    /** Whether this build can open the database on the phone. */
+    var database: com.anindra.messages.data.DatabaseCompatibility.State =
+        com.anindra.messages.data.DatabaseCompatibility.State(0, 0)
+        private set
+
     override fun onCreate() {
         super.onCreate()
         com.anindra.messages.crash.CrashReporter.install(this)
         PhoneNumberUtils.init(this)
+        // Nothing may touch the database before this: a database written by a
+        // newer build throws "Can't downgrade" from this very worker, which took
+        // the whole process down before any screen could explain it. The
+        // activity shows the explanation instead (IncompatibleDatabaseScreen).
+        database = com.anindra.messages.data.DatabaseCompatibility.check(this)
+        if (database.tooNew) {
+            // A database written by a newer build cannot be downgraded: opening
+            // it throws and takes the process down before any screen exists.
+            // Park it beside the live file and start this build on a fresh one,
+            // so the app opens and can say what happened.
+            com.anindra.messages.data.DatabaseCompatibility.setAside(this, database)
+            database = com.anindra.messages.data.DatabaseCompatibility.State(
+                0,
+                com.anindra.messages.data.DB_VERSION
+            )
+        }
         repository = Repository(this)
         // Widgets render outside the app, so nothing there subscribes to the
         // repository's flows: a change has to be pushed at them.
@@ -92,6 +113,19 @@ class MessagesApplication : Application() {
             // import the names may have changed — and drops those of chats that
             // are gone.
             com.anindra.messages.sms.NotificationHelper.syncNotificationChannels(this@MessagesApplication)
+            // The nudge's schedule has to follow its switch, and an app start is
+            // also the moment a nudge that became due while the app was closed
+            // gets posted (#484).
+            com.anindra.messages.data.ReplyNudgeScheduler.apply(
+                this@MessagesApplication, s.replyNudgeEnabled
+            )
+            if (s.replyNudgeEnabled) {
+                com.anindra.messages.data.ReplyNudgeScheduler.checkNow(this@MessagesApplication)
+            }
+            // A queued message's countdown card outlives neither a restart of
+            // the app nor a killed shade entry, so the pending rows are
+            // reconciled on every start (#475).
+            com.anindra.messages.sms.ScheduledNotifications.sync(this@MessagesApplication)
         }
     }
 }

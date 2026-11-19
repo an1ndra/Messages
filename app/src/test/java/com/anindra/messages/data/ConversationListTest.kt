@@ -1,6 +1,8 @@
 package com.anindra.messages.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ConversationListTest {
@@ -27,7 +29,11 @@ class ConversationListTest {
         list: List<Conversation>,
         query: String = "",
         showArchived: Boolean = false
-    ) = ids(ConversationList.filter(list, showArchived, query) { it.snippet })
+    ) = ids(
+        ConversationList.filter(
+            list, showArchived, query, snippetFor = { it.snippet }
+        )
+    )
 
     private fun sort(
         list: List<Conversation>,
@@ -143,8 +149,12 @@ class ConversationListTest {
         // "Hide links" swaps the snippet for its redacted form, and the search
         // has to use the swapped one so a hidden link is not still findable.
         val list = listOf(convo(1, snippet = "see https://example.com now"))
-        val stored = ids(ConversationList.filter(list, false, "example.com") { it.snippet })
-        val shown = ids(ConversationList.filter(list, false, "example.com") { "see  now" })
+        val stored = ids(
+            ConversationList.filter(list, false, "example.com", snippetFor = { it.snippet })
+        )
+        val shown = ids(
+            ConversationList.filter(list, false, "example.com", snippetFor = { "see  now" })
+        )
         assertEquals(listOf(1L), stored)
         assertEquals(emptyList<Long>(), shown)
     }
@@ -164,7 +174,7 @@ class ConversationListTest {
         // Even when the repository says 4 has a hit somewhere in its history.
         assertEquals(
             listOf(1L),
-            ids(ConversationList.filter(list, false, "555-000-1234", setOf(4L)) { it.snippet })
+            ids(ConversationList.filter(list, false, "555-000-1234", setOf(4L), snippetFor = { it.snippet }))
         )
     }
 
@@ -192,7 +202,7 @@ class ConversationListTest {
         assertEquals(listOf(2L), filter(list, query = "code 482913"))
         assertEquals(
             listOf(2L),
-            ids(ConversationList.filter(list, false, "buried", setOf(2L)) { it.snippet })
+            ids(ConversationList.filter(list, false, "buried", setOf(2L), snippetFor = { it.snippet }))
         )
     }
 
@@ -204,11 +214,11 @@ class ConversationListTest {
         val list = listOf(convo(1, snippet = "newest words"), convo(2, snippet = "newest words"))
         assertEquals(
             listOf(2L),
-            ids(ConversationList.filter(list, false, "buried", setOf(2L)) { it.snippet })
+            ids(ConversationList.filter(list, false, "buried", setOf(2L), snippetFor = { it.snippet }))
         )
         assertEquals(
             emptyList<Long>(),
-            ids(ConversationList.filter(list, false, "buried", emptySet()) { it.snippet })
+            ids(ConversationList.filter(list, false, "buried", emptySet(), snippetFor = { it.snippet }))
         )
     }
 
@@ -309,5 +319,60 @@ class ConversationListTest {
         val list = listOf(convo(1, unread = 3), convo(2, unread = 2))
 
         assertEquals(null, ConversationList.newlyUnread(list, mapOf(1L to 3, 2L to 2)))
+    }
+
+    // --- from: filter ------------------------------------------------------
+
+    @Test
+    fun fromMatchesTheSavedNameAndTheDisplaySpelling() {
+        val convo = convo(1, name = "Kami 0910", address = "+15551230001")
+        assertTrue(ConversationList.senderMatches(convo, "kami"))
+        assertTrue(ConversationList.senderMatches(convo, "0910"))
+    }
+
+    @Test
+    fun fromMatchesANumberAcrossSpellings() {
+        val convo = convo(1, name = "", address = "+15551230001")
+        assertTrue(ConversationList.senderMatches(convo, "+15551230001"))
+        assertTrue(ConversationList.senderMatches(convo, "(555) 123-0001"))
+    }
+
+    @Test
+    fun fromDoesNotMatchOtherPeople() {
+        val convo = convo(1, name = "Kami", address = "+15551230001")
+        assertFalse(ConversationList.senderMatches(convo, "Dad"))
+        assertFalse(ConversationList.senderMatches(convo, "+15551239999"))
+    }
+
+    @Test
+    fun fromWithAnEmptyValueMatchesNothing() {
+        assertFalse(ConversationList.senderMatches(convo(1), ""))
+        assertFalse(ConversationList.senderMatches(convo(1), "   "))
+    }
+
+    @Test
+    fun aMessageFilterDisablesTheSnippetMatch() {
+        // The snippet is the newest message's body; when before/after/has:attachment
+        // narrows what a "message" is, the snippet must not surface the thread on
+        // its own — only a scan hit that satisfied the filter may.
+        val convo = convo(1, snippet = "recital rehearsal notes")
+        val withSnippet = filter(
+            listOf(convo), query = "recital"
+        )
+        assertEquals(listOf(1L), withSnippet)
+        val filtered = ids(
+            ConversationList.filter(
+                listOf(convo), false, "recital", emptySet(),
+                { it.snippet }, snippetIsAMatch = false
+            )
+        )
+        assertEquals(emptyList<Long>(), filtered)
+        val viaScan = ids(
+            ConversationList.filter(
+                listOf(convo), false, "recital", setOf(1L),
+                { it.snippet }, snippetIsAMatch = false
+            )
+        )
+        assertEquals(listOf(1L), viaScan)
     }
 }

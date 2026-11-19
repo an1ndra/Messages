@@ -16,8 +16,26 @@
     <string name="chat_schedule">Planen</string>
     <string name="chat_select_date">Datum auswählen</string>
     <string name="chat_select_time">Zeit auswählen</string>
+    <string name="chat_media_location">Standort</string>
+    <string name="location_use_mine">Meinen Standort verwenden</string>
+    <string name="location_hint">Standortlink einfügen oder Ort eingeben</string>
+    <string name="mms_download_title">Nachricht wird geladen</string>
+    <string name="mms_download_text">Ihr Anbieter ruft sie ab</string>
+    <string name="chat_media_contact">Kontakt</string>
+    <string name="chat_media_audio">Audio</string>
     <string name="chat_media_camera">Kamera</string>
     <string name="chat_media_gallery">Galerie</string>
+    <string name="chat_location_title">Standort teilen</string>
+    <string name="chat_location_body">Ein Google-Maps-Link zu deinem aktuellen Standort wird an diesen Chat gesendet.</string>
+    <string name="chat_location_send">Senden</string>
+    <string name="chat_location_unavailable">Standort konnte nicht ermittelt werden. Versuche es gleich noch einmal.</string>
+    <string name="chat_location_permission">Zum Teilen des Standorts ist die Standortberechtigung nötig.</string>
+    <string name="chat_contact_unavailable">Dieser Kontakt hat keine Nummer zum Senden.</string>
+    <string name="chat_camera_unavailable">Keine Kamera-App auf diesem Gerät, um ein Foto aufzunehmen.</string>
+    <string name="db_newer_title">Dieser Build ist älter als deine Nachrichten</string>
+    <string name="db_newer_body">Deine Nachrichten wurden zuletzt von einer neueren Version von Messages geöffnet (Daten v%2$d, dieser Build v%1$d). Dieser Build kann sie nicht lesen, deshalb wurden sie als %3$s beiseitegelegt und Messages startet leer. Installiere den neueren Build, um sie zurückzubekommen.</string>
+    <string name="db_newer_ok">Verstanden</string>
+    <string name="chat_gallery_unavailable">Keine App auf diesem Gerät kann ein Foto auswählen.</string>
     <string name="chat_select_all">Alle auswählen</string>
     <string name="chat_select_text">Text auswählen</string>
     <string name="chat_save_image">Bild speichern</string>
@@ -28,18 +46,16 @@
     <string name="chat_save_video">Video speichern</string>
     <string name="chat_video_saved">Video in Movies/Messages gespeichert</string>
     <string name="chat_video_save_failed">Video konnte nicht gespeichert werden</string>
-
     <string name="chat_voice_saved">Sprachnachricht in Music/Messages gespeichert</string>
     <string name="chat_voice_save_failed">Sprachnachricht konnte nicht gespeichert werden</string>
-
-    <string name="chat_voice_slide_cancel">Zum Abbrechen ziehen</string>
-    <string name="chat_voice_release_cancel">Zum Abbrechen loslassen</string>
-    <string name="chat_voice_permission_denied">Für eine Sprachnachricht wird Zugriff auf das Mikrofon benötigt</string>
+    <!-- Voice messages -->
+    <string name="chat_voice_slide_cancel">Wischen zum Abbrechen</string>
+    <string name="chat_voice_release_cancel">Loslassen zum Abbrechen</string>
+    <string name="chat_voice_permission_denied">Mikrofon-Zugriff wird benötigt, um eine Sprachnachricht aufzunehmen</string>
     <string name="chat_voice_start_failed">Aufnahme konnte nicht gestartet werden</string>
-    <string name="chat_voice_too_short">Die Aufnahme war zu kurz. Halte das Mikrofon gedrückt, um aufzunehmen.</string>
-    <string name="chat_voice_max_reached">Sprachnachricht beim MMS-Größenlimit gestoppt</string>
-    <string name="chat_voice_cancel_recording">Aufnahme verwerfen</string>
-
+    <string name="chat_voice_too_short">Die Aufnahme war zu kurz. Halten Sie das Mikrofon zum Aufnehmen.</string>
+    <string name="chat_voice_max_reached">Sprachnachricht wurde bei der MMS Größenbegrenzung beendet</string>
+    <string name="chat_voice_cancel_recording">Aufnahme abbrechen</string>
     <!-- Status messages -->
     <string name="chat_cant_send">Nachricht kann nicht gesendet werden</string>
     <string name="chat_archived">Unterhaltung archiviert</string>

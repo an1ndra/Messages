@@ -16,8 +16,26 @@
     <string name="chat_schedule">Planifier</string>
     <string name="chat_select_date">Sélectionner la date</string>
     <string name="chat_select_time">Sélectionner l\'heure</string>
+    <string name="chat_media_location">Position</string>
+    <string name="location_use_mine">Utiliser ma position</string>
+    <string name="location_hint">Collez un lien de position ou saisissez un lieu</string>
+    <string name="mms_download_title">Téléchargement du message</string>
+    <string name="mms_download_text">Votre opérateur le récupère</string>
+    <string name="chat_media_contact">Contact</string>
+    <string name="chat_media_audio">Audio</string>
     <string name="chat_media_camera">Appareil photo</string>
     <string name="chat_media_gallery">Galerie</string>
+    <string name="chat_location_title">Partager votre position</string>
+    <string name="chat_location_body">Un lien Google Maps vers l\'endroit où vous êtes sera envoyé dans cette conversation.</string>
+    <string name="chat_location_send">Envoyer</string>
+    <string name="chat_location_unavailable">Impossible d\'obtenir votre position. Réessayez dans un instant.</string>
+    <string name="chat_location_permission">L\'autorisation de localisation est nécessaire pour partager votre position.</string>
+    <string name="chat_contact_unavailable">Ce contact n\'a aucun numéro à envoyer.</string>
+    <string name="chat_camera_unavailable">Aucune application d\'appareil photo sur cet appareil pour prendre une photo.</string>
+    <string name="db_newer_title">Cette version est plus ancienne que vos messages</string>
+    <string name="db_newer_body">Vos messages ont été ouverts pour la dernière fois par une version plus récente de Messages (données v%2$d, cette version v%1$d). Cette version ne peut pas les lire : ils ont été mis de côté sous %3$s et Messages démarre vide. Installez la version plus récente pour les récupérer.</string>
+    <string name="db_newer_ok">Compris</string>
+    <string name="chat_gallery_unavailable">Aucune application sur cet appareil ne peut choisir une photo.</string>
     <string name="chat_select_all">Tout sélectionner</string>
     <string name="chat_select_text">Sélectionner le texte</string>
     <string name="chat_save_image">Enregistrer l\'image</string>
@@ -26,18 +44,17 @@
     <string name="chat_image_saved">Image enregistrée dans Pictures/Messages</string>
     <string name="chat_image_save_failed">Impossible d\'enregistrer l\'image</string>
     <string name="chat_save_video">Enregistrer la vidéo</string>
-    <string name="chat_video_saved">Vidéo enregistrée dans Movies/Messages</string>
+    <string name="chat_video_saved">Vidéo enregistrée dans Films/Messages</string>
     <string name="chat_video_save_failed">Impossible d\'enregistrer la vidéo</string>
-
-    <string name="chat_voice_saved">Message vocal enregistré dans Music/Messages</string>
+    <string name="chat_voice_saved">Message vocal enregistré dans Musique/Messages</string>
     <string name="chat_voice_save_failed">Impossible d\'enregistrer le message vocal</string>
-
-    <string name="chat_voice_slide_cancel">Glissez pour annuler</string>
-    <string name="chat_voice_release_cancel">Relâchez pour annuler</string>
-    <string name="chat_voice_permission_denied">L\'accès au micro est nécessaire pour enregistrer un message vocal</string>
+    <!-- Voice messages -->
+    <string name="chat_voice_slide_cancel">Glisser pour annuler</string>
+    <string name="chat_voice_release_cancel">Relâcher pour annuler</string>
+    <string name="chat_voice_permission_denied">L\'accès au microphone est nécessaire pour enregistrer un message vocal</string>
     <string name="chat_voice_start_failed">Impossible de démarrer l\'enregistrement</string>
-    <string name="chat_voice_too_short">L’enregistrement est trop court. Maintenez le micro enfoncé pour enregistrer.</string>
-    <string name="chat_voice_max_reached">Message vocal arrêté à la limite de taille MMS</string>
+    <string name="chat_voice_too_short">L\'enregistrement était trop court. Maintenez le micro pour enregistrer.</string>
+    <string name="chat_voice_max_reached">Message vocal arrêté à la limite de taille du MMS</string>
     <string name="chat_voice_cancel_recording">Annuler l\'enregistrement</string>
     <!-- Status messages -->
     <string name="chat_cant_send">Impossible d\'envoyer le message</string>

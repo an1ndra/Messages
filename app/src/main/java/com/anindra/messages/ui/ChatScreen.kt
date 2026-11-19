@@ -68,7 +68,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -92,6 +91,9 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.Archive
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CameraAlt
@@ -211,11 +213,13 @@ import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
 import com.anindra.messages.data.Message
 import com.anindra.messages.data.MessageSearch
+import com.anindra.messages.data.ReplySuggestion
 import com.anindra.messages.data.MmsSupport
 import com.anindra.messages.data.SettingsStore
 import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SimCards
 import com.anindra.messages.data.SimSwitcher
+import com.anindra.messages.data.SuggestedReplies
 import com.anindra.messages.voice.VoiceNotePolicy
 import com.anindra.messages.voice.VoicePlayback
 import com.anindra.messages.voice.VoiceRecorder
@@ -1178,6 +1182,28 @@ fun ChatScreen(
         uris.filter { it !in pendingMedia }.forEach { pendingMedia.add(it) }
     }
 
+    // Audio files are picked through the document picker: the photo picker only
+    // offers images and video, and this has to reach music and recordings.
+    val audioLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null && uri !in pendingMedia) pendingMedia.add(uri)
+    }
+
+    // A contact is sent as a vCard body, so the picker only has to hand back an
+    // id.
+    val contactLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickContact()
+    ) { uri ->
+        if (uri != null) {
+            ContactShare.read(context, uri)?.let { (name, number) ->
+                if (ContactShare.isSendable(number)) {
+                    vm.send(conversationId, ContactShare.vCard(name, number), currentSimId)
+                }
+            }
+        }
+    }
+
     fun leaveChat() {
         vm.saveDraftAndMaybeTrash(conversationId, draft.trim())
         onBack()
@@ -1865,7 +1891,16 @@ fun ChatScreen(
                         },
                         onVoiceCancel = { recorder.cancel() },
                         voiceLevel = voiceLevel,
-                        onRecordingChanged = { recordingNow = it }
+                        onRecordingChanged = { recordingNow = it },
+                        // Chips only while the field is empty and the thread is
+                        // waiting on us: a suggestion must never replace a
+                        // draft that is already being typed.
+                        suggestions = if (draft.isBlank()) {
+                            SuggestedReplies.forThread(messages, vm.settings.suggestedRepliesEnabled)
+                        } else {
+                            emptyList()
+                        },
+                        onSuggestion = { draft = context.getString(it.label) }
                     )
                 } else {
                     AlphanumericNotice(address = chatAddress)
@@ -2092,18 +2127,61 @@ fun ChatScreen(
         }
     }
 
+    var showLocationDialog by remember { mutableStateOf(false) }
+
+    if (showLocationDialog) {
+        LocationDialog(
+            onDismiss = { showLocationDialog = false },
+            onSend = { link -> vm.send(conversationId, link, currentSimId) }
+        )
+    }
+
+    // A device without a camera app, a photo picker, a document picker or a
+    // contact picker throws instead of opening anything: an unhandled
+    // ActivityNotFoundException crashed the chat the moment that tile was
+    // tapped, which is how an AVD with the camera package removed behaved.
+    fun launchOrExplain(messageRes: Int, launch: () -> Unit) {
+        try {
+            launch()
+        } catch (_: android.content.ActivityNotFoundException) {
+            Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     if (attachSheet) {
         AttachSheet(
             onGallery = {
                 attachSheet = false
-                galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                launchOrExplain(R.string.chat_gallery_unavailable) {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
+            },
+            onAudio = {
+                attachSheet = false
+                launchOrExplain(R.string.chat_gallery_unavailable) {
+                    audioLauncher.launch(arrayOf("audio/*"))
+                }
+            },
+            onLocation = {
+                attachSheet = false
+                showLocationDialog = true
+            },
+            onContact = {
+                attachSheet = false
+                launchOrExplain(R.string.chat_contact_unavailable) {
+                    contactLauncher.launch(null)
+                }
             },
             onCamera = {
                 attachSheet = false
                 val dir = File(context.cacheDir, "camera").apply { mkdirs() }
                 val file = File(dir, "photo_${System.currentTimeMillis()}.jpg")
                 cameraFileUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                cameraLauncher.launch(cameraFileUri!!)
+                launchOrExplain(R.string.chat_camera_unavailable) {
+                    cameraLauncher.launch(cameraFileUri!!)
+                }
             },
             onDismiss = { attachSheet = false }
         )
@@ -3567,7 +3645,7 @@ internal fun AlphanumericNotice(address: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .imePadding()
+            .imeGuardedPadding()
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -3610,7 +3688,10 @@ internal fun InputBar(
     /** What the microphone is hearing, 0..1, for the button's live meter. */
     voiceLevel: Float = 0f,
     /** Told when a recording starts and stops, so the caller can poll the mic. */
-    onRecordingChanged: (Boolean) -> Unit = {}
+    onRecordingChanged: (Boolean) -> Unit = {},
+    /** One-tap replies shown above the field; empty hides the row (#483). */
+    suggestions: List<ReplySuggestion> = emptyList(),
+    onSuggestion: (ReplySuggestion) -> Unit = {}
 ) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
@@ -3671,8 +3752,16 @@ internal fun InputBar(
             stopRecording(send = true)
         }
     }
-    Row(
-        modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 12.dp, vertical = 8.dp),
+    Column(modifier = Modifier.fillMaxWidth().imeGuardedPadding()) {
+        if (suggestions.isNotEmpty()) {
+            SuggestionChips(
+                suggestions = suggestions,
+                onPick = onSuggestion,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+        }
+        Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Typing a Persian/Arabic word should flip the field, so the caret and
@@ -4180,6 +4269,44 @@ internal fun InputBar(
                 }
             }
         }
+        }
+    }
+}
+
+/**
+ * The one-tap replies above the composer (#483). Tapping one puts its text in
+ * the message box rather than sending it, so the user still sees what leaves
+ * their phone.
+ */
+@Composable
+internal fun SuggestionChips(
+    suggestions: List<ReplySuggestion>,
+    onPick: (ReplySuggestion) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        suggestions.forEach { suggestion ->
+            val label = stringResource(suggestion.label)
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable { onPick(suggestion) }
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                )
+            }
+        }
     }
 }
 
@@ -4198,6 +4325,9 @@ private const val HALO_BREATHE_ALPHA = 0.20f
 internal fun AttachSheet(
     onGallery: () -> Unit,
     onCamera: () -> Unit,
+    onAudio: () -> Unit,
+    onLocation: () -> Unit,
+    onContact: () -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -4218,6 +4348,30 @@ internal fun AttachSheet(
                 Icon(Icons.Rounded.Image, null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(16.dp))
                 Text(stringResource(R.string.chat_media_gallery), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onContact() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Person, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_contact), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onLocation() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.LocationOn, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_location), style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                Modifier.fillMaxWidth().clickable { onAudio() }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Audiotrack, null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.chat_media_audio), style = MaterialTheme.typography.bodyLarge)
             }
             Row(
                 Modifier.fillMaxWidth().clickable { onCamera() }.padding(vertical = 14.dp),
