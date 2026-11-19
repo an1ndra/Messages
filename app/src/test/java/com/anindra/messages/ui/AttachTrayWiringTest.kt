@@ -99,12 +99,46 @@ class AttachTrayWiringTest {
         assertTrue(
             "with the tray open the composer must clear nothing, or the tray " +
                 "lands on top of it",
-            chat.contains("composerBottomInset = if (attachOpen) 0.dp else keyboardInset")
+            chat.contains("trayOnScreen -> 0.dp")
         )
         assertTrue(
             "the bar's height comes from the guarded IME inset, minus the strip " +
                 "the bottom bar already pads",
             chat.contains("val keyboardInset = (imeBottom - navBottom).coerceAtLeast(0.dp)")
+        )
+    }
+
+    @Test
+    fun theComposerHoldsItsPlaceWhenTheKeyboardComesBack() {
+        assertTrue(
+            "the composer's inset must be the swap-aware one, not the raw keyboard inset",
+            chat.contains("composerBottomInset = composerInset")
+        )
+        assertTrue(
+            "closing the tray into the keyboard must hold the slot the tray vacated",
+            chat.contains("keyboardSwap -> maxOf(keyboardInset, keyboardSlot.dp)")
+        )
+        assertTrue(
+            "closing the tray by its own button asks for the keyboard back",
+            chat.contains("keyboardSwap = true\n                                fieldFocus.requestFocus()")
+        )
+        assertTrue(
+            "tapping the field while the tray is open is the same swap",
+            chat.contains("if (attachOpen) {\n                                attachOpen = false\n                                keyboardSwap = true\n                            }")
+        )
+    }
+
+    @Test
+    fun theTrayLeavesBeforeTheKeyboardArrives() {
+        assertTrue(
+            "the tray's visibility is read back by the composer, so it must be " +
+                "driven through a transition state",
+            chat.contains("visibleState = tray")
+        )
+        assertTrue(
+            "the tray fades out faster than the keyboard rises, so it never sits " +
+                "over the keys",
+            chat.contains("fadeOut(tween(90))")
         )
     }
 }

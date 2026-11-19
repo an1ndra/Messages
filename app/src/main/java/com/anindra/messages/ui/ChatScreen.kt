@@ -21,6 +21,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.RepeatMode
@@ -1034,13 +1035,6 @@ fun ChatScreen(
         val settled = imeSeen - navBottom.value
         if (settled > 120f) keyboardSlot = settled
     }
-    LaunchedEffect(imeBottom, navBottom, keyboardSlot, attachOpen) {
-        android.util.Log.d(
-            "AttachTrayHeight",
-            "ime=${imeBottom.value} nav=${navBottom.value} inset=${keyboardInset.value} " +
-                "slot=$keyboardSlot open=$attachOpen"
-        )
-    }
     // Picked media waits here until the user sends it, so a picture can be
     // explained or dropped before it leaves — it is no longer sent on pick.
     val pendingMedia = remember { mutableStateListOf<Uri>() }
@@ -1661,6 +1655,41 @@ fun ChatScreen(
         }
     }
 
+    // The tray is drawn (or still fading out) and therefore owns the keyboard's
+    // slot right now. Read off the animation itself, so the composer keeps
+    // clearing nothing until the tray has actually left.
+    val tray = remember { MutableTransitionState(false) }
+    tray.targetState = attachOpen && !selectionActive
+    val trayOnScreen = tray.currentState || tray.targetState
+    // The tray just closed to give the field back, and the keyboard is on its
+    // way up. Until it arrives the composer holds the slot the tray vacated —
+    // without this it drops to the bottom of the window for a frame and climbs
+    // back with the keyboard, which is the flicker this is here to stop.
+    var keyboardSwap by remember { mutableStateOf(false) }
+    LaunchedEffect(imeBottom) {
+        if (imeBottom > 0.dp) keyboardSwap = false
+    }
+    LaunchedEffect(keyboardSwap) {
+        if (!keyboardSwap) return@LaunchedEffect
+        // Focus was asked for but no keyboard ever came: stop holding the slot.
+        delay(1200)
+        keyboardSwap = false
+    }
+    // What the composer clears: nothing while the tray holds the slot, the
+    // keyboard's own height while it returns, the guarded inset otherwise.
+    val composerInset = when {
+        trayOnScreen -> 0.dp
+        keyboardSwap -> maxOf(keyboardInset, keyboardSlot.dp)
+        else -> keyboardInset
+    }
+    LaunchedEffect(imeBottom, navBottom, keyboardSlot, attachOpen, keyboardSwap) {
+        android.util.Log.d(
+            "AttachTrayHeight",
+            "ime=${imeBottom.value} nav=${navBottom.value} inset=${keyboardInset.value} " +
+                "slot=$keyboardSlot composer=${composerInset.value} " +
+                "open=$attachOpen swap=$keyboardSwap"
+        )
+    }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -1922,9 +1951,13 @@ fun ChatScreen(
                         onAttach = {
                             if (attachOpen) {
                                 attachOpen = false
+                                // The keyboard is coming back, so hold its slot
+                                // from the moment the tray starts leaving.
+                                keyboardSwap = true
                                 fieldFocus.requestFocus()
                             } else {
                                 attachOpen = true
+                                keyboardSwap = false
                                 showEmoji = false
                                 // Clearing the whole focus owner, not just this
                                 // requester: that is what drops the IME, and the
@@ -1935,13 +1968,19 @@ fun ChatScreen(
                         },
                         attachOpen = attachOpen,
                         fieldFocusRequester = fieldFocus,
-                        onFieldFocus = { attachOpen = false },
+                        onFieldFocus = {
+                            // Tapping the field while the tray is open is the
+                            // other way back to typing: close the tray into the
+                            // keyboard rather than past it.
+                            if (attachOpen) {
+                                attachOpen = false
+                                keyboardSwap = true
+                            }
+                        },
                         // While the tray holds the keyboard's slot the composer
-                        // must not reserve the IME's inset as well, or the tray
-                        // lands on top of it. Closed, it clears the keyboard's
-                        // own height: the bottom bar already pads the navigation
-                        // strip, and one out keeps the bar off the keyboard.
-                        composerBottomInset = if (attachOpen) 0.dp else keyboardInset,
+                        // must not reserve an inset as well, or the tray lands on
+                        // top of it.
+                        composerBottomInset = composerInset,
                         showEmojiButton = vm.settings.emojiButtonEnabled,
                         voiceEnabled = hasMicrophone,
                         voiceMaxSeconds = voiceMaxSeconds,
@@ -1991,14 +2030,16 @@ fun ChatScreen(
                     AlphanumericNotice(address = chatAddress)
                 }
                 AnimatedVisibility(
-                    visible = attachOpen && !selectionActive,
+                    visibleState = tray,
                     // No growth animation: the tray takes the keyboard's height
                     // in the same frame the keyboard's inset is released, so the
                     // composer does not ride up and back down while they swap.
+                    // It leaves quickly, before the returning keyboard reaches
+                    // it, instead of hanging over the keys for a few frames.
                     enter = if (reduceMotion) fadeIn(tween(0))
                     else fadeIn(motionTween(false, Motion.DURATION_SHORT4)),
                     exit = if (reduceMotion) fadeOut(tween(0))
-                    else fadeOut(motionTween(false, Motion.DURATION_SHORT4))
+                    else fadeOut(tween(90))
                 ) {
                     AttachTray(
                         cameraLabel = stringResource(R.string.chat_media_camera),
