@@ -14,6 +14,8 @@
     <string name="settings_font_title">Fuente</string>
     <string name="settings_advanced_emoji_button">Botón de emoji</string>
     <string name="settings_advanced_emoji_button_desc">Mostrar el botón de emoji en el campo de mensaje</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">Las fotos, notas de voz y contactos se envían por MMS</string>
     <string name="settings_choose_font">Elegir fuente</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

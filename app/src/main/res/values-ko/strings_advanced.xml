@@ -14,6 +14,8 @@
     <string name="settings_font_title">글꼴</string>
     <string name="settings_advanced_emoji_button">이모지 버튼</string>
     <string name="settings_advanced_emoji_button_desc">메시지 입력란에 이모지 버튼 표시</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">사진, 음성 메시지, 연락처는 MMS로 전송됩니다</string>
     <string name="settings_choose_font">글꼴 선택</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

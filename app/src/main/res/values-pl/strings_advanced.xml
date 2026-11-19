@@ -14,6 +14,8 @@
     <string name="settings_font_title">Czcionka</string>
     <string name="settings_advanced_emoji_button">Przycisk emoji</string>
     <string name="settings_advanced_emoji_button_desc">Pokaż przycisk emoji w polu wiadomości</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">Zdjęcia, wiadomości głosowe i kontakty są wysyłane przez MMS</string>
     <string name="settings_choose_font">Wybierz czcionkę</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

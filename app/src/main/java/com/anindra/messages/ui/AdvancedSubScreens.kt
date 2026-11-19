@@ -412,7 +412,11 @@ fun LinkSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MmsSupportScreen(onBack: () -> Unit) {
+fun MmsSupportScreen(
+    onBack: () -> Unit,
+    mmsEnabled: Boolean,
+    onMmsEnabledChange: (Boolean) -> Unit
+) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
     val checks = remember { SimMmsProbe.run(context) }
@@ -421,6 +425,19 @@ fun MmsSupportScreen(onBack: () -> Unit) {
         title = stringResource(R.string.mms_check_title),
         onBack = onBack
     ) {
+        // The switch comes before the per-SIM verdicts: whether the app sends
+        // MMS at all is a decision the user makes here, and a carrier that
+        // supports it changes nothing while the feature is off.
+        SettingsGroup {
+            SettingsRow(
+                position = RowPosition.SINGLE,
+                title = stringResource(R.string.settings_mms_enabled),
+                subtitle = stringResource(R.string.settings_mms_enabled_summary),
+                checked = mmsEnabled,
+                onChecked = onMmsEnabledChange
+            )
+        }
+
         if (checks.isEmpty()) {
             SettingsGroup {
                 SettingsRow(

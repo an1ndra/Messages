@@ -14,6 +14,8 @@
     <string name="settings_font_title">Schriftart</string>
     <string name="settings_advanced_emoji_button">Emoji-Schaltfläche</string>
     <string name="settings_advanced_emoji_button_desc">Emoji-Schaltfläche im Nachrichtenfeld anzeigen</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">Bilder, Sprachnachrichten und Kontakte werden über MMS gesendet</string>
     <string name="settings_choose_font">Schriftart wählen</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

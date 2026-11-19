@@ -1999,8 +1999,13 @@ fun ChatScreen(
                         // must not reserve an inset as well, or the tray lands on
                         // top of it.
                         composerBottomInset = composerInset,
-                        showEmojiButton = vm.settings.emojiButtonEnabled,
-                        voiceEnabled = hasMicrophone,
+                        // With MMS off the plus has nothing to open: the emoji
+                        // button takes its place, and the microphone goes with
+                        // the tray because a voice note is an MMS attachment.
+                        showEmojiButton = vm.settings.emojiButtonEnabled ||
+                            !vm.settings.mmsEnabled,
+                        attachEnabled = vm.settings.mmsEnabled,
+                        voiceEnabled = hasMicrophone && vm.settings.mmsEnabled,
                         voiceMaxSeconds = voiceMaxSeconds,
                         onVoiceStart = { startVoiceNote() },
                         onVoiceFinish = {
@@ -3872,6 +3877,8 @@ internal fun InputBar(
     schedulingEnabled: Boolean = true,
     onEmojiToggle: () -> Unit,
     onAttach: () -> Unit,
+    /** False when the app does not send MMS: no plus, and no tray behind it. */
+    attachEnabled: Boolean = true,
     /** The tray is open under the bar, so the attach button offers to close it. */
     attachOpen: Boolean = false,
     /** Lets the caller hand focus back when the tray closes. */
@@ -4012,7 +4019,22 @@ internal fun InputBar(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                            IconButton(onClick = onAttach) {
+                            if (!attachEnabled) {
+                                // The plus has nothing to open, so the slot it
+                                // held carries the emoji button instead.
+                                if (showEmojiButton) {
+                                    IconButton(
+                                        onClick = onEmojiToggle,
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.EmojiEmotions,
+                                            stringResource(R.string.icon_emoji),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            } else IconButton(onClick = onAttach) {
                                 // One ring, one animation: the plus turns 45° into the
                                 // cross that closes the tray, so closing it is the same
                                 // control it was opened with.
@@ -4120,7 +4142,7 @@ internal fun InputBar(
                                 )
                             }
                         }
-                        if (showEmojiButton) {
+                        if (showEmojiButton && attachEnabled) {
                             IconButton(onClick = onEmojiToggle, modifier = Modifier.size(40.dp)) {
                                 Icon(
                                     Icons.Rounded.EmojiEmotions, stringResource(R.string.icon_emoji),
