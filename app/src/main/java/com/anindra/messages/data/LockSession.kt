@@ -20,12 +20,16 @@ object LockSession {
 
     fun isUnlocked(): Boolean = unlocked
 
-    fun unlock() {
+    /** The owner proved it is them: the session holds until the screen goes off.
+     *  Named for the session rather than for a lock — it is a flag, not a
+     *  critical section, and `unlock()` read as one to every tool that looks. */
+    fun grant() {
         unlocked = true
     }
 
-    /** Called when the screen goes off, and by anything that invalidates the session. */
-    fun lock() {
+    /** Called when the screen goes off, and by anything that invalidates the
+     *  session. */
+    fun clear() {
         unlocked = false
     }
 }

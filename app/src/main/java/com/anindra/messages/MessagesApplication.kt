@@ -60,7 +60,7 @@ class MessagesApplication : Application() {
             object : android.content.BroadcastReceiver() {
                 override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
                     if (intent?.action == Intent.ACTION_SCREEN_OFF) {
-                        LockSession.lock()
+                        LockSession.clear()
                         android.util.Log.d("LockSession", "unlocked=false reason=screen_off")
                     }
                 }
