@@ -4364,6 +4364,17 @@ class Repository(private val context: Context) {
      * trusted on its own: an earlier sync marked it done after reading nothing,
      * which left the app with an empty inbox that never imported again.
      */
+    /** Temporary: what the inbox query would see, for the blank-inbox trace. */
+    fun bootDiagInbox(): String = runCatching {
+        db.readableDatabase.rawQuery(
+            "SELECT COUNT(*), COALESCE(SUM(archived),0), COALESCE(SUM(blocked),0), " +
+                "COALESCE(SUM(deleted_at<>0),0) FROM conversations", null
+        ).use {
+            if (it.moveToFirst()) "total=${it.getLong(0)} archived=${it.getLong(1)} " +
+                "blocked=${it.getLong(2)} deleted=${it.getLong(3)}" else "no rows"
+        }
+    }.getOrElse { "query failed: ${it.message}" }
+
     fun recoverEmptyImportIfNeeded() {
         if (!settings.firstImportDone) return
         if (context.checkSelfPermission(Manifest.permission.READ_SMS) !=

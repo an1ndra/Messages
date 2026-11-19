@@ -49,7 +49,8 @@ class MessagesApplication : Application() {
             this,
             "app start: dbFile=${database.fileVersion} appDb=${com.anindra.messages.data.DB_VERSION} " +
                 "tooNew=${database.tooNew} firstImportDone=${repository.settings.firstImportDone} " +
-                "readSms=${checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED}"
+                "readSms=${checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED} " +
+                "inbox=${repository.bootDiagInbox()}"
         )
         // Widgets render outside the app, so nothing there subscribes to the
         // repository's flows: a change has to be pushed at them.
