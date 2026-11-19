@@ -1753,7 +1753,7 @@ class Repository(private val context: Context) {
             database.endTransaction()
         }
         val firstKind = mediaTypes.firstOrNull() ?: "image"
-        touchConversation(conversationId, if (firstKind == "image") "Photo" else "Voice message", now, isMe = true)
+        touchConversation(conversationId, MmsSupport.previewFor(firstKind), now, isMe = true)
         return out
     }
 
