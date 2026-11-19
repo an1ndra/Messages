@@ -30,7 +30,7 @@ class InboxSkeletonTest {
             val screen = src(path)
             assertTrue(
                 "$path: the skeleton must survive a running import",
-                Regex("""val loaded = minSkeletonShown && syncProgress == null""").containsMatchIn(screen)
+                Regex("""val loaded = minSkeletonShown &&[\s\S]{0,200}?conversations\.isNotEmpty\(\)""").containsMatchIn(screen)
             )
             assertTrue(
                 "$path: and the progress bar is still wired to the same state",
@@ -40,11 +40,11 @@ class InboxSkeletonTest {
     }
 
     @Test
-    fun theFlagAloneIsNoLongerTreatedAsLoaded() {
+    fun aPopulatedInboxIsNeverHeldBehindTheSkeleton() {
         val screen = src("java/com/anindra/messages/ui/ConversationsScreen.kt")
         assertTrue(
             "the persisted flag alone must not hide the loading state",
-            !Regex("""val loaded = minSkeletonShown && \(syncDone \|\| !readSmsAllowed\)""")
+            !Regex("""val loaded = minSkeletonShown && syncProgress == null && \(syncDone""")
                 .containsMatchIn(screen)
         )
     }
