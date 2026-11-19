@@ -221,6 +221,6 @@ private fun MmsSupportPreview() {
     // renders the no-SIMs state. That state is worth pinning: it is what a
     // device with no SIMs shows, and it is easy to break the branch on.
     Stage {
-        MmsSupportScreen(onBack = {})
+        MmsSupportScreen(onBack = {}, mmsEnabled = true, onMmsEnabledChange = {})
     }
 }

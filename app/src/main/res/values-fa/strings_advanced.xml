@@ -14,6 +14,8 @@
     <string name="settings_font_title">فونت</string>
     <string name="settings_advanced_emoji_button">دکمه ایموجی</string>
     <string name="settings_advanced_emoji_button_desc">نمایش دکمه ایموجی در کادر پیام</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">عکس‌ها، پیام‌های صوتی و مخاطبین با MMS ارسال می‌شوند</string>
     <string name="settings_choose_font">انتخاب فونت</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

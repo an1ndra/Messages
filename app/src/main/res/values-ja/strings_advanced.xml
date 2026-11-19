@@ -14,6 +14,8 @@
     <string name="settings_font_title">フォント</string>
     <string name="settings_advanced_emoji_button">絵文字ボタン</string>
     <string name="settings_advanced_emoji_button_desc">メッセージ入力欄に絵文字ボタンを表示</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">写真、音声メッセージ、連絡先は MMS で送信されます</string>
     <string name="settings_choose_font">フォントを選択</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

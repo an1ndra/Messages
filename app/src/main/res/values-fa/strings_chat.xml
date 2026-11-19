@@ -53,6 +53,7 @@
     <string name="chat_add_to_contacts">افزودن به مخاطبین</string>
     <string name="chat_contact_saved">مخاطب در Downloads/Messages ذخیره شد</string>
     <string name="chat_contact_save_failed">ذخیره مخاطب ممکن نشد</string>
+    <string name="chat_mms_disabled">MMS خاموش است — عکس و پیام صوتی ارسال نمی‌شود</string>
 
     <!-- Voice messages -->
     <string name="chat_voice_slide_cancel">برای لغو بکشید</string>

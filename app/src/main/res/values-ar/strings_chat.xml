@@ -53,6 +53,7 @@
     <string name="chat_add_to_contacts">إضافة إلى جهات الاتصال</string>
     <string name="chat_contact_saved">تم حفظ جهة الاتصال في Downloads/Messages</string>
     <string name="chat_contact_save_failed">تعذّر حفظ جهة الاتصال</string>
+    <string name="chat_mms_disabled">MMS متوقف — لا يمكن إرسال الصور أو الرسائل الصوتية</string>
 
     <string name="chat_voice_slide_cancel">اسحب للإلغاء</string>
     <string name="chat_voice_release_cancel">اترك للإلغاء</string>

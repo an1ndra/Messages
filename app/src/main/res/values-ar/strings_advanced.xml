@@ -14,6 +14,8 @@
     <string name="settings_font_title">الخط</string>
     <string name="settings_advanced_emoji_button">زر الرموز التعبيرية</string>
     <string name="settings_advanced_emoji_button_desc">إظهار زر الرموز التعبيرية في حقل الرسالة</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">تُرسل الصور والرسائل الصوتية وجهات الاتصال عبر MMS</string>
     <string name="settings_choose_font">اختيار الخط</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

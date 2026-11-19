@@ -52,6 +52,7 @@
     <string name="chat_add_to_contacts">Add to contacts</string>
     <string name="chat_contact_saved">Contact saved to Downloads/Messages</string>
     <string name="chat_contact_save_failed">Could not save the contact</string>
+    <string name="chat_mms_disabled">MMS is off — pictures and voice notes cannot be sent</string>
 
     <!-- Voice messages -->
     <string name="chat_voice_slide_cancel">Slide to cancel</string>

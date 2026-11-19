@@ -53,6 +53,7 @@
     <string name="chat_add_to_contacts">संपर्कों में जोड़ें</string>
     <string name="chat_contact_saved">संपर्क Downloads/Messages में सहेजा गया</string>
     <string name="chat_contact_save_failed">संपर्क सहेजा नहीं जा सका</string>
+    <string name="chat_mms_disabled">MMS बंद है — फ़ोटो और वॉइस नोट नहीं भेजे जा सकते</string>
 
     <string name="chat_voice_slide_cancel">रद्द करने के लिए स्लाइड करें</string>
     <string name="chat_voice_release_cancel">रद्द करने के लिए छोड़ें</string>
