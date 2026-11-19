@@ -95,18 +95,22 @@ object MmsSupport {
         /** The clips of this MMS; a clip is never folded into a picture album. */
         val videoIds: List<Long> = emptyList(),
         val audioId: Long? = null,
-        val audioMime: String = ""
+        val audioMime: String = "",
+        /** The contact cards this MMS carries. A card is a `text/x-vcard` part,
+         *  which is what a phone sends when someone shares a contact. */
+        val contactIds: List<Long> = emptyList()
     ) {
         val mediaType: String
             get() = when {
                 imageId != null -> "image"
                 videoIds.isNotEmpty() -> "video"
                 audioId != null -> "audio"
+                contactIds.isNotEmpty() -> KIND_CONTACT
                 else -> "text"
             }
 
         val mediaId: Long?
-            get() = imageId ?: videoIds.firstOrNull() ?: audioId
+            get() = imageId ?: videoIds.firstOrNull() ?: audioId ?: contactIds.firstOrNull()
 
         /** Every attachment this MMS carries, in the order it should be shown, as
          *  (mediaType, partId). Empty for a text-only MMS. */
@@ -114,6 +118,7 @@ object MmsSupport {
             imageId?.let { add("image" to it) }
             extraImageIds.forEach { add("image" to it) }
             videoIds.forEach { add("video" to it) }
+            contactIds.forEach { add(KIND_CONTACT to it) }
         }
     }
     data class InboundMms(
@@ -124,6 +129,9 @@ object MmsSupport {
         val imageUri: String? = null,
         /** The voice note of a voice MMS, or null. */
         val audioUri: String? = null,
+        /** The contact card of a card MMS, or null. Like a picture, a card-only
+         *  MMS has a blank body and needs a label to be shown at all. */
+        val contactUri: String? = null,
         /**
          * The conversation the import filed this message under (#448).
          *
@@ -134,6 +142,7 @@ object MmsSupport {
         val conversationId: Long = 0
     ) {
         val isAudio: Boolean get() = audioUri != null
+        val isContact: Boolean get() = contactUri != null
     }
     /** [subscriptionId] is the line the announcement was filed under, or -1 when the
      *  provider does not record one. The downloaded message keeps it. */
@@ -302,6 +311,9 @@ object MmsSupport {
      *  received voice note can arrive as AMR, MP3 or OGG. */
     fun isAudio(raw: String): Boolean = mime(raw).startsWith("audio/")
 
+    /** A contact card: the one part type a phone turns into a savable contact. */
+    fun isVCard(raw: String): Boolean = mime(raw) == VCARD_MIME
+
     /** The MIME the app labels a clip with when the provider does not say. */
     const val DEFAULT_VIDEO_MIME = "video/mp4"
 
@@ -310,12 +322,13 @@ object MmsSupport {
     )
 
     /** The message `media_type` for an attachment of this type: pictures get the
-     *  album layout, a clip its own bubble, a voice note its waveform, and
-     *  everything else is a plain file. */
+     *  album layout, a clip its own bubble, a voice note its waveform, a contact
+     *  card its card, and everything else is a plain file. */
     fun mediaKind(rawMime: String): String = when {
         isImage(rawMime) -> "image"
         isVideo(rawMime) -> "video"
         isAudio(rawMime) -> "audio"
+        isVCard(rawMime) -> KIND_CONTACT
         else -> "file"
     }
 
@@ -365,9 +378,10 @@ object MmsSupport {
         val audio = parts.firstOrNull { it.id > 0 && isAudio(it.mime) }
             ?.takeIf { images.isEmpty() }
         val videos = parts.filter { it.id > 0 && isVideo(it.mime) }
+        val contacts = parts.filter { it.id > 0 && isVCard(it.mime) }
         val text = parts.filter { mime(it.mime) == "text/plain" }.mapNotNull { it.text }
             .filter { it.isNotBlank() }.joinToString("\n")
-        val shownIds = (images + videos).map { it.id }.toSet()
+        val shownIds = (images + videos + contacts).map { it.id }.toSet()
         val omitted = parts.count {
             mime(it.mime) !in setOf("text/plain", "application/smil") &&
                 it.id !in shownIds && it !== audio
@@ -380,7 +394,8 @@ object MmsSupport {
             extraImageIds = images.drop(1).map { it.id },
             videoIds = videos.map { it.id },
             audioId = audio?.id,
-            audioMime = audio?.let { mime(it.mime) } ?: ""
+            audioMime = audio?.let { mime(it.mime) } ?: "",
+            contactIds = contacts.map { it.id }
         )
     }
 

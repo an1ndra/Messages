@@ -48,6 +48,10 @@
 
     <string name="chat_voice_saved">Voice message saved to Music/Messages</string>
     <string name="chat_voice_save_failed">Could not save the voice message</string>
+    <string name="chat_save_contact">Save contact</string>
+    <string name="chat_add_to_contacts">Add to contacts</string>
+    <string name="chat_contact_saved">Contact saved to Downloads/Messages</string>
+    <string name="chat_contact_save_failed">Could not save the contact</string>
 
     <!-- Voice messages -->
     <string name="chat_voice_slide_cancel">Slide to cancel</string>

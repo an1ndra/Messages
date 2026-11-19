@@ -200,6 +200,20 @@ class SelectionToolbarTest {
     }
 
     @Test
+    fun aContactCardIsOfferedAsASaveableContact() {
+        // A card is a file, not a picture: it has to be saveable so the user can
+        // open it and add the contact, and the label must say so.
+        assertEquals(
+            MmsSupport.SaveTarget.FILE,
+            SelectionToolbar.saveTargetFor(MmsSupport.KIND_CONTACT)
+        )
+        assertEquals(
+            R.string.chat_save_contact,
+            SelectionToolbar.saveLabelRes(MmsSupport.SaveTarget.FILE)
+        )
+    }
+
+    @Test
     fun textAndFilesOfferNoSave() {
         assertNull(SelectionToolbar.saveTargetFor("text"))
         assertNull(SelectionToolbar.saveTargetFor("file"))

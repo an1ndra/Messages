@@ -48,6 +48,10 @@
 
     <string name="chat_voice_saved">语音消息已保存到 Music/Messages</string>
     <string name="chat_voice_save_failed">无法保存语音消息</string>
+    <string name="chat_save_contact">保存联系人</string>
+    <string name="chat_add_to_contacts">添加到联系人</string>
+    <string name="chat_contact_saved">联系人已保存到 Downloads/Messages</string>
+    <string name="chat_contact_save_failed">无法保存联系人</string>
 
     <string name="chat_voice_slide_cancel">滑动取消</string>
     <string name="chat_voice_release_cancel">松开取消</string>

@@ -49,6 +49,10 @@
 
     <string name="chat_voice_saved">ボイスメッセージを Music/Messages に保存しました</string>
     <string name="chat_voice_save_failed">ボイスメッセージを保存できませんでした</string>
+    <string name="chat_save_contact">連絡先を保存</string>
+    <string name="chat_add_to_contacts">連絡先に追加</string>
+    <string name="chat_contact_saved">連絡先を Downloads/Messages に保存しました</string>
+    <string name="chat_contact_save_failed">連絡先を保存できませんでした</string>
 
     <string name="chat_voice_slide_cancel">スライドしてキャンセル</string>
     <string name="chat_voice_release_cancel">離してキャンセル</string>

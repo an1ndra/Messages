@@ -49,6 +49,10 @@
 
     <string name="chat_voice_saved">Mensagem de voz salva em Music/Messages</string>
     <string name="chat_voice_save_failed">Não foi possível salvar a mensagem de voz</string>
+    <string name="chat_save_contact">Salvar contato</string>
+    <string name="chat_add_to_contacts">Adicionar aos contatos</string>
+    <string name="chat_contact_saved">Contato salvo em Downloads/Messages</string>
+    <string name="chat_contact_save_failed">Não foi possível salvar o contato</string>
 
     <string name="chat_voice_slide_cancel">Deslize para cancelar</string>
     <string name="chat_voice_release_cancel">Solte para cancelar</string>
