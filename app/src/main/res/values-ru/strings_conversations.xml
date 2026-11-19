@@ -14,6 +14,7 @@
     <string name="text_placeholder">Текстовое сообщение</string>
     <string name="conversations_archived">Архив</string>
     <string name="conversations_spam_blocked">Спам и блокировка</string>
+    <string name="conversations_back_to_top">Наверх</string>
     <string name="conversations_spam_blocked_empty">Нет переписок со спамом или заблокированных</string>
     <string name="spam_tab_conversations">Переписки</string>
     <string name="spam_tab_messages">Сообщения</string>

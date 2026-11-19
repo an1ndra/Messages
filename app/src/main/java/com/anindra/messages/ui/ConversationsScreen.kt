@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -94,6 +95,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -147,6 +149,7 @@ import com.anindra.messages.data.StarredMessage
 import com.anindra.messages.data.ConversationList
 import com.anindra.messages.data.SwipeAction
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collect
@@ -187,6 +190,11 @@ fun ConversationsScreen(
             listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
     }.value
+    // Past a screen or two of rows, a shortcut back to the top earns its place.
+    val backToTop = remember(listState) {
+        derivedStateOf { BackToTop.visible(listState.firstVisibleItemIndex) }
+    }.value
+    val scope = rememberCoroutineScope()
     var surfacedUnread by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
     var userScrolledAway by remember { mutableStateOf(false) }
     var unreadSeeded by remember { mutableStateOf(false) }
@@ -502,6 +510,7 @@ fun ConversationsScreen(
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -791,6 +800,19 @@ fun ConversationsScreen(
                 }
             }
         }
+    }
+
+    // Middle of the bottom edge, over the list: the FAB slot would place it at
+    // the end and pad it, which is not the middle of the screen.
+    AnimatedVisibility(
+        visible = backToTop && !showArchived,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(bottom = 24.dp)
+    ) {
+        BackToTopFab(onClick = { scope.launch { listState.animateScrollToItem(0) } })
+    }
     }
 
     if (sheetConvo != null) {
