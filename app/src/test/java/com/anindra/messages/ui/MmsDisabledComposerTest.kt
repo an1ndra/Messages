@@ -83,10 +83,24 @@ class MmsDisabledComposerTest {
         val screen = source("ui/AdvancedSubScreens.kt")
         assertTrue(screen.contains("fun MmsSupportScreen("))
         assertTrue(screen.contains("R.string.settings_mms_enabled"))
-        assertTrue(screen.contains("onChecked = onMmsEnabledChange"))
+        assertTrue(screen.contains("onCheckedChange = onMmsEnabledChange"))
+    }
+
+    @Test
+    fun theSwitchAndTheCarriersShareOneCard() {
+        // Two cards read as two unrelated things: the switch answers the same
+        // question the carrier verdicts do, so they sit in one grouped list
+        // split by hairlines.
+        val screen = source("ui/AdvancedSubScreens.kt")
+        val card = screen.substringAfter("GroupedRowList(")
+            .substringBefore("SettingsFooter(")
+        assertTrue("the switch is in the card", card.contains("R.string.settings_mms_enabled"))
+        assertTrue("and so are the carrier verdicts", card.contains("checks.forEachIndexed"))
+        val page = screen.substringAfter("fun MmsSupportScreen(")
+            .substringBefore("@Composable\nprivate fun mmsCheckSubtitle")
         assertFalse(
-            "the switch is a decision, not a read-only check",
-            screen.contains("onChecked = null")
+            "a SettingsGroup would draw each row as its own card again",
+            page.contains("SettingsGroup {")
         )
     }
 }

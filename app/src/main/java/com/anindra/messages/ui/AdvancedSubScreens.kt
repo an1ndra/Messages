@@ -14,9 +14,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -425,42 +428,36 @@ fun MmsSupportScreen(
         title = stringResource(R.string.mms_check_title),
         onBack = onBack
     ) {
-        // The switch comes before the per-SIM verdicts: whether the app sends
-        // MMS at all is a decision the user makes here, and a carrier that
-        // supports it changes nothing while the feature is off.
-        SettingsGroup {
-            SettingsRow(
-                position = RowPosition.SINGLE,
+        // One card, not a run of them: the switch and the per-SIM verdicts
+        // answer the same question, and two cards read as two unrelated things.
+        GroupedRowList(Modifier.padding(horizontal = SettingsLayout.SCREEN_PADDING)) {
+            MmsCardRow(
                 title = stringResource(R.string.settings_mms_enabled),
                 subtitle = stringResource(R.string.settings_mms_enabled_summary),
-                checked = mmsEnabled,
-                onChecked = onMmsEnabledChange
+                trailing = {
+                    Switch(checked = mmsEnabled, onCheckedChange = onMmsEnabledChange)
+                },
+                onClick = { onMmsEnabledChange(!mmsEnabled) },
+                showDivider = true
             )
-        }
-
-        if (checks.isEmpty()) {
-            SettingsGroup {
-                SettingsRow(
-                    position = RowPosition.SINGLE,
-                    title = stringResource(R.string.mms_check_no_sims)
+            if (checks.isEmpty()) {
+                MmsCardRow(
+                    title = stringResource(R.string.mms_check_no_sims),
+                    showDivider = false
                 )
-            }
-        } else {
-            SettingsGroup {
+            } else {
                 checks.forEachIndexed { index, check ->
-                    SettingsRow(
-                        position = when {
-                            checks.size == 1 -> RowPosition.SINGLE
-                            index == 0 -> RowPosition.FIRST
-                            index == checks.lastIndex -> RowPosition.LAST
-                            else -> RowPosition.MIDDLE
-                        },
+                    MmsCardRow(
                         title = check.carrierName?.takeIf { it.isNotBlank() }
                             ?: stringResource(R.string.settings_sim_unknown),
-                        subtitle = mmsCheckSubtitle(check)
+                        subtitle = mmsCheckSubtitle(check),
+                        showDivider = index != checks.lastIndex
                     )
                 }
             }
+        }
+
+        if (checks.isNotEmpty()) {
             SettingsFooter(
                 stringResource(
                     R.string.mms_check_summary,
@@ -471,6 +468,51 @@ fun MmsSupportScreen(
         }
 
         SettingsFooter(stringResource(R.string.mms_check_footer))
+    }
+}
+
+/**
+ * One line of the MMS card: a title, its explanation, and a control or a
+ * verdict. Split by hairlines inside a single [GroupedRowList] rather than each
+ * drawn as its own card, so the switch and the carriers read as one block.
+ */
+@Composable
+internal fun MmsCardRow(
+    title: String,
+    subtitle: String? = null,
+    trailing: @Composable (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+    showDivider: Boolean = true
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = SettingsLayout.ROW_CONTENT_PADDING, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge)
+                if (subtitle != null) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (trailing != null) {
+                Spacer(Modifier.width(12.dp))
+                trailing()
+            }
+        }
+        if (showDivider) {
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier.padding(start = SettingsLayout.ROW_CONTENT_PADDING)
+            )
+        }
     }
 }
 
