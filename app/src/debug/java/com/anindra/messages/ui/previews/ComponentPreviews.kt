@@ -31,7 +31,6 @@ import com.anindra.messages.data.SimCard
 import com.anindra.messages.data.SwipeAction
 import com.anindra.messages.data.DatabaseCompatibility
 import com.anindra.messages.ui.AttachAction
-import com.anindra.messages.ui.AttachSheet
 import com.anindra.messages.ui.AttachTile
 import com.anindra.messages.ui.AttachTray
 import com.anindra.messages.ui.BubblePosition
@@ -719,21 +718,6 @@ private fun SuggestionChipsPreview() {
                 ),
                 onPick = {}
             )
-        }
-    }
-}
-
-@PreviewLightDark
-@Preview(name = "Attach sheet", showBackground = true, widthDp = 380, heightDp = 640)
-@Composable
-private fun AttachSheetPreview() {
-    MessagesTheme(mode = "system") {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            AttachSheet(onGallery = {}, onCamera = {}, onAudio = {}, onLocation = {}, onContact = {}, onDismiss = {})
         }
     }
 }
