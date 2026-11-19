@@ -108,7 +108,13 @@ class SmsReceiver : BroadcastReceiver() {
             val inForeground = ForegroundTracker.isAppInForeground
             val threadOpen = ForegroundTracker.isConversationOpen(address)
             val counts = NotificationPolicy.countsAsUnread(inForeground, threadOpen)
-            repo.receiveMessage(address, body, sysId, subId, markUnread = counts)
+            val convoId = repo.receiveMessage(address, body, sysId, subId, markUnread = counts)
+            // A code moves the thread to the OTP tab: the category was decided
+            // from the message that opened the thread, and a bank's OTPs arrive
+            // in the same thread as its debits.
+            if (OtpNotificationPolicy.carriesCode(body)) {
+                repo.promoteToOtpCategory(convoId, address, body)
+            }
             if (NotificationPolicy.skipForOpenThread(inForeground, threadOpen)) continue
             NotificationHelper.show(context, address, body)
         }
