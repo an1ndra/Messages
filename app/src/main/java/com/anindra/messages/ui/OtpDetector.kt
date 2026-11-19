@@ -36,6 +36,7 @@ object OtpDetector {
         // ── 1. STRONG keyword + digit window (tight) ──
         _strongKeywordBefore(body, candidates)
         _strongKeywordAfter(body, candidates)
+        _strongKeywordNearby(body, candidates)
         _strongKeywordGrouped(body, candidates)
 
         // ── 2. WEAK keyword requires co-occurrence with STRONG or tighter window ──
@@ -65,6 +66,20 @@ object OtpDetector {
     private fun _strongKeywordAfter(body: String, out: MutableList<Candidate>) {
         val pat = Regex(
             """(?<!\d)(\d{4,8})(?:\s*(?:is|:))?\s+(?:(?:your|the|my|google|app|login|bank)\s+){0,3}(?:verification[\s-]?code|one[\s-]?time[\s-]?code|otp|passcode|2fa|security[\s-]?code|verify)\b"""
+        )
+        for (m in pat.findAll(body)) {
+            val dist = m.range.last - m.groups[1]!!.range.last
+            out += Candidate(m.groups[1]!!.range, dist)
+        }
+    }
+
+    // ── Strong: "Use 1234 to verify your number" ──
+    //    The code comes first and the keyword a word or two later, which the
+    //    "is/:" forms above do not cover: a bank that writes "Use 1234 to
+    //    verify your mobile number" left the code undetected.
+    private fun _strongKeywordNearby(body: String, out: MutableList<Candidate>) {
+        val pat = Regex(
+            """(?i)(?<!\d)(\d{4,8})(?!\d)[^\p{L}\d]{0,3}(?:\p{L}{2,10}\s+){0,2}(?:otp|one[\s-]?time|verification|verify|passcode|2fa|security[\s-]?code)\b"""
         )
         for (m in pat.findAll(body)) {
             val dist = m.range.last - m.groups[1]!!.range.last
