@@ -45,6 +45,12 @@ class MessagesApplication : Application() {
             )
         }
         repository = Repository(this)
+        com.anindra.messages.BootDiag.log(
+            this,
+            "app start: dbFile=${database.fileVersion} appDb=${com.anindra.messages.data.DB_VERSION} " +
+                "tooNew=${database.tooNew} firstImportDone=${repository.settings.firstImportDone} " +
+                "readSms=${checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED}"
+        )
         // Widgets render outside the app, so nothing there subscribes to the
         // repository's flows: a change has to be pushed at them.
         repository.onChanged = { com.anindra.messages.widget.WidgetRefresh.request(this) }
@@ -94,7 +100,18 @@ class MessagesApplication : Application() {
                 spamDays = s.retentionSpamDays
             )
             // skip until SMS access is granted; MainActivity re-imports then
-            if (checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
+            val readSms = checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+            com.anindra.messages.BootDiag.log(
+                this@MessagesApplication,
+                "startup worker: readSms=$readSms firstImportDone=${s.firstImportDone} " +
+                    "needsImport=${repository.needsInitialImport}"
+            )
+            if (readSms) {
+                repository.recoverEmptyImportIfNeeded()
+                com.anindra.messages.BootDiag.log(
+                    this@MessagesApplication,
+                    "calling syncFromSystem (recovered=${!repository.settings.firstImportDone})"
+                )
                 repository.syncFromSystem()
                 // Watch for changes made by other apps -- a wipe in SMS Import /
                 // Export has to be noticed without waiting for a restart.

@@ -1,5 +1,6 @@
 package com.anindra.messages.data
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
@@ -4357,6 +4358,25 @@ class Repository(private val context: Context) {
      *
      * Returns true when anything was removed.
      */
+    /**
+     * A local copy that was emptied while the app could not read the system's
+     * messages has to be refilled once it can. "First import done" cannot be
+     * trusted on its own: an earlier sync marked it done after reading nothing,
+     * which left the app with an empty inbox that never imported again.
+     */
+    fun recoverEmptyImportIfNeeded() {
+        if (!settings.firstImportDone) return
+        if (context.checkSelfPermission(Manifest.permission.READ_SMS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return
+        val empty = db.readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM conversations WHERE deleted_at=0", null
+        ).use { it.moveToFirst() && it.getLong(0) == 0L }
+        if (!empty) return
+        android.util.Log.w("RepoSync", "empty copy with SMS access, re-importing")
+        settings.firstImportDone = false
+    }
+
     fun pruneMessagesMissingFromProvider(): Boolean {
         val resolver = context.contentResolver
         val live = HashSet<Long>()
@@ -4392,6 +4412,13 @@ class Repository(private val context: Context) {
                 }
             }
         if (doomed.isEmpty()) return false
+        // An empty provider read is not proof of deletion: without the SMS role
+        // Android hands back zero rows instead of throwing, and trusting that
+        // emptied the local copy the moment the app lost the role.
+        if (live.isEmpty()) {
+            Log.w("RepoSync", "provider returned no ids, not pruning ${doomed.size} rows")
+            return false
+        }
 
         // This deletes user data on the strength of the provider's state, and
         // the local copy is the only one left if the provider was emptied by
@@ -4580,6 +4607,7 @@ class Repository(private val context: Context) {
     }
 
     fun syncFromSystem() {
+        com.anindra.messages.BootDiag.log(context, "syncFromSystem: enter running=$syncRunning")
         if (syncRunning) return
         syncRunning = true
         syncExecutor.execute {
@@ -4790,11 +4818,13 @@ class Repository(private val context: Context) {
                 syncExecutor.execute { mergeSplitConversations() }
                 settings.firstImportDone = true
             } catch (e: SecurityException) {
+                com.anindra.messages.BootDiag.log(context, "syncFromSystem: SecurityException ${e.message}")
                 // no SMS access yet — keep firstImportDone=false so grant re-imports
                 android.util.Log.e("RepoSync", "syncFromSystem skipped: ${e.message}", e)
             } catch (e: Exception) {
+                // Not "done": the provider was not read, so the local copy is
+                // incomplete and has to be retried once access exists again.
                 android.util.Log.e("RepoSync", "syncFromSystem failed: ${e.message}", e)
-                settings.firstImportDone = true
             } finally {
                 _initialSyncProgress.value = null
                 _initialSyncDone.value = true

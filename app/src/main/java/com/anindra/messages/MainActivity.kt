@@ -2357,6 +2357,12 @@ onOpenAccessibility = { navRoute = "accessibility" },
 
     override fun onResume() {
         super.onResume()
+        com.anindra.messages.BootDiag.log(
+            this,
+            "onResume: needsImport=${(application as com.anindra.messages.MessagesApplication).repository.needsInitialImport} " +
+                "readSms=${checkSelfPermission(Manifest.permission.READ_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED} " +
+                "roleHeld=${getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_SMS)}"
+        )
         com.anindra.messages.sms.ForegroundTracker.setAppForeground(true)
         val repo = (application as MessagesApplication).repository
         // import right away once SMS access appears (default-app role, dialog)
