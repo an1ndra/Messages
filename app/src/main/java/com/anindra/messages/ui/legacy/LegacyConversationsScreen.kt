@@ -225,7 +225,12 @@ fun ConversationsScreen(
     // migration that rewrites threads) still starts with it true: trusting the
     // flag alone skipped the skeleton and left a blank list on screen while the
     // work ran. A sync in flight keeps the skeleton and its progress bar.
-    val loaded = minSkeletonShown && syncProgress == null && (syncDone || !readSmsAllowed)
+    // The list shows the moment there is anything to show. The skeleton is for
+    // an inbox that is still being filled for the first time — not for the
+    // background re-sync every launch runs, which used to hold a full inbox
+    // behind a skeleton for as long as the import took.
+    val loaded = minSkeletonShown &&
+        (conversations.isNotEmpty() || !readSmsAllowed || (syncDone && syncProgress == null))
     var sheetConvoId by remember { mutableLongStateOf(-1L) }
     // #340: long-press starts a multi-conversation selection so several threads
     // can be deleted in one go. The redesigned list carries the same bar.
