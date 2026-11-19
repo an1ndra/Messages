@@ -8,9 +8,9 @@ import java.io.File
  * Issue #481: an audio file can be attached, not only a voice note.
  *
  * The transport already handled `audio` — a voice note is stored that way — so
- * what was missing was the way in: a row in the attach sheet and a picker that
- * can reach music and recordings. The photo picker cannot, so the entry has to
- * go through the document picker.
+ * what was missing was the way in: an Audio tile in the attach tray and a picker
+ * that can reach music and recordings. The photo picker cannot, so the entry has
+ * to go through the document picker.
  */
 class AudioAttachmentTest {
 
@@ -25,10 +25,16 @@ class AudioAttachmentTest {
     }
 
     @Test
-    fun theAttachSheetOffersAudio() {
-        val sheet = chat.substringAfter("internal fun AttachSheet(").substringBefore("@Composable")
-        assertTrue("the sheet must take an onAudio callback", sheet.contains("onAudio: () -> Unit"))
-        assertTrue("and draw a row for it", sheet.contains("R.string.chat_media_audio"))
+    fun theAttachTrayOffersAudio() {
+        val tray = chat.substringAfter("AttachTray(")
+        assertTrue(
+            "the tray must offer an Audio tile",
+            tray.contains("R.string.chat_media_audio")
+        )
+        assertTrue(
+            "and the tile must be its own action with its own icon",
+            tray.contains("Icons.Rounded.Audiotrack")
+        )
     }
 
     @Test
