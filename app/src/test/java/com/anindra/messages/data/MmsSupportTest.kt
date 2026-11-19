@@ -481,4 +481,36 @@ class MmsSupportTest {
         // The picture the upgrade backfills belongs to a message already shown.
         assertFalse(MmsSupport.countsAsNewUnread(isMe = false, read = false, alreadyStored = true))
     }
+
+    @Test
+    fun aContactIsSentAsAVCard() {
+        // The receiving phone turns a text/x-vcard part into a contact; sent as
+        // text in the body it shows the BEGIN:VCARD properties instead.
+        assertEquals("text/x-vcard", MmsSupport.outgoingMime(MmsSupport.KIND_CONTACT))
+    }
+
+    @Test
+    fun aVoiceNoteKeepsItsOwnTypeOnTheWire() {
+        // The recorder writes an MPEG-4 alias carriers do not name.
+        assertEquals("audio/mp4", MmsSupport.outgoingMime("audio"))
+        assertNull(MmsSupport.outgoingMime("image"))
+        assertNull(MmsSupport.outgoingMime("video"))
+    }
+
+    @Test
+    fun theConversationPreviewNamesTheAttachment() {
+        assertEquals("Photo", MmsSupport.previewFor("image"))
+        assertEquals("Video", MmsSupport.previewFor("video"))
+        assertEquals("Voice message", MmsSupport.previewFor("audio"))
+        assertEquals("Contact", MmsSupport.previewFor(MmsSupport.KIND_CONTACT))
+        assertEquals("Attachment", MmsSupport.previewFor("file"))
+    }
+
+    @Test
+    fun aSavedContactKeepsTheVcfExtension() {
+        assertEquals(
+            "Alex_1000.vcf",
+            MmsSupport.savedAttachmentName("Alex", 1000L, "text/x-vcard", MmsSupport.SaveTarget.FILE)
+        )
+    }
 }

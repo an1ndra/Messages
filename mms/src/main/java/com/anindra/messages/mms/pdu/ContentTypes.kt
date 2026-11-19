@@ -100,6 +100,11 @@ object ContentTypes {
 
     private val INDEX = TABLE.withIndex().associate { (i, name) -> name to i }
 
+    /** A contact card. In the WSP table as `text/x-vCard`, but a type outside
+     *  the table is written as a text-string and parses the same, so the
+     *  lowercase spelling is the one to compare against. */
+    const val VCARD = "text/x-vcard"
+
     const val MULTIPART_RELATED = "application/vnd.wap.multipart.related"
     const val MULTIPART_MIXED = "multipart/mixed"
     const val MULTIPART_ALTERNATIVE = "multipart/alternative"

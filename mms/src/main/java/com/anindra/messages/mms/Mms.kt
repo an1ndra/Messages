@@ -292,6 +292,7 @@ object SendReqBuilder {
      * generic placeholder.
      */
     private fun mediaPartName(contentType: String): String = when {
+        contentType == ContentTypes.VCARD -> "contact.vcf"
         ContentTypes.isImage(contentType) -> "image"
         ContentTypes.isVideo(contentType) -> "video"
         ContentTypes.isAudio(contentType) -> "audio"

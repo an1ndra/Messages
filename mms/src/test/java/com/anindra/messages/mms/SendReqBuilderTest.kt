@@ -107,6 +107,23 @@ class SendReqBuilderTest {
     }
 
     @Test
+    fun aContactCardIsAVCardPartNamedWithItsExtension() {
+        // The receiving phone turns a text/x-vcard part into a contact. Named
+        // without the .vcf extension the part arrives as a nameless file.
+        val outcome = SendReqBuilder.build(
+            request(caption = "").copy(
+                attachments = listOf(FittedAttachment("text/x-vcard", ByteArray(64)))
+            ),
+            noSender,
+            now,
+        )
+        assertTrue("expected a built PDU, got $outcome", outcome is SendReqOutcome.Built)
+        val part = (outcome as SendReqOutcome.Built).pdu.body!!.partAt(1)!!
+        assertEquals(ContentTypes.VCARD, ContentTypes.normalize(part.contentType!!))
+        assertEquals("contact.vcf", part.name)
+    }
+
+    @Test
     fun aMessageWithoutACaptionHasNoTextPart() {
         val body = built(caption = "   ").body!!
         assertEquals(SendReqBuilder.partCount("   "), body.size)
