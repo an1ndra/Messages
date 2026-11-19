@@ -539,6 +539,13 @@ internal fun ChatBubble(
                             }
                         }
                     }
+                } else if (msg.mediaType == MmsSupport.KIND_CONTACT && msg.mediaUri.isNotBlank()) {
+                    ContactBubble(
+                        uri = msg.mediaUri,
+                        isMe = msg.isMe,
+                        isSelected = isSelected,
+                        onLongPress = onLongPress
+                    )
                 } else if (msg.mediaType == "audio" && msg.mediaUri.isNotBlank()) {
                     VoiceBubble(
                         uri = msg.mediaUri,
@@ -1229,16 +1236,23 @@ fun ChatScreen(
         if (uri != null && uri !in pendingMedia) pendingMedia.add(uri)
     }
 
-    // A contact is sent as a vCard body, so the picker only has to hand back an
-    // id.
+    // A contact leaves as a vCard attachment, so the receiving phone shows a
+    // contact it can save. The picker only has to hand back a contact id.
     val contactLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickContact()
     ) { uri ->
         if (uri != null) {
-            ContactShare.read(context, uri)?.let { (name, number) ->
-                if (ContactShare.isSendable(number)) {
-                    vm.send(conversationId, ContactShare.vCard(name, number), currentSimId)
-                }
+            val picked = ContactShare.read(context, uri)
+            val card = picked?.takeIf { ContactShare.isSendable(it.second) }
+                ?.let { (name, number) -> ContactShare.writeCard(context, name, number) }
+            if (card != null) {
+                vm.sendMediaMessage(conversationId, card, "", MmsSupport.KIND_CONTACT)
+            } else {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.chat_contact_unavailable),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -3416,6 +3430,13 @@ fun MessageRow(
                         }
                     }
                 }
+            } else if (msg.mediaType == MmsSupport.KIND_CONTACT && msg.mediaUri.isNotBlank()) {
+                ContactBubble(
+                    uri = msg.mediaUri,
+                    isMe = msg.isMe,
+                    isSelected = isSelected,
+                    onLongPress = { onLongPress() }
+                )
             } else if (msg.mediaType == "audio" && msg.mediaUri.isNotBlank()) {
                 VoiceBubble(
                     uri = msg.mediaUri,

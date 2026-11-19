@@ -770,7 +770,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val handedOff = SmsSender.sendMms(
                 getApplication(), stored.map { it.id }, recipients, uris,
                 settings.simSubscriptionId, stored.first().body,
-                kinds.map { if (it == "audio") "audio/mp4" else null }
+                kinds.map { MmsSupport.outgoingMime(it) }
             )
             if (!handedOff) {
                 stored.forEach { repo.markMessageStatusSuspend(it.id, "failed") }

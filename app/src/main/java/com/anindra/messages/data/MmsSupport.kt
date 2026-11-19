@@ -319,6 +319,35 @@ object MmsSupport {
         else -> "file"
     }
 
+    /** The kind a contact card is stored as, for its own bubble. */
+    const val KIND_CONTACT = "contact"
+
+    /** What a contact card is declared as on the wire; the receiving phone
+     *  turns a part of this type into a contact rather than into a file. */
+    const val VCARD_MIME = com.anindra.messages.mms.pdu.ContentTypes.VCARD
+
+    /** The MIME an outgoing attachment of this kind is sent with, or null when
+     *  the picked file's own type is the right one.
+     *
+     *  The recorder writes an MPEG-4 alias the carriers do not name, and a
+     *  contact is a cache file whose type has to be declared as the vCard the
+     *  receiving phone looks for. */
+    fun outgoingMime(kind: String): String? = when (kind) {
+        KIND_CONTACT -> VCARD_MIME
+        "audio" -> "audio/mp4"
+        else -> null
+    }
+
+    /** What the conversation list shows for an attachment just sent or received:
+     *  the preview line the thread gets when the message carries no text. */
+    fun previewFor(kind: String): String = when (kind) {
+        "image" -> "Photo"
+        "video" -> "Video"
+        "audio" -> "Voice message"
+        KIND_CONTACT -> "Contact"
+        else -> "Attachment"
+    }
+
     /** The sentence [content] writes when it could not show every attachment.
      *  Only the provider's parts can say whether it is still true. */
     private const val NOTICE_MARKER = "additional/unsupported attachment(s) not displayed"
@@ -410,7 +439,7 @@ object MmsSupport {
         "audio/mp4" to "m4a", "audio/m4a" to "m4a", "audio/x-m4a" to "m4a",
         "audio/mp4a-latm" to "m4a", "audio/aac" to "aac", "audio/3gpp" to "3gp",
         "audio/amr" to "amr", "audio/mpeg" to "mp3", "audio/ogg" to "ogg",
-        "audio/wav" to "wav", "audio/x-wav" to "wav"
+        "audio/wav" to "wav", "audio/x-wav" to "wav", "text/x-vcard" to "vcf"
     )
 
     /** The fallback a saved attachment gets when neither the resolver nor the
