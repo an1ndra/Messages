@@ -65,6 +65,7 @@ object SelectionToolbar {
         "image" -> MmsSupport.SaveTarget.IMAGE
         "video" -> MmsSupport.SaveTarget.VIDEO
         "audio" -> MmsSupport.SaveTarget.AUDIO
+        MmsSupport.KIND_CONTACT -> MmsSupport.SaveTarget.FILE
         else -> null
     }
 
@@ -75,6 +76,7 @@ object SelectionToolbar {
     fun saveLabelRes(target: MmsSupport.SaveTarget, count: Int = 1): Int = when {
         target == MmsSupport.SaveTarget.AUDIO -> R.string.chat_save_voice
         target == MmsSupport.SaveTarget.VIDEO -> R.string.chat_save_video
+        target == MmsSupport.SaveTarget.FILE -> R.string.chat_save_contact
         count > 1 -> R.string.chat_save_images
         else -> R.string.chat_save_image
     }

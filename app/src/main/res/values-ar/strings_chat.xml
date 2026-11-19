@@ -49,6 +49,10 @@
 
     <string name="chat_voice_saved">تم حفظ الرسالة الصوتية في Music/Messages</string>
     <string name="chat_voice_save_failed">تعذر حفظ الرسالة الصوتية</string>
+    <string name="chat_save_contact">حفظ جهة الاتصال</string>
+    <string name="chat_add_to_contacts">إضافة إلى جهات الاتصال</string>
+    <string name="chat_contact_saved">تم حفظ جهة الاتصال في Downloads/Messages</string>
+    <string name="chat_contact_save_failed">تعذّر حفظ جهة الاتصال</string>
 
     <string name="chat_voice_slide_cancel">اسحب للإلغاء</string>
     <string name="chat_voice_release_cancel">اترك للإلغاء</string>

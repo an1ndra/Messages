@@ -802,10 +802,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var saved = 0
             var allAudio = true
             var allVideo = true
+            var allContact = true
             for (msg in messages) {
                 val target = MmsSupport.saveTargetFor(msg.mediaType)
                 if (target != MmsSupport.SaveTarget.AUDIO) allAudio = false
                 if (target != MmsSupport.SaveTarget.VIDEO) allVideo = false
+                if (target != MmsSupport.SaveTarget.FILE) allContact = false
                 val uri = Uri.parse(msg.mediaUri)
                 val bytes = runCatching {
                     resolver.openInputStream(uri)?.use { it.readBytes() }
@@ -821,6 +823,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 val ok = bytes != null && bytes.isNotEmpty() &&
                     DownloadsStore.writeMedia(app, name, mime, bytes, target)
+                if (ok) saved++
                 // The toast is the only evidence a user gets, so the same outcome
                 // names itself for the regression script.
                 android.util.Log.d(
@@ -828,9 +831,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     "target=$target mime=$mime name=$name ok=$ok"
                 )
             }
+            // How many of the selection were written: the toast is chosen from
+            // this, and the regression script reads it back instead of a toast
+            // it cannot see.
+            android.util.Log.d("AttachmentSave", "saved=$saved/${messages.size} contact=$allContact")
             withContext(Dispatchers.Main) {
                 val savedAll = saved == messages.size
                 val message = when {
+                    allContact && savedAll -> R.string.chat_contact_saved
+                    allContact -> R.string.chat_contact_save_failed
                     allAudio && savedAll -> R.string.chat_voice_saved
                     allAudio -> R.string.chat_voice_save_failed
                     allVideo && savedAll -> R.string.chat_video_saved

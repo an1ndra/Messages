@@ -48,6 +48,10 @@
     <string name="chat_video_save_failed">Impossible d\'enregistrer la vidéo</string>
     <string name="chat_voice_saved">Message vocal enregistré dans Musique/Messages</string>
     <string name="chat_voice_save_failed">Impossible d\'enregistrer le message vocal</string>
+    <string name="chat_save_contact">Enregistrer le contact</string>
+    <string name="chat_add_to_contacts">Ajouter aux contacts</string>
+    <string name="chat_contact_saved">Contact enregistré dans Downloads/Messages</string>
+    <string name="chat_contact_save_failed">Impossible d\'enregistrer le contact</string>
     <!-- Voice messages -->
     <string name="chat_voice_slide_cancel">Glisser pour annuler</string>
     <string name="chat_voice_release_cancel">Relâcher pour annuler</string>

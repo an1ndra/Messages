@@ -513,4 +513,34 @@ class MmsSupportTest {
             MmsSupport.savedAttachmentName("Alex", 1000L, "text/x-vcard", MmsSupport.SaveTarget.FILE)
         )
     }
+
+    @Test
+    fun aReceivedContactCardIsShownRatherThanReportedUnsupported() {
+        // A card is a text/x-vcard part. Before this it fell into "additional
+        // unsupported attachment(s) not displayed", so a contact sent to this
+        // app arrived as a notice instead of a card.
+        val content = MmsSupport.content(listOf(MmsSupport.Part(7, "text/x-vcard")))
+        assertEquals(0, content.omittedParts)
+        assertEquals(listOf("contact" to 7L), content.mediaRows())
+        assertEquals("contact", content.mediaType)
+        assertFalse(content.body.contains("not displayed"))
+    }
+
+    @Test
+    fun aCardAlongsideAPictureKeepsBoth() {
+        val content = MmsSupport.content(listOf(
+            MmsSupport.Part(1, "image/png"),
+            MmsSupport.Part(2, "text/x-vcard")
+        ))
+        assertEquals(0, content.omittedParts)
+        assertEquals(listOf("image" to 1L, "contact" to 2L), content.mediaRows())
+    }
+
+    @Test
+    fun aVCardFileIsAKindContact() {
+        assertEquals("contact", MmsSupport.mediaKind("text/x-vcard"))
+        assertEquals("contact", MmsSupport.mediaKind("text/x-vCard; charset=utf-8"))
+        assertTrue(MmsSupport.isVCard("text/x-vcard"))
+        assertFalse(MmsSupport.isVCard("text/plain"))
+    }
 }

@@ -49,6 +49,10 @@
 
     <string name="chat_voice_saved">Голосовое сообщение сохранено в Music/Messages</string>
     <string name="chat_voice_save_failed">Не удалось сохранить голосовое сообщение</string>
+    <string name="chat_save_contact">Сохранить контакт</string>
+    <string name="chat_add_to_contacts">Добавить в контакты</string>
+    <string name="chat_contact_saved">Контакт сохранён в Downloads/Messages</string>
+    <string name="chat_contact_save_failed">Не удалось сохранить контакт</string>
 
     <string name="chat_voice_slide_cancel">Сдвиньте, чтобы отменить</string>
     <string name="chat_voice_release_cancel">Отпустите, чтобы отменить</string>
