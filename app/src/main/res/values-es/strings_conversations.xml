@@ -14,6 +14,7 @@
     <string name="text_placeholder">Mensaje de texto</string>
     <string name="conversations_archived">Archivadas</string>
     <string name="conversations_spam_blocked">Spam y bloqueadas</string>
+    <string name="conversations_back_to_top">Volver arriba</string>
     <string name="conversations_spam_blocked_empty">No hay conversaciones de spam ni bloqueadas</string>
     <string name="spam_tab_conversations">Conversaciones</string>
     <string name="spam_tab_messages">Mensajes</string>

@@ -13,6 +13,7 @@
     <string name="text_placeholder">輸入訊息</string>
     <string name="conversations_archived">已封存</string>
     <string name="conversations_spam_blocked">垃圾郵件與已封鎖</string>
+    <string name="conversations_back_to_top">回到頂端</string>
     <string name="conversations_spam_blocked_empty">沒有垃圾郵件或已封鎖的對話</string>
     <string name="spam_tab_conversations">對話</string>
     <string name="spam_tab_messages">訊息</string>

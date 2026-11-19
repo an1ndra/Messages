@@ -14,6 +14,7 @@
     <string name="text_placeholder">پیام</string>
     <string name="conversations_archived">بایگانی‌شده</string>
     <string name="conversations_spam_blocked">هرزنامه و مسدود</string>
+    <string name="conversations_back_to_top">بازگشت به بالا</string>
     <string name="conversations_spam_blocked_empty">هیچ گفتگوی هرزنامه یا مسدودی نیست</string>
     <string name="spam_tab_conversations">گفتگوها</string>
     <string name="spam_tab_messages">پیام‌ها</string>
