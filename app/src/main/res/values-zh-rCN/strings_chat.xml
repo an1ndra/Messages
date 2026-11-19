@@ -52,6 +52,7 @@
     <string name="chat_add_to_contacts">添加到联系人</string>
     <string name="chat_contact_saved">联系人已保存到 Downloads/Messages</string>
     <string name="chat_contact_save_failed">无法保存联系人</string>
+    <string name="chat_mms_disabled">MMS 已关闭 — 无法发送照片和语音消息</string>
 
     <string name="chat_voice_slide_cancel">滑动取消</string>
     <string name="chat_voice_release_cancel">松开取消</string>

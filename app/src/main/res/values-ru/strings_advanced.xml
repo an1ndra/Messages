@@ -14,6 +14,8 @@
     <string name="settings_font_title">Шрифт</string>
     <string name="settings_advanced_emoji_button">Кнопка эмодзи</string>
     <string name="settings_advanced_emoji_button_desc">Показывать кнопку эмодзи в поле сообщения</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">Фото, голосовые сообщения и контакты отправляются через MMS</string>
     <string name="settings_choose_font">Выберите шрифт</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

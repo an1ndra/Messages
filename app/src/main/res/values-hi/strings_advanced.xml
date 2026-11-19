@@ -14,6 +14,8 @@
     <string name="settings_font_title">फ़ॉन्ट</string>
     <string name="settings_advanced_emoji_button">इमोजी बटन</string>
     <string name="settings_advanced_emoji_button_desc">संदेश फ़ील्ड में इमोजी बटन दिखाएं</string>
+    <string name="settings_mms_enabled">MMS</string>
+    <string name="settings_mms_enabled_summary">फ़ोटो, वॉइस नोट और संपर्क MMS से भेजे जाते हैं</string>
     <string name="settings_choose_font">फ़ॉन्ट चुनें</string>
     <string name="font_dm_sans">DM Sans</string>
     <string name="font_inter">Inter</string>

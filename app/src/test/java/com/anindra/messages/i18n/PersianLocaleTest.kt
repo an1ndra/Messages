@@ -34,7 +34,7 @@ class PersianLocaleTest {
     private val latinByDesign = setOf(
         "font_dm_sans", "font_inter", "font_figtree", "font_poppins",
         "time_format_date", "time_format_divider",
-        "status_sms", "settings_theme_amoled", "settings_sound_dragon",
+        "status_sms", "settings_mms_enabled", "settings_theme_amoled", "settings_sound_dragon",
         "about_licences_subtitle", "settings_import_source_sms_ie_title",
     )
 

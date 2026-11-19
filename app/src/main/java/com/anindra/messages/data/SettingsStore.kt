@@ -91,6 +91,7 @@ class SettingsStore(context: Context) {
         const val KEY_SUGGESTED_REPLIES = "suggested_replies_enabled"
         const val KEY_SHOW_SIM_INDICATOR = "show_sim_indicator"
         const val KEY_EMOJI_BUTTON = "emoji_button_enabled"
+        const val KEY_MMS_ENABLED = "mms_enabled"
         const val KEY_PERMANENT_DELETE = "permanent_delete_enabled"
         const val KEY_PERMANENT_DELETE_WARN = "permanent_delete_warn"
         const val KEY_REVERSE_SWIPE = "reverse_swipe_enabled"
@@ -452,6 +453,19 @@ class SettingsStore(context: Context) {
     var emojiButtonEnabled: Boolean
         get() = prefs.getBoolean(KEY_EMOJI_BUTTON, DEFAULTS_EMOJI_BUTTON)
         set(v) { prefs.edit().putBoolean(KEY_EMOJI_BUTTON, v).apply(); _revision.value++ }
+
+    /**
+     * Whether the app will send MMS at all.
+     *
+     * Turning it off leaves text messaging untouched: the composer loses its
+     * attach button, its tray and the microphone (a voice note is an MMS
+     * attachment), and the emoji button takes the slot the plus had. Incoming
+     * MMS is still received — a picture someone sends is not something the
+     * setting should throw away.
+     */
+    var mmsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_MMS_ENABLED, true)
+        set(v) { prefs.edit().putBoolean(KEY_MMS_ENABLED, v).apply(); _revision.value++ }
 
     var permanentDeleteEnabled: Boolean
         get() = prefs.getBoolean(KEY_PERMANENT_DELETE, false)

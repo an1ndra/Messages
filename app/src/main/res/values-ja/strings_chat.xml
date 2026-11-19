@@ -53,6 +53,7 @@
     <string name="chat_add_to_contacts">連絡先に追加</string>
     <string name="chat_contact_saved">連絡先を Downloads/Messages に保存しました</string>
     <string name="chat_contact_save_failed">連絡先を保存できませんでした</string>
+    <string name="chat_mms_disabled">MMS はオフです — 写真や音声メッセージは送信できません</string>
 
     <string name="chat_voice_slide_cancel">スライドしてキャンセル</string>
     <string name="chat_voice_release_cancel">離してキャンセル</string>
