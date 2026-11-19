@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Dp
 
 /** What the platform says the keyboard covers, with the lying weeded out.
  *
@@ -69,17 +70,21 @@ object ImeGuard {
     }
 }
 
-/** The composer's bottom padding: the reported IME inset, clamped to what the
- *  window can actually show above the keyboard. */
+/** The keyboard's height right now, with an OEM's dishonest report clamped by
+ *  [ImeGuard]. The composer's padding and the tray's slot are both sized from
+ *  this one number, so the two cannot disagree about how tall the keyboard is. */
 @Composable
-fun Modifier.imeGuardedPadding(): Modifier {
+fun imeBottomDp(): Dp {
     val density = LocalDensity.current
     val root = LocalView.current.rootView
     val reported = ImeGuard.reportedBottomPx(WindowInsets.ime.getBottom(density))
     val applied = androidx.compose.runtime.remember(reported) {
         ImeGuard.appliedBottomPx(root, reported)
     }
-    return this.then(
-        Modifier.padding(bottom = with(density) { applied.toDp() })
-    )
+    return with(density) { applied.toDp() }
 }
+
+/** The composer's bottom padding: the reported IME inset, clamped to what the
+ *  window can actually show above the keyboard. */
+@Composable
+fun Modifier.imeGuardedPadding(): Modifier = this.then(Modifier.padding(bottom = imeBottomDp()))
