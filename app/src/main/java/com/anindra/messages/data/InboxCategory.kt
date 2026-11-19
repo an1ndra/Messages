@@ -106,6 +106,23 @@ object InboxCategoryRules {
             rules.filter { it.category == category }
         }
 
+    /**
+     * What a thread's category becomes when a code arrives in it.
+     *
+     * A thread is filed once, from the message that created it, so a bank that
+     * opened with "debited Rs 500" stayed under Transactions and every OTP that
+     * followed was filed there too. A code is the one signal strong enough to
+     * move a thread — but a thread the user filed by their own rule stays where
+     * that rule put it, and Spam never moves.
+     *
+     * @return the category to store, or null to leave the thread alone.
+     */
+    fun afterOtp(current: String, ruleMatched: Boolean): String? = when {
+        ruleMatched -> null
+        current == InboxCategory.OTP.key || current == InboxCategory.SPAM.key -> null
+        else -> InboxCategory.OTP.key
+    }
+
     /** A number matches however either side is written; an alphanumeric sender
      *  ID can only match itself, case aside. */
     private fun sameSender(address: String, pattern: String): Boolean {
