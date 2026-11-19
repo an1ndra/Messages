@@ -22,6 +22,20 @@ class OtpDetectorTest {
     }
 
     @Test
+    fun aCodeBeforeAConnectorWordIsPicked() {
+        // Banks write "Use 1234 to verify ...": the code comes first and the
+        // keyword a couple of words later, which the "is/:" forms miss.
+        assertEquals(listOf("1234"), picked("Use 1234 to verify your mobile number on HDFC Bank."))
+        assertEquals(listOf("556677"), picked("Enter 556677 to verify the login."))
+    }
+
+    @Test
+    fun ordinaryNumbersNearWordsAreNotCodes() {
+        assertEquals(emptyList<String>(), picked("Your order 482913 has shipped"))
+        assertEquals(emptyList<String>(), picked("Call me on 5550100 tomorrow"))
+    }
+
+    @Test
     fun groupedDigitsWithKeyword() {
         assertEquals(listOf("482 913"), picked("OTP: 482 913"))
         assertEquals(listOf("4433-2211"), picked("Your passcode 4433-2211 expires soon"))

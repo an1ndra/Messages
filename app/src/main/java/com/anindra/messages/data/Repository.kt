@@ -1913,6 +1913,27 @@ class Repository(private val context: Context) {
     }
 
     /**
+     * Moves a thread whose newest message is a code into the OTP tab.
+     *
+     * A thread is filed once, when the list first sees it, so a bank thread that
+     * began with a debit stayed under Transactions and its OTPs were filed there
+     * too. A code moves the thread unless the user's own rule files it.
+     */
+    fun promoteToOtpCategory(conversationId: Long, address: String, body: String) {
+        if (conversationId <= 0) return
+        val current = db.readableDatabase.rawQuery(
+            "SELECT category FROM conversations WHERE id=?", arrayOf(conversationId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getString(0).orEmpty() else return }
+        val ruleMatched = InboxCategoryRules.applyRules(address, body, categoryRulesBlocking()) != null
+        val next = InboxCategoryRules.afterOtp(current, ruleMatched) ?: return
+        db.writableDatabase.execSQL(
+            "UPDATE conversations SET category=? WHERE id=?",
+            arrayOf(next, conversationId)
+        )
+        notifyChanged()
+    }
+
+    /**
      * A new message brings an archived conversation back to the inbox (#468).
      *
      * Archiving is a filing decision, and Google Messages — which this app
