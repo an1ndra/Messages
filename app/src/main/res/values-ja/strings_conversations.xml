@@ -14,6 +14,7 @@
     <string name="text_placeholder">テキストメッセージ</string>
     <string name="conversations_archived">アーカイブ</string>
     <string name="conversations_spam_blocked">迷惑メールとブロック</string>
+    <string name="conversations_back_to_top">一番上へ</string>
     <string name="conversations_spam_blocked_empty">迷惑メールまたはブロックされた会話はありません</string>
     <string name="spam_tab_conversations">会話</string>
     <string name="spam_tab_messages">メッセージ</string>

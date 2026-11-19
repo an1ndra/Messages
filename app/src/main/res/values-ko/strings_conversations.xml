@@ -14,6 +14,7 @@
     <string name="text_placeholder">문자 메시지</string>
     <string name="conversations_archived">보관됨</string>
     <string name="conversations_spam_blocked">스팸 및 차단됨</string>
+    <string name="conversations_back_to_top">맨 위로</string>
     <string name="conversations_spam_blocked_empty">스팸 또는 차단된 대화가 없습니다</string>
     <string name="spam_tab_conversations">대화</string>
     <string name="spam_tab_messages">메시지</string>

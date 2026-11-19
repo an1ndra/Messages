@@ -13,6 +13,7 @@
     <string name="text_placeholder">输入消息</string>
     <string name="conversations_archived">已归档</string>
     <string name="conversations_spam_blocked">垃圾邮件和已阻止</string>
+    <string name="conversations_back_to_top">回到顶部</string>
     <string name="conversations_spam_blocked_empty">没有垃圾邮件或已阻止的对话</string>
     <string name="spam_tab_conversations">对话</string>
     <string name="spam_tab_messages">消息</string>
