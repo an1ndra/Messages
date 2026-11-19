@@ -68,8 +68,8 @@ class TwoPaneLayoutTest {
     @Test
     fun anEmptyRightPaneSaysWhatToDo() {
         assertTrue(
-            "with no chat open the right pane is not a blank half screen",
-            Regex("""if \(twoPaneLayout\) \{[\s\S]{0,400}?R\.string\.two_pane_empty""")
+            "with no chat open the split window is not a blank half screen",
+            Regex("""if \(twoPaneLayout\) \{[\s\S]{0,500}?R\.string\.two_pane_empty""")
                 .containsMatchIn(activity)
         )
     }

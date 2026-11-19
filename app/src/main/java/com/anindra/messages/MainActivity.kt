@@ -2093,14 +2093,17 @@ open class MainActivity : FragmentActivity() {
                         label = stringResource(R.string.access_nav)
                     ) { target ->
                         if (target == "list") {
-                            // In a two-pane window the list is its own column,
-                            // so this pane is empty until a chat is opened — and
-                            // says so, rather than showing a blank half screen.
-                            androidx.compose.foundation.layout.Box(
-                                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (twoPaneLayout) {
+                            // A phone draws the list underneath this stack, so
+                            // this pane must stay transparent there: an opaque
+                            // surface here covered the whole inbox and left the
+                            // screen black while the list was still composed
+                            // underneath it. Only a split window owns this pane,
+                            // and only it gets the empty-state card.
+                            if (twoPaneLayout) {
+                                androidx.compose.foundation.layout.Box(
+                                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     androidx.compose.material3.Text(
                                         text = stringResource(R.string.two_pane_empty),
                                         style = MaterialTheme.typography.bodyLarge,
@@ -2108,6 +2111,8 @@ open class MainActivity : FragmentActivity() {
                                         modifier = Modifier.padding(horizontal = 24.dp)
                                     )
                                 }
+                            } else {
+                                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())
                             }
                         } else {
                             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
