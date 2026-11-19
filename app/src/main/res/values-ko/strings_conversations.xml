@@ -45,4 +45,20 @@
     <string name="search_scope_contacts">연락처</string>
     <string name="search_scope_messages">메시지</string>
     <string name="search_scope_no_results">일치하는 항목이 없습니다</string>
+    <string name="search_filter_from">발신인: %s</string>
+    <string name="search_filter_attachments">첨부파일 있음</string>
+    <string name="search_filter_before">%s 이전</string>
+    <string name="search_filter_after">%s 이후</string>
+    <string name="inbox_category_all">전체</string>
+    <string name="inbox_category_personal">개인</string>
+    <string name="inbox_category_transactions">거래</string>
+    <string name="inbox_category_otp">OTP</string>
+    <string name="inbox_category_spam">스팸</string>
+    <string name="settings_inbox_rules_title">카테고리 및 규칙</string>
+    <string name="settings_inbox_rules_subtitle">키워드나 발신자를 탭으로 보냅니다</string>
+    <string name="inbox_rules_add">규칙 추가</string>
+    <string name="inbox_rules_kind_keyword">키워드</string>
+    <string name="inbox_rules_kind_sender">발신자</string>
+    <string name="inbox_rules_empty">아직 규칙이 없습니다</string>
+    <string name="inbox_rules_pattern_hint">키워드 또는 발신자</string>
 </resources>

@@ -31,6 +31,11 @@ class BidiTextTest {
     private fun String.visible(): String =
         filterNot { it == lri || it == pdi || it in '\u200E'..'\u200F' }
 
+    /** The non-breaking stand-ins inside an isolated run are ordinary spaces and
+     *  hyphens on screen. */
+    private fun String.unbreakable(): String =
+        map { if (it == nbsp) ' ' else if (it == nbHyphen) '-' else it }.joinToString("")
+
     @Test
     fun ltrWrapsAndIsIdempotent() {
         assertEquals("$lri+98 999 862 0453$pdi", BidiText.ltr("+98 999 862 0453"))
@@ -57,8 +62,15 @@ class BidiTextTest {
     }
 
     @Test
-    fun leavesPlainDigitRunsAlone() {
-        assertEquals("90007872", BidiText.isolateNumberRuns("90007872").text)
+    fun aBareDigitLineIsPinnedEvenThoughItCannotReorder() {
+        // The line has no strong character, so the platform would lay it out in
+        // the layout direction; the pin is what makes it independent of that.
+        // Its digits are one run either way, but the pin costs nothing visible.
+        assertEquals("$lri" + "90007872" + "$pdi", BidiText.isolateNumberRuns("90007872").text)
+    }
+
+    @Test
+    fun digitsInsideLtrTextNeedNoIsolate() {
         assertEquals("SIM 1", BidiText.isolateNumberRuns("SIM 1").text)
         assertEquals("Order 48291", BidiText.isolateNumberRuns("Order 48291").text)
     }
@@ -69,10 +81,38 @@ class BidiTextTest {
             "test 0999 862 0453",
             BidiText.isolateNumberRuns("test 0999 862 0453").text
         )
+        // A bare number has no strong character, so nothing in the text stops
+        // the platform laying it out right to left — and there the leading '+'
+        // is a terminator of its own run and paints at the far end
+        // ("155589935615+"). Pin it.
         assertEquals(
-            "+155589935615",
+            "$lri+155589935615$pdi",
             BidiText.isolateNumberRuns("+155589935615").text
         )
+    }
+
+    @Test
+    fun aMessageThatIsOnlyAPhoneNumberPaintsLeftToRight() {
+        // #405 follow-up: a body with no letter in it at all, so `lines` calls
+        // it LTR and the platform (TextDirection.Content under an RTL locale)
+        // calls it RTL. Everything the transform emitted before needed another
+        // RTL line in the same message to trigger a pin, so this painted
+        // "7899 456 0123 21+" while the composer showed it correctly.
+        val body = "+21 0123 456 7899"
+        val iso = BidiText.isolateNumberRuns(body)
+        assertEquals("$lri+21${nbsp}0123${nbsp}456${nbsp}7899$pdi", iso.text)
+        assertEquals(body, painted(iso.text, rtl = true).visible().unbreakable())
+        // Worth nothing unless the unpinned text really does reverse: that is
+        // what the report photographed.
+        assertEquals("7899 456 0123 21+", painted(body, rtl = true).visible().unbreakable())
+    }
+
+    @Test
+    fun aBareTimestampMessagePaintsLeftToRight() {
+        val body = "1405/07/30 - 16:59"
+        val iso = BidiText.isolateNumberRuns(body)
+        assertEquals("$lri" + "1405/07/30${nbsp}${nbHyphen}${nbsp}16:59" + "$pdi", iso.text)
+        assertEquals(body, painted(iso.text, rtl = true).visible().unbreakable())
     }
 
     @Test

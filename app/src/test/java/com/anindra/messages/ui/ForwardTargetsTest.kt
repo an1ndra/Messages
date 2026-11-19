@@ -92,6 +92,44 @@ class ForwardTargetsTest {
     }
 
     @Test
+    fun aContactSavedNationallyIsNotOfferedTwiceForItsInternationalConversation() {
+        // A number reaches the picker in two spellings: the address book's
+        // "0912 123 4567" and the thread's "+989121234567". Both rows carried
+        // the same name, so the picker listed the same person twice.
+        val rows = ForwardTargets.build(
+            listOf(Contact("Kami", "0912 123 4567")),
+            listOf(convo("+989121234567", "Kami", 5L)),
+            "",
+            region = "IR"
+        )
+        assertEquals(1, rows.size)
+        assertEquals("0912 123 4567", rows.single().number)
+    }
+
+    @Test
+    fun theInternationalSpellingOfAUSContactIsTheSamePerson() {
+        val rows = ForwardTargets.build(
+            listOf(Contact("Alex", "(555) 777-1010")),
+            listOf(convo("+15557771010", "Alex", 5L)),
+            "",
+            region = "US"
+        )
+        assertEquals(1, rows.size)
+    }
+
+    @Test
+    fun aNumberForwardCannotReachIsNotOffered() {
+        // An alphanumeric sender ID has no digits to dial, so an SMS to it never
+        // leaves the phone. Listing it looked like a target and failed on send.
+        val rows = ForwardTargets.build(
+            emptyList(),
+            listOf(convo("VM-HDFCBK", "Bank", 5L), convo("A1-SRB", "A1", 4L)),
+            ""
+        )
+        assertTrue(rows.isEmpty())
+    }
+
+    @Test
     fun formattingOfANumberDoesNotChangeItsIdentity() {
         val rows = ForwardTargets.build(listOf(Contact("Ann", "+1 (555) 777-1010")), emptyList(), "")
         assertEquals("15557771010", ForwardTargets.digits(rows.single().number))

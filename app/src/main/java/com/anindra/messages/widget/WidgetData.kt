@@ -40,7 +40,9 @@ object WidgetData {
     /** The conversations a widget may show: blocked and archived dropped, then ordered. */
     fun inbox(conversations: List<Conversation>, unreadAtTop: Boolean): List<Conversation> =
         ConversationList.sort(
-            ConversationList.filter(conversations, showArchived = false, query = "") { it.snippet },
+            ConversationList.filter(
+                conversations, showArchived = false, query = "", snippetFor = { it.snippet }
+            ),
             unreadAtTop,
             showArchived = false
         )

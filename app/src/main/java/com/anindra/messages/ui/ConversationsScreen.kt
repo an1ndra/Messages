@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.snap
@@ -116,6 +117,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -137,6 +142,7 @@ import com.anindra.messages.AppViewModel
 import com.anindra.messages.R
 import com.anindra.messages.hideUrls
 import com.anindra.messages.data.Conversation
+import com.anindra.messages.data.InboxCategory
 import com.anindra.messages.data.StarredMessage
 import com.anindra.messages.data.ConversationList
 import com.anindra.messages.data.SwipeAction
@@ -190,7 +196,6 @@ fun ConversationsScreen(
     var showArchived by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
-    var lastBackExitAt by remember { mutableLongStateOf(0L) }
     val syncDone by vm.initialSyncDone.collectAsState()
     val syncProgress by vm.initialSyncProgress.collectAsState()
     // live SMS access state (re-checked on resume)
@@ -286,14 +291,10 @@ fun ConversationsScreen(
     BackHandler(enabled = backHandled && !selectionActive && !searching && showArchived) {
         showArchived = false
     }
+    // One Back from the inbox closes the app: no "press again to exit", which
+    // only ever made the first press look like it did nothing.
     BackHandler(enabled = backHandled && !selectionActive && !searching && !showArchived) {
-        val now = System.currentTimeMillis()
-        if (now - lastBackExitAt < 2000) {
-            (context as? Activity)?.finish()
-        } else {
-            lastBackExitAt = now
-            Toast.makeText(context, context.getString(R.string.conversations_press_back_exit), Toast.LENGTH_SHORT).show()
-        }
+        (context as? Activity)?.finish()
     }
 
     // #374: one snackbar, LIFO. Queuing showSnackbar per swipe showed the oldest
@@ -373,30 +374,39 @@ fun ConversationsScreen(
     val showArchiving = vm.settings.archivingEnabled
     val unreadAtTop = vm.settings.unreadAtTopEnabled
 
-    val starredHits by remember(query, rowSettings.hideLinks) {
-        vm.starredMessages(query, rowSettings.hideLinks)
+    val resolved = rememberSearchQueryFilters(query, vm.settings.calendarSystem)
+
+    val starredHits by remember(resolved, rowSettings.hideLinks) {
+        vm.starredMessages(resolved.text, rowSettings.hideLinks, resolved.messageFilters)
     }.collectAsState(initial = emptyList())
 
-    val messageMatchIds = rememberMessageMatchIds(vm, query)
+    val messageMatchIds = rememberMessageMatchIds(vm, resolved)
 
     val displayed = rememberSearchResults(
-        conversations, showArchived, query, unreadAtTop, rowSettings.hideLinks, messageMatchIds
+        conversations, showArchived, resolved, unreadAtTop, rowSettings.hideLinks, messageMatchIds
     )
 
+    // A thread is classified once, when the list first sees it, and stored; the
+    // tab only ever filters what is already there.
+    LaunchedEffect(conversations) { vm.classifyInboxCategories(conversations) }
+    val categorized = vm.inboxCategory?.let { tab -> displayed.filter { it.category == tab.key } }
+        ?: displayed
     // The conversation-list scopes narrow `displayed`; Starred swaps the list
     // for message rows entirely (see the list branch below). Contacts looks at
-    // who the chat is with, Messages at what was said.
+    // who the chat is with, Messages at what was said. A `from:` filter has
+    // already narrowed `displayed` itself, so the scopes only add their own
+    // rule on top of it.
     val scoped = when {
-        !searching -> displayed
+        !searching -> categorized
         searchScope == SearchScope.Unread -> displayed.filter { it.unreadCount > 0 }
         searchScope == SearchScope.Contacts -> displayed.filter {
-            it.name.contains(query, ignoreCase = true) ||
-                it.address.contains(query, ignoreCase = true) ||
-                it.display.contains(query, ignoreCase = true)
+            it.name.contains(resolved.text, ignoreCase = true) ||
+                it.address.contains(resolved.text, ignoreCase = true) ||
+                it.display.contains(resolved.text, ignoreCase = true)
         }
         searchScope == SearchScope.Messages -> displayed.filter {
             val snippet = if (rowSettings.hideLinks) hideUrls(it.snippet) else it.snippet
-            snippet.contains(query, ignoreCase = true) || it.id in messageMatchIds
+            snippet.contains(resolved.text, ignoreCase = true) || it.id in messageMatchIds
         }
         else -> displayed
     }
@@ -455,6 +465,34 @@ fun ConversationsScreen(
         }
     }
 
+    val revealAtPx = with(LocalDensity.current) { 72.dp.toPx() }
+    // A downward drag the list has nothing left to consume means it is already
+    // at the top: that is the pull that reveals the tabs.
+    val pullToReveal = remember(vm, revealAtPx) {
+        object : NestedScrollConnection {
+            private var pulled = 0f
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                if (source != NestedScrollSource.UserInput || vm.inboxCategoriesRevealed) {
+                    return Offset.Zero
+                }
+                if (available.y <= 0f) {
+                    pulled = 0f
+                    return Offset.Zero
+                }
+                pulled += available.y
+                if (pulled >= revealAtPx) {
+                    pulled = 0f
+                    vm.inboxCategoriesRevealed = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -464,7 +502,7 @@ fun ConversationsScreen(
             }
         }
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
+        Column(Modifier.padding(padding).fillMaxSize().nestedScroll(pullToReveal)) {
 
             if (selectionActive) {
                 ConversationSelectionBar(
@@ -547,6 +585,23 @@ fun ConversationsScreen(
                 SearchScopeChips(
                     selected = searchScope,
                     onSelect = { searchScope = it }
+                )
+                // What the query was understood to filter by, removable with a
+                // tap; a plain query draws nothing here.
+                SearchFilterChips(resolved) { kind ->
+                    query = resolved.parsed.without(kind)
+                }
+            }
+
+            // Hidden until the list is pulled down: the tabs are a thing you
+            // ask for, and the state lives in the view model, so it survives a
+            // trip to a chat or settings and is gone after a restart.
+            AnimatedVisibility(
+                visible = vm.inboxCategoriesRevealed && !searching && !showArchived
+            ) {
+                InboxCategoryChips(
+                    selected = vm.inboxCategory,
+                    onSelect = { vm.inboxCategory = it }
                 )
             }
 
@@ -1386,6 +1441,57 @@ internal enum class SearchScope(val labelRes: Int) {
     Messages(R.string.search_scope_messages),
     Unread(R.string.search_scope_unread),
     Starred(R.string.search_scope_starred)
+}
+
+/** The inbox tabs: the same Material 3 filter chips as the search scopes, one
+ *  row, single select, "All" first so nothing is ever hidden by default. */
+@Composable
+internal fun InboxCategoryChips(
+    selected: InboxCategory?,
+    onSelect: (InboxCategory?) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        InboxCategoryChip(
+            label = stringResource(R.string.inbox_category_all),
+            selected = selected == null,
+            onClick = { onSelect(null) }
+        )
+        InboxCategory.entries.forEach { category ->
+            InboxCategoryChip(
+                label = stringResource(category.labelRes),
+                selected = selected == category,
+                onClick = { onSelect(category) }
+            )
+        }
+    }
+}
+
+internal val InboxCategory.labelRes: Int
+    get() = when (this) {
+        InboxCategory.PERSONAL -> R.string.inbox_category_personal
+        InboxCategory.TRANSACTIONS -> R.string.inbox_category_transactions
+        InboxCategory.OTP -> R.string.inbox_category_otp
+        InboxCategory.SPAM -> R.string.inbox_category_spam
+    }
+
+@Composable
+internal fun InboxCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        shape = RoundedCornerShape(8.dp),
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    )
 }
 
 /** Material 3 filter chips: one row, single select, 32dp tall. */

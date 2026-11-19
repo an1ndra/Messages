@@ -7,6 +7,19 @@ package com.anindra.messages.data
 object ConversationList {
 
     /**
+     * The `from:` operator's rule: who this conversation is with. The saved
+     * name, the display spelling or a number reconciled the way every other
+     * number match in the app is, so `from:+1555…` finds the thread stored as
+     * a bare national number too.
+     */
+    fun senderMatches(conversation: Conversation, value: String): Boolean {
+        if (value.isBlank()) return false
+        if (conversation.name.contains(value, true)) return true
+        if (conversation.display.contains(value, true)) return true
+        return AddressIdentity.matchesNumber(conversation.address, value)
+    }
+
+    /**
      * Drops blocked conversations, keeps either the inbox or the archive, then
      * filters by [query].
      *
@@ -22,7 +35,12 @@ object ConversationList {
         showArchived: Boolean,
         query: String,
         messageMatchIds: Set<Long> = emptySet(),
-        snippetFor: (Conversation) -> String
+        snippetFor: (Conversation) -> String,
+        /** False when a message-level filter (before/after/attachment) is
+         *  active: then only messages that satisfy the filter may surface a
+         *  thread, and the snippet — which is just the newest message's body —
+         *  must not count as one. */
+        snippetIsAMatch: Boolean = true
     ): List<Conversation> = conversations.filter { convo ->
         when {
             convo.blocked -> false
@@ -47,7 +65,7 @@ object ConversationList {
                 val snippet = snippetFor(it)
                 it.id in messageMatchIds ||
                     it.name.contains(query, true) || it.address.contains(query, true) ||
-                    snippet.contains(query, true) ||
+                    (snippetIsAMatch && snippet.contains(query, true)) ||
                     AddressIdentity.matchesNumber(it.address, query)
             }
         }

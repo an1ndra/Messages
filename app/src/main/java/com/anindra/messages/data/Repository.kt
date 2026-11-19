@@ -25,7 +25,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-private const val DB_NAME = "messages.db"
+internal const val DB_NAME = "messages.db"
 private const val PRE_IMPORT_BACKUP_NAME = "pre_import_backup.db"
 private const val IMPORT_TEMP_NAME = "import_temp.db"
 
@@ -64,7 +64,7 @@ private const val IMPORT_PROGRESS_EVERY = 250
 /** Tag for the MMS provider-import trace; see com.anindra.messages.sms.MmsTrace. */
 private const val TRACE = "MmsImport"
 
-private const val DB_VERSION = 33
+internal const val DB_VERSION = 35
 private const val PREFS_NAME = "messages_schema"
 private const val PREF_HEAL_APPLIED = "heal_v1_applied"
 
@@ -90,7 +90,8 @@ class Db(context: Context) :
                 draft TEXT NOT NULL DEFAULT '',
                 draft_date INTEGER NOT NULL DEFAULT 0,
                 deleted_at INTEGER NOT NULL DEFAULT 0,
-                deleted_reason TEXT NOT NULL DEFAULT 'manual')"""
+                deleted_reason TEXT NOT NULL DEFAULT 'manual',
+                category TEXT NOT NULL DEFAULT '')"""
         )
         db.execSQL(
             """CREATE TABLE messages(
@@ -122,6 +123,13 @@ class Db(context: Context) :
         )
         db.execSQL("CREATE INDEX idx_conversations_list ON conversations(deleted_at, pinned, timestamp)")
         db.execSQL("CREATE INDEX idx_conversations_archived ON conversations(archived) WHERE deleted_at=0")
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS category_rules(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind TEXT NOT NULL,
+                pattern TEXT NOT NULL,
+                category TEXT NOT NULL)"""
+        )
         db.execSQL(
             """CREATE TABLE blocked_numbers(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -392,6 +400,23 @@ class Db(context: Context) :
             // generated avatar.
             db.execSQL("ALTER TABLE conversations ADD COLUMN group_avatar TEXT NOT NULL DEFAULT ''")
         }
+        if (oldVersion < 35) {
+            // The user's own filing rules: a word, or a sender, routed to a tab.
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS category_rules(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    kind TEXT NOT NULL,
+                    pattern TEXT NOT NULL,
+                    category TEXT NOT NULL)"""
+            )
+        }
+        if (oldVersion < 34 && !hasColumn(db, "conversations", "category")) {
+            // Which tab of the inbox this thread belongs to. Blank means "not
+            // classified yet": the inbox classifies it on the next read and
+            // writes the result, so every thread that predates this column
+            // lands in a tab instead of falling out of all of them.
+            db.execSQL("ALTER TABLE conversations ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+        }
     }
 
     /**
@@ -621,7 +646,8 @@ class Repository(private val context: Context) {
         db.readableDatabase.rawQuery(
             """SELECT c.id,c.address,c.name,c.snippet,c.timestamp,c.unread_count,c.last_is_me,
                c.archived,c.blocked,c.pinned,c.draft,c.draft_date,c.deleted_at,
-               COALESCE(p.display_destination, c.address), c.group_title, c.group_avatar
+               COALESCE(p.display_destination, c.address), c.group_title, c.group_avatar,
+               c.category
                FROM conversations c
                LEFT JOIN participants p ON p.normalized_destination = c.address
                WHERE c.deleted_at=0 ORDER BY c.pinned DESC, c.timestamp DESC""",
@@ -645,7 +671,8 @@ class Repository(private val context: Context) {
                         deletedAt = c.getLong(12),
                         display = c.getString(13),
                         groupTitle = c.getString(14).orEmpty(),
-                        groupAvatar = c.getString(15).orEmpty()
+                        groupAvatar = c.getString(15).orEmpty(),
+                        category = c.getString(16).orEmpty()
                     )
                 )
             }
@@ -782,15 +809,31 @@ class Repository(private val context: Context) {
      * list uses, so a locked body never surfaces and Hide links cannot be
      * bypassed here (#394).
      */
-    fun starredMessages(query: String, hideLinks: Boolean): Flow<List<StarredMessage>> = observe {
+    fun starredMessages(
+        query: String,
+        hideLinks: Boolean,
+        filters: MessageSearchFilters? = null
+    ): Flow<List<StarredMessage>> = observe {
         val out = mutableListOf<StarredMessage>()
+        val like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        val clauses = mutableListOf("m.starred=1", "m.deleted_at=0", "c.deleted_at=0")
+        val args = mutableListOf<String>()
+        if (query.isNotBlank()) {
+            clauses += "m.body LIKE ? ESCAPE '\\'"
+            args += like
+        }
+        filters?.let {
+            if (it.hasAttachment) clauses += "m.media_uri != ''"
+            it.beforeEndMillis?.let { end -> clauses += "m.timestamp <= ?"; args += end.toString() }
+            it.afterStartMillis?.let { start -> clauses += "m.timestamp >= ?"; args += start.toString() }
+        }
         db.readableDatabase.rawQuery(
             """SELECT m.id,m.conversation_id,m.body,m.timestamp,m.is_me,
                COALESCE(c.name,c.address),c.address,m.locked
                FROM messages m JOIN conversations c ON c.id=m.conversation_id
-               WHERE m.starred=1 AND m.deleted_at=0 AND c.deleted_at=0
+               WHERE ${clauses.joinToString(" AND ")}
                ORDER BY m.timestamp DESC""",
-            null
+            args.toTypedArray()
         ).use { c ->
             while (c.moveToNext()) {
                 val locked = c.getInt(7) == 1
@@ -820,22 +863,41 @@ class Repository(private val context: Context) {
      * Conversations with at least one non-deleted message whose body contains
      * [query], case-insensitively — the home list's global message search, so a
      * word buried in an old message still surfaces its thread. Returns an empty
-     * set for a blank query.
+     * set for a blank query with no message filters.
      */
-    fun conversationIdsMatchingMessage(query: String, hideLinks: Boolean): Flow<Set<Long>> = observe {
+    fun conversationIdsMatchingMessage(
+        query: String,
+        hideLinks: Boolean,
+        filters: MessageSearchFilters? = null
+    ): Flow<Set<Long>> = observe {
         val out = mutableSetOf<Long>()
-        if (query.isNotBlank()) {
-            val like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
-            // The LIKE is only a cheap prefilter: the visibility rule (a locked
-            // body never surfaces, hidden links match only redacted text)
-            // lives in MessageSearch, so SQL cannot quietly disagree with it.
+        val filtersPresent = filters?.isPresent == true
+        if (query.isNotBlank() || filtersPresent) {
+            val clauses = mutableListOf("deleted_at=0")
+            val args = mutableListOf<String>()
+            if (query.isNotBlank()) {
+                // The LIKE is only a cheap prefilter: the visibility rule (a
+                // locked body never surfaces, hidden links match only
+                // redacted text) lives in MessageSearch, so SQL cannot
+                // quietly disagree with it.
+                clauses += "body LIKE ? ESCAPE '\\'"
+                args += "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            }
+            filters?.let {
+                if (it.hasAttachment) clauses += "media_uri != ''"
+                it.beforeEndMillis?.let { end -> clauses += "timestamp <= ?"; args += end.toString() }
+                it.afterStartMillis?.let { start -> clauses += "timestamp >= ?"; args += start.toString() }
+            }
             db.readableDatabase.rawQuery(
-                "SELECT DISTINCT conversation_id, body, locked FROM messages WHERE deleted_at=0 " +
-                    "AND body LIKE ? ESCAPE '\\'",
-                arrayOf(like)
+                "SELECT DISTINCT conversation_id, body, locked FROM messages WHERE " +
+                    clauses.joinToString(" AND "),
+                args.toTypedArray()
             ).use { c ->
                 while (c.moveToNext()) {
-                    if (MessageSearch.matchesVisible(
+                    // With no text to match the row stands as SQL narrowed it;
+                    // a locked body only matters when the text is what matched.
+                    if (query.isBlank() ||
+                        MessageSearch.matchesVisible(
                             c.getString(1).orEmpty(), query, c.getInt(2) == 1, hideLinks
                         )
                     ) out += c.getLong(0)
@@ -1811,6 +1873,9 @@ class Repository(private val context: Context) {
             "UPDATE conversations SET snippet=?,timestamp=?,unread_count=0,last_is_me=?,deleted_at=0 WHERE id=?",
             arrayOf<Any?>(snippet, ts, if (isMe) 1 else 0, conversationId)
         )
+        // A message of ours is the answer a nudge was waiting for (#484), and
+        // every send path ends here, so the card cannot outlive the reply.
+        if (isMe) com.anindra.messages.sms.ReplyNudge.cancel(context, conversationId)
         notifyChanged()
     }
 
@@ -2493,6 +2558,69 @@ class Repository(private val context: Context) {
         notifyChanged()
     }
 
+    /** The user's filing rules, oldest first — the order they are applied in. */
+    fun categoryRulesBlocking(): List<CategoryRule> {
+        val out = mutableListOf<CategoryRule>()
+        db.readableDatabase.rawQuery(
+            "SELECT id,kind,pattern,category FROM category_rules ORDER BY id ASC", null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val kind = RuleKind.fromKey(c.getString(1)) ?: continue
+                val category = InboxCategory.fromKey(c.getString(3)) ?: continue
+                out.add(CategoryRule(c.getLong(0), kind, c.getString(2), category))
+            }
+        }
+        return out
+    }
+
+    fun categoryRules(): Flow<List<CategoryRule>> = observe { categoryRulesBlocking() }
+
+    fun addCategoryRule(kind: RuleKind, pattern: String, category: InboxCategory) {
+        val clean = pattern.trim()
+        if (clean.isEmpty()) return
+        db.writableDatabase.execSQL(
+            "INSERT INTO category_rules(kind,pattern,category) VALUES(?,?,?)",
+            arrayOf(kind.key, clean, category.key)
+        )
+        refileEveryConversation()
+    }
+
+    fun deleteCategoryRule(id: Long) {
+        db.writableDatabase.execSQL("DELETE FROM category_rules WHERE id=?", arrayOf(id))
+        refileEveryConversation()
+    }
+
+    /**
+     * Clears every stored tab so the inbox classifies the threads again with the
+     * rules as they are now. A rule the user just added would otherwise look
+     * broken on every thread they already have.
+     */
+    private fun refileEveryConversation() {
+        db.writableDatabase.execSQL("UPDATE conversations SET category=''")
+        notifyChanged()
+    }
+
+    /** Writes the inbox tab of each threaded, in one transaction and one
+     *  notification. Only rows that have no category yet are touched, so a reply
+     *  cannot move a conversation between tabs. */
+    fun setConversationCategories(assignments: Map<Long, String>) {
+        if (assignments.isEmpty()) return
+        val dbw = db.writableDatabase
+        dbw.beginTransaction()
+        try {
+            assignments.forEach { (id, category) ->
+                dbw.execSQL(
+                    "UPDATE conversations SET category=? WHERE id=? AND category=''",
+                    arrayOf(category, id)
+                )
+            }
+            dbw.setTransactionSuccessful()
+        } finally {
+            dbw.endTransaction()
+        }
+        notifyChanged()
+    }
+
     fun unpinAll() {
         db.writableDatabase.execSQL("UPDATE conversations SET pinned=0 WHERE pinned=1")
         notifyChanged()
@@ -2703,7 +2831,13 @@ class Repository(private val context: Context) {
         return out.distinct()
     }
 
-    fun scheduledMessages(): Flow<List<ScheduledMessage>> = observe {
+    fun scheduledMessages(): Flow<List<ScheduledMessage>> = observe { readScheduledMessages() }
+
+    /** The same rows outside a flow: the shade reconciles at boot and at app
+     *  start, where nothing is collecting. */
+    fun scheduledMessagesBlocking(): List<ScheduledMessage> = readScheduledMessages()
+
+    private fun readScheduledMessages(): List<ScheduledMessage> {
         val out = mutableListOf<ScheduledMessage>()
         db.readableDatabase.rawQuery(
             "SELECT id,address,body,timestamp,conversation_id,sub_id FROM scheduled_messages ORDER BY timestamp ASC",
@@ -2722,7 +2856,42 @@ class Repository(private val context: Context) {
                 )
             }
         }
-        out
+        return out
+    }
+
+    /**
+     * Threads a nudge could apply to (#484): read, unanswered, and not archived,
+     * blocked or trashed. The age test and the once-a-day cap are
+     * [ReplyNudgePolicy]'s, so the rule is one function and not a SQL string.
+     * Read outside a flow — the nudge runs in a background worker.
+     */
+    fun replyNudgeRowsBlocking(): List<ReplyNudgeRow> {
+        val out = mutableListOf<ReplyNudgeRow>()
+        db.readableDatabase.rawQuery(
+            """SELECT id,address,snippet,timestamp,last_is_me,unread_count,archived,blocked,deleted_at
+                 FROM conversations
+                WHERE deleted_at=0 AND archived=0 AND blocked=0
+                  AND unread_count=0 AND last_is_me=0
+                ORDER BY timestamp DESC""",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    ReplyNudgeRow(
+                        conversationId = c.getLong(0),
+                        address = c.getString(1),
+                        snippet = c.getString(2) ?: "",
+                        newest = c.getLong(3),
+                        lastIsMine = c.getInt(4) == 1,
+                        unread = c.getInt(5),
+                        archived = c.getInt(6) == 1,
+                        blocked = c.getInt(7) == 1,
+                        deleted = c.getLong(8) != 0L
+                    )
+                )
+            }
+        }
+        return out
     }
 
     fun addScheduledMessage(address: String, body: String, timestamp: Long, conversationId: Long, subId: Int): Long {
