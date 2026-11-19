@@ -69,10 +69,22 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ -f release.keystore ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
-            ./gradlew --no-daemon assembleRelease
+            task=assembleRelease
           else
-            ./gradlew --no-daemon assembleDebug
+            task=assembleDebug
           fi
+          # See pr-build.yml: a dependency lookup that answers 404 on a cold
+          # cache should not fail the build on its first try.
+          for attempt in 1 2 3; do
+            if ./gradlew --no-daemon "$task"; then
+              exit 0
+            fi
+            echo "::warning::Gradle attempt ${attempt} failed; retrying"
+            rm -rf "${HOME}/.gradle/caches/modules-2"
+            sleep $((attempt * 10))
+          done
+          echo "::error::Gradle failed after 3 attempts"
+          exit 1
 
       - name: Collect APK
         id: apk
