@@ -116,7 +116,11 @@ class SmsReceiver : BroadcastReceiver() {
                 repo.promoteToOtpCategory(convoId, address, body)
             }
             if (NotificationPolicy.skipForOpenThread(inForeground, threadOpen)) continue
-            NotificationHelper.show(context, address, body)
+            // Posted on the chat the message was just filed into, not on a fresh
+            // lookup of the sender: a group started from that chat carries the
+            // same number, and resolving it again posted the group's record for
+            // a private text (#524).
+            NotificationHelper.show(context, address, body, conversationId = convoId)
         }
     }
 }
