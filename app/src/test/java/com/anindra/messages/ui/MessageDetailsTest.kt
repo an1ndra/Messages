@@ -50,4 +50,22 @@ class MessageDetailsTest {
         assertNull(MessageDetails.deliveredAt(msg("received", deliveredAt = 1_700_000_000_500L, isMe = false)))
         assertNull(MessageDetails.deliveredAt(msg("failed", deliveredAt = 1_700_000_000_500L)))
     }
+
+    /**
+     * The bubble's status word is the one place the delivery-reports switch is
+     * visible, so its whole truth table is pinned here. A delivered row
+     * with the switch off must read as the message kind, because the app never
+     * asked the network and the user has no confirmation to show.
+     */
+    @Test
+    fun metaWordNeedsBothTheSwitchAndAConfirmedDelivery() {
+        assertEquals(MessageDetails.Meta.DELIVERED, MessageDetails.meta("delivered", deliveryReports = true))
+        assertEquals(MessageDetails.Meta.KIND, MessageDetails.meta("delivered", deliveryReports = false))
+        assertEquals(MessageDetails.Meta.SENDING, MessageDetails.meta("sending", deliveryReports = true))
+        assertEquals(MessageDetails.Meta.SENDING, MessageDetails.meta("sending", deliveryReports = false))
+        assertEquals(MessageDetails.Meta.KIND, MessageDetails.meta("sent", deliveryReports = true))
+        assertEquals(MessageDetails.Meta.KIND, MessageDetails.meta("failed", deliveryReports = true))
+        assertEquals(MessageDetails.Meta.KIND, MessageDetails.meta("received", deliveryReports = true))
+        assertEquals(MessageDetails.Meta.KIND, MessageDetails.meta("", deliveryReports = true))
+    }
 }
