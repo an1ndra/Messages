@@ -1709,6 +1709,9 @@ fun ChatScreen(
         )
     }
     Scaffold(
+        // >>> M3 : l'inset du clavier est porte par la feuille, pas ici.
+        // Sinon le compositeur serait pousse deux fois vers le haut.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {

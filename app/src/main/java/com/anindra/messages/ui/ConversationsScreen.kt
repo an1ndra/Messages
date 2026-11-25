@@ -167,7 +167,16 @@ fun ConversationsScreen(
      * its Back handler would otherwise answer a bubble's Back (and swallow it)
      * when the chat has handed that decision to the platform (#441).
      */
-    backHandled: Boolean = true
+    backHandled: Boolean = true,
+    /**
+     * Ouvre la liste sur les archives. La destination "Archived" de la barre
+     * de navigation n'a pas de route propre : les archives sont un etat
+     * interne de cet ecran. On le pilote de l'exterieur.
+     */
+    archiveRequest: Boolean = false,
+    onArchiveRequestConsumed: () -> Unit = {},
+    messageRequest: Boolean = false,
+    onMessageRequestConsumed: () -> Unit = {}
 ) {
     val reduceMotion = LocalReduceMotion.current
     val conversations by remember(vm) { vm.conversations }.collectAsState(initial = emptyList())
@@ -202,6 +211,20 @@ fun ConversationsScreen(
     var query by remember { mutableStateOf("") }
     var searchScope by remember { mutableStateOf(SearchScope.All) }
     var showArchived by remember { mutableStateOf(false) }
+    // >>> M3 : la barre de navigation demande la vue Archives
+    androidx.compose.runtime.LaunchedEffect(archiveRequest) {
+        if (archiveRequest) {
+            showArchived = true
+            onArchiveRequestConsumed()
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(messageRequest) {
+        if (messageRequest) {
+            showArchived = false
+            onMessageRequestConsumed()
+        }
+    }
+    // <<< M3
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val syncDone by vm.initialSyncDone.collectAsState()

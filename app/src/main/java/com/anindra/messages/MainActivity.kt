@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -1538,6 +1539,12 @@ open class MainActivity : FragmentActivity() {
         }
 
     private var navRoute by androidx.compose.runtime.mutableStateOf("list")
+    // >>> M3 : demande d'ouverture de la vue Archives, posee par la
+    // barre de navigation du design (pas de route dediee dans l'app)
+    private var archivePulse by mutableStateOf(0)
+    private var messagePulse by mutableStateOf(0)
+    private var navSelected by mutableStateOf(0)
+    // <<< M3
     private var pendingOpenAddress by androidx.compose.runtime.mutableStateOf<String?>(null)
     private var pendingOpenConversationId by androidx.compose.runtime.mutableStateOf<Long?>(null)
     private var pendingShareBody by androidx.compose.runtime.mutableStateOf("")
@@ -2047,6 +2054,12 @@ open class MainActivity : FragmentActivity() {
                 val conversationList: @Composable () -> Unit = {
                     if (useNewUi) ConversationsScreen(
                         vm = vm,
+                        // >>> M3 : ouverture des archives depuis la barre
+                        archiveRequest = archivePulse > 0,
+                        onArchiveRequestConsumed = { archivePulse = 0 },
+                        messageRequest = messagePulse > 0,
+                        onMessageRequestConsumed = { messagePulse = 0 },
+                        // <<< M3
                         onOpenConversation = { id, query ->
                             com.anindra.messages.sms.NotificationHelper
                                 .clearConversationNotification(this@MainActivity, id)
@@ -2301,7 +2314,17 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                             }
                                         }
                                     )
-                                    else -> ChatScreen(
+                                    else -> {
+                                        com.anindra.messages.ui.ChatSheet(
+                                            open = true,
+                                            onDismiss = {
+                                                pendingShareBody = ""
+                                                pendingShareMedia = emptyList()
+                                                navRoute = "list"
+                                            },
+                                            onReopen = { navRoute = "chat" }
+                                        ) {
+                                        ChatScreen(
                                         vm = vm,
                                         conversationId = chatId,
                                         searchQuery = chatSearchQuery,
@@ -2345,7 +2368,9 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         onInitialDraftConsumed = { pendingShareBody = "" },
                                         onInitialMediaConsumed = { pendingShareMedia = emptyList() },
                                         onInitialStagedMediaConsumed = { stagedMediaProbe = emptyList() }
-                                    )
+                                        )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2363,10 +2388,48 @@ onOpenAccessibility = { navRoute = "accessibility" },
                         ) { routePane(Modifier.fillMaxSize()) }
                     }
                 } else {
+                    // >>> M3 : l'onglet de reprise est un frere de la pile,
+                    // aligne en bas. Il ne vit pas dans la liste (il tombait
+                    // sinon dans l'en-tete) et pas dans le chat (il
+                    // disparaissait avec lui).
+                    androidx.compose.foundation.layout.BoxWithConstraints(
+                        Modifier.fillMaxSize()
+                    ) {
                     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                         conversationList()
                         routePane(Modifier.fillMaxSize())
                     }
+                        androidx.compose.foundation.layout.Column(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                        ) {
+                            if (navRoute == "list" || navRoute == "settings") {
+                                androidx.compose.foundation.layout.Box(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
+                                ) {
+                                    com.anindra.messages.ui.M3NavBar(
+                                        selected = navSelected,
+                                        onSelect = { index ->
+                                            when (index) {
+                                                1 -> { navSelected = 1; archivePulse++; navRoute = "list" }
+                                                2 -> { navSelected = 2; navRoute = "settings" }
+                                                else -> { navSelected = 0; messagePulse++; navRoute = "list" }
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                            if (navRoute == "list" && chatId > 0) {
+                                com.anindra.messages.ui.M3ReopenTab(
+                                    onReopen = { navRoute = "chat" }
+                                )
+                            }
+                        }
+                    }
+                    // <<< M3
                 }
             }
         }
