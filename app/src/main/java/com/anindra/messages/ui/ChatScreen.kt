@@ -651,10 +651,11 @@ internal fun ChatBubble(
             } else if (showTime) {
                 // Google shows the type only on your own messages.
                 val statusText = if (msg.isMe) {
-                    when {
-                        deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
-                        msg.status == "sending" -> "Sending…"
-                        else -> com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
+                    when (MessageDetails.meta(msg.status, deliveryReports)) {
+                        MessageDetails.Meta.DELIVERED -> stringResource(R.string.status_delivered)
+                        MessageDetails.Meta.SENDING -> stringResource(R.string.message_status_sending)
+                        MessageDetails.Meta.KIND ->
+                            com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
                     }
                 } else ""
                 val simLabel = remember(msg.subId, showSimIndicator, simCard) {
@@ -1005,7 +1006,11 @@ fun ChatScreen(
             entranceBaseline = messages.maxOfOrNull { it.id } ?: 0L
         }
     }
-    val deliveryReports = remember { vm.deliveryReportsEnabled() }
+    // Read through the settings revision, not remembered once: a switch flipped
+    // in Settings has to reach a chat that is already composed, or the chat
+    // keeps saying "SMS" for messages that really were delivered.
+    val settingsRevision by vm.settings.revision.collectAsState()
+    val deliveryReports = remember(settingsRevision) { vm.deliveryReportsEnabled() }
     var draft by remember { mutableStateOf("") }
     var draftLoaded by remember { mutableStateOf(false) }
     var showEmoji by remember { mutableStateOf(false) }
@@ -3535,10 +3540,18 @@ fun MessageRow(
             }
         } else {
             val statusText = if (msg.isMe) {
-                when {
-                    showStatus && deliveryReports && msg.status == "delivered" -> stringResource(R.string.status_delivered)
-                    showStatus && msg.status == "sending" -> "Sending…"
-                    else -> com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
+                // The status word rides on the newest bubble only; below that the
+                // line stays the message kind, which is what it always said.
+                val meta = if (showStatus) {
+                    MessageDetails.meta(msg.status, deliveryReports)
+                } else {
+                    MessageDetails.Meta.KIND
+                }
+                when (meta) {
+                    MessageDetails.Meta.DELIVERED -> stringResource(R.string.status_delivered)
+                    MessageDetails.Meta.SENDING -> stringResource(R.string.message_status_sending)
+                    MessageDetails.Meta.KIND ->
+                        com.anindra.messages.data.MmsSupport.outgoingKind(msg.mediaType, msg.transport)
                 }
             } else ""
             val prefix = if (statusText.isNotEmpty()) " • $statusText" else ""
