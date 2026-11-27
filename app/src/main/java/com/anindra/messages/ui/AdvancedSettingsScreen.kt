@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.ScrollState
@@ -18,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -29,9 +31,12 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +44,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -61,9 +69,16 @@ onOpenAccessibility: () -> Unit = {},
     onOpenLinks: () -> Unit = {},
     onOpenMmsCheck: () -> Unit = {},
     onOpenTransferLog: () -> Unit = {},
+    onSearchNavigate: (String, Int) -> Unit = { _, _ -> },
     scrollState: ScrollState = rememberScrollState()
 ) {
-    BackHandler(onBack = onBack)
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    val searchScroll = rememberScrollState()
+    val searchFocus = remember { FocusRequester() }
+    LaunchedEffect(searching) { if (searching) searchFocus.requestFocus() }
+    BackHandler(enabled = searching) { searching = false; query = "" }
+    BackHandler(enabled = !searching, onBack = onBack)
 
     val context = LocalContext.current
     val revision by vm.settings.revision.collectAsState()
@@ -82,9 +97,34 @@ onOpenAccessibility: () -> Unit = {},
     var retentionTrashDays by remember(revision) { mutableStateOf(vm.settings.retentionTrashDays) }
     var retentionSpamDays by remember(revision) { mutableStateOf(vm.settings.retentionSpamDays) }
     var fontDialog by remember { mutableStateOf(false) }
-    var calendarDialog by remember { mutableStateOf(false) }
     var keywordsDialog by remember { mutableStateOf(false) }
     var diagReport by remember { mutableStateOf<String?>(null) }
+    val scheduledForSearch by vm.scheduledMessages().collectAsState(initial = emptyList())
+
+    val searchResults = remember(query, revision, scheduledForSearch.size, vm.a11y.enabled,
+        vm.settings.delayedSendingEnabled) {
+        if (query.isBlank()) emptyList() else {
+            SettingsSearch.NEW_OPTIONS.filter { option ->
+                val visible = when {
+                    option.route == SettingsSearch.Route.SETTINGS &&
+                        option.rowRes == R.string.settings_scheduled_title ->
+                        scheduledForSearch.isNotEmpty()
+                    option.route == SettingsSearch.Route.ADVANCED &&
+                        option.rowRes == R.string.accessibility_options_title ->
+                        vm.a11y.enabled
+                    option.route == SettingsSearch.Route.INBOX &&
+                        option.rowRes == R.string.settings_delay_secs_title ->
+                        vm.settings.delayedSendingEnabled
+                    else -> true
+                }
+                visible && SettingsSearch.matches(
+                    query,
+                    context.getString(option.rowRes),
+                    context.getString(option.screenRes)
+                )
+            }
+        }
+    }
 
     Scaffold(
         // Same sheet as General settings: page and app bar are surfaceContainer,
@@ -95,25 +135,103 @@ onOpenAccessibility: () -> Unit = {},
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
-                title = { Text(stringResource(R.string.settings_advanced_title)) },
+                title = {
+                    if (searching) {
+                        TextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            placeholder = { Text(stringResource(R.string.settings_search_hint)) },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            modifier = Modifier.fillMaxWidth().focusRequester(searchFocus)
+                        )
+                    } else {
+                        Text(stringResource(R.string.settings_advanced_title))
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.icon_back))
+                    IconButton(onClick = {
+                        if (searching) { searching = false; query = "" } else onBack()
+                    }) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            stringResource(
+                                if (searching) R.string.icon_close_search else R.string.icon_back
+                            )
+                        )
+                    }
+                },
+                actions = {
+                    if (!searching) {
+                        IconButton(onClick = { searching = true }) {
+                            Icon(Icons.Outlined.Search, stringResource(R.string.icon_search))
+                        }
                     }
                 }
             )
         }
     ) { padding ->
+        if (searching) {
+            Column(
+                Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .verticalScroll(searchScroll)
+                    .padding(horizontal = SettingsLayout.SCREEN_PADDING)
+            ) {
+                Spacer(Modifier.height(SettingsLayout.TOP_GAP))
+                if (searchResults.isEmpty()) {
+                    Text(
+                        stringResource(R.string.settings_search_none),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                } else {
+                    searchResults.forEach { option ->
+                        val label = context.getString(option.rowRes)
+                        val screen = context.getString(option.screenRes)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onSearchNavigate(option.route, option.rowRes)
+                                    searching = false
+                                    query = ""
+                                }
+                                .heightIn(min = 64.dp)
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            Column {
+                                Text(label, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    screen,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            ProvideSettingsSearchJump(scrollState) {
         Column(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-.verticalScroll(scrollState)
+                .verticalScroll(scrollState)
                 .padding(horizontal = SettingsLayout.SCREEN_PADDING)
         ) {
             Spacer(Modifier.height(SettingsLayout.TOP_GAP))
 
-            SettingsGroup {
+            SearchableSettingsCard(0) {
                 SettingsRow(
                 position = RowPosition.FIRST,
                 title = stringResource(R.string.settings_link_behaviour_title),
@@ -137,16 +255,6 @@ onOpenAccessibility: () -> Unit = {},
                 title = stringResource(R.string.settings_font_title),
                 subtitle = fontLabel(vm.fontFamily),
                 onClick = { fontDialog = true }
-                )
-                SettingsRow(
-                position = RowPosition.MIDDLE,
-                title = stringResource(R.string.settings_calendar_title),
-                subtitle = calendarLabel(
-                    vm.settings.calendarChoice,
-                    vm.settings.calendarSystem,
-                    context
-                ),
-                onClick = { calendarDialog = true }
                 )
                 SettingsRow(
                 position = RowPosition.MIDDLE,
@@ -209,6 +317,8 @@ onOpenAccessibility: () -> Unit = {},
                 )
             }
             Spacer(Modifier.height(SettingsLayout.GROUP_GAP))
+        }
+            }
         }
     }
 
@@ -302,14 +412,6 @@ onOpenAccessibility: () -> Unit = {},
             dismissButton = {
                 TextButton(onClick = { fontDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
-        )
-    }
-
-    if (calendarDialog) {
-        CalendarPickerDialog(
-            choice = vm.settings.calendarChoice,
-            onChoose = { vm.settings.calendarChoice = it },
-            onDismiss = { calendarDialog = false }
         )
     }
 

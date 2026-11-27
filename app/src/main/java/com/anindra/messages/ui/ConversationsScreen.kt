@@ -408,6 +408,9 @@ fun ConversationsScreen(
     // A thread is classified once, when the list first sees it, and stored; the
     // tab only ever filters what is already there.
     LaunchedEffect(conversations) { vm.classifyInboxCategories(conversations) }
+    LaunchedEffect(vm.settings.inboxCategoriesEnabled) {
+        if (!vm.settings.inboxCategoriesEnabled) vm.inboxCategory = null
+    }
     val categorized = vm.inboxCategory?.let { tab -> displayed.filter { it.category == tab.key } }
         ?: displayed
     // The conversation-list scopes narrow `displayed`; Starred swaps the list
@@ -487,7 +490,7 @@ fun ConversationsScreen(
     val revealAtPx = with(LocalDensity.current) { 72.dp.toPx() }
     // A downward drag the list has nothing left to consume means it is already
     // at the top: that is the pull that reveals the tabs.
-    val pullToReveal = remember(vm, revealAtPx) {
+    val pullToReveal = remember(vm, revealAtPx, vm.settings.inboxCategoriesEnabled) {
         object : NestedScrollConnection {
             private var pulled = 0f
             override fun onPostScroll(
@@ -495,7 +498,9 @@ fun ConversationsScreen(
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
-                if (source != NestedScrollSource.UserInput || vm.inboxCategoriesRevealed) {
+                if (source != NestedScrollSource.UserInput || vm.inboxCategoriesRevealed ||
+                    !vm.settings.inboxCategoriesEnabled
+                ) {
                     return Offset.Zero
                 }
                 if (available.y <= 0f) {
@@ -617,7 +622,8 @@ fun ConversationsScreen(
             // ask for, and the state lives in the view model, so it survives a
             // trip to a chat or settings and is gone after a restart.
             AnimatedVisibility(
-                visible = vm.inboxCategoriesRevealed && !searching && !showArchived
+                visible = vm.settings.inboxCategoriesEnabled &&
+                    vm.inboxCategoriesRevealed && !searching && !showArchived
             ) {
                 InboxCategoryChips(
                     selected = vm.inboxCategory,

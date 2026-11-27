@@ -62,4 +62,6 @@
     <string name="inbox_rules_kind_sender">Отправитель</string>
     <string name="inbox_rules_empty">Правил пока нет</string>
     <string name="inbox_rules_pattern_hint">Слово или отправитель</string>
+    <string name="settings_inbox_categories_title">Показывать категории</string>
+    <string name="settings_inbox_categories_subtitle">Вкладки категорий на главном экране</string>
 </resources>
