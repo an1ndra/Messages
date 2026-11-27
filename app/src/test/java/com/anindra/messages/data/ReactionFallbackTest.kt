@@ -3,6 +3,7 @@ package com.anindra.messages.data
 import com.anindra.messages.ui.MessageReactions
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -45,5 +46,45 @@ class ReactionFallbackTest {
     @Test
     fun theSnippetIsCappedSoTheNoticeCannotOverflowASms() {
         assertTrue(MessageReactions.quote("x".repeat(500)).length <= 60)
+    }
+
+    @Test
+    fun iosQuotedEmojiReactionFindsTheTarget() {
+        assertEquals(
+            ReactionFallback.Parsed("😂", "ای هعی 😂", true),
+            ReactionFallback.parse("Reacted 😂 to “ای هعی 😂”")
+        )
+        assertEquals(
+            ReactionFallback.Parsed("😂", "آیفون دار مرفه 📱", true),
+            ReactionFallback.parse("Reacted 😂 to “آیفون دار مرفه 📱”")
+        )
+    }
+
+    @Test
+    fun iosWordedTapbacksMapToEmoji() {
+        assertEquals(
+            ReactionFallback.Parsed("❓", "لفت دونوم چنه", true),
+            ReactionFallback.parse("Questioned “لفت دونوم چنه”")
+        )
+        assertEquals(
+            ReactionFallback.Parsed("❓", "لفت دونوم چنه", false),
+            ReactionFallback.parse("Removed a question mark from “لفت دونوم چنه”")
+        )
+        assertEquals(
+            ReactionFallback.Parsed("👍", "hello", true),
+            ReactionFallback.parse("Liked “hello”")
+        )
+        assertEquals(
+            ReactionFallback.Parsed("❤️", "hello", false),
+            ReactionFallback.parse("Removed a heart from “hello”")
+        )
+    }
+
+    @Test
+    fun unquotedNoticesStayOrdinaryMessages() {
+        assertNull(ReactionFallback.parse("Reacted 👍 to hello world"))
+        assertNull(ReactionFallback.parse("Removed 👍 from hello world"))
+        assertNull(ReactionFallback.parse("Removed you from the group"))
+        assertNull(ReactionFallback.parse("Questioned hello without quotes"))
     }
 }
