@@ -41,6 +41,10 @@
     <string name="settings_pin_error_mismatch">Hasła PIN nie są zgodne</string>
     <string name="convo_moved_to_trash">Rozmowa przeniesiona do kosza</string>
     <string name="convo_archived">Rozmowa zarchiwizowana</string>
+    <string name="archive_inbound_choice_title">Nowe wiadomości w zarchiwizowanych czatach</string>
+    <string name="archive_inbound_choice_body">Nowa wiadomość zwykle przywraca zarchiwizowany czat do skrzynki odbiorczej. Wybierz, co ma się dziać od teraz. Ten wybór zostanie zapamiętany.</string>
+    <string name="archive_inbound_choice_inbox">Przenieś do skrzynki odbiorczej</string>
+    <string name="archive_inbound_choice_archive">Zostaw w archiwum</string>
     <string name="action_undo">Cofnij</string>
     <string name="lock_error_no_screen_lock">Blokady aplikacji nie można używać, ponieważ to urządzenie nie ma blokady ekranu (odbitnik, twarz lub PIN) do weryfikacji Twojej tożsamości.</string>
     <string name="sim_default">Domyślne</string>

@@ -41,6 +41,10 @@
     <string name="settings_pin_error_mismatch">PIN-коды не совпадают</string>
     <string name="convo_moved_to_trash">Переписка перемещена в корзину</string>
     <string name="convo_archived">Переписка отправлена в архив</string>
+    <string name="archive_inbound_choice_title">Новые сообщения в архивных чатах</string>
+    <string name="archive_inbound_choice_body">Новое сообщение обычно возвращает архивный чат во входящие. Выберите, что делать с такими чатами отныне. Этот выбор запоминается.</string>
+    <string name="archive_inbound_choice_inbox">Вернуть во входящие</string>
+    <string name="archive_inbound_choice_archive">Оставить в архиве</string>
     <string name="action_undo">Отменить</string>
     <string name="lock_error_no_screen_lock">Блокировку приложения нельзя использовать, так как на устройстве не настроена блокировка экрана (отпечаток, лицо или PIN) для проверки личности.</string>
     <string name="sim_default">Основная</string>

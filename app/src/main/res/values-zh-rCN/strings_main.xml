@@ -38,6 +38,10 @@
     <string name="settings_pin_error_mismatch">PIN 码不一致</string>
     <string name="convo_moved_to_trash">对话已移至回收站</string>
     <string name="convo_archived">对话已归档</string>
+    <string name="archive_inbound_choice_title">已归档对话中的新消息</string>
+    <string name="archive_inbound_choice_body">收到新消息时，已归档的对话通常会回到收件箱。请选择今后的处理方式。此选择会被记住。</string>
+    <string name="archive_inbound_choice_inbox">移回收件箱</string>
+    <string name="archive_inbound_choice_archive">保持归档</string>
     <string name="action_undo">撤销</string>
     <string name="lock_error_no_screen_lock">应用锁定无法使用，因为此设备没有屏幕锁定（指纹、人脸或密码）来验证您的身份。</string>
     <string name="sim_default">默认</string>

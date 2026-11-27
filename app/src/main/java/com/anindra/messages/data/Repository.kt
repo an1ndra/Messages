@@ -1942,6 +1942,7 @@ class Repository(private val context: Context) {
      * to pull a conversation out of the archive.
      */
     private fun unarchiveForInbound(conversationId: Long) {
+        if (settings.keepArchivedOnInbound) return
         db.writableDatabase.execSQL(
             "UPDATE conversations SET archived=0 WHERE id=? AND archived=1",
             arrayOf(conversationId.toString())

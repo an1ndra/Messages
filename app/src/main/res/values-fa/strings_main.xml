@@ -37,6 +37,10 @@
     <string name="settings_pin_error_mismatch">پین‌ها یکسان نیستند</string>
     <string name="convo_moved_to_trash">گفتگو به سطل زباله منتقل شد</string>
     <string name="convo_archived">گفتگو بایگانی شد</string>
+    <string name="archive_inbound_choice_title">پیام‌های جدید در گفتگوهای بایگانی‌شده</string>
+    <string name="archive_inbound_choice_body">پیام جدید معمولاً گفتگوی بایگانی‌شده را به صندوق ورودی بازمیگرداند. از این پس مشخص کنید که چه اتفاقی بیفتد. این انتخاب ذخیره میشود.</string>
+    <string name="archive_inbound_choice_inbox">انتقال به صندوق ورودی</string>
+    <string name="archive_inbound_choice_archive">نگه داشتن در بایگانی</string>
     <string name="action_undo">واگرد</string>
     <string name="lock_error_no_screen_lock">قفل برنامه قابل استفاده نیست، چون این دستگاه قفل صفحه‌ای (اثر انگشت، چهره یا پین) ندارد تا هویت شما را تأیید کند.</string>
     <string name="sim_default">پیش‌فرض</string>
