@@ -2,6 +2,7 @@ package com.anindra.messages.diagnostics
 
 import com.anindra.messages.crash.CrashAppInfo
 import com.anindra.messages.data.SimCard
+import com.anindra.messages.ui.BackToTop
 import com.anindra.messages.crash.CrashDeviceInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -240,5 +241,24 @@ class DiagnosticsReportTest {
     fun aProviderWithOnePartSaysSo() {
         val lines = MmsDetails(scanned = 20).providerLines()
         assertEquals(listOf("Provider MMS: no multi-part MMS among the newest 20"), lines)
+    }
+
+    @Test
+    fun reportStatesTheEdgeTheBackToTopButtonEntersFrom() {
+        val text = DiagnosticsReport.format(
+            DiagnosticsData(
+                device = device,
+                app = app,
+                appDetails = appDetails.copy(backToTopEntry = BackToTop.ENTRY_DESCRIPTION),
+                selectedSubId = 7,
+                phoneStateGranted = true,
+                multiSim = false,
+                phoneCount = 1,
+                sims = emptyList(),
+                display = display,
+                timestamp = 0L
+            )
+        )
+        assertTrue(text.contains("Back-to-top entry: from bottom"))
     }
 }

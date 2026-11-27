@@ -123,6 +123,12 @@ object InboxCategoryRules {
         else -> InboxCategory.OTP.key
     }
 
+    /** The text a thread's tab is decided from. The list preview is the newest
+     *  message: a later "Thanks" must not hide the code or debit that opened
+     *  the thread. A thread with no messages yet falls back to the preview. */
+    fun openingBody(firstMessage: String, preview: String): String =
+        firstMessage.ifBlank { preview }
+
     /** A number matches however either side is written; an alphanumeric sender
      *  ID can only match itself, case aside. */
     private fun sameSender(address: String, pattern: String): Boolean {

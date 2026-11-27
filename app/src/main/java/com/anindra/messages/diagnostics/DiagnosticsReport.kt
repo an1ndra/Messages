@@ -30,6 +30,7 @@ import com.anindra.messages.data.TransferEntry
 import com.anindra.messages.data.TransferLog
 import com.anindra.messages.data.TransferLogStore
 import com.anindra.messages.data.TransferOperation
+import com.anindra.messages.ui.BackToTop
 import com.anindra.messages.ui.DateStyle
 import com.anindra.messages.ui.formatDate
 import com.anindra.messages.ui.theme.A11yOptions
@@ -139,6 +140,8 @@ data class AppDetails(
     val resolvedStartChat: String = "",
     /** The silhouette ink an avatar resolves to under the current scheme. */
     val resolvedAvatarInk: String = "",
+    /** The edge the back-to-top shortcut animates in from, as the button declares it. */
+    val backToTopEntry: String = "",
     val notificationsEnabled: Boolean,
     /**
      * What the voice-note recorder writes and how long it may run.
@@ -339,6 +342,9 @@ object DiagnosticsReport {
             appendLine("Calendar sample: ${data.appDetails.calendarSample}")
             appendLine("Resolved page colour: ${data.appDetails.resolvedBackground}")
             appendLine("Resolved Start chat colours: ${data.appDetails.resolvedStartChat}")
+            if (data.appDetails.backToTopEntry.isNotBlank()) {
+                appendLine("Back-to-top entry: ${data.appDetails.backToTopEntry}")
+            }
             // The rule is the same for every theme, so this line is the same for
             // every theme: it states the rule rather than reporting a per-mode
             // value that would make two identical builds look different.
@@ -750,6 +756,7 @@ object DiagnosticsReport {
                     context, settings.themeMode, themeIsDark(settings.themeMode, systemIsDark())
                 )
             ),
+            backToTopEntry = BackToTop.ENTRY_DESCRIPTION,
             notificationsEnabled = settings.notificationsEnabled,
             voiceNote = voiceNote,
             fontFamily = settings.fontFamily,
