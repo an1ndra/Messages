@@ -778,6 +778,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // The rows exist now, so the composer may stop holding the pictures
             // and their caption; the hand-off below only decides the status.
             onStored(stored.size)
+            if (settings.soundsEnabled) {
+                NotificationHelper.playSentSound(getApplication(), "mms")
+            }
             // A group MMS addresses every member in one PDU, unlike SMS which
             // is sent once per person.
             val recipients = repo.conversationRecipients(conversationId)
