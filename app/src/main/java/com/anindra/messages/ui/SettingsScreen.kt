@@ -125,6 +125,7 @@ fun SettingsScreen(
 
     var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
+    var deliveryReports by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
 
     var simDialog by remember { mutableStateOf(false) }
     // Seeded from the phone rather than from an empty list: starting empty made
@@ -334,6 +335,19 @@ fun SettingsScreen(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_mark_read_title),
                     onClick = { markReadDialog = true }
+                )
+                // The redesigned screen dropped this row while the legacy one
+                // kept it, so the switch became unreachable and delivery
+                // confirmations were never asked for.
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_delivery_reports_title),
+                    subtitle = stringResource(R.string.settings_delivery_reports_subtitle),
+                    checked = deliveryReports,
+                    onChecked = {
+                        deliveryReports = it
+                        vm.settings.deliveryReportsEnabled = it
+                    }
                 )
                 // Android owns this one: its per-app Bubbles page already carries
                 // the same All / Selected / Nothing choice, and mirroring it here
