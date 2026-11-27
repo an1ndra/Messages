@@ -28,6 +28,7 @@ import com.anindra.messages.ui.SettingsGroup
 import com.anindra.messages.ui.SettingsRow
 import com.anindra.messages.ui.SkeletonMessageRow
 import com.anindra.messages.ui.SwipeActionPreview
+import com.anindra.messages.ui.SwipeActionsScreen
 import com.anindra.messages.ui.SwipeConversationItem
 import com.anindra.messages.ui.SwipeDirection
 import com.anindra.messages.ui.legacy.SettingsCard
@@ -222,5 +223,20 @@ private fun MmsSupportPreview() {
     // device with no SIMs shows, and it is easy to break the branch on.
     Stage {
         MmsSupportScreen(onBack = {}, mmsEnabled = true, onMmsEnabledChange = {})
+    }
+}
+
+@PreviewLightDark
+@Preview(name = "Swipe actions", showBackground = true, widthDp = 380)
+@Composable
+private fun SwipeActionsPreview() {
+    Stage {
+        SwipeActionsScreen(
+            leftAction = SwipeAction.ARCHIVE,
+            rightAction = SwipeAction.DELETE,
+            onLeftChange = {},
+            onRightChange = {},
+            onBack = {}
+        )
     }
 }

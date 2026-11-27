@@ -39,14 +39,13 @@
     <string name="settings_sim_unknown">SIM inconnue</string>
     <string name="mms_check_title">Prise en charge MMS</string>
     <string name="mms_check_subtitle">Vérifier chaque carte SIM pour les MMS</string>
-    <string name="mms_check_summary">%1$d cartes SIM sur %2$d ont la fonction MMS activée par leur opérateur</string>
     <string name="mms_check_verdict_supported">Activé par l\'opérateur</string>
     <string name="mms_check_verdict_disabled">Désactivé sur cet opérateur</string>
     <string name="mms_check_verdict_no_carrier">Aucun réseau sur cette carte SIM</string>
     <string name="mms_check_verdict_unknown">Impossible de vérifier</string>
     <string name="mms_check_number_hidden">Numéro non communiqué par l\'opérateur</string>
     <string name="mms_check_country">%1$s · %2$s</string>
-    <string name="mms_check_footer">Chaque carte SIM est vérifiée par rapport aux paramètres MMS publiés par son propre opérateur, car les paramètres peuvent varier d\'un opérateur à l\'autre au sein d\'un même pays. Cette vérification rend compte des informations fournies par l\'opérateur et ne constitue pas un test du service MMS : pour effectuer ce dernier, il faudrait accéder aux paramètres APN du système, que seule une application disposant de droits privilégiés peut lire. Le code pays provient du numéro de la carte SIM lorsque l\'opérateur le communique, et du réseau de la carte SIM dans le cas contraire.</string>
+    <string name="mms_check_footer">Cette vérification ne confirme pas que votre carte SIM prend en charge les MMS. Cette application hors ligne lit ce que déclare chaque opérateur, mais ne peut pas tester le réseau ni les paramètres APN : la prise en charge des MMS n’est donc jamais garantie.</string>
     <string name="mms_check_no_sims">Aucune carte SIM active trouvée</string>
     <string name="transfer_log_title">Journal des importations et exportations</string>
     <string name="transfer_log_subtitle">Importations et exportations récentes et ce qu\'elles ont ignoré</string>

@@ -109,7 +109,8 @@ fun InboxSettingsScreen(
     var pinned by remember(revision) { mutableStateOf(vm.settings.pinnedEnabled) }
     var leftAction by remember(revision) { mutableStateOf(vm.settings.swipeLeftAction) }
     var rightAction by remember(revision) { mutableStateOf(vm.settings.swipeRightAction) }
-    var pickingDirection by remember { mutableStateOf<SwipeDirection?>(null) }
+    var showSwipeActions by remember { mutableStateOf(false) }
+    var deliveryReports by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
     var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
     var forwarding by remember(revision) { mutableStateOf(vm.settings.forwardingEnabled) }
     var delayed by remember(revision) { mutableStateOf(vm.settings.delayedSendingEnabled) }
@@ -121,6 +122,23 @@ fun InboxSettingsScreen(
 
     if (showRules) {
         InboxCategoryRulesScreen(vm, onBack = { showRules = false })
+        return
+    }
+
+    if (showSwipeActions) {
+        SwipeActionsScreen(
+            leftAction = leftAction,
+            rightAction = rightAction,
+            onLeftChange = { picked ->
+                leftAction = picked
+                vm.settings.swipeLeftAction = picked
+            },
+            onRightChange = { picked ->
+                rightAction = picked
+                vm.settings.swipeRightAction = picked
+            },
+            onBack = { showSwipeActions = false }
+        )
         return
     }
 
@@ -172,25 +190,25 @@ fun InboxSettingsScreen(
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,
-                    title = stringResource(R.string.swipe_left_title),
-                    subtitle = stringResource(leftAction.labelRes()),
-                    onClick = { pickingDirection = SwipeDirection.LEFT },
+                    title = stringResource(R.string.settings_swipe_actions_title),
                     trailing = { ChangeAffordance() },
-                    preview = { SwipeActionPreview(SwipeDirection.LEFT, leftAction) }
-                )
-                SettingsRow(
-                    position = RowPosition.MIDDLE,
-                    title = stringResource(R.string.swipe_right_title),
-                    subtitle = stringResource(rightAction.labelRes()),
-                    onClick = { pickingDirection = SwipeDirection.RIGHT },
-                    trailing = { ChangeAffordance() },
-                    preview = { SwipeActionPreview(SwipeDirection.RIGHT, rightAction) }
+                    onClick = { showSwipeActions = true }
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_unread_top_title),
                     checked = unreadAtTop,
                     onChecked = { unreadAtTop = it; vm.settings.unreadAtTopEnabled = it }
+                )
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_delivery_reports_title),
+                    subtitle = stringResource(R.string.settings_delivery_reports_subtitle),
+                    checked = deliveryReports,
+                    onChecked = {
+                        deliveryReports = it
+                        vm.settings.deliveryReportsEnabled = it
+                    }
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,
@@ -242,23 +260,6 @@ fun InboxSettingsScreen(
             blockedNumbers = blockedNumbers,
             onUnblock = vm::unblockNumber,
             onDismiss = { showBlocked = false }
-        )
-    }
-
-    pickingDirection?.let { dir ->
-        SwipeActionDialog(
-            current = if (dir == SwipeDirection.LEFT) leftAction else rightAction,
-            onPick = { picked ->
-                if (dir == SwipeDirection.LEFT) {
-                    leftAction = picked
-                    vm.settings.swipeLeftAction = picked
-                } else {
-                    rightAction = picked
-                    vm.settings.swipeRightAction = picked
-                }
-                pickingDirection = null
-            },
-            onDismiss = { pickingDirection = null }
         )
     }
 

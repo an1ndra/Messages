@@ -26,6 +26,10 @@ class DeliveryReportsWiringTest {
             ?: error("app/src/main not found")
     }
 
+    private val inboxScreen: String by lazy {
+        File(main, "java/com/anindra/messages/ui/InboxSettingsScreen.kt").readText()
+    }
+
     private val settingsScreen: String by lazy {
         File(main, "java/com/anindra/messages/ui/SettingsScreen.kt").readText()
     }
@@ -37,14 +41,14 @@ class DeliveryReportsWiringTest {
     /** The `deliveryReports` state and the row that toggles it. */
     private val deliveryRows: List<String>
         get() = Regex("""SettingsRow\([\s\S]*?settings_delivery_reports_title[\s\S]*?\n\s*\)""")
-            .findAll(settingsScreen)
+            .findAll(inboxScreen)
             .map { it.value }
             .toList()
 
     @Test
-    fun theRedesignedSettingsScreenOffersTheSwitch() {
+    fun inboxSettingsOffersTheSwitch() {
         assertTrue(
-            "the redesigned Settings screen renders no Delivery reports row",
+            "Inbox settings renders no Delivery reports row",
             deliveryRows.isNotEmpty()
         )
         val row = deliveryRows.first()
@@ -54,11 +58,19 @@ class DeliveryReportsWiringTest {
     }
 
     @Test
+    fun generalSettingsNoLongerOwnsTheSwitch() {
+        assertFalse(
+            "Delivery reports is still on General settings",
+            settingsScreen.contains("settings_delivery_reports_title")
+        )
+    }
+
+    @Test
     fun theSwitchStartsFromTheStoredValue() {
         assertTrue(
-            "the screen's deliveryReports state is not seeded from the setting",
+            "Inbox settings' deliveryReports state is not seeded from the setting",
             Regex("""var deliveryReports by remember\(revision\) \{ mutableStateOf\(vm\.settings\.deliveryReportsEnabled\) \}""")
-                .containsMatchIn(settingsScreen)
+                .containsMatchIn(inboxScreen)
         )
     }
 
