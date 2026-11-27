@@ -51,10 +51,10 @@
     <string name="settings_notif_action_delete_title">Action \"Supprimer\"</string>
     <string name="settings_notif_action_delete_subtitle">Afficher un bouton \"Supprimer\" sur la notification</string>
     <string name="settings_suggested_replies_title">Réponses suggérées</string>
-    <string name="settings_suggested_replies_subtitle">Proposer des réponses en un geste au-dessus du champ de message et sur la notification</string>
-    <string name="settings_reply_nudge_title">Rappel des messages sans réponse</string>
-    <string name="settings_reply_nudge_subtitle">Me rappeler de répondre à un message laissé sans réponse</string>
-    <string name="settings_reply_nudge_after_title">Rappeler après</string>
+    <string name="settings_suggested_replies_subtitle">Proposer des réponses en un clic au-dessus de la boîte de message et sur la notification</string>
+    <string name="settings_reply_nudge_title">Rappel pour les messages sans réponse</string>
+    <string name="settings_reply_nudge_subtitle">Me rappeler de répondre à un message auquel je n\'ai pas encore répondu</string>
+    <string name="settings_reply_nudge_after_title">Rappel après</string>
     <string name="settings_reply_nudge_one_day">1 jour</string>
     <string name="settings_reply_nudge_two_days">2 jours</string>
     <string name="settings_reply_nudge_three_days">3 jours</string>
