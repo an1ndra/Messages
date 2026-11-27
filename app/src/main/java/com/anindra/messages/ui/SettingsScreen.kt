@@ -55,10 +55,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.unit.IntSize
 import com.anindra.messages.ui.theme.motionSpring
 import com.anindra.messages.ui.theme.LocalReduceMotion
+import com.anindra.messages.ui.theme.Motion
+import com.anindra.messages.ui.theme.motionTween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -71,6 +74,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -316,6 +320,7 @@ fun SettingsScreen(
             )
         }
 
+        ProvideSettingsSearchJump(scrollState) {
         Column(
             Modifier
                 .padding(padding)
@@ -325,7 +330,7 @@ fun SettingsScreen(
         ) {
             Spacer(Modifier.height(SettingsLayout.TOP_GAP))
 
-            SettingsGroup {
+            SearchableSettingsCard(0) {
                 SettingsRow(
                     position = RowPosition.FIRST,
                     title = stringResource(R.string.settings_notif_title),
@@ -389,12 +394,14 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_inbox_title),
                     onClick = onOpenInbox
                 )
-                SettingsRow(
-                    position = RowPosition.MIDDLE,
-                    title = stringResource(R.string.settings_scheduled_title),
-                    subtitle = scheduledCount,
-                    onClick = onOpenScheduled
-                )
+                if (scheduledAll.isNotEmpty()) {
+                    SettingsRow(
+                        position = RowPosition.MIDDLE,
+                        title = stringResource(R.string.settings_scheduled_title),
+                        subtitle = scheduledCount,
+                        onClick = onOpenScheduled
+                    )
+                }
                 SettingsRow(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_privacy_title),
@@ -476,6 +483,7 @@ fun SettingsScreen(
             // What the removed footer left behind: the list ends on a card, and
             // without this the card sits flush against the bottom inset.
             Spacer(Modifier.height(SettingsLayout.BOTTOM_GAP))
+        }
         }
     }
 
@@ -1021,8 +1029,11 @@ internal fun hexColor(c: androidx.compose.ui.graphics.Color): String = "#%02X%02
 )
 
 @Composable
-fun SettingsGroup(content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(SettingsLayout.ROW_GAP)) {
+fun SettingsGroup(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(SettingsLayout.ROW_GAP)) {
         content()
     }
 }
@@ -1135,6 +1146,13 @@ fun SettingsRow(
 ) {
     val contentAlpha = if (enabled) 1f else 0.38f
     val corners = rowCorners(position)
+    val flashed = LocalSearchedSetting.current == title
+    val containerColor by animateColorAsState(
+        if (flashed) MaterialTheme.colorScheme.secondaryContainer
+        else MaterialTheme.colorScheme.background,
+        animationSpec = motionTween<Color>(LocalReduceMotion.current, Motion.DURATION_SHORT4),
+        label = "settings-row-highlight"
+    )
     // Corner radii are pixels with no text equivalent, so publish them the way
     // the chat bubbles do (BubbleShape): a regression script can then assert a
     // row's rounding from logcat instead of a screenshot.
@@ -1153,9 +1171,7 @@ fun SettingsRow(
             bottomEnd = corners.bottomEnd,
             bottomStart = corners.bottomStart
         ),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.background
-        ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(

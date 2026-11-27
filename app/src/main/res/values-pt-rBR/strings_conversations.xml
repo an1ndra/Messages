@@ -62,4 +62,6 @@
     <string name="inbox_rules_kind_sender">Remetente</string>
     <string name="inbox_rules_empty">Nenhuma regra ainda</string>
     <string name="inbox_rules_pattern_hint">Palavra ou remetente</string>
+    <string name="settings_inbox_categories_title">Mostrar categorias</string>
+    <string name="settings_inbox_categories_subtitle">Abas de categorias na tela principal</string>
 </resources>

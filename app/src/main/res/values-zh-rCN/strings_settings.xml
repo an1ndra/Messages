@@ -202,4 +202,5 @@
     <string name="settings_search_hint">搜索设置</string>
     <string name="settings_search_none">没有匹配��设置</string>
     <string name="settings_theme_dynamic">动态</string>
+    <string name="settings_general_title">通用设置</string>
 </resources>

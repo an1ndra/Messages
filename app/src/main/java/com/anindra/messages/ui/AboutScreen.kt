@@ -254,6 +254,7 @@ internal fun AboutScreen(
             )
         }
     ) { padding ->
+        ProvideSettingsSearchJump(scrollState) {
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -269,7 +270,7 @@ internal fun AboutScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            SettingsGroup {
+            SearchableSettingsCard(0) {
                 SettingsRow(
                     position = RowPosition.FIRST,
                     title = stringResource(R.string.about_star_title),
@@ -297,6 +298,7 @@ internal fun AboutScreen(
             }
 
             Spacer(Modifier.height(SettingsLayout.BOTTOM_GAP))
+        }
         }
     }
 

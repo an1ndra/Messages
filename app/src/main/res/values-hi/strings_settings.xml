@@ -202,4 +202,5 @@
     <string name="settings_search_hint">सेटिंग खोजें</string>
     <string name="settings_search_none">कोई सेटिंग मेल नहीं खाती</string>
     <string name="settings_theme_dynamic">डायनामिक</string>
+    <string name="settings_general_title">सामान्य सेटिंग्स</string>
 </resources>

@@ -202,4 +202,5 @@
     <string name="settings_search_hint">Paramètres de recherche</string>
     <string name="settings_search_none">Aucun paramètre ne correspond</string>
     <string name="settings_theme_dynamic">Dynamique</string>
+    <string name="settings_general_title">Paramètres généraux</string>
 </resources>
