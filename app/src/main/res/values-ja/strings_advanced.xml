@@ -39,14 +39,13 @@
     <string name="settings_sim_unknown">不明な SIM</string>
     <string name="mms_check_title">MMS の対応状況</string>
     <string name="mms_check_subtitle">各 SIM の MMS 対応を確認</string>
-    <string name="mms_check_summary">%2$d 枚中 %1$d 枚の SIM でキャリアが MMS を有効にしています</string>
     <string name="mms_check_verdict_supported">キャリア側で有効</string>
     <string name="mms_check_verdict_disabled">このキャリアでは無効</string>
     <string name="mms_check_verdict_no_carrier">この SIM にネットワークがありません</string>
     <string name="mms_check_verdict_unknown">確認できませんでした</string>
     <string name="mms_check_number_hidden">キャリアが番号を公開していません</string>
     <string name="mms_check_country">%1$s · %2$s</string>
-    <string name="mms_check_footer">各 SIM はそのキャリアが公開する MMS 設定と照合されます。これはキャリアの宣言であり、検証済みの MMS サービスではありません。検証にはシステム APN 設定が必要で、特権アプリのみが読み取れます。</string>
+    <string name="mms_check_footer">この確認は、お使いの SIM が MMS に対応していることを保証するものではありません。このオフラインアプリは各キャリアの宣言を読み取るだけで、ネットワークや APN 設定をテストできないため、MMS 対応を保証することはできません。</string>
     <string name="mms_check_no_sims">有効な SIM が見つかりません</string>
     <string name="transfer_log_title">インポートとエクスポートのログ</string>
     <string name="transfer_log_subtitle">最近のインポート、エクスポートとスキップされた項目</string>

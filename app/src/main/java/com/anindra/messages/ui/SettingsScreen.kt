@@ -56,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import com.anindra.messages.ui.theme.motionSpring
 import com.anindra.messages.ui.theme.LocalReduceMotion
@@ -125,7 +126,6 @@ fun SettingsScreen(
 
     var privacyMode by remember(revision) { mutableStateOf(vm.settings.privacyModeEnabled) }
     var appLock by remember(revision) { mutableStateOf(vm.settings.appLockEnabled) }
-    var deliveryReports by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
 
     var simDialog by remember { mutableStateOf(false) }
     // Seeded from the phone rather than from an empty list: starting empty made
@@ -335,19 +335,6 @@ fun SettingsScreen(
                     position = RowPosition.MIDDLE,
                     title = stringResource(R.string.settings_mark_read_title),
                     onClick = { markReadDialog = true }
-                )
-                // The redesigned screen dropped this row while the legacy one
-                // kept it, so the switch became unreachable and delivery
-                // confirmations were never asked for.
-                SettingsRow(
-                    position = RowPosition.MIDDLE,
-                    title = stringResource(R.string.settings_delivery_reports_title),
-                    subtitle = stringResource(R.string.settings_delivery_reports_subtitle),
-                    checked = deliveryReports,
-                    onChecked = {
-                        deliveryReports = it
-                        vm.settings.deliveryReportsEnabled = it
-                    }
                 )
                 // Android owns this one: its per-app Bubbles page already carries
                 // the same All / Selected / Nothing choice, and mirroring it here
@@ -1233,17 +1220,21 @@ fun SettingsRow(
  * the same type as a row's subtitle, since it describes those same options.
  */
 @Composable
-fun SettingsFooter(text: String) {
+fun SettingsFooter(
+    text: String,
+    horizontalPadding: Dp = SettingsLayout.FOOTER_HORIZONTAL_PADDING
+) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
-            // No horizontal inset: the note lines up with the left and right
-            // edges of the row cards above it, the way a page's border does,
-            // rather than with the text inside them.
+            // Defaults to the card's edges, the way a page border does. A page
+            // that wants the note under its row text passes ROW_CONTENT_PADDING.
             .padding(
+                start = horizontalPadding,
+                end = horizontalPadding,
                 top = SettingsLayout.FOOTER_TOP_GAP,
                 bottom = SettingsLayout.FOOTER_BOTTOM_GAP
             )

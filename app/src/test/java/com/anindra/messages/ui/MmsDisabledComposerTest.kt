@@ -83,24 +83,41 @@ class MmsDisabledComposerTest {
         val screen = source("ui/AdvancedSubScreens.kt")
         assertTrue(screen.contains("fun MmsSupportScreen("))
         assertTrue(screen.contains("R.string.settings_mms_enabled"))
-        assertTrue(screen.contains("onCheckedChange = onMmsEnabledChange"))
+        assertTrue(screen.contains("onChecked = onMmsEnabledChange"))
     }
 
     @Test
-    fun theSwitchAndTheCarriersShareOneCard() {
-        // Two cards read as two unrelated things: the switch answers the same
-        // question the carrier verdicts do, so they sit in one grouped list
-        // split by hairlines.
+    fun theRowsMatchTheAdvancedSettingsCard() {
         val screen = source("ui/AdvancedSubScreens.kt")
-        val card = screen.substringAfter("GroupedRowList(")
-            .substringBefore("SettingsFooter(")
-        assertTrue("the switch is in the card", card.contains("R.string.settings_mms_enabled"))
-        assertTrue("and so are the carrier verdicts", card.contains("checks.forEachIndexed"))
         val page = screen.substringAfter("fun MmsSupportScreen(")
             .substringBefore("@Composable\nprivate fun mmsCheckSubtitle")
-        assertFalse(
-            "a SettingsGroup would draw each row as its own card again",
-            page.contains("SettingsGroup {")
+        assertTrue("rows use the same group as Advanced settings", page.contains("SettingsGroup {"))
+        assertTrue("the switch is a SettingsRow", page.contains("SettingsRow("))
+        assertTrue("the switch opens the group", page.contains("RowPosition.FIRST"))
+        assertTrue("the carrier verdicts follow", page.contains("checks.forEachIndexed"))
+        assertTrue("the last verdict closes the group", page.contains("RowPosition.LAST"))
+        assertFalse("no custom row styling", page.contains("MmsCardRow("))
+        assertFalse("no separate hairline card", page.contains("GroupedRowList("))
+    }
+
+    @Test
+    fun theFooterSaysTheCheckIsNotAGuaranteeAndAlignsWithTheRows() {
+        val screen = source("ui/AdvancedSubScreens.kt")
+        assertFalse("the count summary is gone", screen.contains("mms_check_summary"))
+        assertTrue(
+            "the note starts where the carrier text starts",
+            screen.contains("horizontalPadding = SettingsLayout.ROW_CONTENT_PADDING")
         )
+        val app = generateSequence(File("").absoluteFile) { it.parentFile }
+            .map { File(it, "app") }
+            .firstOrNull { File(it, "src").isDirectory }
+            ?: error("app/src not found")
+        val strings = File(app, "src/main/res/values/strings_advanced.xml").readText()
+        val footer = Regex("""<string name="mms_check_footer">([^<]*)</string>""")
+            .find(strings)?.groupValues?.get(1) ?: error("mms_check_footer missing")
+        assertTrue("still says it is only a check", footer.contains("does not confirm"))
+        assertTrue("says why it cannot confirm", footer.contains("cannot test"))
+        assertTrue("says plainly it is not guaranteed", footer.contains("never guaranteed"))
+        assertTrue("the old carrier/APN essay is gone", footer.length < 250)
     }
 }
