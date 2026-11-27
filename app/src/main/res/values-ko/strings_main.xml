@@ -41,6 +41,10 @@
     <string name="settings_pin_error_mismatch">PIN이 일치하지 않습니다</string>
     <string name="convo_moved_to_trash">대화가 휴지통으로 이동되었습니다</string>
     <string name="convo_archived">대화 보관됨</string>
+    <string name="archive_inbound_choice_title">보관된 대화의 새 메시지</string>
+    <string name="archive_inbound_choice_body">새 메시지가 오면 보관된 대화가 보통 받은편지함으로 돌아갑니다. 지금부터 어떻게 할지 선택하세요. 이 선택은 기억됩니다.</string>
+    <string name="archive_inbound_choice_inbox">받은편지함으로 이동</string>
+    <string name="archive_inbound_choice_archive">보관된 상태로 유지</string>
     <string name="action_undo">실행 취소</string>
     <string name="lock_error_no_screen_lock">이 기기에 화면 잠금(지문, 얼굴 또는 PIN)이 없으므로 앱 잠금을 사용할 수 없습니다.</string>
     <string name="sim_default">기본</string>

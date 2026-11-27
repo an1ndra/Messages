@@ -37,6 +37,10 @@
     <string name="settings_pin_error_mismatch">PINs stimmen nicht überein</string>
     <string name="convo_moved_to_trash">Unterhaltung in Papierkorb verschoben</string>
     <string name="convo_archived">Unterhaltung archiviert</string>
+    <string name="archive_inbound_choice_title">Neue Nachrichten in archivierten Chats</string>
+    <string name="archive_inbound_choice_body">Eine neue Nachricht bringt einen archivierten Chat normalerweise zurück in den Posteingang. Wähle, was ab jetzt passieren soll. Diese Auswahl wird gespeichert.</string>
+    <string name="archive_inbound_choice_inbox">Zum Posteingang</string>
+    <string name="archive_inbound_choice_archive">Archiviert lassen</string>
     <string name="action_undo">Rückgängig</string>
     <string name="lock_error_no_screen_lock">Die App-Sperre kann nicht verwendet werden, da dieses Gerät über keine Bildschirmsperre (Fingerabdruck, Gesicht oder PIN) verfügt, um Ihre Identität zu überprüfen.</string>
     <string name="sim_default">Standard</string>

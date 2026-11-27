@@ -41,6 +41,10 @@
     <string name="settings_pin_error_mismatch">PIN मेल नहीं खा रहे हैं</string>
     <string name="convo_moved_to_trash">संवाद कूड़े में ले जाया गया</string>
     <string name="convo_archived">संवाद संग्रहीत किया गया</string>
+    <string name="archive_inbound_choice_title">आर्काइव किए गए चैट में नए संदेश</string>
+    <string name="archive_inbound_choice_body">नया संदेश आमतौर पर आर्काइव किए गए चैट को इनबॉक्स में वापस लाता है। अब से क्या होना चाहिए, चुनें। यह चयन याद रखा जाएगा।</string>
+    <string name="archive_inbound_choice_inbox">इनबॉक्स में लाएँ</string>
+    <string name="archive_inbound_choice_archive">आर्काइव में रखें</string>
     <string name="action_undo">पूर्ववत् करें</string>
     <string name="lock_error_no_screen_lock">एप लॉक का उपयोग नहीं किया जा सकता क्योंकि इस डिवाइस पर कोई स्क्रीन लॉक (फिंगरप्रिंट, फेस या PIN) नहीं है जो यह सत्यापित कर सके कि आप ही आप हैं।</string>
     <string name="sim_default">डिफ़ॉल्ट</string>

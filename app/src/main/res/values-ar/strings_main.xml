@@ -41,6 +41,10 @@
     <string name="settings_pin_error_mismatch">الأرقام السرية غير متطابقة</string>
     <string name="convo_moved_to_trash">تم نقل المحادثة إلى سلة المحذوفات</string>
     <string name="convo_archived">تم أرشفت المحادثة</string>
+    <string name="archive_inbound_choice_title">رسائل جديدة في المحادثات المؤرشفة</string>
+    <string name="archive_inbound_choice_body">تؤدي الرسالة الجديدة عادةً إلى إعادة المحادثة المؤرشفة إلى الوارد. اختر ما يجب أن يحدث من الآن فصاعدًا. يتم تذكر هذا الاختيار.</string>
+    <string name="archive_inbound_choice_inbox">نقل إلى الوارد</string>
+    <string name="archive_inbound_choice_archive">الإبقاء في الأرشيف</string>
     <string name="action_undo">تراجع</string>
     <string name="lock_error_no_screen_lock">لا يمكن استخدام قفل التطبيق لأن هذا الجهاز لا يحتوي على قفل شاشة (بصمة وجه، بصمة إصبع، أو رقم سري) للتحقق من هويتك.</string>
     <string name="sim_default">الافتراضي</string>

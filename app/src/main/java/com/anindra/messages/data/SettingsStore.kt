@@ -53,6 +53,8 @@ class SettingsStore(context: Context) {
         const val KEY_SIM_SUBSCRIPTION_ID = "sim_subscription_id"
         const val KEY_PINNED_ENABLED = "pinned_enabled"
         const val KEY_ARCHIVING_ENABLED = "archiving_enabled"
+        const val KEY_ARCHIVE_INBOUND_CHOICE_ASKED = "archive_inbound_choice_asked"
+        const val KEY_KEEP_ARCHIVED_ON_INBOUND = "keep_archived_on_inbound"
         const val KEY_SWIPE_ACTIONS_ENABLED = "swipe_actions_enabled"
         const val KEY_BLOCKING_ENABLED = "blocking_enabled"
         const val KEY_RETENTION_TRASH_DAYS = "retention_trash_days"
@@ -474,6 +476,20 @@ class SettingsStore(context: Context) {
     var permanentDeleteWarn: Boolean
         get() = prefs.getBoolean(KEY_PERMANENT_DELETE_WARN, true)
         set(v) { prefs.edit().putBoolean(KEY_PERMANENT_DELETE_WARN, v).apply(); _revision.value++ }
+
+    val archiveInboundChoiceAsked: Boolean
+        get() = prefs.getBoolean(KEY_ARCHIVE_INBOUND_CHOICE_ASKED, false)
+
+    val keepArchivedOnInbound: Boolean
+        get() = prefs.getBoolean(KEY_KEEP_ARCHIVED_ON_INBOUND, false)
+
+    fun saveArchiveInboundChoice(keepArchived: Boolean) {
+        prefs.edit()
+            .putBoolean(KEY_ARCHIVE_INBOUND_CHOICE_ASKED, true)
+            .putBoolean(KEY_KEEP_ARCHIVED_ON_INBOUND, keepArchived)
+            .apply()
+        _revision.value++
+    }
 
     /**
      * Left/right swipe actions. The first read on an install that predates these

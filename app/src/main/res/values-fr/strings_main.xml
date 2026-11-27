@@ -37,6 +37,10 @@
     <string name="settings_pin_error_mismatch">Les PIN ne correspondent pas</string>
     <string name="convo_moved_to_trash">Conversation déplacée dans la corbeille</string>
     <string name="convo_archived">Conversation archivée</string>
+    <string name="archive_inbound_choice_title">Nouveaux messages dans les discussions archivées</string>
+    <string name="archive_inbound_choice_body">Un nouveau message ramène normalement une discussion archivée dans la boîte de réception. Choisissez ce qui doit se passer désormais. Ce choix est mémorisé.</string>
+    <string name="archive_inbound_choice_inbox">Ramener dans la boîte de réception</string>
+    <string name="archive_inbound_choice_archive">Garder archivée</string>
     <string name="action_undo">Annuler</string>
     <string name="lock_error_no_screen_lock">Le verrouillage de l\'application ne peut pas être utilisé car cet appareil n\'a pas de verrouillage d\'écran (empreinte digitale, visage ou PIN) pour vérifier votre identité.</string>
     <string name="sim_default">Par défaut</string>
