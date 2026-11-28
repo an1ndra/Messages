@@ -102,6 +102,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
@@ -139,6 +141,7 @@ import com.anindra.messages.ui.LocalScheduledPreview
 import com.anindra.messages.ui.formatListTime
 import com.anindra.messages.ui.WorkProfileBadge
 import com.anindra.messages.ui.UnreadBadge
+import com.anindra.messages.ui.SearchFocusRelease
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -181,6 +184,11 @@ fun ConversationsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val openConversationFromSearch = remember(focusManager, keyboardController, onOpenConversation) {
+        SearchFocusRelease(focusManager, keyboardController, onOpenConversation)
+    }
     var lastBackExitAt by remember { mutableLongStateOf(0L) }
     val syncDone by vm.initialSyncDone.collectAsState()
     val syncProgress by vm.initialSyncProgress.collectAsState()
@@ -593,7 +601,7 @@ fun ConversationsScreen(
                                     if (selectionActive) {
                                         toggleSelection(convo)
                                     } else {
-                                        onOpenConversation(
+                                        openConversationFromSearch(
                                             convo.id,
                                             if (searching) ConversationList.handoffQuery(convo, query) else ""
                                         )

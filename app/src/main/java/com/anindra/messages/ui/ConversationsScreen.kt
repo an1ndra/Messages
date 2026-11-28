@@ -120,6 +120,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -206,6 +208,11 @@ fun ConversationsScreen(
     var showArchived by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val openConversationFromSearch = remember(focusManager, keyboardController, onOpenConversation) {
+        SearchFocusRelease(focusManager, keyboardController, onOpenConversation)
+    }
     val syncDone by vm.initialSyncDone.collectAsState()
     val syncProgress by vm.initialSyncProgress.collectAsState()
     // live SMS access state (re-checked on resume)
@@ -733,7 +740,7 @@ fun ConversationsScreen(
                                 StarredHitRow(
                                     hit = hit,
                                     now = nowTick,
-                                    onClick = { onOpenConversation(hit.conversationId, hit.body) }
+                                    onClick = { openConversationFromSearch(hit.conversationId, hit.body) }
                                 )
                             }
                             item(key = "spacer") { Spacer(Modifier.height(96.dp)) }
@@ -793,7 +800,7 @@ fun ConversationsScreen(
                                     if (selectionActive) {
                                         toggleSelection(convo)
                                     } else {
-                                        onOpenConversation(
+                                        openConversationFromSearch(
                                             convo.id,
                                             if (searching) ConversationList.handoffQuery(convo, query) else ""
                                         )
