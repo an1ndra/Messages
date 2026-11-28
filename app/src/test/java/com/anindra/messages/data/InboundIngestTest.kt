@@ -7,17 +7,17 @@ import org.junit.Test
 class InboundIngestTest {
 
     @Test
-    fun aNormalMessageRestoresATrashedThread() {
-        assertTrue(InboundIngest.restoresTrashedConversation(InboundKind.NORMAL))
+    fun aNormalMessageDoesNotReuseATrashedThread() {
+        assertFalse(InboundIngest.mayReuseTrashedConversation(InboundKind.NORMAL))
     }
 
     @Test
-    fun aKeywordBlockedMessageLeavesTheThreadTrashed() {
-        assertFalse(InboundIngest.restoresTrashedConversation(InboundKind.BLOCKED_KEYWORD))
+    fun aKeywordBlockedMessageMayUseTheTrashedThread() {
+        assertTrue(InboundIngest.mayReuseTrashedConversation(InboundKind.BLOCKED_KEYWORD))
     }
 
     @Test
-    fun aBlockedNumberLeavesTheThreadTrashed() {
-        assertFalse(InboundIngest.restoresTrashedConversation(InboundKind.BLOCKED_NUMBER))
+    fun aBlockedNumberMayUseTheTrashedThread() {
+        assertTrue(InboundIngest.mayReuseTrashedConversation(InboundKind.BLOCKED_NUMBER))
     }
 }

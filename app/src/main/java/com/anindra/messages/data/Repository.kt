@@ -1006,8 +1006,8 @@ class Repository(private val context: Context) {
         return null
     }
 
-    private fun findConversationForAddress(address: String): Long? =
-        matchConversationId(db.readableDatabase, address)
+    private fun findConversationForAddress(address: String, activeOnly: Boolean = false): Long? =
+        matchConversationId(db.readableDatabase, address, activeOnly = activeOnly)
 
     /** Canonical identity for same-person checks: E.164 when the address is a
      *  valid phone number, else the address unchanged (alphanumeric sender IDs
@@ -1095,7 +1095,11 @@ class Repository(private val context: Context) {
             arrayOf(target)
         ).use { c -> if (c.moveToFirst()) convoId = c.getLong(0) }
         if (convoId == -1L) {
-            val alt = findConversationForAddress(target)
+            // A person whose thread is in Trash must start a fresh chat on their
+            // next message. Only blocked traffic may land in the trashed row.
+            val mayReuseTrashed =
+                !privateOnly && InboundIngest.mayReuseTrashedConversation(kind)
+            val alt = findConversationForAddress(target, activeOnly = !mayReuseTrashed)
             if (alt != null && (!privateOnly || recipientCountBlocking(alt) <= 1)) convoId = alt
         }
 
@@ -1115,21 +1119,6 @@ class Repository(private val context: Context) {
                 )
             }
             notifyChanged()
-        } else if (InboundIngest.restoresTrashedConversation(kind)) {
-            // A trashed thread addressed by a new chat / incoming message must be
-            // restored, or ChatScreen (which filters deleted_at=0) shows a blank
-            // header and sends are rejected.
-            val restored = db.writableDatabase.update(
-                "conversations",
-                ContentValues().apply {
-                    put("deleted_at", 0)
-                    // Back to the Inbox, not into a stale Archive flag (#405).
-                    put("archived", 0)
-                },
-                "id=? AND deleted_at>0",
-                arrayOf(convoId.toString())
-            )
-            if (restored > 0) notifyChanged()
         }
         convoId
     }

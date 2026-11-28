@@ -56,7 +56,7 @@ class NewChatSkipsGroupTest {
         // rejected.
         assertTrue(
             "the variant lookup must still be consulted",
-            lookup.contains("findConversationForAddress(target)")
+            lookup.contains("findConversationForAddress(target, activeOnly = !mayReuseTrashed)")
         )
     }
 
