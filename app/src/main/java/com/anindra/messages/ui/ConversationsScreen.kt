@@ -59,6 +59,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
@@ -120,6 +121,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -619,7 +621,11 @@ fun ConversationsScreen(
             ) {
                 InboxCategoryChips(
                     selected = vm.inboxCategory,
-                    onSelect = { vm.inboxCategory = it }
+                    onSelect = { vm.inboxCategory = it },
+                    onDismiss = {
+                        vm.inboxCategory = null
+                        vm.inboxCategoriesRevealed = false
+                    }
                 )
             }
 
@@ -806,6 +812,8 @@ fun ConversationsScreen(
     // the end and pad it, which is not the middle of the screen.
     AnimatedVisibility(
         visible = backToTop && !showArchived,
+        enter = BackToTop.enter(reduceMotion),
+        exit = BackToTop.exit(reduceMotion),
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .navigationBarsPadding()
@@ -1479,11 +1487,28 @@ internal enum class SearchScope(val labelRes: Int) {
 @Composable
 internal fun InboxCategoryChips(
     selected: InboxCategory?,
-    onSelect: (InboxCategory?) -> Unit
+    onSelect: (InboxCategory?) -> Unit,
+    onDismiss: () -> Unit = {}
 ) {
+    val dismissAtPx = with(LocalDensity.current) { CategoryRowDismiss.THRESHOLD.toPx() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .pointerInput(onDismiss) {
+                var dragged = 0f
+                var dismissed = false
+                detectVerticalDragGestures(
+                    onDragStart = { dragged = 0f },
+                    onDragEnd = { dragged = 0f },
+                    onDragCancel = { dragged = 0f }
+                ) { _, dragAmount ->
+                    dragged += dragAmount
+                    if (!dismissed && CategoryRowDismiss.reached(dragged, dismissAtPx)) {
+                        dismissed = true
+                        onDismiss()
+                    }
+                }
+            }
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)

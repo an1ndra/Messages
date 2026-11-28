@@ -1,5 +1,6 @@
 package com.anindra.messages.ui
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -33,5 +34,29 @@ class BackToTopTest {
     fun aListScrolledPastTheThresholdOffersOne() {
         assertTrue(BackToTop.visible(firstVisibleIndex = BackToTop.THRESHOLD))
         assertTrue(BackToTop.visible(firstVisibleIndex = 40))
+    }
+
+    @Test
+    fun theShortcutRisesFromTheBottomEdge() {
+        // Diagnostics prints this label, and a script reads it: a 200 ms slide
+        // is gone before uiautomator can dump the screen. Both must name the
+        // same edge the composable's transition actually uses.
+        assertEquals("from bottom", BackToTop.ENTRY_DESCRIPTION)
+        val source = sourceOf("com/anindra/messages/ui/BackToTop.kt")
+        assertTrue(source.contains("slideInVertically"))
+        assertFalse(source.contains("slideInHorizontally"))
+        assertTrue(source.contains("slideOutVertically"))
+        assertFalse(source.contains("slideOutHorizontally"))
+    }
+
+    private fun sourceOf(relativePath: String): String {
+        val workingDir = System.getProperty("user.dir") ?: "."
+        var dir: File? = File(workingDir).absoluteFile
+        while (dir != null) {
+            val candidate = File(dir, "app/src/main/java/$relativePath")
+            if (candidate.isFile) return candidate.readText()
+            dir = dir.parentFile
+        }
+        throw AssertionError("could not locate $relativePath from $workingDir")
     }
 }

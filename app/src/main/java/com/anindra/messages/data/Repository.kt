@@ -2580,6 +2580,14 @@ class Repository(private val context: Context) {
     }
 
     /** The user's filing rules, oldest first — the order they are applied in. */
+    /** The message that opened a thread, for the one-time inbox tab decision.
+     *  The stored preview is the newest message, which can be a later reply. */
+    fun openingBody(conversationId: Long): String = db.readableDatabase.rawQuery(
+        """SELECT body FROM messages WHERE conversation_id=? AND deleted_at=0
+           ORDER BY timestamp ASC, id ASC LIMIT 1""",
+        arrayOf(conversationId.toString())
+    ).use { c -> if (c.moveToFirst()) c.getString(0).orEmpty() else "" }
+
     fun categoryRulesBlocking(): List<CategoryRule> {
         val out = mutableListOf<CategoryRule>()
         db.readableDatabase.rawQuery(

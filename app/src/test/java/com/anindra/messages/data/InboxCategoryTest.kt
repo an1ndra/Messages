@@ -127,6 +127,17 @@ class InboxCategoryTest {
     }
 
     @Test
+    fun theMessageThatOpenedTheThreadDecidesItsTab() {
+        // The preview is the newest message; a later "Thanks" must not move a
+        // code or a debit out of its tab.
+        assertEquals(
+            "Your verification code is 482913",
+            InboxCategoryRules.openingBody("Your verification code is 482913", "Thanks!")
+        )
+        assertEquals("Thanks!", InboxCategoryRules.openingBody("", "Thanks!"))
+    }
+
+    @Test
     fun theStoredKeyRoundTrips() {
         InboxCategory.entries.forEach { category ->
             assertEquals(category, InboxCategory.fromKey(category.key))

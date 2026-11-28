@@ -1,5 +1,11 @@
 package com.anindra.messages.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -17,8 +23,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.anindra.messages.R
+import com.anindra.messages.ui.theme.Motion
+import com.anindra.messages.ui.theme.motionTween
 
 /**
  * When the inbox offers to take you back to the top.
@@ -40,7 +49,19 @@ internal object BackToTop {
     /** The disc the button is drawn on. */
     val SIZE = 40.dp
 
+    /** The edge the button enters from. Diagnostics prints this same value. */
+    const val ENTRY_DESCRIPTION = "from bottom"
+
     fun visible(firstVisibleIndex: Int): Boolean = firstVisibleIndex >= THRESHOLD
+
+    /** A positive offset starts below the screen, so the button rises into place. */
+    fun enter(reduceMotion: Boolean): EnterTransition =
+        fadeIn(motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)) +
+            slideInVertically(motionTween<IntOffset>(reduceMotion, Motion.DURATION_SHORT4)) { it }
+
+    fun exit(reduceMotion: Boolean): ExitTransition =
+        fadeOut(motionTween<Float>(reduceMotion, Motion.DURATION_SHORT4)) +
+            slideOutVertically(motionTween<IntOffset>(reduceMotion, Motion.DURATION_SHORT4)) { it }
 }
 
 /**

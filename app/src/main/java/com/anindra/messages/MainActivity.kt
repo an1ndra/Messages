@@ -288,11 +288,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         scope.launch(Dispatchers.IO) {
             val rules = repo.categoryRulesBlocking()
             val assignments = pending.associate { convo ->
+                val body = com.anindra.messages.data.InboxCategoryRules.openingBody(
+                    repo.openingBody(convo.id),
+                    convo.snippet
+                )
                 convo.id to com.anindra.messages.data.InboxCategoryRules.classify(
                     address = convo.address,
-                    body = convo.snippet,
+                    body = body,
                     hasOtpCode = com.anindra.messages.ui.OtpDetector
-                        .findRanges(convo.snippet).isNotEmpty(),
+                        .findRanges(body).isNotEmpty(),
                     // The name fallback is the address itself, so a name that
                     // differs is a saved contact or a group title.
                     savedContact = convo.name.isNotBlank() && convo.name != convo.address,
