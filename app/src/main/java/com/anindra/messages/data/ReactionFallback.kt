@@ -13,7 +13,8 @@ object ReactionFallback {
     private val ADD = Regex("^Reacted (\\S+) to (.+)$")
     private val REMOVED = Regex("^Removed (\\S+) from (.+)$")
     private val IOS_ADD = Regex("^(Liked|Loved|Disliked|Laughed at|Questioned|Emphasized) (.+)$")
-    private val IOS_REMOVE = Regex("^Removed (a heart|a thumbs up|a thumbs down|a question mark|an exclamation mark|a laughing face) from (.+)$")
+    private val IOS_REMOVE =
+        Regex("^Removed (a heart|a like|a dislike|a laugh|an exclamation|a question mark) from (.+)$")
 
     private val IOS_EMOJI = mapOf(
         "Liked" to "👍",
@@ -23,11 +24,11 @@ object ReactionFallback {
         "Questioned" to "❓",
         "Emphasized" to "❗",
         "a heart" to "❤️",
-        "a thumbs up" to "👍",
-        "a thumbs down" to "👎",
-        "a question mark" to "❓",
-        "an exclamation mark" to "❗",
-        "a laughing face" to "😂"
+        "a like" to "👍",
+        "a dislike" to "👎",
+        "a laugh" to "😂",
+        "an exclamation" to "❗",
+        "a question mark" to "❓"
     )
 
     fun add(emoji: String, snippet: String): String = "Reacted $emoji to $snippet"
@@ -50,12 +51,14 @@ object ReactionFallback {
         }
         IOS_ADD.matchEntire(body)?.let { m ->
             IOS_EMOJI[m.groupValues[1]]?.let { emoji ->
-                unquote(m.groupValues[2])?.let { return Parsed(emoji, it, added = true) }
+                unquote(m.groupValues[2], curlyOnly = true)
+                    ?.let { return Parsed(emoji, it, added = true) }
             }
         }
         IOS_REMOVE.matchEntire(body)?.let { m ->
             IOS_EMOJI[m.groupValues[1]]?.let { emoji ->
-                unquote(m.groupValues[2])?.let { return Parsed(emoji, it, added = false) }
+                unquote(m.groupValues[2], curlyOnly = true)
+                    ?.let { return Parsed(emoji, it, added = false) }
             }
         }
         return null
@@ -65,15 +68,19 @@ object ReactionFallback {
      *  group" from being mistaken for a reaction. */
     private fun looksLikeEmoji(token: String): Boolean = token.any { it.code > 0x7F }
 
-    private fun unquote(raw: String): String? {
+    /**
+     * Apple wraps the target in curly quotes (“…”), sometimes with spaces just
+     * inside them. The named tapbacks only accept those: a plain text like
+     * `Loved "Dune"` is the user's own sentence, not a tapback.
+     */
+    private fun unquote(raw: String, curlyOnly: Boolean = false): String? {
         val s = raw.trim().trim('\u200A', '\u200B', '\u200C', '\u200E', '\u200F')
         if (s.length < 2) return null
         val open = s.first()
         val close = s.last()
-        val quoted = (open == '“' && close == '”') ||
-            (open == '"' && close == '"') ||
-            (open == '\'' && close == '\'')
-        if (!quoted) return null
+        val curly = open == '“' && close == '”'
+        val straight = !curlyOnly && open == '"' && close == '"'
+        if (!curly && !straight) return null
         return s.substring(1, s.length - 1).trim().ifEmpty { null }
     }
 }

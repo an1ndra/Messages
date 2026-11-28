@@ -58,6 +58,10 @@ class ReactionFallbackTest {
             ReactionFallback.Parsed("😂", "آیفون دار مرفه 📱", true),
             ReactionFallback.parse("Reacted 😂 to “آیفون دار مرفه 📱”")
         )
+        assertEquals(
+            ReactionFallback.Parsed("😂", "plain quotes", true),
+            ReactionFallback.parse("Reacted 😂 to \"plain quotes\"")
+        )
     }
 
     @Test
@@ -67,24 +71,67 @@ class ReactionFallbackTest {
             ReactionFallback.parse("Questioned “لفت دونوم چنه”")
         )
         assertEquals(
-            ReactionFallback.Parsed("❓", "لفت دونوم چنه", false),
-            ReactionFallback.parse("Removed a question mark from “لفت دونوم چنه”")
-        )
-        assertEquals(
             ReactionFallback.Parsed("👍", "hello", true),
             ReactionFallback.parse("Liked “hello”")
         )
         assertEquals(
-            ReactionFallback.Parsed("❤️", "hello", false),
-            ReactionFallback.parse("Removed a heart from “hello”")
+            ReactionFallback.Parsed("❤️", "hello", true),
+            ReactionFallback.parse("Loved “hello”")
+        )
+        assertEquals(
+            ReactionFallback.Parsed("👎", "hello", true),
+            ReactionFallback.parse("Disliked “hello”")
+        )
+        assertEquals(
+            ReactionFallback.Parsed("😂", "hello", true),
+            ReactionFallback.parse("Laughed at “hello”")
+        )
+        assertEquals(
+            ReactionFallback.Parsed("❗", "hello", true),
+            ReactionFallback.parse("Emphasized “hello”")
         )
     }
 
     @Test
-    fun unquotedNoticesStayOrdinaryMessages() {
+    fun iosWordedRemovalsMapToEmoji() {
+        val expected = mapOf(
+            "a heart" to "❤️",
+            "a like" to "👍",
+            "a dislike" to "👎",
+            "a laugh" to "😂",
+            "an exclamation" to "❗",
+            "a question mark" to "❓"
+        )
+        for ((words, emoji) in expected) {
+            assertEquals(
+                "Removed $words",
+                ReactionFallback.Parsed(emoji, "hello", false),
+                ReactionFallback.parse("Removed $words from “hello”")
+            )
+        }
+    }
+
+    @Test
+    fun iosQuotesMayCarrySpacesInsideThem() {
+        assertEquals(
+            ReactionFallback.Parsed("👍", "hello", false),
+            ReactionFallback.parse("Removed a like from “ hello ”")
+        )
+    }
+
+    @Test
+    fun ourOwnQuoteFreeNoticeStaysAnOrdinaryMessage() {
         assertNull(ReactionFallback.parse("Reacted 👍 to hello world"))
         assertNull(ReactionFallback.parse("Removed 👍 from hello world"))
+    }
+
+    @Test
+    fun ordinarySentencesAreNotMistakenForTapbacks() {
         assertNull(ReactionFallback.parse("Removed you from the group"))
         assertNull(ReactionFallback.parse("Questioned hello without quotes"))
+        assertNull(ReactionFallback.parse("I Loved “Dune”"))
+        // Real curly quotes only for the named tapbacks; a typed sentence uses plain ones.
+        assertNull(ReactionFallback.parse("Loved \"Dune\""))
+        assertNull(ReactionFallback.parse("Loved the film"))
     }
 }
