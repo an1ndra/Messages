@@ -446,12 +446,12 @@ class SettingsStore(context: Context) {
         set(v) { prefs.edit().putBoolean(KEY_BUBBLE_BACK_CLOSES, v).apply(); _revision.value++ }
 
     /**
-     * One-tap replies above the composer and on the notification (#483). On by
-     * default, and off removes both: a wrong suggestion is worse than none, so
-     * the switch has to be able to take the whole thing away.
+     * One-tap replies above the composer and on the notification (#483). Off by
+     * default: a wrong suggestion is worse than none, so the chips are opt-in
+     * from Notifications settings, and off removes both places at once.
      */
     var suggestedRepliesEnabled: Boolean
-        get() = prefs.getBoolean(KEY_SUGGESTED_REPLIES, true)
+        get() = prefs.getBoolean(KEY_SUGGESTED_REPLIES, false)
         set(v) { prefs.edit().putBoolean(KEY_SUGGESTED_REPLIES, v).apply(); _revision.value++ }
 
     var showSimIndicator: Boolean
