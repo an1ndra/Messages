@@ -68,8 +68,10 @@ object NotificationHelper {
         )
     }
 
-    private fun defaultSoundUri(): Uri? =
-        android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+    private fun defaultSoundUri(context: Context): Uri? =
+        android.media.RingtoneManager
+            .getActualDefaultRingtoneUri(context, android.media.RingtoneManager.TYPE_NOTIFICATION)
+            ?: resourceUri(context, R.raw.notification_sound)
 
     /**
      * The tone a channel is seeded with. When receive sound is off a bundled
@@ -77,12 +79,49 @@ object NotificationHelper {
      * below IMPORTANCE_HIGH and never heads-up them, while a silent tone keeps
      * the popup working. Which tone plays afterwards is the user's choice in
      * system settings — the app seeds it once and never edits the channel again.
+     *
+     * The seed must be the actual sound URI. getDefaultUri() returns a symbolic
+     * content://settings/system/... pointer shared by every channel seeded with
+     * it; on HyperOS changing one conversation then rewrites the global SMS tone
+     * for all of them (#535).
      */
     private fun channelSoundUri(context: Context, soundOn: Boolean): Uri? =
-        if (!soundOn) resourceUri(context, R.raw.silent) else defaultSoundUri()
+        if (!soundOn) resourceUri(context, R.raw.silent) else defaultSoundUri(context)
 
     private fun resourceUri(context: Context, resId: Int): Uri =
         Uri.parse("android.resource://${context.packageName}/$resId")
+
+    private fun isSymbolicSound(sound: Uri?): Boolean =
+        sound?.toString()?.startsWith("content://settings/system/") == true
+
+    /** An alias cannot be changed in place: Android only lets us delete and
+     *  recreate the channel. Everything the user may have tuned is copied over;
+     *  only the shared system pointer is replaced. */
+    private fun replaceAliasedSound(
+        nm: NotificationManager,
+        existing: NotificationChannel,
+        sound: Uri?
+    ) {
+        val id = existing.id
+        nm.deleteNotificationChannel(id)
+        nm.createNotificationChannel(
+            NotificationChannel(id, existing.name, existing.importance).apply {
+                description = existing.description
+                setSound(
+                    sound,
+                    existing.audioAttributes
+                        ?: android.app.Notification.AUDIO_ATTRIBUTES_DEFAULT
+                )
+                enableVibration(existing.shouldVibrate())
+                vibrationPattern = existing.vibrationPattern
+                enableLights(existing.shouldShowLights())
+                lightColor = existing.lightColor
+                lockscreenVisibility = existing.lockscreenVisibility
+                setBypassDnd(existing.canBypassDnd())
+                setAllowBubbles(existing.canBubble())
+            }
+        )
+    }
 
     /**
      * (Re)creates the notification channel using the system default notification
@@ -192,6 +231,11 @@ object NotificationHelper {
             // Only a post rebuilds a channel the user quieted: at launch the
             // absent channel is created and an existing one is left as it is.
             if (recoverDemoted) recoverDemotedChannel(nm, id)
+            nm.getNotificationChannel(id)?.let { existing ->
+                if (isSymbolicSound(existing.sound)) {
+                    replaceAliasedSound(nm, existing, channelSoundUri(context, soundOn))
+                }
+            }
             nm.createNotificationChannel(
                 NotificationChannel(
                     id,
@@ -235,6 +279,9 @@ object NotificationHelper {
         val label = channelLabel(target)
         val description = context.getString(R.string.notification_channel_convo_desc)
         val existing = nm.getNotificationChannel(id)
+        if (existing != null && isSymbolicSound(existing.sound)) {
+            replaceAliasedSound(nm, existing, channelSoundUri(context, soundOn))
+        }
         // Already right: one binder read, no write, so the rename refresh stays
         // cheap however many chats have a channel.
         if (existing != null && existing.name == label && existing.description == description) return id
