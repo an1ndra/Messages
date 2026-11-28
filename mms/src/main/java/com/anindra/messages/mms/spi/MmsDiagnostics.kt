@@ -10,6 +10,17 @@ package com.anindra.messages.mms.spi
 interface MmsDiagnostics {
     fun sendStarted(transportId: String, subscriptionId: Int, messageUri: String?) = Unit
     fun sendBuilt(pduSize: Int, recipientCount: Int) = Unit
+
+    /**
+     * What the composed submission actually says.
+     *
+     * [sendBuilt] answers "a PDU of this size went out"; this answers "from
+     * whom, to whom, carrying what, with which headers". A carrier that refuses
+     * the submission looks identical to a broken attachment until those are
+     * readable in the report.
+     */
+    fun sendPdu(facts: SendPduFacts) = Unit
+
     fun sendCompleted(
         transportId: String,
         outcome: String,

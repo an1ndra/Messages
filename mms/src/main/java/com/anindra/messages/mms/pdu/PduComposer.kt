@@ -35,6 +35,24 @@ object PduComposer {
     private val LEADING_FIELDS =
         listOf(HeaderField.MESSAGE_TYPE, HeaderField.TRANSACTION_ID, HeaderField.MMS_VERSION)
 
+    /** The field order the platform composer writes for a submission. */
+    private val SEND_REQ_ORDER = listOf(
+        HeaderField.MESSAGE_TYPE,
+        HeaderField.TRANSACTION_ID,
+        HeaderField.MMS_VERSION,
+        HeaderField.DATE,
+        HeaderField.FROM,
+        HeaderField.TO,
+        HeaderField.CC,
+        HeaderField.BCC,
+        HeaderField.SUBJECT,
+        HeaderField.MESSAGE_CLASS,
+        HeaderField.EXPIRY,
+        HeaderField.PRIORITY,
+        HeaderField.DELIVERY_REPORT,
+        HeaderField.READ_REPORT,
+    )
+
     fun compose(pdu: Pdu): ByteArray? = try {
         composeWithinRange(pdu)
     } catch (_: IllegalArgumentException) {
@@ -64,20 +82,7 @@ object PduComposer {
         }
 
         val out = WspWriter()
-        val fields = sortedSetOf(HeaderField.MESSAGE_TYPE, HeaderField.MMS_VERSION)
-        fields.addAll(pdu.headers.fieldCodes)
-        // X-Mms-Content-Type closes the header block: receivers stop reading
-        // headers at it, so it is emitted last whatever its field code sorts as.
-        fields.remove(HeaderField.CONTENT_TYPE)
-        // The encapsulation spec puts Message-Type, Transaction-Id and
-        // MMS-Version ahead of everything else, in that order; the rest follow
-        // ascending. A tolerant MMSC reads either, a strict one rejects the
-        // ascending form outright because From (0x89) would arrive before the
-        // type it belongs to. Transaction-Id is absent on a report PDU, so it
-        // is filtered rather than forced.
-        val leading = LEADING_FIELDS.filter { it in fields }
-        fields.removeAll(leading.toSet())
-        for (field in leading + fields) {
+        for (field in headerOrder(pdu)) {
             out.appendBytes(encodeField(pdu, field) ?: return null)
         }
         pdu.headers.contentTypeOrNull()?.let {
@@ -88,6 +93,51 @@ object PduComposer {
         }
         return out.toByteArray()
     }
+
+    /**
+     * The header codes [compose] writes, in the order it writes them.
+     *
+     * X-Mms-Content-Type is not here: it closes the header block and is emitted
+     * after every other field, so nothing in this list can land behind it.
+     * Exposed because Diagnostics reports what actually went out, and a second
+     * copy of this ordering is how the report and the wire come to disagree.
+     *
+     * A submission follows the platform composer's order: the three opening
+     * fields, Date, From, recipients, then the descriptive fields. The AOSP and
+     * klinker composers write that order, and a strict MMSC can reject the
+     * ascending form. Other PDU types keep the spec's leading fields followed
+     * by ascending codes. Transaction-Id is absent on a report PDU, so it is
+     * filtered rather than forced.
+     */
+    fun headerOrder(pdu: Pdu): List<Int> {
+        val fields = sortedSetOf(HeaderField.MESSAGE_TYPE, HeaderField.MMS_VERSION)
+        fields.addAll(pdu.headers.fieldCodes)
+        fields.remove(HeaderField.CONTENT_TYPE)
+        if (pdu.messageType == MessageType.SEND_REQ) {
+            val ordered = SEND_REQ_ORDER.filter { it in fields }
+            return ordered + (fields - ordered.toSet())
+        }
+        val leading = LEADING_FIELDS.filter { it in fields }
+        fields.removeAll(leading.toSet())
+        return leading + fields
+    }
+
+    /**
+     * The address [encodeFrom] writes, or null for the insert-address-token form.
+     *
+     * 0x81 is unassigned as a charset, which is what lets it double as the token
+     * marker on a From with no address.
+     */
+    fun fromAddress(pdu: Pdu): EncodedStringValue? = pdu.from?.takeIf {
+        it.charsetMibEnum != EncodedStringValue.INSERT_ADDRESS_TOKEN && it.text.isNotEmpty()
+    }
+
+    /**
+     * One recipient as a submission carries it: a phone number goes out with the
+     * `/TYPE=PLMN` qualifier, everything else is left alone.
+     */
+    fun recipientValue(pdu: Pdu, value: EncodedStringValue): EncodedStringValue =
+        if (pdu.messageType == MessageType.SEND_REQ) value.withPhoneAddressType() else value
 
     private fun encodeField(pdu: Pdu, field: Int): ByteArray? {
         val out = WspWriter()
@@ -163,9 +213,7 @@ object PduComposer {
                     // A submission names its phone recipients as number/TYPE=PLMN;
                     // the parser removes the qualifier again, so stored and parsed
                     // addresses stay bare numbers.
-                    out.appendEncodedStringValue(
-                        if (pdu.messageType == MessageType.SEND_REQ) value.withPhoneAddressType() else value
-                    )
+                    out.appendEncodedStringValue(recipientValue(pdu, value))
                 }
                 out.toByteArray()
             }
@@ -193,11 +241,7 @@ object PduComposer {
     private fun encodeFrom(pdu: Pdu): ByteArray {
         val out = WspWriter()
         out.appendOctet(HeaderField.FROM)
-        // 0x81 is unassigned as a charset, which is what lets it double as the
-        // insert-address marker on a From with no address.
-        val address = pdu.from?.takeIf {
-            it.charsetMibEnum != EncodedStringValue.INSERT_ADDRESS_TOKEN && it.text.isNotEmpty()
-        }
+        val address = fromAddress(pdu)
         if (address == null) {
             out.appendValueLength(1)
             out.appendOctet(EncodedStringValue.INSERT_ADDRESS_TOKEN)

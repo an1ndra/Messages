@@ -3,6 +3,7 @@ package com.anindra.messages.mms.debug
 import com.anindra.messages.mms.spi.FitOutcome
 import com.anindra.messages.mms.spi.FitRequest
 import com.anindra.messages.mms.spi.MmsDiagnostics
+import com.anindra.messages.mms.spi.SendPduFacts
 
 /**
  * An in-memory recorder that keeps the last [capacity] MMS events.
@@ -42,6 +43,16 @@ class MmsDebugRecorder(private val capacity: Int = DEFAULT_CAPACITY) : MmsDiagno
                     "pduSize" to pduSize.toString(),
                     "recipients" to recipientCount.toString(),
                 ),
+            ),
+        )
+    }
+
+    override fun sendPdu(facts: SendPduFacts) {
+        record(
+            MmsEvent(
+                category = "send",
+                name = "pdu",
+                details = facts.fields(),
             ),
         )
     }

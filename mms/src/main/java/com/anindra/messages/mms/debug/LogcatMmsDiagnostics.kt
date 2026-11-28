@@ -4,6 +4,7 @@ import android.util.Log
 import com.anindra.messages.mms.spi.FitOutcome
 import com.anindra.messages.mms.spi.FitRequest
 import com.anindra.messages.mms.spi.MmsDiagnostics
+import com.anindra.messages.mms.spi.SendPduFacts
 
 /**
  * Mirrors every [MmsDiagnostics] event to logcat and passes it on.
@@ -12,9 +13,11 @@ import com.anindra.messages.mms.spi.MmsDiagnostics
  * from one screen; logcat is what survives a crash, a restart and a bug report,
  * so the same events go to both.
  *
- * Nothing here formats a recipient number, a message body or a caption: an event
- * carries ids, sizes and result codes only, because this text ends up in logcat
- * and in whatever the user attaches to a bug report.
+ * Nothing here formats a message body or a caption: an event carries ids, sizes,
+ * addresses and result codes only, because this text ends up in logcat and in
+ * whatever the user attaches to a bug report. Addresses are included because a
+ * submission whose sender or recipient is wrong cannot be told from a carrier
+ * fault without them, and the report already carries the inbound ones.
  */
 class LogcatMmsDiagnostics(
     private val delegate: MmsDiagnostics,
@@ -29,6 +32,11 @@ class LogcatMmsDiagnostics(
     override fun sendBuilt(pduSize: Int, recipientCount: Int) {
         log("send built pdu=${pduSize}B recipients=$recipientCount")
         delegate.sendBuilt(pduSize, recipientCount)
+    }
+
+    override fun sendPdu(facts: SendPduFacts) {
+        log("send pdu " + facts.fields().entries.joinToString(" ") { "${it.key}=${it.value}" })
+        delegate.sendPdu(facts)
     }
 
     override fun sendCompleted(

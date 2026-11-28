@@ -12,6 +12,7 @@ import com.anindra.messages.mms.debug.MmsDebugRecorder
 import com.anindra.messages.mms.spi.AutoDownloadPolicy
 import com.anindra.messages.mms.spi.BudgetPolicy
 import com.anindra.messages.mms.spi.FitOutcome
+import com.anindra.messages.mms.spi.MmsDiagnostics
 import com.anindra.messages.mms.spi.TransportListener
 import com.anindra.messages.mms.store.MmsBox
 import com.anindra.messages.mms.transport.TransportChoice
@@ -59,6 +60,7 @@ class MmsFacadeTest {
         fitter: RecordingFitter = RecordingFitter.fitting(ByteArray(2_048)),
         autoDownload: AutoDownloadPolicy = AutoDownloadPolicy { _, _ -> true },
         store: FakeMmsStore = this.store,
+        diagnostics: MmsDiagnostics = object : MmsDiagnostics {},
     ) = Mms(
         store = store,
         transports = TransportRegistry(listOf(transport), TransportSelection(default = choiceOf(transport))),
@@ -67,6 +69,7 @@ class MmsFacadeTest {
         autoDownload = autoDownload,
         codec = WspMmsCodec { now },
         nowSeconds = { now },
+        diagnostics = diagnostics,
     )
 
     private fun choiceOf(transport: ScriptedTransport) = requireNotNull(TransportChoice.of(transport.id))
@@ -167,6 +170,21 @@ class MmsFacadeTest {
         assertEquals(MmsBox.OUTBOX, box)
         assertEquals(Wire.SUBSCRIPTION_ID, subscriptionId)
         assertEquals(MessageType.SEND_REQ, pdu.messageType)
+    }
+
+    @Test
+    fun aSendReportsWhatItPutOnTheWire() {
+        // The report is the only place a carrier refusal can be read against
+        // what was submitted, so the facts have to come from the composed PDU.
+        val recorder = MmsDebugRecorder()
+        runBlocking { mms(diagnostics = recorder).send(message()) }
+
+        val pdu = recorder.snapshot().single { it.name == "pdu" }
+        assertEquals("send", pdu.category)
+        assertTrue("expected a submission line, got $pdu", pdu.toString().contains("from=insert-address-token"))
+        assertTrue(pdu.toString().contains("to=+15551230000/TYPE=PLMN"))
+        assertTrue(pdu.toString().contains("parts=smil.xml/application/smil"))
+        assertTrue(pdu.toString().contains("headers=8c.98.8d."))
     }
 
     @Test

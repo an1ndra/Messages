@@ -26,6 +26,7 @@ import com.anindra.messages.mms.spi.FitOutcome
 import com.anindra.messages.mms.spi.FitRequest
 import com.anindra.messages.mms.spi.MmsDiagnostics
 import com.anindra.messages.mms.spi.MmsPduCodec
+import com.anindra.messages.mms.spi.SendPduFacts
 import com.anindra.messages.mms.spi.TransportListener
 import com.anindra.messages.mms.store.MmsBox
 import com.anindra.messages.mms.store.MmsStore
@@ -49,12 +50,11 @@ class WspMmsCodec(
 }
 
 /**
- * The `From` address for a subscription.
+ * Retained for callers that still pass a sender address.
  *
- * Most carriers fill the sender in from the SIM, in which case the PDU carries
- * the insert-address token and this returns null. Some want the MSISDN written
- * out, and a subscription whose number cannot be read falls back to the token
- * rather than sending an empty address.
+ * Outgoing submissions always carry the insert-address token: the handset and
+ * MMSC fill From from the SIM. A submission that names a line itself can be
+ * rejected when that spelling differs from the one the carrier sees.
  */
 fun interface SendAddressSource {
     fun addressOf(subscriptionId: Int): String?
@@ -212,13 +212,9 @@ object SendReqBuilder {
 
         val pdu = Pdu(MessageType.SEND_REQ)
         pdu.headers.setContentType(MULTIPART_CONTENT_TYPE)
-        pdu.from = sender.addressOf(request.subscriptionId)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { EncodedStringValue(CharacterSets.UTF_8, it) }
-            ?: EncodedStringValue.insertAddressToken()
+        pdu.from = EncodedStringValue.insertAddressToken()
         recipients.forEach { pdu.headers.addEncoded(HeaderField.TO, EncodedStringValue(CharacterSets.UTF_8, it)) }
         pdu.headers.setLong(HeaderField.DATE, nowSeconds)
-        pdu.headers.setLong(HeaderField.MESSAGE_SIZE, body.totalDataBytes())
         pdu.headers.setMessageClassOctet(request.headers.messageClass)
         pdu.headers.setLong(HeaderField.EXPIRY, request.headers.expirySeconds)
         pdu.headers.setOctet(HeaderField.PRIORITY, request.headers.priority)
@@ -266,6 +262,7 @@ object SendReqBuilder {
         // so every attachment needs one of its own (#364).
         name = if (index == 0) base else "$base${index + 1}"
         contentId = "<$name>"
+        contentLocation = name
         data = attachment.bytes
     }
 
@@ -273,6 +270,7 @@ object SendReqBuilder {
         contentType = TEXT_CONTENT_TYPE
         name = TEXT_PART_NAME
         contentId = "<$name>"
+        contentLocation = name
         charset = CharacterSets.UTF_8
         data = caption.toByteArray(Charsets.UTF_8)
     }
@@ -281,6 +279,7 @@ object SendReqBuilder {
         contentType = PduPart.APP_SMIL
         name = PduPart.DEFAULT_SMIL_NAME
         contentId = "<${PduPart.DEFAULT_SMIL_NAME}>"
+        contentLocation = PduPart.DEFAULT_SMIL_NAME
         this.data = data
     }
 
@@ -479,6 +478,7 @@ class Mms(
             return SendOutcome.Rejected(SendRejection.NOT_COMPOSABLE)
         }
         diagnostics.sendBuilt(bytes.size, pdu.to.size)
+        diagnostics.sendPdu(SendPduFacts.of(pdu, bytes.size))
         if (bytes.size.toLong() > profile.maxMessageSize().toLong()) {
             store.delete(outbox)
             return SendOutcome.Rejected(SendRejection.TOO_LARGE)

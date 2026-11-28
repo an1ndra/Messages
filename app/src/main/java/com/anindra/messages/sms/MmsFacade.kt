@@ -105,9 +105,8 @@ internal object MmsFacade {
                 enabled = { true },
                 roaming = { subscriptionId -> isRoaming(app, subscriptionId) },
             ),
-            // See sendableNumber: the MSISDN is written out only when the device can name
-            // the line it belongs to, and otherwise left to the carrier.
-            sendAddress = SendAddressSource { subscriptionId -> sendableNumber(app, subscriptionId) },
+            // Submissions carry the insert-address token; the platform fills From from the SIM.
+            sendAddress = SendAddressSource { null },
             carrierConfig = CarrierProfileStore.platformSource(app),
             diagnostics = diagnostics,
         )
@@ -123,23 +122,6 @@ internal object MmsFacade {
         (card ?: cards.firstOrNull())?.number?.takeIf { it.isNotBlank() }
     }.getOrNull()
 
-    /**
-     * The MSISDN to write as `From`, or null for the insert-address token.
-     *
-     * Unlike [ownNumber] this never falls back to another line: a submission
-     * whose `From` is not the line it leaves on is refused, so an unreadable
-     * number is worth less than no number at all. Only a genuinely single-line
-     * device is allowed to answer for the line it cannot name.
-     */
-    private fun sendableNumber(context: Context, subscriptionId: Int): String? = runCatching {
-        val cards = SimCards.load(context)
-        val card = cards.firstOrNull { it.subscriptionId == subscriptionId }
-        when {
-            card != null -> card.number?.takeIf { it.isNotBlank() }
-            subscriptionId <= 0 && cards.size == 1 -> cards.first().number?.takeIf { it.isNotBlank() }
-            else -> null
-        }
-    }.getOrNull()
 
     @Suppress("DEPRECATION")
     private fun isRoaming(context: Context, subscriptionId: Int): Boolean = runCatching {
