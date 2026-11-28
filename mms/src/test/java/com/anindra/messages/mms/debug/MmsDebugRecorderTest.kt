@@ -2,6 +2,8 @@ package com.anindra.messages.mms.debug
 
 import com.anindra.messages.mms.spi.FitOutcome
 import com.anindra.messages.mms.spi.FitRequest
+import com.anindra.messages.mms.spi.SendPduFacts
+import com.anindra.messages.mms.spi.SendPduPart
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -125,6 +127,35 @@ class MmsDebugRecorderTest {
             recorder.last().toString()
         )
     }
+
+    @Test
+    fun theSubmissionIsRecordedWithEverythingItCarries() {
+        // The line a carrier refusal is read from: who it is from, who it is
+        // for, what it carries and which headers went out, all in one place.
+        val recorder = MmsDebugRecorder()
+        recorder.sendPdu(
+            SendPduFacts(
+                pduSize = 1_234,
+                from = SendPduFacts.INSERT_ADDRESS_TOKEN,
+                recipients = listOf("+15551230000/TYPE=PLMN"),
+                parts = listOf(
+                    SendPduPart("application/smil", "smil.xml", "smil.xml", null, 100),
+                    SendPduPart("image/jpeg", "image", "image", null, 800),
+                ),
+                headerCodes = listOf(0x8C, 0x98, 0x8D, 0x87, 0x89, 0x8A, 0x8E, 0x97, 0x84),
+                declaredMessageSize = 900,
+            ),
+        )
+
+        assertEquals(
+            "[send]pdu size=1234 from=insert-address-token to=+15551230000/TYPE=PLMN " +
+                "msgSize=900 " +
+                "parts=smil.xml/application/smil/cid=smil.xml/cl=-/100B;" +
+                "image/image/jpeg/cid=image/cl=-/800B " +
+                "headers=8c.98.8d.87.89.8a.8e.97.84",
+            recorder.last().toString(),
+        )
+    }
 }
 
 /**
@@ -142,6 +173,16 @@ class LogcatMmsDiagnosticsTest {
 
         subject.sendStarted("system", 1, "content://mms/outbox/9")
         subject.sendBuilt(2_048, 2)
+        subject.sendPdu(
+            SendPduFacts(
+                pduSize = 2_048,
+                from = SendPduFacts.INSERT_ADDRESS_TOKEN,
+                recipients = listOf("+15551230000/TYPE=PLMN"),
+                parts = emptyList(),
+                headerCodes = listOf(0x8C, 0x84),
+                declaredMessageSize = 1_900,
+            ),
+        )
         subject.sendCompleted("system", "sent", 128, 200)
         subject.receiveStarted("notification-ind", 1)
         subject.receiveCompleted("retrieved", "content://mms/inbox/3")
@@ -154,7 +195,7 @@ class LogcatMmsDiagnosticsTest {
         subject.attachmentRejected("video/mp4", 900, 300, "too_large")
         subject.noted("MmsComposer", "e", "pdu compose failed")
 
-        assertEquals(13, delegate.snapshot().size)
+        assertEquals(14, delegate.snapshot().size)
     }
 
     @Test

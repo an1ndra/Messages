@@ -12,6 +12,7 @@ import com.anindra.messages.mms.fit.AttachmentReader
 import com.anindra.messages.mms.spi.FitOutcome
 import com.anindra.messages.mms.spi.FitRequest
 import com.anindra.messages.mms.spi.MmsDiagnostics
+import com.anindra.messages.mms.spi.SendPduFacts
 
 /**
  * Sends one MMS through the `:mms` stack.
@@ -147,6 +148,9 @@ internal object MmsSender {
 
         override fun sendBuilt(pduSize: Int, recipientCount: Int) =
             both { it.sendBuilt(pduSize, recipientCount) }
+
+        override fun sendPdu(facts: SendPduFacts) =
+            both { it.sendPdu(facts) }
 
         override fun sendCompleted(
             transportId: String,

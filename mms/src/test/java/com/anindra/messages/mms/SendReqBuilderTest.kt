@@ -10,6 +10,7 @@ import com.anindra.messages.mms.pdu.PduComposer
 import com.anindra.messages.mms.spi.BudgetPolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -216,7 +217,7 @@ class SendReqBuilderTest {
     }
 
     @Test
-    fun theSizeAndPresentationHeadersComeFromTheRequest() {
+    fun thePresentationHeadersComeFromTheRequestAndNoSizeIsDeclared() {
         val headers = SendHeaderPolicy(
             messageClass = HeaderField.MESSAGE_CLASS_INFORMATIONAL,
             expirySeconds = 3_600L,
@@ -225,7 +226,7 @@ class SendReqBuilderTest {
             readReport = HeaderField.VALUE_NO,
         )
         val pdu = built(headers = headers)
-        assertEquals(pdu.body!!.totalDataBytes(), pdu.messageSize)
+        assertNull("the platform composer never declares X-Mms-Message-Size", pdu.messageSize)
         assertEquals(HeaderField.MESSAGE_CLASS_INFORMATIONAL, pdu.messageClassOctet)
         assertEquals(3_600L, pdu.expirySeconds)
         assertEquals(HeaderField.PRIORITY_HIGH, pdu.headers.octetOrNull(HeaderField.PRIORITY))
@@ -274,10 +275,36 @@ class SendReqBuilderTest {
     }
 
     @Test
-    fun aKnownSenderIsWrittenOutAsTheFromAddress() {
+    fun aKnownSenderStillUsesTheInsertAddressToken() {
         val pdu = built(sender = SendAddressSource { "+15550001111" })
         val parsed = parseOrFail(composed(pdu))
-        assertEquals("+15550001111", parsed.from?.text)
+        assertEquals(EncodedStringValue.insertAddressToken(), parsed.from)
+    }
+
+    @Test
+    fun everyPartCarriesAContentLocation() {
+        val parts = built().body!!.parts()
+        assertEquals(listOf("smil.xml", "image", "text"), parts.map { it.contentLocation })
+    }
+
+    @Test
+    fun theSubmissionFollowsThePlatformHeaderOrder() {
+        assertEquals(
+            listOf(
+                HeaderField.MESSAGE_TYPE,
+                HeaderField.TRANSACTION_ID,
+                HeaderField.MMS_VERSION,
+                HeaderField.DATE,
+                HeaderField.FROM,
+                HeaderField.TO,
+                HeaderField.MESSAGE_CLASS,
+                HeaderField.EXPIRY,
+                HeaderField.PRIORITY,
+                HeaderField.DELIVERY_REPORT,
+                HeaderField.READ_REPORT,
+            ),
+            PduComposer.headerOrder(built()),
+        )
     }
 
     @Test

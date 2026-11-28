@@ -69,7 +69,7 @@ class MmsSenderTest {
         val body = sender.substring(sender.indexOf("private class ChainedDiagnostics"))
 
         for (callback in listOf(
-            "sendStarted", "sendBuilt", "sendCompleted", "receiveStarted", "receiveCompleted",
+            "sendStarted", "sendBuilt", "sendPdu", "sendCompleted", "receiveStarted", "receiveCompleted",
             "transportSelected", "apnResolved", "networkResolved", "attachmentFitted",
             "attachmentRejected", "downloadRequested", "pendingSwept", "downloadCompleted", "noted",
         )) {
