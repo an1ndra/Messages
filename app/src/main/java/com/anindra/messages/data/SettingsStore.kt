@@ -467,9 +467,10 @@ class SettingsStore(context: Context) {
      *
      * Turning it off leaves text messaging untouched: the composer loses its
      * attach button, its tray and the microphone (a voice note is an MMS
-     * attachment), and the emoji button takes the slot the plus had. Incoming
-     * MMS is still received — a picture someone sends is not something the
-     * setting should throw away.
+     * attachment). Turning it off turns the emoji setting on so the button
+     * fills the empty slot; the user can switch the emoji button off again and
+     * the composer will keep it off. Incoming MMS is still received — a
+     * picture someone sends is not something the setting should throw away.
      */
     var mmsEnabled: Boolean
         get() = prefs.getBoolean(KEY_MMS_ENABLED, true)

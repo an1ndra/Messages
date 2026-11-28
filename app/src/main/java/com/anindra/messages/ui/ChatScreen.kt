@@ -2004,11 +2004,11 @@ fun ChatScreen(
                         // must not reserve an inset as well, or the tray lands on
                         // top of it.
                         composerBottomInset = composerInset,
-                        // With MMS off the plus has nothing to open: the emoji
-                        // button takes its place, and the microphone goes with
-                        // the tray because a voice note is an MMS attachment.
-                        showEmojiButton = vm.settings.emojiButtonEnabled ||
-                            !vm.settings.mmsEnabled,
+                        // With MMS off the plus has nothing to open, so the
+                        // emoji button uses its slot when the setting is on.
+                        // The microphone goes with the tray because a voice
+                        // note is an MMS attachment.
+                        showEmojiButton = vm.settings.emojiButtonEnabled,
                         attachEnabled = vm.settings.mmsEnabled,
                         voiceEnabled = hasMicrophone && vm.settings.mmsEnabled,
                         voiceMaxSeconds = voiceMaxSeconds,
@@ -4033,8 +4033,8 @@ internal fun InputBar(
                     ) {
                         Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                             if (!attachEnabled) {
-                                // The plus has nothing to open, so the slot it
-                                // held carries the emoji button instead.
+                                // The plus has nothing to open, so its slot
+                                // carries the emoji button when enabled.
                                 if (showEmojiButton) {
                                     IconButton(
                                         onClick = onEmojiToggle,

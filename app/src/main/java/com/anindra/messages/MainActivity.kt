@@ -129,6 +129,12 @@ private const val CONTACT_RELOAD_DEBOUNCE_MS = 500L
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val repo: Repository = (app as MessagesApplication).repository
     val settings = repo.settings
+
+    /** Turning MMS off leaves the plus slot empty, so the emoji button fills it. */
+    fun setMmsEnabled(enabled: Boolean) {
+        settings.mmsEnabled = enabled
+        if (!enabled) settings.emojiButtonEnabled = true
+    }
     // A throw escaping a fire-and-forget launch on a bare SupervisorJob reaches
     // the default uncaught handler and kills the process. Record it as a crash
     // report instead, so a failed background write never closes the app. (#281)
@@ -2279,14 +2285,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                     "mms-check" -> MmsSupportScreen(
                                         onBack = { navRoute = "advanced" },
                                         mmsEnabled = vm.settings.mmsEnabled,
-                                        onMmsEnabledChange = { on ->
-                                            vm.settings.mmsEnabled = on
-                                            // The plus took the emoji button's
-                                            // place while MMS was on; turning
-                                            // MMS off hands that slot back, so
-                                            // the setting has to say so.
-                                            if (!on) vm.settings.emojiButtonEnabled = true
-                                        }
+                                        onMmsEnabledChange = { on -> vm.setMmsEnabled(on) }
                                     )
                                     "notif-settings" -> NotificationSettingsScreen(
                                         vm = vm,
@@ -2692,8 +2691,8 @@ onOpenAccessibility = { navRoute = "accessibility" },
         // if/else rather than a `when`: the navigation test reads string-keyed
         // branches as screens, and a probe is not one.
         val probe = intent.getStringExtra("mms_probe")
-        if (probe == "off") vm.settings.mmsEnabled = false
-        if (probe == "on") vm.settings.mmsEnabled = true
+        if (probe == "off") vm.setMmsEnabled(false)
+        if (probe == "on") vm.setMmsEnabled(true)
     }
 
     private fun applyLockSessionProbe(intent: Intent) {
