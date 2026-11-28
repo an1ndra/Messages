@@ -2692,12 +2692,19 @@ class Repository(private val context: Context) {
         return canon != address && isNumberBlocked(canon)
     }
 
+    /**
+     * The conversation [address] means, for the notification and every other
+     * caller that only has a number to go on.
+     *
+     * It delegates instead of running its own query: a chat can share its
+     * address with a group started from it, and this used to take whichever
+     * row came first, so a private text posted the group's notification
+     * (#524). [conversationIdForAddressBlocking] already settles that tie in
+     * favour of the private chat, and one rule means the notification and the
+     * message it announces can never disagree.
+     */
     fun conversationIdForAddress(address: String): Long? = runOnIo {
-        var id: Long? = null
-        db.readableDatabase.rawQuery(
-            "SELECT id FROM conversations WHERE address=? AND deleted_at=0", arrayOf(address)
-        ).use { c -> if (c.moveToFirst()) id = c.getLong(0) }
-        id ?: matchConversationId(db.readableDatabase, address, activeOnly = true)
+        conversationIdForAddressBlocking(address)
     }
 
     /** Unread messages in one conversation, read synchronously for the
