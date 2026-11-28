@@ -149,8 +149,8 @@ class SuggestedRepliesTest {
         assertTrue(sms.contains(".setChoices(replyChoices)"))
         val store = src("java/com/anindra/messages/data/SettingsStore.kt")
         assertTrue(
-            "a wrong suggestion is worse than none, so the switch ships on but exists",
-            Regex("""var suggestedRepliesEnabled: Boolean\s+get\(\) = prefs\.getBoolean\(KEY_SUGGESTED_REPLIES, true\)""")
+            "a wrong suggestion is worse than none, so the switch ships off but exists",
+            Regex("""var suggestedRepliesEnabled: Boolean\s+get\(\) = prefs\.getBoolean\(KEY_SUGGESTED_REPLIES, false\)""")
                 .containsMatchIn(store)
         )
     }
