@@ -1,5 +1,6 @@
 package com.anindra.messages.data
 
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -22,7 +23,6 @@ class TrashRestoreClearsArchiveTest {
     }
 
     private val unArchives = Regex("""archived\s*=\s*0""")
-    private val archivedZeroValue = Regex("""put\("archived"\s*,\s*0\)""")
 
     @Test
     fun restoringFromTheTrashAlsoLeavesTheArchive() {
@@ -36,14 +36,21 @@ class TrashRestoreClearsArchiveTest {
     }
 
     @Test
-    fun anInboundMessageRevivesTheChatIntoTheInbox() {
-        val branch = Regex(
-            """restoresTrashedConversation\(kind\)\) \{[\s\S]*?restored > 0"""
-        ).find(repository)?.value ?: error("trashed-conversation restore branch not found")
+    fun anInboundMessageDoesNotReviveTheTrashedChat() {
+        val body = Regex(
+            """fun getOrCreateConversationBlocking\([\s\S]*?\n    \}"""
+        ).find(repository)?.value ?: error("getOrCreateConversationBlocking not found")
         assertTrue(
-            "the auto-restore that runs for a new inbound message must clear " +
-                "archived, or the message lands in a chat the Inbox hides (#405)",
-            branch.contains("deleted_at") && archivedZeroValue.containsMatchIn(branch)
+            "normal inbound messages must only look up active conversations",
+            body.contains("findConversationForAddress(target, activeOnly = !mayReuseTrashed)")
+        )
+        assertTrue(
+            "only blocked traffic may reuse a trashed conversation",
+            body.contains("InboundIngest.mayReuseTrashedConversation(kind)")
+        )
+        assertFalse(
+            "an inbound message must not clear deleted_at and resurrect deleted history",
+            body.contains("put(\"deleted_at\", 0)")
         )
     }
 

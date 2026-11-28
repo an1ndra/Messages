@@ -4,11 +4,14 @@ package com.anindra.messages.data
 enum class InboundKind { NORMAL, BLOCKED_KEYWORD, BLOCKED_NUMBER }
 
 /**
- * Storing a message that is itself blocked must not pull a trashed thread back
- * into the inbox. The message is already soft-deleted, so restoring the
- * conversation only resurrects a row the user emptied, and since the snippet
- * only ever picks up non-deleted messages it comes back looking blank.
+ * A normal message from a sender whose thread is in Trash starts a new thread.
+ * The user deleted that history, so the next message must not revive it.
+ *
+ * Blocked traffic is the exception: its message is already soft-deleted, so it
+ * belongs in the existing trash row rather than creating an active conversation
+ * with a blank snippet.
  */
 object InboundIngest {
-    fun restoresTrashedConversation(kind: InboundKind): Boolean = kind == InboundKind.NORMAL
+    fun mayReuseTrashedConversation(kind: InboundKind): Boolean =
+        kind == InboundKind.BLOCKED_KEYWORD || kind == InboundKind.BLOCKED_NUMBER
 }
