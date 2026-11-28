@@ -1,6 +1,9 @@
 package com.anindra.messages.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
+import android.widget.Toast
 import android.provider.ContactsContract
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -8,6 +11,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,9 +69,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -98,6 +105,23 @@ onBack: () -> Unit,
     scrollState: ScrollState = rememberScrollState()
 ) {
     val context = LocalContext.current
+    val copyNumber = remember(context) {
+        NumberCopy(
+            write = { number ->
+                val clipboard = context.getSystemService(ClipboardManager::class.java)
+                clipboard?.setPrimaryClip(
+                    ClipData.newPlainText(context.getString(R.string.icon_copy), number)
+                )
+            },
+            notify = {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.chat_copied),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        )
+    }
     val convo by vm.conversationById(conversationId).collectAsState(initial = null)
     val vmContacts by remember(vm) { vm.contacts }.collectAsState(initial = emptyList())
     val workNums = remember(vmContacts) {
@@ -329,7 +353,17 @@ onBack: () -> Unit,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .pointerInput(number) {
+                                    detectTapGestures(onLongPress = { copyNumber(address) })
+                                }
+                                .semantics {
+                                    onLongClick(label = context.getString(R.string.icon_copy)) {
+                                        copyNumber(address)
+                                        true
+                                    }
+                                }
                         )
                     }
                 }
