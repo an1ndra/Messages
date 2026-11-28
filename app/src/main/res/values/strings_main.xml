@@ -41,6 +41,10 @@
     <string name="settings_pin_error_mismatch">PINs do not match</string>
     <string name="convo_moved_to_trash">Conversation moved to trash</string>
     <string name="convo_archived">Conversation archived</string>
+    <string name="archive_inbound_choice_title">New messages in archived chats</string>
+    <string name="archive_inbound_choice_body">A new message normally brings an archived chat back to Inbox. Choose what should happen from now on. This choice is remembered.</string>
+    <string name="archive_inbound_choice_inbox">Bring to Inbox</string>
+    <string name="archive_inbound_choice_archive">Keep archived</string>
     <string name="action_undo">Undo</string>
     <string name="lock_error_no_screen_lock">App lock cannot be used because this device has no screen lock (fingerprint, face, or PIN) to verify it is you.</string>
     <string name="sim_default">Default</string>

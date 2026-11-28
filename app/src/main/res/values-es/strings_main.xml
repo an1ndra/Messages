@@ -41,6 +41,10 @@
     <string name="settings_pin_error_mismatch">Los PIN no coinciden</string>
     <string name="convo_moved_to_trash">Conversación movida a la papelera</string>
     <string name="convo_archived">Conversación archivada</string>
+    <string name="archive_inbound_choice_title">Mensajes nuevos en chats archivados</string>
+    <string name="archive_inbound_choice_body">Un mensaje nuevo suele devolver un chat archivado a la bandeja de entrada. Elige qué debe ocurrir desde ahora. Esta elección se recuerda.</string>
+    <string name="archive_inbound_choice_inbox">Mover a bandeja de entrada</string>
+    <string name="archive_inbound_choice_archive">Mantener archivado</string>
     <string name="action_undo">Deshacer</string>
     <string name="lock_error_no_screen_lock">El bloqueo de la app no se puede usar porque este dispositivo no tiene un bloqueo de pantalla (huella, rostro o PIN) para verificar que eres tú.</string>
     <string name="sim_default">Predeterminada</string>

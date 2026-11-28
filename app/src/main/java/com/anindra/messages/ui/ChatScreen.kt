@@ -1804,7 +1804,7 @@ fun ChatScreen(
                     Toast.makeText(context, context.getString(R.string.chat_sending_via, label), Toast.LENGTH_SHORT).show()
                 },
                 onArchive = {
-                    vm.setArchived(conversationId, true)
+                    vm.archiveConversation(conversationId)
                     Toast.makeText(context, context.getString(R.string.chat_archived), Toast.LENGTH_SHORT).show()
                     onBack()
                 },

@@ -41,6 +41,10 @@
     <string name="settings_pin_error_mismatch">PINが一致しません</string>
     <string name="convo_moved_to_trash">会話がゴミ箱に移動されました</string>
     <string name="convo_archived">会話がアーカイブされました</string>
+    <string name="archive_inbound_choice_title">アーカイブ済みチャットの新しいメッセージ</string>
+    <string name="archive_inbound_choice_body">新しいメッセージが届くと、アーカイブ済みチャットは通常受信トレイに戻ります。今後どうするか選んでください。この選択は保存されます。</string>
+    <string name="archive_inbound_choice_inbox">受信トレイに戻す</string>
+    <string name="archive_inbound_choice_archive">アーカイブのままにする</string>
     <string name="action_undo">元に戻す</string>
     <string name="lock_error_no_screen_lock">デバイスに画面ロック（指紋、顔、PIN）がないため、アプリロックを使用できません。</string>
     <string name="sim_default">既定</string>

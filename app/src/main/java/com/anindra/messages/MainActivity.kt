@@ -162,6 +162,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val pendingCrashReports =
         androidx.compose.runtime.mutableStateOf<List<java.io.File>>(emptyList())
 
+    val showArchiveInboundChoice = androidx.compose.runtime.mutableStateOf(false)
+
     private val ui = android.os.Handler(android.os.Looper.getMainLooper())
     private var contactsObserver: android.database.ContentObserver? = null
     private val contactsReload = Runnable { loadContacts() }
@@ -1159,7 +1161,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setPinned(id: Long, pinned: Boolean) = scope.launch { repo.setPinnedSuspend(id, pinned) }
 
-    fun archiveConversation(id: Long) = scope.launch { repo.setArchivedSuspend(id, true) }
+    fun archiveConversation(id: Long) = scope.launch {
+        repo.setArchivedSuspend(id, true)
+        if (!settings.archiveInboundChoiceAsked) {
+            showArchiveInboundChoice.value = true
+        }
+    }
+
+    fun saveArchiveInboundChoice(keepArchived: Boolean) {
+        settings.saveArchiveInboundChoice(keepArchived)
+        showArchiveInboundChoice.value = false
+    }
 
     fun unarchiveConversation(id: Long) = scope.launch { repo.setArchivedSuspend(id, false) }
 
@@ -1977,6 +1989,13 @@ open class MainActivity : FragmentActivity() {
                         },
                         onCopy = { vm.copyCrashReports() },
                         onDelete = { vm.clearCrashReports() }
+                    )
+                }
+
+                if (vm.showArchiveInboundChoice.value) {
+                    com.anindra.messages.ui.ArchiveInboundChoiceDialog(
+                        onBringToInbox = { vm.saveArchiveInboundChoice(false) },
+                        onKeepArchived = { vm.saveArchiveInboundChoice(true) }
                     )
                 }
 
