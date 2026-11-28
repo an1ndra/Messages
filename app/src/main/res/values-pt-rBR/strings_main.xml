@@ -41,6 +41,10 @@
     <string name="settings_pin_error_mismatch">Os PINs não correspondem</string>
     <string name="convo_moved_to_trash">Conversa movida para a lixeira</string>
     <string name="convo_archived">Conversa arquivada</string>
+    <string name="archive_inbound_choice_title">Novas mensagens em conversas arquivadas</string>
+    <string name="archive_inbound_choice_body">Uma nova mensagem normalmente traz a conversa arquivada de volta para a caixa de entrada. Escolha o que deve acontecer a partir de agora. Essa escolha será lembrada.</string>
+    <string name="archive_inbound_choice_inbox">Mover para a caixa de entrada</string>
+    <string name="archive_inbound_choice_archive">Manter arquivada</string>
     <string name="action_undo">Desfazer</string>
     <string name="lock_error_no_screen_lock">O bloqueio do app não pode ser usado porque este dispositivo não tem bloqueio de tela (impressão digital, rosto ou PIN) para verificar sua identidade.</string>
     <string name="sim_default">Padrão</string>

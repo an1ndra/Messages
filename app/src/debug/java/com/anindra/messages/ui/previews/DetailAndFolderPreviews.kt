@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.anindra.messages.crash.CrashReportDialog
 import com.anindra.messages.data.CalendarSystem
 import com.anindra.messages.diagnostics.DiagnosticsDialog
+import com.anindra.messages.ui.ArchiveInboundChoiceDialog
 import com.anindra.messages.ui.AutoDeleteDurationAction
 import com.anindra.messages.data.BlockedNumber
 import com.anindra.messages.ui.BlockedKeywordsDialog
@@ -162,6 +163,13 @@ private fun PermanentDeleteConfirmDialogPreview() {
 @Composable
 private fun CrashReportDialogPreview() {
     Stage { CrashReportDialog(reportCount = 3, onExportZip = {}, onCopy = {}, onDelete = {}) }
+}
+
+@PreviewLightDark
+@Preview(name = "Archive inbound choice", showBackground = true, widthDp = 380)
+@Composable
+private fun ArchiveInboundChoiceDialogPreview() {
+    Stage { ArchiveInboundChoiceDialog(onBringToInbox = {}, onKeepArchived = {}) }
 }
 
 @PreviewLightDark
