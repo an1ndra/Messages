@@ -60,4 +60,6 @@
     <string name="inbox_rules_kind_sender">Expéditeur</string>
     <string name="inbox_rules_empty">Aucune règle pour le moment</string>
     <string name="inbox_rules_pattern_hint">Mot ou expéditeur</string>
+    <string name="settings_inbox_categories_title">Afficher les catégories</string>
+    <string name="settings_inbox_categories_subtitle">Onglets de catégories sur l’écran principal</string>
 </resources>

@@ -91,7 +91,10 @@ class MmsDisabledComposerTest {
         val screen = source("ui/AdvancedSubScreens.kt")
         val page = screen.substringAfter("fun MmsSupportScreen(")
             .substringBefore("@Composable\nprivate fun mmsCheckSubtitle")
-        assertTrue("rows use the same group as Advanced settings", page.contains("SettingsGroup {"))
+        assertTrue(
+            "rows use the same group as Advanced settings, reachable from search",
+            page.contains("SearchableSettingsCard(0) {")
+        )
         assertTrue("the switch is a SettingsRow", page.contains("SettingsRow("))
         assertTrue("the switch opens the group", page.contains("RowPosition.FIRST"))
         assertTrue("the carrier verdicts follow", page.contains("checks.forEachIndexed"))

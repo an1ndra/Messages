@@ -60,6 +60,7 @@ class NavTransitionDepthTest {
     fun settingsSubScreensAreDeeperThanTheirParent() {
         val children = mapOf(
             "advanced" to listOf("accessibility", "auto-delete", "links", "mms-check", "notif-settings"),
+            "inbox" to listOf("inbox-rules"),
             "details" to listOf("add-people"),
         )
         for ((parent, kids) in children) {

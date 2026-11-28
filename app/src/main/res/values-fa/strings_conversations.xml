@@ -62,4 +62,6 @@
     <string name="inbox_rules_kind_sender">فرستنده</string>
     <string name="inbox_rules_empty">هنوز قاعده‌ای نیست</string>
     <string name="inbox_rules_pattern_hint">واژه یا فرستنده</string>
+    <string name="settings_inbox_categories_title">نمایش دسته‌ها</string>
+    <string name="settings_inbox_categories_subtitle">زبانه‌های دسته در صفحه اصلی</string>
 </resources>

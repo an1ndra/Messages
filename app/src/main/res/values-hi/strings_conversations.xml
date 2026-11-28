@@ -62,4 +62,6 @@
     <string name="inbox_rules_kind_sender">प्रेषक</string>
     <string name="inbox_rules_empty">अभी कोई नियम नहीं</string>
     <string name="inbox_rules_pattern_hint">शब्द या प्रेषक</string>
+    <string name="settings_inbox_categories_title">श्रेणियाँ दिखाएँ</string>
+    <string name="settings_inbox_categories_subtitle">मुख्य स्क्रीन पर श्रेणी टैब</string>
 </resources>

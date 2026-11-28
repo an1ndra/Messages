@@ -62,4 +62,6 @@
     <string name="inbox_rules_kind_sender">المرسل</string>
     <string name="inbox_rules_empty">لا توجد قواعد بعد</string>
     <string name="inbox_rules_pattern_hint">كلمة أو المُرسِل</string>
+    <string name="settings_inbox_categories_title">إظهار الفئات</string>
+    <string name="settings_inbox_categories_subtitle">علامات الفئات على الشاشة الرئيسية</string>
 </resources>

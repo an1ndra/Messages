@@ -81,7 +81,7 @@ fun NotificationSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
         title = stringResource(R.string.settings_notif_title),
         onBack = onBack
     ) {
-        SettingsGroup {
+        SearchableSettingsCard(0) {
             SettingsRow(
                 position = RowPosition.FIRST,
                 title = stringResource(R.string.settings_send_sound_title),
@@ -230,7 +230,7 @@ fun AutoDeleteSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
         title = stringResource(R.string.settings_retention_title),
         onBack = onBack
     ) {
-        SettingsGroup {
+        SearchableSettingsCard(0) {
             SettingsRow(
                 position = RowPosition.FIRST,
                 title = stringResource(R.string.settings_retention_title),
@@ -357,7 +357,7 @@ fun LinkSettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
         title = stringResource(R.string.settings_link_behaviour_title),
         onBack = onBack
     ) {
-        SettingsGroup {
+        SearchableSettingsCard(0) {
             SettingsRow(
                 position = RowPosition.FIRST,
                 title = stringResource(R.string.settings_advanced_hide_links),
@@ -424,7 +424,9 @@ fun MmsSupportScreen(
         title = stringResource(R.string.mms_check_title),
         onBack = onBack
     ) {
-        SettingsGroup {
+        // One card, not a run of them: the switch and the per-SIM verdicts
+        // answer the same question, and two cards read as two unrelated things.
+        SearchableSettingsCard(0) {
             SettingsRow(
                 position = RowPosition.FIRST,
                 title = stringResource(R.string.settings_mms_enabled),
@@ -484,6 +486,7 @@ internal fun SettingsScaffold(
     onBack: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val scrollState = rememberScrollState()
     Scaffold(
         // Same sheet as General settings: page and app bar are surfaceContainer,
         // rows are inset at the page background.
@@ -505,16 +508,18 @@ internal fun SettingsScaffold(
             )
         }
     ) { padding ->
+        ProvideSettingsSearchJump(scrollState) {
         Column(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = SettingsLayout.SCREEN_PADDING)
         ) {
             Spacer(Modifier.height(SettingsLayout.TOP_GAP))
             content()
             Spacer(Modifier.height(SettingsLayout.GROUP_GAP))
+        }
         }
     }
 }

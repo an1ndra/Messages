@@ -16,6 +16,16 @@ data class SettingsOption(
     val route: String
 )
 
+/**
+ * A row in the redesigned settings tree. The same row title appears on more
+ * than one screen, so a result is identified by route *and* title.
+ */
+data class NewSettingsOption(
+    val rowRes: Int,
+    val route: String,
+    val screenRes: Int
+)
+
 object SettingsSearch {
 
     /** Which settings screen an option is found on. */
@@ -23,6 +33,12 @@ object SettingsSearch {
         const val SETTINGS = "settings"
         const val ADVANCED = "advanced"
         const val ACCESSIBILITY = "accessibility"
+        const val INBOX = "inbox"
+        const val NOTIFICATIONS = "notif-settings"
+        const val AUTO_DELETE = "auto-delete"
+        const val LINKS = "links"
+        const val MMS = "mms-check"
+        const val ABOUT = "about"
     }
 
     /** True when [query] matches any of [labels]. An empty query matches all. */
@@ -132,4 +148,93 @@ object SettingsSearch {
     /** Screen [rowRes] lives on. Defaults to the settings list. */
     fun routeOf(rowRes: Int): String =
         LEGACY_OPTIONS.firstOrNull { it.rowRes == rowRes }?.route ?: Route.SETTINGS
+
+    /**
+     * Every searchable row in the redesigned tree, with the screen it lives on
+     * so a result can say where it is going. Conditional rows are filtered by
+     * the caller, which knows the current settings state.
+     */
+    val NEW_OPTIONS: List<NewSettingsOption> = buildList {
+        fun screen(route: String, label: Int, vararg rows: Int) =
+            rows.forEach { add(NewSettingsOption(it, route, label)) }
+
+        screen(Route.SETTINGS, R.string.settings_general_title,
+            R.string.settings_notif_title,
+            R.string.settings_mark_read_title,
+            R.string.settings_bubbles_title,
+            R.string.settings_theme_title,
+            R.string.settings_pin_sim_card,
+            R.string.settings_inbox_title,
+            R.string.settings_scheduled_title,
+            R.string.settings_privacy_title,
+            R.string.settings_applock_title,
+            R.string.settings_trash_title,
+            R.string.conversations_spam_blocked,
+            R.string.settings_backup_title,
+            R.string.settings_import_title,
+            R.string.settings_advanced_title,
+            R.string.settings_about_title)
+        screen(Route.INBOX, R.string.settings_inbox_title,
+            R.string.settings_inbox_rules_title,
+            R.string.settings_inbox_categories_title,
+            R.string.settings_calendar_title,
+            R.string.settings_archiving_title,
+            R.string.settings_pinned_title,
+            R.string.swipe_left_title,
+            R.string.swipe_right_title,
+            R.string.settings_unread_top_title,
+            R.string.settings_delivery_reports_title,
+            R.string.settings_pinch_zoom_title,
+            R.string.settings_forwarding_title,
+            R.string.settings_blocking_title,
+            R.string.settings_delayed_title,
+            R.string.settings_delay_secs_title)
+        screen(Route.ADVANCED, R.string.settings_advanced_title,
+            R.string.settings_link_behaviour_title,
+            R.string.keywords_title,
+            R.string.settings_notif_title,
+            R.string.settings_font_title,
+            R.string.settings_advanced_emoji_button,
+            R.string.settings_accessibility_title,
+            R.string.accessibility_options_title,
+            R.string.settings_retention_title,
+            R.string.mms_check_title,
+            R.string.settings_scheduled_title,
+            R.string.settings_new_ui_title,
+            R.string.transfer_log_title,
+            R.string.diagnostics_title)
+        screen(Route.NOTIFICATIONS, R.string.settings_notif_title,
+            R.string.settings_send_sound_title,
+            R.string.settings_receive_sound_title,
+            R.string.settings_notif_action_reply_title,
+            R.string.settings_notif_action_mark_read_title,
+            R.string.settings_notif_action_delete_title,
+            R.string.settings_bubble_back_closes_title,
+            R.string.settings_reply_nudge_title,
+            R.string.settings_suggested_replies_title,
+            R.string.settings_notif_manage_channels)
+        screen(Route.AUTO_DELETE, R.string.settings_retention_title,
+            R.string.settings_retention_trash,
+            R.string.settings_retention_keep_trash,
+            R.string.settings_retention_keyword,
+            R.string.settings_retention_keep_spam,
+            R.string.settings_retention_blocked)
+        screen(Route.LINKS, R.string.settings_link_behaviour_title,
+            R.string.settings_advanced_hide_links,
+            R.string.settings_advanced_highlight_links,
+            R.string.settings_advanced_link_warning)
+        screen(Route.ACCESSIBILITY, R.string.settings_accessibility_title,
+            R.string.a11y_font_size_title,
+            R.string.a11y_bold_title,
+            R.string.a11y_high_contrast_title,
+            R.string.a11y_large_touch_title,
+            R.string.a11y_reduce_motion_title)
+        screen(Route.MMS, R.string.mms_check_title,
+            R.string.settings_mms_enabled)
+        screen(Route.ABOUT, R.string.settings_about_title,
+            R.string.about_issue_title,
+            R.string.about_star_title,
+            R.string.about_share_title,
+            R.string.about_licences_title)
+    }
 }

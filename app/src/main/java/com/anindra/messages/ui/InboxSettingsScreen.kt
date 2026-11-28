@@ -98,6 +98,7 @@ internal fun ChangeAffordance() {
 fun InboxSettingsScreen(
     vm: AppViewModel,
     onBack: () -> Unit,
+    onOpenRules: () -> Unit,
     scrollState: ScrollState = rememberScrollState()
 ) {
     BackHandler(onBack = onBack)
@@ -112,18 +113,14 @@ fun InboxSettingsScreen(
     var showSwipeActions by remember { mutableStateOf(false) }
     var deliveryReports by remember(revision) { mutableStateOf(vm.settings.deliveryReportsEnabled) }
     var unreadAtTop by remember(revision) { mutableStateOf(vm.settings.unreadAtTopEnabled) }
+    var categories by remember(revision) { mutableStateOf(vm.settings.inboxCategoriesEnabled) }
     var forwarding by remember(revision) { mutableStateOf(vm.settings.forwardingEnabled) }
     var delayed by remember(revision) { mutableStateOf(vm.settings.delayedSendingEnabled) }
     var delaySeconds by remember(revision) { mutableIntStateOf(vm.settings.delaySeconds) }
     var delayDialog by remember { mutableStateOf(false) }
+    var calendarDialog by remember { mutableStateOf(false) }
     var showBlocked by remember { mutableStateOf(false) }
-    var showRules by remember { mutableStateOf(false) }
     val blockedNumbers by vm.blockedNumbers().collectAsState(initial = emptyList())
-
-    if (showRules) {
-        InboxCategoryRulesScreen(vm, onBack = { showRules = false })
-        return
-    }
 
     if (showSwipeActions) {
         SwipeActionsScreen(
@@ -160,6 +157,7 @@ fun InboxSettingsScreen(
             )
         }
     ) { padding ->
+        ProvideSettingsSearchJump(scrollState) {
         Column(
             Modifier
                 .padding(padding)
@@ -169,12 +167,33 @@ fun InboxSettingsScreen(
         ) {
             Spacer(Modifier.height(SettingsLayout.TOP_GAP))
 
-            SettingsGroup {
+            SearchableSettingsCard(0) {
                 SettingsRow(
                     position = RowPosition.FIRST,
                     title = stringResource(R.string.settings_inbox_rules_title),
                     subtitle = stringResource(R.string.settings_inbox_rules_subtitle),
-                    onClick = { showRules = true }
+                    onClick = onOpenRules
+                )
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_inbox_categories_title),
+                    subtitle = stringResource(R.string.settings_inbox_categories_subtitle),
+                    checked = categories,
+                    onChecked = { on ->
+                        categories = on
+                        vm.settings.inboxCategoriesEnabled = on
+                        if (!on) vm.inboxCategory = null
+                    }
+                )
+                SettingsRow(
+                    position = RowPosition.MIDDLE,
+                    title = stringResource(R.string.settings_calendar_title),
+                    subtitle = calendarLabel(
+                        vm.settings.calendarChoice,
+                        vm.settings.calendarSystem,
+                        context
+                    ),
+                    onClick = { calendarDialog = true }
                 )
                 SettingsRow(
                     position = RowPosition.MIDDLE,
@@ -253,6 +272,7 @@ fun InboxSettingsScreen(
 
             SettingsFooter(stringResource(R.string.settings_inbox_footer))
         }
+        }
     }
 
     if (showBlocked) {
@@ -260,6 +280,14 @@ fun InboxSettingsScreen(
             blockedNumbers = blockedNumbers,
             onUnblock = vm::unblockNumber,
             onDismiss = { showBlocked = false }
+        )
+    }
+
+    if (calendarDialog) {
+        CalendarPickerDialog(
+            choice = vm.settings.calendarChoice,
+            onChoose = { vm.settings.calendarChoice = it },
+            onDismiss = { calendarDialog = false }
         )
     }
 
