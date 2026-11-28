@@ -9,8 +9,8 @@ import org.junit.Test
  * With MMS switched off the app sends text only.
  *
  * A voice note, a picture and a contact card are all MMS parts, so the composer
- * must not offer any of them — and the slot the plus held carries the emoji
- * button instead, which is why turning MMS off also turns that setting on.
+ * must not offer any of them. Turning MMS off turns the emoji setting on so the
+ * button fills the empty slot; after that the setting alone hides the button.
  */
 class MmsDisabledComposerTest {
 
@@ -45,19 +45,42 @@ class MmsDisabledComposerTest {
     }
 
     @Test
-    fun theEmojiButtonTakesThePlusSlot() {
+    fun theEmojiSettingAloneDecidesTheButton() {
         assertTrue(
-            "the button is offered whenever attachments are not",
-            chat.contains("showEmojiButton = vm.settings.emojiButtonEnabled ||") &&
-                chat.contains("!vm.settings.mmsEnabled")
+            "the composer reads only the setting after the switch has done its job",
+            chat.contains("showEmojiButton = vm.settings.emojiButtonEnabled,")
+        )
+        assertFalse(
+            "there is no MMS override left in the composer",
+            chat.contains("showEmojiButton = vm.settings.emojiButtonEnabled ||")
         )
         assertTrue(
-            "and it is drawn in the slot the plus had, not a second one",
+            "it is drawn in the slot the plus had, not a second one",
             chat.contains("if (!attachEnabled) {") && chat.contains("} else IconButton(onClick = onAttach) {")
         )
         assertTrue(
             "the trailing emoji button must not double up",
             chat.contains("if (showEmojiButton && attachEnabled) {")
+        )
+    }
+
+    @Test
+    fun turningMmsOffTurnsTheEmojiSettingOnButItCanBeDisabledAfter() {
+        assertTrue(
+            "one helper owns the turn-off behaviour",
+            main.contains("fun setMmsEnabled(enabled: Boolean)")
+        )
+        assertTrue(
+            "the emoji button fills the slot the plus left",
+            main.contains("if (!enabled) settings.emojiButtonEnabled = true")
+        )
+        assertTrue(
+            "the settings switch uses that helper",
+            main.contains("onMmsEnabledChange = { on -> vm.setMmsEnabled(on) }")
+        )
+        assertTrue(
+            "the debug probe uses the same helper",
+            main.contains("if (probe == \"off\") vm.setMmsEnabled(false)")
         )
     }
 
