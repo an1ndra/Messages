@@ -57,6 +57,31 @@ class NotificationChannelWiringTest {
     }
 
     @Test
+    fun channelsAreSeededWithTheActualSoundNotASystemAlias() {
+        val s = src("sms/SmsSupport.kt")
+        assertTrue(
+            "channels are still seeded with the symbolic system URI",
+            !s.contains("RingtoneManager.getDefaultUri(")
+        )
+        assertTrue(
+            "the actual sound URI is not resolved",
+            s.contains("getActualDefaultRingtoneUri(context")
+        )
+        assertTrue(
+            "a device with no default would seed no sound at all",
+            s.contains("?: resourceUri(context, R.raw.notification_sound)")
+        )
+        assertTrue(
+            "channels already carrying the alias are never migrated",
+            s.contains("isSymbolicSound(existing.sound)")
+        )
+        assertTrue(
+            "the migration does not copy the channel's other settings",
+            s.contains("vibrationPattern = existing.vibrationPattern")
+        )
+    }
+
+    @Test
     fun theAppNoLongerStoresATone() {
         // The tone is the channel's, and the channel belongs to the system. A
         // stored copy is the second source of truth that made the app and
