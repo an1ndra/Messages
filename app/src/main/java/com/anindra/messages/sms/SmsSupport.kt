@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
@@ -906,11 +907,12 @@ object NotificationHelper {
         }
     }
 
-    fun playSentSound(context: Context) = playSound(context)
+    fun playSentSound(context: Context, source: String = "sms") = playSound(context, source)
 
-    private fun playSound(context: Context) {
+    private fun playSound(context: Context, source: String) {
         val app = context.applicationContext as com.anindra.messages.MessagesApplication
         if (!app.repository.settings.sendSoundEnabled) return
+        Log.i("SentSound", "played source=$source")
         try {
             val uri = Uri.parse("android.resource://${context.packageName}/${R.raw.notification_sound}")
             val mp = android.media.MediaPlayer()
