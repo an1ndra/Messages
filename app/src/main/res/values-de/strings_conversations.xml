@@ -60,4 +60,6 @@
     <string name="inbox_rules_kind_sender">Absender</string>
     <string name="inbox_rules_empty">Noch keine Regeln</string>
     <string name="inbox_rules_pattern_hint">Wort oder Absender</string>
+    <string name="settings_inbox_categories_title">Kategorien anzeigen</string>
+    <string name="settings_inbox_categories_subtitle">Kategorie-Tabs auf dem Hauptbildschirm</string>
 </resources>

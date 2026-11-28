@@ -202,4 +202,5 @@
     <string name="settings_search_hint">Поиск по настройкам</string>
     <string name="settings_search_none">Нет подходящих настроек</string>
     <string name="settings_theme_dynamic">Динамическая</string>
+    <string name="settings_general_title">Общие настройки</string>
 </resources>

@@ -61,4 +61,6 @@
     <string name="inbox_rules_kind_sender">寄件者</string>
     <string name="inbox_rules_empty">尚無規則</string>
     <string name="inbox_rules_pattern_hint">關鍵字或寄件者</string>
+    <string name="settings_inbox_categories_title">顯示分類</string>
+    <string name="settings_inbox_categories_subtitle">主畫面上的分類標籤</string>
 </resources>

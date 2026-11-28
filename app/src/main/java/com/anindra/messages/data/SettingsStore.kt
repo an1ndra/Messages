@@ -65,6 +65,7 @@ class SettingsStore(context: Context) {
         const val KEY_RETENTION_BLOCKED = "retention_blocked_senders"
         const val KEY_FORWARDING_ENABLED = "forwarding_enabled"
         const val KEY_UNREAD_AT_TOP_ENABLED = "unread_at_top_enabled"
+        const val KEY_INBOX_CATEGORIES_ENABLED = "inbox_categories_enabled"
         const val KEY_SCHEDULED_MESSAGES_ENABLED = "scheduled_messages_enabled"
         const val KEY_PINCH_ZOOM = "pinch_zoom_enabled"
         const val KEY_NOTIF_CLEARED_PREFIX = "notif_cleared_"
@@ -311,6 +312,11 @@ class SettingsStore(context: Context) {
     var unreadAtTopEnabled: Boolean
         get() = prefs.getBoolean(KEY_UNREAD_AT_TOP_ENABLED, DEFAULTS_UNREAD_AT_TOP)
         set(v) { prefs.edit().putBoolean(KEY_UNREAD_AT_TOP_ENABLED, v).apply(); _revision.value++ }
+
+    /** Whether the main screen may offer its category tabs at all. */
+    var inboxCategoriesEnabled: Boolean
+        get() = prefs.getBoolean(KEY_INBOX_CATEGORIES_ENABLED, true)
+        set(v) { prefs.edit().putBoolean(KEY_INBOX_CATEGORIES_ENABLED, v).apply(); _revision.value++ }
 
     /**
      * Whether pinching a chat scales its text (#348). On by default, and

@@ -42,6 +42,8 @@ class PreviewCoverageTest {
     /** Composables that render no UI of their own. */
     private val notVisual = setOf(
         "MessagesTheme", "ProvideShimmer", "ClampToItemCount", "SettingsJumpEffect",
+        "ProvideSettingsSearchJump", "SearchableSettingsCard", "SearchableGroupedRowList",
+        "SettingsSearchJumpEffect",
         "rememberChatRows", "rememberSentIndexAt", "rememberLinkedText",
         "fontScaleLabel", "fontLabel", "blockedKeywordsSubtitle", "mmsCheckSubtitle"
     )

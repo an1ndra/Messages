@@ -70,16 +70,17 @@ fun AccessibilityScreen(
             )
         }
     ) { padding ->
+        ProvideSettingsSearchJump(scrollState) {
         Column(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-.verticalScroll(scrollState)
+                .verticalScroll(scrollState)
                 .padding(horizontal = SettingsLayout.SCREEN_PADDING)
         ) {
             Spacer(Modifier.height(SettingsLayout.TOP_GAP))
 
-            SettingsGroup {
+            SearchableSettingsCard(0) {
                 A11Y_OPTION_ROWS.forEach { (option, position) ->
                     when (option) {
                         A11yOption.FONT_SIZE -> SettingsRow(
@@ -117,6 +118,7 @@ fun AccessibilityScreen(
             }
 
             SettingsFooter(stringResource(R.string.settings_accessibility_footer))
+        }
         }
     }
 

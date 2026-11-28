@@ -58,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -89,6 +90,9 @@ import com.anindra.messages.ui.NotificationSettingsScreen
 import com.anindra.messages.ui.AutoDeleteSettingsScreen
 import com.anindra.messages.ui.LinkSettingsScreen
 import com.anindra.messages.ui.InboxSettingsScreen
+import com.anindra.messages.ui.LocalSettingsJump
+import com.anindra.messages.ui.SettingsJump
+import com.anindra.messages.ui.InboxCategoryRulesScreen
 import com.anindra.messages.ui.ScheduledMessagesScreen
 import com.anindra.messages.ui.NewChatScreen
 import com.anindra.messages.ui.AboutScreen
@@ -2042,6 +2046,7 @@ open class MainActivity : FragmentActivity() {
                         "transfer-log" -> navRoute = "advanced"
                         "trash" -> navRoute = "settings"
                         "inbox" -> navRoute = "settings"
+                        "inbox-rules" -> navRoute = "inbox"
                         "notif-settings" -> navRoute = "advanced"
                         "auto-delete" -> navRoute = "advanced"
                         "links" -> navRoute = "advanced"
@@ -2053,7 +2058,8 @@ open class MainActivity : FragmentActivity() {
                     }
                 }
 
-                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "inbox" to 2, "advanced" to 2, "about" to 2, "accessibility" to 3,
+                val routeDepth = mapOf("list" to 0, "opening" to 0, "chat" to 1, "details" to 2, "new" to 1, "settings" to 1, "trash" to 2, "spam" to 2, "inbox" to 2, "inbox-rules" to 3,
+                        "advanced" to 2, "about" to 2, "accessibility" to 3,
                         "notif-settings" to 3, "auto-delete" to 3, "links" to 3,
                         "transfer-log" to 3,
                         "add-people" to 3, "mms-check" to 3, "scheduled" to 2)
@@ -2101,6 +2107,12 @@ open class MainActivity : FragmentActivity() {
                 }
 
                 val routePane: @Composable (Modifier) -> Unit = { paneModifier ->
+                    val jumpRequest = remember(settingsJumpTarget) {
+                        settingsJumpTarget?.let { row ->
+                            SettingsJump(row) { settingsJumpTarget = null }
+                        }
+                    }
+                    CompositionLocalProvider(LocalSettingsJump provides jumpRequest) {
                     AnimatedContent(
                         targetState = navRoute,
                         transitionSpec = {
@@ -2215,7 +2227,12 @@ open class MainActivity : FragmentActivity() {
                                     "inbox" -> InboxSettingsScreen(
                                         vm = vm,
                                         onBack = { navRoute = "settings" },
+                                        onOpenRules = { navRoute = "inbox-rules" },
                                         scrollState = inboxScroll
+                                    )
+                                    "inbox-rules" -> InboxCategoryRulesScreen(
+                                        vm = vm,
+                                        onBack = { navRoute = "inbox" }
                                     )
                                     "advanced" -> if (useNewUi) AdvancedSettingsScreen(
                                         vm = vm,
@@ -2226,6 +2243,10 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                         onOpenLinks = { navRoute = "links" },
                                         onOpenMmsCheck = { navRoute = "mms-check" },
                                         onOpenTransferLog = { navRoute = "transfer-log" },
+                                        onSearchNavigate = { route, row ->
+                                            settingsJumpTarget = row
+                                            navRoute = route
+                                        },
                                         scrollState = advancedScroll
                                     ) else com.anindra.messages.ui.legacy.AdvancedSettingsScreen(
                                         vm = vm,
@@ -2375,6 +2396,7 @@ onOpenAccessibility = { navRoute = "accessibility" },
                                 }
                             }
                         }
+                    }
                     }
                 }
 

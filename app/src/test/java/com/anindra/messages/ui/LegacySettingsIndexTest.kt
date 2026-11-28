@@ -44,7 +44,14 @@ class LegacySettingsIndexTest {
     }
 
     private val indexedNames: Set<String>
-        get() = Regex("""R\.string\.(\w+)""").findAll(index).map { it.groupValues[1] }.toSet()
+        get() {
+            // The new-UI catalog lives in the same file; it is not part of the
+            // legacy index this test checks.
+            val legacy = index.substringAfter("val LEGACY_OPTIONS")
+                .substringBefore("val LEGACY_ROWS")
+            return Regex("""R\.string\.(\w+)""").findAll(legacy)
+                .map { it.groupValues[1] }.toSet()
+        }
 
     @Test
     fun everyRowEachScreenRendersIsSearchable() {

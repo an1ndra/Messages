@@ -61,4 +61,6 @@
     <string name="inbox_rules_kind_sender">发件人</string>
     <string name="inbox_rules_empty">暂无规则</string>
     <string name="inbox_rules_pattern_hint">关键词或发件人</string>
+    <string name="settings_inbox_categories_title">显示分类</string>
+    <string name="settings_inbox_categories_subtitle">主屏幕上的分类标签</string>
 </resources>

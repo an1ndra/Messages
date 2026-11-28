@@ -202,4 +202,5 @@
     <string name="settings_search_hint">Einstellungen durchsuchen</string>
     <string name="settings_search_none">Keine Einstellung passt</string>
     <string name="settings_theme_dynamic">Dynamisch</string>
+    <string name="settings_general_title">Allgemeine Einstellungen</string>
 </resources>
